@@ -1,11 +1,15 @@
-import type { PublicKey } from "@solana/web3.js";
+export {};
+
+interface PhantomPublicKey {
+  toString(): string;
+}
 
 interface PhantomProvider {
   isPhantom?: boolean;
   isConnected: boolean;
-  publicKey: { toString(): string } | null;
+  publicKey: PhantomPublicKey | null;
   connect(opts?: { onlyIfTrusted?: boolean }): Promise<{
-    publicKey: { toString(): string };
+    publicKey: PhantomPublicKey;
   }>;
   disconnect(): Promise<void>;
   signTransaction(tx: unknown): Promise<unknown>;
@@ -13,11 +17,14 @@ interface PhantomProvider {
     msg: Uint8Array,
     encoding: string,
   ): Promise<{ signature: Uint8Array }>;
-  on(event: "accountChanged", cb: (publicKey: PublicKey | null) => void): void;
+  on(
+    event: "accountChanged",
+    cb: (publicKey: PhantomPublicKey | null) => void,
+  ): void;
   on(event: string, cb: (...args: unknown[]) => void): void;
   off?(
     event: "accountChanged",
-    cb: (publicKey: PublicKey | null) => void,
+    cb: (publicKey: PhantomPublicKey | null) => void,
   ): void;
   off?(event: string, cb: (...args: unknown[]) => void): void;
 }

@@ -1,11 +1,9 @@
 import "../types/phantom";
-import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { ALBUMS } from "../data/albums";
@@ -13,8 +11,26 @@ import { ALBUMS } from "../data/albums";
 const LS_CONNECTED = "echo_wallet_connected";
 const LS_OWNED_PREFIX = "echo_owned_";
 
-// Use mainnet-beta for production; swap to devnet for testing
-const SOLANA_RPC_ENDPOINT = clusterApiUrl("mainnet-beta");
+const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const LAMPORTS_PER_SOL = 1_000_000_000;
+
+async function fetchSOLBalance(address: string): Promise<number> {
+  const res = await fetch(SOLANA_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "getBalance",
+      params: [address, { commitment: "confirmed" }],
+    }),
+  });
+  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message ?? "RPC error");
+  const lamports: number = json.result.value;
+  return lamports / LAMPORTS_PER_SOL;
+}
 
 interface OwnedEntry {
   albumId: string;
@@ -64,24 +80,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [additionalMints, setAdditionalMints] = useState<
     Record<string, number>
   >({});
-  const connectionRef = useRef<Connection | null>(null);
 
   const fetchBalance = useCallback(async (address: string) => {
     setBalanceStatus("loading");
     setSolBalance(null);
     try {
-      if (!connectionRef.current) {
-        connectionRef.current = new Connection(
-          SOLANA_RPC_ENDPOINT,
-          "confirmed",
+      let balance: number;
+      try {
+        balance = await fetchSOLBalance(address);
+      } catch (firstErr) {
+        console.warn(
+          "SOL balance fetch failed, retrying in 1500ms...",
+          firstErr,
         );
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        balance = await fetchSOLBalance(address);
       }
-      const pubkey = new PublicKey(address);
-      const lamports = await connectionRef.current.getBalance(pubkey);
-      setSolBalance(lamports / 1e9);
+      setSolBalance(balance);
       setBalanceStatus("ok");
     } catch (err) {
-      console.error("Failed to fetch SOL balance:", err);
+      console.error("Failed to fetch SOL balance after retry:", err);
       setSolBalance(null);
       setBalanceStatus("error");
     }
@@ -108,8 +126,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (wasConnected && window.solana?.isConnected) {
       window.solana
         .connect({ onlyIfTrusted: true })
-        .then(({ publicKey }) => {
-          const address = publicKey.toString();
+        .then(({ publicKey: pk }) => {
+          const address = pk.toString();
           const entries = loadOwned(address);
           setIsConnected(true);
           setWalletAddress(address);
@@ -126,9 +144,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const phantom = window.solana;
     if (!phantom) return;
 
-    const handleAccountChange = (publicKey: PublicKey | null) => {
-      if (publicKey) {
-        const address = publicKey.toString();
+    const handleAccountChange = (pk: { toString(): string } | null) => {
+      if (pk) {
+        const address = pk.toString();
         const entries = loadOwned(address);
         setWalletAddress(address);
         setOwnedEntries(entries);
@@ -156,8 +174,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const { publicKey } = await window.solana.connect();
-      const address = publicKey.toString();
+      const { publicKey: pk } = await window.solana.connect();
+      const address = pk.toString();
       localStorage.setItem(LS_CONNECTED, "true");
       const entries = loadOwned(address);
       setIsConnected(true);
