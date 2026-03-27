@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 1rem;
+    /* Dark theme — permanent */
+    --background: 0.09 0.005 240;
+    --foreground: 0.96 0.005 220;
+    --card: 0.14 0.007 240;
+    --card-foreground: 0.96 0.005 220;
+    --popover: 0.14 0.007 240;
+    --popover-foreground: 0.96 0.005 220;
+    --primary: 0.96 0.005 220;
+    --primary-foreground: 0.11 0.006 240;
+    --secondary: 0.18 0.008 240;
+    --secondary-foreground: 0.96 0.005 220;
+    --muted: 0.16 0.007 240;
+    --muted-foreground: 0.58 0.012 220;
+    --accent: 0.55 0.22 265;
+    --accent-foreground: 0.96 0.005 220;
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.205 0 0;
+    --border: 0.22 0.008 240;
+    --input: 0.22 0.008 240;
+    --ring: 0.55 0.22 265;
+    --echo-blue: 0.55 0.22 265;
+    --echo-cyan: 0.82 0.13 210;
+    --echo-violet: 0.55 0.22 290;
+    --chart-1: 0.488 0.243 264.376;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.645 0.246 16.439;
+    --sidebar: 0.14 0.007 240;
+    --sidebar-foreground: 0.96 0.005 220;
+    --sidebar-primary: 0.55 0.22 265;
+    --sidebar-primary-foreground: 0.96 0.005 220;
+    --sidebar-accent: 0.18 0.008 240;
+    --sidebar-accent-foreground: 0.96 0.005 220;
+    --sidebar-border: 0.22 0.008 240;
+    --sidebar-ring: 0.55 0.22 265;
+  }
+
+  .dark {
+    --background: 0.09 0.005 240;
+    --foreground: 0.96 0.005 220;
+    --card: 0.14 0.007 240;
+    --card-foreground: 0.96 0.005 220;
+    --popover: 0.14 0.007 240;
+    --popover-foreground: 0.96 0.005 220;
+    --primary: 0.96 0.005 220;
+    --primary-foreground: 0.11 0.006 240;
+    --secondary: 0.18 0.008 240;
+    --secondary-foreground: 0.96 0.005 220;
+    --muted: 0.16 0.007 240;
+    --muted-foreground: 0.58 0.012 220;
+    --accent: 0.55 0.22 265;
+    --accent-foreground: 0.96 0.005 220;
+    --destructive: 0.704 0.191 22.216;
+    --destructive-foreground: 0.205 0 0;
+    --border: 0.22 0.008 240;
+    --input: 0.22 0.008 240;
+    --ring: 0.55 0.22 265;
+    --echo-blue: 0.55 0.22 265;
+    --echo-cyan: 0.82 0.13 210;
+    --echo-violet: 0.55 0.22 290;
+    --chart-1: 0.488 0.243 264.376;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.645 0.246 16.439;
+    --sidebar: 0.14 0.007 240;
+    --sidebar-foreground: 0.96 0.005 220;
+    --sidebar-primary: 0.55 0.22 265;
+    --sidebar-primary-foreground: 0.96 0.005 220;
+    --sidebar-accent: 0.18 0.008 240;
+    --sidebar-accent-foreground: 0.96 0.005 220;
+    --sidebar-border: 0.22 0.008 240;
+    --sidebar-ring: 0.55 0.22 265;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .glow-blue {
+    box-shadow: 0 0 40px 8px oklch(0.55 0.22 265 / 0.35), 0 0 80px 16px
+      oklch(0.55 0.22 265 / 0.15);
+  }
+  .glow-violet {
+    box-shadow: 0 0 40px 8px oklch(0.55 0.22 290 / 0.35), 0 0 80px 16px
+      oklch(0.55 0.22 290 / 0.15);
+  }
+  /* Neutral radial glow — barely noticeable, lifts artwork off dark bg */
+  .glow-mixed {
+    box-shadow: 0 0 40px 12px rgba(255, 255, 255, 0.04), 0 0 80px 24px
+      rgba(220, 215, 205, 0.03);
+  }
+  /* Album artwork shadow — deep dark lift with whisper of neutral light */
+  .shadow-album {
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 40px 8px
+      rgba(255, 255, 255, 0.03);
+  }
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
