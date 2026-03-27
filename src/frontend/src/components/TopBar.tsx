@@ -1,32 +1,30 @@
 import { useWallet } from "../hooks/useWallet";
 
-const ECHO_NEON_LOGO =
-  "/assets/generated/echo-logo-transparent.dim_900x500.png";
+const ECHO_NEON_LOGO = "/assets/generated/echo-logo-refined.dim_600x200.png";
 
-// Neon animation keyframes injected once
+// Refined neon animation — white tube, soft violet aura, minimal flicker on load
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1; filter: brightness(1.0) drop-shadow(0 0 8px rgba(160,100,255,0.55)) drop-shadow(0 0 18px rgba(80,180,255,0.3)); }
-  6%   { opacity: 0.82; filter: brightness(0.88); }
-  10%  { opacity: 1; filter: brightness(1.05) drop-shadow(0 0 10px rgba(160,100,255,0.6)); }
-  13%  { opacity: 0.78; filter: brightness(0.82); }
-  16%  { opacity: 1; filter: brightness(1.0) drop-shadow(0 0 8px rgba(160,100,255,0.5)); }
-  20%  { opacity: 0.9; filter: brightness(0.92); }
-  24%  { opacity: 1; filter: brightness(1.02) drop-shadow(0 0 9px rgba(160,100,255,0.55)) drop-shadow(0 0 20px rgba(80,180,255,0.28)); }
-  100% { opacity: 1; filter: brightness(1.02) drop-shadow(0 0 9px rgba(160,100,255,0.55)) drop-shadow(0 0 20px rgba(80,180,255,0.28)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
+  5%   { opacity: 0.88; filter: brightness(0.92); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 7px rgba(170,120,255,0.55)); }
+  12%  { opacity: 0.84; filter: brightness(0.90); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 6px rgba(170,120,255,0.50)); }
+  18%  { opacity: 0.93; filter: brightness(0.96); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
 }
 
-@keyframes echo-neon-pulse {
-  0%   { filter: brightness(1.0) drop-shadow(0 0 7px rgba(150,90,255,0.45)) drop-shadow(0 0 16px rgba(70,170,255,0.22)); }
-  45%  { filter: brightness(1.06) drop-shadow(0 0 14px rgba(160,100,255,0.65)) drop-shadow(0 0 28px rgba(80,180,255,0.38)) drop-shadow(0 0 40px rgba(130,80,240,0.18)); }
-  55%  { filter: brightness(1.04) drop-shadow(0 0 12px rgba(155,95,255,0.60)) drop-shadow(0 0 24px rgba(75,175,255,0.32)); }
-  100% { filter: brightness(1.0) drop-shadow(0 0 7px rgba(150,90,255,0.45)) drop-shadow(0 0 16px rgba(70,170,255,0.22)); }
+@keyframes echo-neon-breathe {
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.40)) drop-shadow(0 0 12px rgba(140,80,255,0.18)); }
+  50%  { filter: brightness(1.05) drop-shadow(0 0 9px rgba(170,110,255,0.55)) drop-shadow(0 0 20px rgba(150,90,255,0.28)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.40)) drop-shadow(0 0 12px rgba(140,80,255,0.18)); }
 }
 
 .echo-logo-neon {
   animation:
-    echo-neon-flicker 0.85s ease-out forwards,
-    echo-neon-pulse 3.6s ease-in-out 0.85s infinite;
+    echo-neon-flicker 0.75s ease-out forwards,
+    echo-neon-breathe 3.8s ease-in-out 0.75s infinite;
   will-change: filter;
 }
 `;
@@ -95,7 +93,6 @@ export function TopBar() {
   const { isConnected, walletAddress, ownedAlbumIds, connect, disconnect } =
     useWallet();
 
-  // Inject animation CSS once on mount
   injectNeonStyles();
 
   return (
@@ -106,17 +103,17 @@ export function TopBar() {
         borderColor: "oklch(0.15 0.006 240)",
       }}
     >
-      {/* Neon Logo */}
+      {/* Refined Neon Logo */}
       <div className="relative flex items-center">
         <img
           src={ECHO_NEON_LOGO}
           alt="ECHO"
-          className="echo-logo-neon select-none object-contain"
+          className="echo-logo-neon select-none"
           style={{
-            height: "clamp(40px, 6vw, 52px)",
+            height: "clamp(36px, 5.5vw, 46px)",
             width: "auto",
-            imageRendering: "crisp-edges",
-
+            objectFit: "contain",
+            imageRendering: "auto",
             display: "block",
           }}
           draggable={false}
