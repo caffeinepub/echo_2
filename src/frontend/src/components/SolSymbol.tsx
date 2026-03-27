@@ -1,7 +1,6 @@
 /**
  * SolSymbol — thin wrapper around EchoSolIcon for backward compatibility.
- * All existing usages of <SolSymbol className="w-3.5 h-3.5" /> continue to work.
- * The className is forwarded; Tailwind width/height classes still apply.
+ * Strips any Tailwind size classes that would force a square container.
  */
 import { EchoSolIcon } from "./EchoSolIcon";
 
@@ -9,33 +8,27 @@ export function SolSymbol({
   className,
   size,
   animated,
+  large,
 }: {
   className?: string;
   size?: number;
   animated?: boolean;
+  large?: boolean;
 }) {
-  // If no explicit size is given, resolve a sensible default from common
-  // Tailwind class names used in the codebase (w-3 → 12, w-3.5 → 14).
-  let resolvedSize = size;
-  if (!resolvedSize) {
-    if (className?.includes("w-3.5")) resolvedSize = 14;
-    else if (className?.includes("w-3")) resolvedSize = 12;
-    else resolvedSize = 14;
-  }
-
-  // Strip size-related Tailwind classes so they don't fight the explicit width/height.
+  // Strip size-related Tailwind classes so they don't constrain the wide aspect ratio.
   const passClass = className
     ? className
-        .replace(/\bw-[\d.]+\b/g, "")
-        .replace(/\bh-[\d.]+\b/g, "")
+        .replace(/\bw-[\d.[\]]+\b/g, "")
+        .replace(/\bh-[\d.[\]]+\b/g, "")
         .trim()
     : "";
 
   return (
     <EchoSolIcon
-      size={resolvedSize}
+      size={size}
+      large={large}
       animated={animated}
-      className={passClass}
+      className={passClass || undefined}
     />
   );
 }

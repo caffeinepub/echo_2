@@ -239,7 +239,7 @@ function SignalCard({
           color: isSol ? "oklch(0.82 0.15 210)" : "oklch(0.94 0.005 220)",
         }}
       >
-        {isSol && <SolSymbol className="w-3.5 h-3.5" animated={true} />}
+        {isSol && <SolSymbol large animated={true} />}
         {value}
       </p>
     </motion.div>
@@ -374,7 +374,7 @@ function AlbumRow({
           }`}
           style={{ color: "oklch(0.82 0.15 210)" }}
         >
-          <SolSymbol className="w-3 h-3" animated={true} />
+          <SolSymbol animated={true} />
           {mktCap.toFixed(1)}
         </span>
       );
@@ -387,7 +387,7 @@ function AlbumRow({
           }`}
           style={{ color: "oklch(0.82 0.15 210)" }}
         >
-          <SolSymbol className="w-3 h-3" animated={true} />
+          <SolSymbol animated={true} />
           {album.volume_24h_sol.toFixed(1)}
         </span>
       );
