@@ -19,10 +19,12 @@ interface OwnedEntry {
 interface WalletContextValue {
   isConnected: boolean;
   walletAddress: string | null;
+  solBalance: number | null;
   ownedAlbumIds: string[];
   ownedEditions: Record<string, number>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  refreshBalance: () => Promise<void>;
   mintAlbum: (
     albumId: string,
     opts?: { onApproved?: () => void },
@@ -48,10 +50,33 @@ function saveOwned(address: string, entries: OwnedEntry[]) {
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [solBalance, setSolBalance] = useState<number | null>(null);
   const [ownedEntries, setOwnedEntries] = useState<OwnedEntry[]>([]);
   const [additionalMints, setAdditionalMints] = useState<
     Record<string, number>
   >({});
+
+  const fetchBalance = useCallback(async () => {
+    // Mock balance for demo; swap in real RPC:
+    // const connection = new Connection(clusterApiUrl('devnet'));
+    // const lamports = await connection.getBalance(new PublicKey(address));
+    // setSolBalance(lamports / 1e9);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    setSolBalance(4.235);
+  }, []);
+
+  const refreshBalance = useCallback(async () => {
+    if (!walletAddress) return;
+    await fetchBalance();
+  }, [walletAddress, fetchBalance]);
+
+  useEffect(() => {
+    if (walletAddress) {
+      fetchBalance();
+    } else {
+      setSolBalance(null);
+    }
+  }, [walletAddress, fetchBalance]);
 
   useEffect(() => {
     const wasConnected = localStorage.getItem(LS_CONNECTED) === "true";
@@ -100,6 +125,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(LS_CONNECTED);
     setIsConnected(false);
     setWalletAddress(null);
+    setSolBalance(null);
     setOwnedEntries([]);
   }, []);
 
@@ -133,9 +159,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         [albumId]: (prev[albumId] ?? 0) + 1,
       }));
 
+      // Refresh balance after purchase
+      await fetchBalance();
+
       return { editionNumber };
     },
-    [walletAddress, additionalMints],
+    [walletAddress, additionalMints, fetchBalance],
   );
 
   const getCirculatingSupply = useCallback(
@@ -158,10 +187,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       value={{
         isConnected,
         walletAddress,
+        solBalance,
         ownedAlbumIds,
         ownedEditions,
         connect,
         disconnect,
+        refreshBalance,
         mintAlbum,
         getCirculatingSupply,
       }}

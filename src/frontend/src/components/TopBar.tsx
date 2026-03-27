@@ -32,8 +32,15 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 3)}...${address.slice(-3)}`;
 }
 
+function formatBalance(balance: number | null): string {
+  if (balance === null) return "—";
+  if (balance < 1) return balance.toFixed(3);
+  return balance.toFixed(2);
+}
+
 export function TopBar() {
-  const { isConnected, walletAddress, connect, disconnect } = useWallet();
+  const { isConnected, walletAddress, solBalance, connect, disconnect } =
+    useWallet();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 h-16 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -110,8 +117,8 @@ export function TopBar() {
           backgroundColor: "#7C3AED",
           paddingLeft: "12px",
           paddingRight: "14px",
-          paddingTop: "7px",
-          paddingBottom: "7px",
+          paddingTop: "8px",
+          paddingBottom: "8px",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
@@ -131,11 +138,34 @@ export function TopBar() {
         }}
       >
         <PhantomLogo size={20} />
-        <span className="leading-none">
-          {isConnected && walletAddress
-            ? `Phantom \u2022 ${truncateAddress(walletAddress)}`
-            : "Connect Phantom"}
-        </span>
+        {isConnected && walletAddress ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "1px",
+            }}
+          >
+            <span
+              style={{ fontSize: "13px", fontWeight: 500, lineHeight: "1.2" }}
+            >
+              Phantom &bull; {truncateAddress(walletAddress)}
+            </span>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 400,
+                lineHeight: "1.2",
+                opacity: 0.85,
+              }}
+            >
+              &#9675; {formatBalance(solBalance)} SOL
+            </span>
+          </div>
+        ) : (
+          <span className="leading-none">Connect Phantom</span>
+        )}
       </button>
     </header>
   );
