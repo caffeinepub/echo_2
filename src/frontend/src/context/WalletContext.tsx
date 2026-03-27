@@ -1,9 +1,11 @@
 import "../types/phantom";
+import { Connection, PublicKey, clusterApiUrl } from "@solana/web3.js";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { ALBUMS } from "../data/albums";
@@ -11,15 +13,21 @@ import { ALBUMS } from "../data/albums";
 const LS_CONNECTED = "echo_wallet_connected";
 const LS_OWNED_PREFIX = "echo_owned_";
 
+// Use mainnet-beta for production; swap to devnet for testing
+const SOLANA_RPC_ENDPOINT = clusterApiUrl("mainnet-beta");
+
 interface OwnedEntry {
   albumId: string;
   editionNumber: number;
 }
 
+type BalanceStatus = "idle" | "loading" | "ok" | "error";
+
 interface WalletContextValue {
   isConnected: boolean;
   walletAddress: string | null;
   solBalance: number | null;
+  balanceStatus: BalanceStatus;
   ownedAlbumIds: string[];
   ownedEditions: Record<string, number>;
   connect: () => Promise<void>;
@@ -50,34 +58,51 @@ function saveOwned(address: string, entries: OwnedEntry[]) {
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [balanceStatus, setBalanceStatus] = useState<BalanceStatus>("idle");
   const [solBalance, setSolBalance] = useState<number | null>(null);
   const [ownedEntries, setOwnedEntries] = useState<OwnedEntry[]>([]);
   const [additionalMints, setAdditionalMints] = useState<
     Record<string, number>
   >({});
+  const connectionRef = useRef<Connection | null>(null);
 
-  const fetchBalance = useCallback(async () => {
-    // Mock balance for demo; swap in real RPC:
-    // const connection = new Connection(clusterApiUrl('devnet'));
-    // const lamports = await connection.getBalance(new PublicKey(address));
-    // setSolBalance(lamports / 1e9);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setSolBalance(4.235);
+  const fetchBalance = useCallback(async (address: string) => {
+    setBalanceStatus("loading");
+    setSolBalance(null);
+    try {
+      if (!connectionRef.current) {
+        connectionRef.current = new Connection(
+          SOLANA_RPC_ENDPOINT,
+          "confirmed",
+        );
+      }
+      const pubkey = new PublicKey(address);
+      const lamports = await connectionRef.current.getBalance(pubkey);
+      setSolBalance(lamports / 1e9);
+      setBalanceStatus("ok");
+    } catch (err) {
+      console.error("Failed to fetch SOL balance:", err);
+      setSolBalance(null);
+      setBalanceStatus("error");
+    }
   }, []);
 
   const refreshBalance = useCallback(async () => {
     if (!walletAddress) return;
-    await fetchBalance();
+    await fetchBalance(walletAddress);
   }, [walletAddress, fetchBalance]);
 
+  // Fetch balance whenever wallet address changes
   useEffect(() => {
     if (walletAddress) {
-      fetchBalance();
+      fetchBalance(walletAddress);
     } else {
+      setBalanceStatus("idle");
       setSolBalance(null);
     }
   }, [walletAddress, fetchBalance]);
 
+  // Auto-reconnect on page load if previously connected
   useEffect(() => {
     const wasConnected = localStorage.getItem(LS_CONNECTED) === "true";
     if (wasConnected && window.solana?.isConnected) {
@@ -94,6 +119,33 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem(LS_CONNECTED);
         });
     }
+  }, []);
+
+  // Listen for wallet account changes
+  useEffect(() => {
+    const phantom = window.solana;
+    if (!phantom) return;
+
+    const handleAccountChange = (publicKey: PublicKey | null) => {
+      if (publicKey) {
+        const address = publicKey.toString();
+        const entries = loadOwned(address);
+        setWalletAddress(address);
+        setOwnedEntries(entries);
+      } else {
+        localStorage.removeItem(LS_CONNECTED);
+        setIsConnected(false);
+        setWalletAddress(null);
+        setOwnedEntries([]);
+        setBalanceStatus("idle");
+        setSolBalance(null);
+      }
+    };
+
+    phantom.on("accountChanged", handleAccountChange);
+    return () => {
+      phantom.off?.("accountChanged", handleAccountChange);
+    };
   }, []);
 
   const connect = useCallback(async () => {
@@ -125,6 +177,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(LS_CONNECTED);
     setIsConnected(false);
     setWalletAddress(null);
+    setBalanceStatus("idle");
     setSolBalance(null);
     setOwnedEntries([]);
   }, []);
@@ -134,11 +187,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       albumId: string,
       opts?: { onApproved?: () => void },
     ): Promise<{ editionNumber: number }> => {
-      // Phase 1: simulate wallet approval delay (1000ms)
       await new Promise((resolve) => setTimeout(resolve, 1000));
       opts?.onApproved?.();
-
-      // Phase 2: simulate minting on-chain (1500ms)
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const album = ALBUMS.find((a) => a.id === albumId);
@@ -159,8 +209,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         [albumId]: (prev[albumId] ?? 0) + 1,
       }));
 
-      // Refresh balance after purchase
-      await fetchBalance();
+      // Refresh balance after confirmed purchase
+      if (walletAddress) {
+        await fetchBalance(walletAddress);
+      }
 
       return { editionNumber };
     },
@@ -188,6 +240,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         isConnected,
         walletAddress,
         solBalance,
+        balanceStatus,
         ownedAlbumIds,
         ownedEditions,
         connect,

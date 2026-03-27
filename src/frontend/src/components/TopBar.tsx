@@ -32,15 +32,73 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 3)}...${address.slice(-3)}`;
 }
 
-function formatBalance(balance: number | null): string {
-  if (balance === null) return "—";
-  if (balance < 1) return balance.toFixed(3);
-  return balance.toFixed(2);
+function formatBalance(value: number): string {
+  if (value < 1) return value.toFixed(3);
+  return value.toFixed(2);
+}
+
+function BalanceLine({
+  status,
+  value,
+}: {
+  status: string;
+  value: number | null;
+}) {
+  if (status === "loading") {
+    return (
+      <span
+        style={{
+          fontSize: "11px",
+          fontWeight: 400,
+          lineHeight: "1.2",
+          opacity: 0.6,
+          letterSpacing: "0.04em",
+        }}
+      >
+        ···
+      </span>
+    );
+  }
+  if (status === "error") {
+    return (
+      <span
+        style={{
+          fontSize: "10px",
+          fontWeight: 400,
+          lineHeight: "1.2",
+          opacity: 0.55,
+        }}
+      >
+        Balance unavailable
+      </span>
+    );
+  }
+  if (status === "ok" && value !== null) {
+    return (
+      <span
+        style={{
+          fontSize: "11px",
+          fontWeight: 400,
+          lineHeight: "1.2",
+          opacity: 0.85,
+        }}
+      >
+        &#9675; {formatBalance(value)} SOL
+      </span>
+    );
+  }
+  return null;
 }
 
 export function TopBar() {
-  const { isConnected, walletAddress, solBalance, connect, disconnect } =
-    useWallet();
+  const {
+    isConnected,
+    walletAddress,
+    solBalance,
+    balanceStatus,
+    connect,
+    disconnect,
+  } = useWallet();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 h-16 bg-background/80 backdrop-blur-xl border-b border-border">
@@ -152,16 +210,7 @@ export function TopBar() {
             >
               Phantom &bull; {truncateAddress(walletAddress)}
             </span>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 400,
-                lineHeight: "1.2",
-                opacity: 0.85,
-              }}
-            >
-              &#9675; {formatBalance(solBalance)} SOL
-            </span>
+            <BalanceLine status={balanceStatus} value={solBalance} />
           </div>
         ) : (
           <span className="leading-none">Connect Phantom</span>

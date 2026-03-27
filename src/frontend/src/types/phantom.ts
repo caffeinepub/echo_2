@@ -1,3 +1,5 @@
+import type { PublicKey } from "@solana/web3.js";
+
 interface PhantomProvider {
   isPhantom?: boolean;
   isConnected: boolean;
@@ -11,8 +13,13 @@ interface PhantomProvider {
     msg: Uint8Array,
     encoding: string,
   ): Promise<{ signature: Uint8Array }>;
-  on(event: string, cb: () => void): void;
-  off(event: string, cb: () => void): void;
+  on(event: "accountChanged", cb: (publicKey: PublicKey | null) => void): void;
+  on(event: string, cb: (...args: unknown[]) => void): void;
+  off?(
+    event: "accountChanged",
+    cb: (publicKey: PublicKey | null) => void,
+  ): void;
+  off?(event: string, cb: (...args: unknown[]) => void): void;
 }
 
 declare global {
@@ -20,5 +27,3 @@ declare global {
     solana?: PhantomProvider;
   }
 }
-
-export {};
