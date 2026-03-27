@@ -1,5 +1,5 @@
 import { ArrowLeft, Lock, Pause, Play } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
@@ -147,7 +147,6 @@ const MARKET_ALBUMS: MarketAlbum[] = [
 function getMarketAlbum(albumId: string): MarketAlbum {
   const found = MARKET_ALBUMS.find((a) => a.id === albumId);
   if (found) return found;
-  // Fallback for market-only albums
   return {
     id: albumId,
     title: albumId.replace("ta-", "Album "),
@@ -189,60 +188,149 @@ function getMarketAlbum(albumId: string): MarketAlbum {
   };
 }
 
-// ─── Volume Bar ───────────────────────────────────────────────────────────────
-function VolumeBar({
-  label,
-  value,
-  displayValue,
-  maxValue,
-  fillColor,
-  delay,
-}: {
-  label: string;
-  value: number;
-  displayValue: string;
-  maxValue: number;
-  fillColor: string;
-  delay: number;
-}) {
-  const pct = Math.min(100, (value / maxValue) * 100);
+// ─── Volume Signal Card ───────────────────────────────────────────────────────
+type VolumeTab = "listening" | "trading";
+
+function VolumeSignalCard({
+  album,
+  maxVol,
+}: { album: MarketAlbum; maxVol: number }) {
+  const [activeTab, setActiveTab] = useState<VolumeTab>("listening");
   const barRef = useRef<HTMLDivElement>(null);
 
+  const listeningPct = Math.min(
+    100,
+    (album.listening_volume / 10000 / maxVol) * 100,
+  );
+  const tradingPct = Math.min(100, (album.transaction_volume / maxVol) * 100);
+
+  const currentPct = activeTab === "listening" ? listeningPct : tradingPct;
+  const fillColor =
+    activeTab === "listening"
+      ? "linear-gradient(90deg, oklch(0.55 0.12 210), oklch(0.82 0.15 210))"
+      : "linear-gradient(90deg, oklch(0.40 0.20 290), oklch(0.60 0.28 290))";
+  const cardGlow =
+    activeTab === "listening"
+      ? "0 0 18px oklch(0.55 0.12 210 / 0.12)"
+      : "0 0 18px oklch(0.50 0.22 290 / 0.12)";
+
+  // Animate bar on tab switch: reset to 0, then animate to target
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
-    const timer = setTimeout(
-      () => {
-        el.style.width = `${pct}%`;
-      },
-      delay * 1000 + 100,
-    );
-    return () => clearTimeout(timer);
-  }, [pct, delay]);
+    el.style.transition = "none";
+    el.style.width = "0%";
+    const t = setTimeout(() => {
+      el.style.transition = "width 700ms ease-out";
+      el.style.width = `${currentPct}%`;
+    }, 50);
+    return () => clearTimeout(t);
+  }, [currentPct]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <span
-          className="text-[11px] uppercase tracking-widest font-medium"
-          style={{ color: "oklch(0.45 0.008 240)" }}
+    <div
+      className="rounded-2xl px-5 py-5"
+      style={{
+        background: "oklch(0.10 0.006 240)",
+        border: "1px solid oklch(0.18 0.007 240)",
+        boxShadow: cardGlow,
+        transition: "box-shadow 400ms ease",
+      }}
+    >
+      {/* Header */}
+      <p
+        className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-4"
+        style={{ color: "oklch(0.45 0.008 240)" }}
+      >
+        Volume Signal
+      </p>
+
+      {/* Segmented toggle */}
+      <div className="flex justify-center mb-5">
+        <div
+          className="inline-flex rounded-full p-0.5"
+          style={{ background: "oklch(0.07 0.005 240)" }}
+          role="tablist"
+          aria-label="Volume signal type"
         >
-          {label}
-        </span>
-        <span
-          className="text-[13px] font-mono font-semibold"
-          style={{ color: "oklch(0.88 0.005 220)" }}
-        >
-          {displayValue}
-        </span>
+          {(["listening", "trading"] as VolumeTab[]).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              data-ocid={`volume_signal.${tab}.tab`}
+              onClick={() => setActiveTab(tab)}
+              className="px-4 py-1.5 rounded-full text-[11px] font-medium tracking-wide transition-all duration-200"
+              style={
+                activeTab === tab
+                  ? {
+                      background: "oklch(0.15 0.008 240)",
+                      border: "1px solid oklch(0.25 0.008 240)",
+                      color: "oklch(0.95 0.005 220)",
+                    }
+                  : {
+                      background: "transparent",
+                      border: "1px solid transparent",
+                      color: "oklch(0.38 0.007 240)",
+                    }
+              }
+            >
+              {tab === "listening" ? "Listening" : "Trading"}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Animated label + value */}
+      <div className="mb-3">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-between"
+          >
+            <span
+              className="text-[11px] uppercase tracking-widest font-medium"
+              style={{ color: "oklch(0.45 0.008 240)" }}
+            >
+              {activeTab === "listening"
+                ? "Listening Volume"
+                : "Transaction Volume"}
+            </span>
+            <span
+              className="text-[13px] font-mono font-semibold flex items-center gap-1.5"
+              style={{
+                color:
+                  activeTab === "listening"
+                    ? "oklch(0.82 0.15 210)"
+                    : "oklch(0.72 0.20 290)",
+              }}
+            >
+              {activeTab === "listening" ? (
+                `${(album.listening_volume / 1000).toFixed(0)}k plays`
+              ) : (
+                <>
+                  <SolSymbol className="w-3.5 h-3.5" />
+                  {album.transaction_volume.toFixed(1)}
+                </>
+              )}
+            </span>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Animated bar */}
       <div
         className="h-2 rounded-full overflow-hidden"
         style={{ background: "oklch(0.96 0.005 220 / 0.06)" }}
       >
         <div
           ref={barRef}
-          className="h-full rounded-full transition-all duration-1000 ease-out"
+          className="h-full rounded-full"
           style={{ width: "0%", background: fillColor }}
         />
       </div>
@@ -263,6 +351,11 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
 
   const mktCap = album.floor_price_sol * album.circulating_supply;
   const positive = album.change_24h_pct >= 0;
+
+  const maxVol = Math.max(
+    album.transaction_volume,
+    album.listening_volume / 10000,
+  );
 
   // Live play count pulse (every 30s)
   useEffect(() => {
@@ -309,11 +402,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
     }
   }
 
-  const maxVol = Math.max(
-    album.transaction_volume,
-    album.listening_volume / 10000,
-  );
-
   return (
     <div
       className="min-h-screen pb-32"
@@ -343,7 +431,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
         className="flex justify-center pt-6 pb-6 px-5"
       >
         <div className="relative" style={{ width: 160, height: 160 }}>
-          {/* Glow ring when playing */}
           {isPlayingAlbum && (
             <div
               className="absolute inset-0 rounded-full animate-glow-pulse"
@@ -353,7 +440,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               }}
             />
           )}
-          {/* Art */}
           <div
             className={`w-full h-full rounded-full overflow-hidden ${
               isPlayingAlbum ? "animate-spin-slow" : ""
@@ -376,7 +462,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               />
             )}
           </div>
-          {/* Play overlay */}
           <button
             type="button"
             onClick={toggleArtPlay}
@@ -505,39 +590,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           ))}
         </motion.div>
 
-        {/* ── Volume bars ── */}
+        {/* ── Volume Signal ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.28 }}
-          className="rounded-2xl px-5 py-5"
-          style={{
-            background: "oklch(0.10 0.006 240)",
-            border: "1px solid oklch(0.18 0.007 240)",
-          }}
         >
-          <p
-            className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-4"
-            style={{ color: "oklch(0.45 0.008 240)" }}
-          >
-            Volume
-          </p>
-          <VolumeBar
-            label="Transaction Vol"
-            value={album.transaction_volume}
-            displayValue={`${album.transaction_volume.toFixed(1)} SOL`}
-            maxValue={maxVol}
-            fillColor="linear-gradient(90deg, oklch(0.40 0.20 290), oklch(0.60 0.28 290))"
-            delay={0.3}
-          />
-          <VolumeBar
-            label="Listening Vol"
-            value={album.listening_volume / 10000}
-            displayValue={`${(album.listening_volume / 1000).toFixed(0)}k plays`}
-            maxValue={maxVol}
-            fillColor="linear-gradient(90deg, oklch(0.55 0.12 210), oklch(0.82 0.15 210))"
-            delay={0.45}
-          />
+          <VolumeSignalCard album={album} maxVol={maxVol} />
         </motion.div>
 
         {/* ── Track list ── */}
@@ -596,7 +655,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                     {track.duration}
                   </p>
                 </div>
-                {/* Play count */}
                 <span
                   className={`text-[12px] font-mono tabular-nums shrink-0 ${
                     isPulsing ? "animate-value-flash" : ""
@@ -611,7 +669,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                     ? `${(playCounts[idx] / 1000).toFixed(1)}k`
                     : playCounts[idx]}
                 </span>
-                {/* Preview / lock */}
                 {isOwned ? (
                   <button
                     type="button"
