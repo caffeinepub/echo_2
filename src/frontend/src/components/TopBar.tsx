@@ -1,24 +1,25 @@
 import { useWallet } from "../hooks/useWallet";
 
-const ECHO_NEON_LOGO = "/assets/generated/echo-logo-refined.dim_600x200.png";
+const ECHO_NEON_LOGO =
+  "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
 // Refined neon animation — white tube, soft violet aura, minimal flicker on load
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
   5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 7px rgba(170,120,255,0.55)); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 6px rgba(170,120,255,0.47)); }
   12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 6px rgba(170,120,255,0.50)); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 5px rgba(170,120,255,0.43)); }
   18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 6px rgba(170,120,255,0.50)) drop-shadow(0 0 14px rgba(140,80,255,0.22)); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
 }
 
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.40)) drop-shadow(0 0 12px rgba(140,80,255,0.18)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 9px rgba(170,110,255,0.55)) drop-shadow(0 0 20px rgba(150,90,255,0.28)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.40)) drop-shadow(0 0 12px rgba(140,80,255,0.18)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.34)) drop-shadow(0 0 12px rgba(140,80,255,0.15)); }
+  50%  { filter: brightness(1.05) drop-shadow(0 0 8px rgba(170,110,255,0.47)) drop-shadow(0 0 18px rgba(150,90,255,0.24)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.34)) drop-shadow(0 0 12px rgba(140,80,255,0.15)); }
 }
 
 .echo-logo-neon {
@@ -103,18 +104,19 @@ export function TopBar() {
         borderColor: "oklch(0.15 0.006 240)",
       }}
     >
-      {/* Refined Neon Logo */}
+      {/* Neon Logo — floats directly on dark header, no background panel */}
       <div className="relative flex items-center">
         <img
           src={ECHO_NEON_LOGO}
           alt="ECHO"
           className="echo-logo-neon select-none"
           style={{
-            height: "clamp(36px, 5.5vw, 46px)",
+            height: "clamp(42px, 6.5vw, 54px)",
             width: "auto",
             objectFit: "contain",
             imageRendering: "auto",
             display: "block",
+            background: "transparent",
           }}
           draggable={false}
         />
