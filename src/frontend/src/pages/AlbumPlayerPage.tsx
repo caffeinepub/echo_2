@@ -9,6 +9,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { ALBUMS, formatEdition } from "../data/albums";
 
 interface AlbumPlayerPageProps {
@@ -477,7 +478,9 @@ function CollectorPanel({
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
   const album = ALBUMS.find((a) => a.id === albumId);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { currentTrack, isPlaying, playLibrary, pause, resume } =
+    useAudioPlayer();
+
   const [activeTrack, setActiveTrack] = useState(0);
   const [progress, setProgress] = useState(0.3);
   const [isLooping, setIsLooping] = useState(false);
@@ -493,26 +496,57 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
 
   const collectorData = ALBUM_COLLECTOR_DATA[album.id];
 
+  function makeTrackId(index: number) {
+    return `${album!.id}_track_${index}`;
+  }
+
+  const currentTrackId = makeTrackId(activeTrack);
+  const isCurrentAlbumPlaying =
+    currentTrack?.id === currentTrackId && isPlaying;
+  const isCurrentAlbumActive = currentTrack?.id?.startsWith(album.id);
+
+  function dispatchPlayLibrary(index: number) {
+    playLibrary({
+      id: makeTrackId(index),
+      title: album!.tracks[index].title,
+      artist: album!.artist,
+      artworkSrc: album!.artworkSrc,
+      preview_url: "",
+    });
+  }
+
   function handlePrev() {
-    setActiveTrack((t) => Math.max(0, t - 1));
+    const next = Math.max(0, activeTrack - 1);
+    setActiveTrack(next);
     setProgress(0);
+    if (isCurrentAlbumActive) dispatchPlayLibrary(next);
   }
 
   function handleNext() {
     const isLast = activeTrack === album!.tracks.length - 1;
     if (isLooping && isLast) {
       setProgress(0);
-      setIsPlaying(true);
+      dispatchPlayLibrary(activeTrack);
     } else {
-      setActiveTrack((t) => Math.min(album!.tracks.length - 1, t + 1));
+      const next = Math.min(album!.tracks.length - 1, activeTrack + 1);
+      setActiveTrack(next);
       setProgress(0);
+      if (isCurrentAlbumActive) dispatchPlayLibrary(next);
     }
   }
 
   function handleTrackClick(index: number) {
     setActiveTrack(index);
     setProgress(0);
-    setIsPlaying(true);
+    dispatchPlayLibrary(index);
+  }
+
+  function handleMainPlayPause() {
+    if (currentTrack?.id === currentTrackId) {
+      isPlaying ? pause() : resume();
+    } else {
+      dispatchPlayLibrary(activeTrack);
+    }
   }
 
   function handleScrub(e: React.MouseEvent<HTMLDivElement>) {
@@ -717,13 +751,13 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                 {/* Play button — ivory/bone material feel */}
                 <button
                   type="button"
-                  onClick={() => setIsPlaying((p) => !p)}
+                  onClick={handleMainPlayPause}
                   data-ocid="player.primary_button"
                   className="w-14 h-14 rounded-full flex items-center justify-center hover:opacity-85 transition-opacity shadow-lg"
                   style={{ backgroundColor: "#EDEBE6", color: "#0B0B0C" }}
-                  aria-label={isPlaying ? "Pause" : "Play"}
+                  aria-label={isCurrentAlbumPlaying ? "Pause" : "Play"}
                 >
-                  {isPlaying ? (
+                  {isCurrentAlbumPlaying ? (
                     <Pause size={22} />
                   ) : (
                     <Play size={22} className="ml-0.5" />
@@ -762,59 +796,70 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                 Tracks
               </h2>
               <div className="space-y-1">
-                {album.tracks.map((track, i) => (
-                  <button
-                    type="button"
-                    key={track.number}
-                    onClick={() => handleTrackClick(i)}
-                    data-ocid={`player.item.${track.number}`}
-                    className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-colors text-left
-                      ${
-                        activeTrack === i
-                          ? "bg-white/5 border border-white/10"
-                          : "hover:bg-card border border-transparent"
-                      }`}
-                  >
-                    <span
-                      className={`w-5 text-xs text-right flex-shrink-0 ${
-                        activeTrack === i
-                          ? "text-foreground/70"
-                          : "text-muted-foreground"
-                      }`}
+                {album.tracks.map((track, i) => {
+                  const trackId = makeTrackId(i);
+                  const isActive = currentTrack?.id === trackId;
+                  const isThisPlaying = isActive && isPlaying;
+                  return (
+                    <button
+                      type="button"
+                      key={track.number}
+                      onClick={() => handleTrackClick(i)}
+                      data-ocid={`player.item.${track.number}`}
+                      className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-colors text-left
+                        ${
+                          activeTrack === i
+                            ? "bg-white/5 border border-white/10"
+                            : "hover:bg-card border border-transparent"
+                        }`}
                     >
-                      {activeTrack === i && isPlaying ? (
-                        <span className="inline-flex gap-[2px] items-end h-4">
-                          <span
-                            className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
-                            style={{ height: "60%", animationDelay: "0ms" }}
-                          />
-                          <span
-                            className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
-                            style={{ height: "100%", animationDelay: "150ms" }}
-                          />
-                          <span
-                            className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
-                            style={{ height: "70%", animationDelay: "300ms" }}
-                          />
-                        </span>
-                      ) : (
-                        track.number
-                      )}
-                    </span>
-                    <span
-                      className={`flex-1 text-sm font-medium ${
-                        activeTrack === i
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {track.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {track.duration}
-                    </span>
-                  </button>
-                ))}
+                      <span
+                        className={`w-5 text-xs text-right flex-shrink-0 ${
+                          activeTrack === i
+                            ? "text-foreground/70"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {isThisPlaying ? (
+                          <span className="inline-flex gap-[2px] items-end h-4">
+                            <span
+                              className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
+                              style={{ height: "60%", animationDelay: "0ms" }}
+                            />
+                            <span
+                              className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
+                              style={{
+                                height: "100%",
+                                animationDelay: "150ms",
+                              }}
+                            />
+                            <span
+                              className="w-[3px] bg-foreground/60 rounded-full animate-bounce"
+                              style={{
+                                height: "70%",
+                                animationDelay: "300ms",
+                              }}
+                            />
+                          </span>
+                        ) : (
+                          track.number
+                        )}
+                      </span>
+                      <span
+                        className={`flex-1 text-sm font-medium ${
+                          activeTrack === i
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {track.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {track.duration}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </motion.div>

@@ -1,41 +1,32 @@
-# ECHO – Global Mini Audio Player
+# ECHO — Unified Mini Audio Player
 
 ## Current State
-- `MarketPage` manages `activePreviewId` locally (string | null) with a 30s timeout to simulate previews — no actual Audio element exists.
-- Artwork rotation is driven by `isPlaying = activePreviewId === album.id` inside `MarketPage`.
-- `App.tsx` renders `BottomNav` fixed at bottom; no global player exists.
-- Track data in `TOP_ALBUMS` has no `preview_url` field; `albums.ts` `Track` type also lacks it.
-- `BottomNav` is `z-50`, `h-[68px]`, fixed at bottom.
+- `AudioPlayerContext` manages a global preview player with a 30s auto-stop timer. It holds a `PreviewTrack` (id, title, artist, artworkSrc, preview_url).
+- `MiniPlayer` renders above the nav bar using this context — play/pause/close.
+- `MarketPage` (Discover) calls `play(track)` from context when album artwork is tapped.
+- `AlbumPlayerPage` has its own isolated local state (`isPlaying`, `activeTrack`, `progress`) — it does NOT use the global audio context at all.
+- The mini player is only visible during Discover previews, never during Library playback.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `AudioPlayerContext` (`src/frontend/src/context/AudioPlayerContext.tsx`): React context + provider that owns:
-  - `currentTrack`: `{ id, title, artist, artworkSrc, preview_url } | null`
-  - `isPlaying: boolean`
-  - `play(track)`: stops any current audio, starts new HTMLAudio from `preview_url`, auto-stops at 30s
-  - `pause()` / `resume()` toggle
-  - `stop()`: clears track + audio
-  - Exposes `activePreviewId: string | null` (= currentTrack?.id) for Discover rotation
-- `MiniPlayer` component (`src/frontend/src/components/MiniPlayer.tsx`):
-  - Fixed bar, `bottom-[68px]`, `z-40`, full width
-  - Only renders when `currentTrack !== null`
-  - Layout: left = square album thumbnail (40×40), center = track title + artist, right = play/pause icon button
-  - Dark minimal style: `bg-[#111]/95 backdrop-blur border-t border-white/[0.07]`
-  - Slide-up animation when it appears
-- `preview_url` field added to `TOP_ALBUMS` mock entries (use royalty-free 30s mp3 URLs or empty strings as placeholder)
+- `mode` field to the player context: `'preview' | 'library'`
+- `playLibrary(track)` function in context — plays without a 30s timer
+- `playPreview(track)` function (or rename existing `play` to make mode explicit)
+- Optional `isPreview` boolean on the `PreviewTrack` interface
+- "Preview" badge/label in `MiniPlayer` when mode is `'preview'` — subtle, muted, small
 
 ### Modify
-- `App.tsx`: wrap entire app with `AudioPlayerProvider`; render `<MiniPlayer />` between `<main>` and `<BottomNav>`; adjust `pb-` on main to account for mini player height when visible (or keep `pb-28` which already gives enough room)
-- `MarketPage`: remove local `activePreviewId` state and `previewTimerRef`; replace with `useAudioPlayer()` context; pass `activePreviewId` from context to `AlbumArtwork` for rotation; call `context.play(track)` / `context.stop()` on artwork tap
+- `AudioPlayerContext`: add `mode` state; `playPreview` sets mode to `'preview'` and starts 30s timer; `playLibrary` sets mode to `'library'` with no timer; `stop` clears both.
+- `MiniPlayer`: show subtle "Preview" tag when `mode === 'preview'`; same layout otherwise.
+- `AlbumPlayerPage`: remove local `isPlaying`/`activeTrack` state for playback; wire `handleTrackClick` and play/pause controls to call `playLibrary` from context; read `isPlaying` and active track ID from context to determine UI state (highlight active track, show play/pause icon in correct state). Keep local state only for `progress` (scrub bar), `isLooping`, `isFlipped`, `showHint`.
+- `MarketPage`: rename `play` call to `playPreview` (or pass mode) so the context sets mode to preview.
 
 ### Remove
-- Local `activePreviewId` state and `previewTimerRef` from `MarketPage`
+- Local `isPlaying` and `setIsPlaying` from `AlbumPlayerPage` for playback control (replaced by context)
 
 ## Implementation Plan
-1. Create `AudioPlayerContext.tsx` with provider, HTMLAudio management, 30s auto-stop, play/pause/stop API
-2. Add `preview_url` to `TOP_ALBUMS` mock data (placeholder URLs)
-3. Create `MiniPlayer.tsx` — fixed bar above BottomNav, conditional render, slide-up animation
-4. Update `MarketPage` to consume context for preview state and rotation
-5. Update `App.tsx` to wrap with provider and render MiniPlayer
-6. Validate (lint + typecheck + build)
+1. Update `AudioPlayerContext`: add `mode`, `playPreview` (existing `play` renamed/extended), `playLibrary` (no timer), expose both via context value.
+2. Update `MiniPlayer`: show "PREVIEW" micro-label when `mode === 'preview'` — muted text, no badge box, fits the minimal aesthetic.
+3. Update `AlbumPlayerPage`: import `useAudioPlayer`; on track click, call `playLibrary({ id: albumId+trackIndex, title, artist, artworkSrc, preview_url: '' })`; derive `isTrackActive` from context's `currentTrack.id`; derive play button state from context's `isPlaying`.
+4. Update `MarketPage`: call `playPreview` instead of `play` (or pass the same `play` if we keep backward compat via mode detection).

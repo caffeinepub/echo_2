@@ -32,10 +32,17 @@ export function MiniPlayer() {
             </div>
 
             {/* Track info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground/90 truncate leading-tight">
-                {currentTrack.title}
-              </p>
+            <div className="flex-1 min-w-0 transition-all duration-200">
+              <div className="flex items-baseline gap-1.5">
+                <p className="text-sm text-foreground/90 truncate leading-tight">
+                  {currentTrack.title}
+                </p>
+                {currentTrack.mode === "preview" && (
+                  <span className="text-[9px] uppercase tracking-widest text-muted-foreground/30 font-medium shrink-0">
+                    Preview
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-muted-foreground/45 truncate mt-0.5">
                 {currentTrack.artist}
               </p>
