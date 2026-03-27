@@ -7,7 +7,7 @@ import {
 } from "react";
 import { ALBUMS } from "../data/albums";
 
-const WALLET_ADDRESS = "ph4nt0m...w4ll3t";
+const WALLET_ADDRESS = "7KxM3nRabPqFdwW1P9m";
 const LS_CONNECTED = "echo_wallet_connected";
 const LS_OWNED_PREFIX = "echo_owned_";
 
@@ -46,7 +46,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [ownedEntries, setOwnedEntries] = useState<OwnedEntry[]>([]);
 
-  // Restore from localStorage on mount
   useEffect(() => {
     const wasConnected = localStorage.getItem(LS_CONNECTED) === "true";
     if (wasConnected) {
@@ -74,7 +73,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const mintAlbum = useCallback(
     async (albumId: string): Promise<{ editionNumber: number }> => {
-      // Simulate Phantom confirmation delay
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const album = ALBUMS.find((a) => a.id === albumId);
