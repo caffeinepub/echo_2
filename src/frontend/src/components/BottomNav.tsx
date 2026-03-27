@@ -13,6 +13,8 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "market", label: "Discover", Icon: Compass },
 ];
 
+const PURPLE = "#AB9FF2";
+
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around bg-background/75 backdrop-blur-xl border-t border-border h-[68px]">
@@ -24,11 +26,14 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             key={id}
             data-ocid={`nav.${id}.tab`}
             onClick={() => onTabChange(id)}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-colors relative
-              ${isActive ? "text-echo-blue" : "text-muted-foreground hover:text-foreground"}`}
+            className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-colors relative"
+            style={{ color: isActive ? PURPLE : undefined }}
           >
             {isActive && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-echo-blue" />
+              <span
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                style={{ backgroundColor: PURPLE }}
+              />
             )}
             <Icon size={20} />
             <span className="text-[10px]">{label}</span>

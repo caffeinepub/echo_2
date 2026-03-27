@@ -3,26 +3,26 @@ import { useWallet } from "../hooks/useWallet";
 const ECHO_LOGO_DARK =
   "/assets/uploads/echo_primary_logo_transparent-019d2c1a-ab89-7669-bf3e-9906cbb6a311-1.png";
 
-// Official Phantom ghost logomark (simplified SVG path)
-function PhantomLogo({ size = 16 }: { size?: number }) {
+// Phantom ghost logo - official ghost shape
+function PhantomLogo({ size = 18 }: { size?: number }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 128 128"
+      viewBox="0 0 40 40"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      style={{ flexShrink: 0 }}
       role="img"
       aria-label="Phantom"
-      style={{ flexShrink: 0 }}
     >
-      <rect width="128" height="128" rx="28" fill="#AB9FF2" />
+      <rect width="40" height="40" rx="10" fill="#AB9FF2" />
       <path
-        d="M110.584 64.993c0 25.514-20.682 46.196-46.196 46.196-9.894 0-19.087-3.107-26.64-8.402-3.17-2.245-3.97-6.613-1.748-9.803l1.523-2.154a6.858 6.858 0 0 1 9.532-1.58 33.17 33.17 0 0 0 17.333 4.87c18.384 0 33.29-14.906 33.29-33.29 0-18.384-14.906-33.29-33.29-33.29A33.29 33.29 0 0 0 31.1 60.833v16.042c0 2.558-2.073 4.631-4.631 4.631-2.558 0-4.631-2.073-4.631-4.631V60.833C21.838 39.24 39.796 21.28 61.39 21.28c21.594 0 39.552 17.958 39.552 39.552v4.161h9.642v-.001Z"
+        d="M20 7C13.373 7 8 12.373 8 19v9.5c0 .828.672 1.5 1.5 1.5.398 0 .76-.155 1.03-.408L12.5 27.5l2 2 2-2 2 2 2-2 2 2 2-2 1.97 1.592c.27.253.632.408 1.03.408.828 0 1.5-.672 1.5-1.5V19c0-6.627-5.373-12-12-12z"
         fill="white"
       />
-      <ellipse cx="52.5" cy="67" rx="7" ry="8.5" fill="#AB9FF2" />
-      <ellipse cx="75.5" cy="67" rx="7" ry="8.5" fill="#AB9FF2" />
+      <circle cx="16" cy="19" r="2" fill="#AB9FF2" />
+      <circle cx="24" cy="19" r="2" fill="#AB9FF2" />
     </svg>
   );
 }
@@ -107,8 +107,7 @@ export function TopBar() {
         data-ocid="wallet.button"
         className="group flex items-center gap-2.5 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
         style={{
-          backgroundColor: isConnected ? "#1a1a2e" : "#1a1a2e",
-          border: "1px solid rgba(171, 159, 242, 0.25)",
+          backgroundColor: "#7C3AED",
           paddingLeft: "12px",
           paddingRight: "14px",
           paddingTop: "7px",
@@ -116,26 +115,22 @@ export function TopBar() {
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#22213a";
-          (e.currentTarget as HTMLButtonElement).style.borderColor =
-            "rgba(171, 159, 242, 0.45)";
+            "#6D28D9";
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#1a1a2e";
-          (e.currentTarget as HTMLButtonElement).style.borderColor =
-            "rgba(171, 159, 242, 0.25)";
+            "#7C3AED";
         }}
         onMouseDown={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#161527";
+            "#5B21B6";
         }}
         onMouseUp={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#22213a";
+            "#6D28D9";
         }}
       >
-        <PhantomLogo size={18} />
+        <PhantomLogo size={20} />
         <span className="leading-none">
           {isConnected && walletAddress
             ? `Phantom \u2022 ${truncateAddress(walletAddress)}`
