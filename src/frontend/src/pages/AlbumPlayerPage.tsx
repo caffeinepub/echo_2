@@ -724,8 +724,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
             MCap
           </p>
           <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            <SolSymbol className="inline-block w-3 h-3 opacity-60 mr-0.5" />{" "}
-            {marketCap}
+            <SolSymbol className="inline-block w-3 h-3 mr-0.5" /> {marketCap}
           </p>
         </div>
         <div className="w-px h-6 bg-border/20" />
@@ -951,7 +950,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                   <span className="text-xs text-muted-foreground/60">
                     Full album
                     <span className="mx-1.5 text-muted-foreground/30">·</span>
-                    <SolSymbol className="mr-0.5 opacity-60" />
+                    <SolSymbol className="mr-0.5" />
                     <span className="font-mono">{album.mintPrice}</span>
                   </span>
                   <button
