@@ -91,7 +91,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             MCap
           </p>
           <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            <SolSymbol className="inline-block w-3 h-3 mr-0.5" /> {marketCap}
+            <SolSymbol className="w-3 h-3 mr-2" />
+            {marketCap}
           </p>
         </div>
         <div className="w-px h-6 bg-border/20" />
@@ -136,7 +137,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                 <p className="text-lg font-bold text-foreground font-mono">
                   {solPrice ? (
                     <>
-                      <SolSymbol /> {value}
+                      <SolSymbol className="mr-2" />
+                      {value}
                     </>
                   ) : (
                     value
@@ -167,7 +169,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   {entry.date}
                 </span>
                 <span className="text-sm font-medium text-foreground font-mono">
-                  <SolSymbol /> {entry.price}
+                  <SolSymbol className="mr-2" />
+                  {entry.price}
                 </span>
                 <span className="text-xs text-muted-foreground font-mono">
                   {entry.buyer}
@@ -194,7 +197,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                 <span className="text-xs text-muted-foreground flex-1 min-w-0 truncate mr-2">
                   {entry.text}{" "}
                   <span className="font-mono text-foreground/70">
-                    <SolSymbol /> {entry.price}
+                    <SolSymbol className="mr-2" />
+                    {entry.price}
                   </span>
                 </span>
                 <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0">
@@ -220,7 +224,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               className="text-center py-4"
             >
               <p className="text-sm font-semibold text-foreground">
-                Listed for <SolSymbol /> {listPrice}
+                Listed for <SolSymbol className="mr-2" />
+                {listPrice}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Your album is now listed on the market.

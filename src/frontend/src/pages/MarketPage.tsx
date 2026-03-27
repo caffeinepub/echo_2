@@ -199,7 +199,7 @@ function SignalCard({
         {label}
       </p>
       <p className="text-base font-mono font-medium text-foreground/85 tabular-nums leading-tight">
-        {isSol && <SolSymbol className="inline-block w-3 h-3 mr-0.5" />}
+        {isSol && <SolSymbol className="w-3 h-3 mr-2" />}
         {value}
       </p>
     </motion.div>
@@ -244,7 +244,7 @@ function AlbumRow({
     case "marketcap":
       metricNode = (
         <span className="text-[12px] font-mono tabular-nums text-foreground/70">
-          <SolSymbol className="inline-block w-3 h-3 mr-0.5" />
+          <SolSymbol className="w-3 h-3 mr-2" />
           {mktCap.toFixed(1)}
         </span>
       );
@@ -252,7 +252,7 @@ function AlbumRow({
     case "volume":
       metricNode = (
         <span className="text-[12px] font-mono tabular-nums text-foreground/70">
-          <SolSymbol className="inline-block w-3 h-3 mr-0.5" />
+          <SolSymbol className="w-3 h-3 mr-2" />
           {album.volume_24h_sol.toFixed(1)}
         </span>
       );
@@ -315,7 +315,7 @@ function AlbumRow({
             Floor
           </p>
           <span className="text-[12px] font-mono tabular-nums text-foreground/60">
-            <SolSymbol className="inline-block w-3 h-3 mr-0.5" />
+            <SolSymbol className="w-3 h-3 mr-2" />
             {album.floor_price_sol.toFixed(1)}
           </span>
         </div>
@@ -324,7 +324,7 @@ function AlbumRow({
             Vol
           </p>
           <span className="text-[12px] font-mono tabular-nums text-foreground/60">
-            <SolSymbol className="inline-block w-3 h-3 mr-0.5" />
+            <SolSymbol className="w-3 h-3 mr-2" />
             {album.volume_24h_sol.toFixed(1)}
           </span>
         </div>
