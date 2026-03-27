@@ -3,23 +3,23 @@ import { useWallet } from "../hooks/useWallet";
 const ECHO_NEON_LOGO =
   "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
-// Refined neon animation — white tube, soft violet aura, minimal flicker on load
+// Glow values increased ~35% from previous, with outer purple aura (~22px) and blue inner glow
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
   5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 6px rgba(170,120,255,0.47)); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 5px rgba(100,160,255,0.50)) drop-shadow(0 0 9px rgba(170,120,255,0.62)); }
   12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 5px rgba(170,120,255,0.43)); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)); }
   18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 5px rgba(170,120,255,0.43)) drop-shadow(0 0 12px rgba(140,80,255,0.19)); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
 }
 
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.34)) drop-shadow(0 0 12px rgba(140,80,255,0.15)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 8px rgba(170,110,255,0.47)) drop-shadow(0 0 18px rgba(150,90,255,0.24)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 5px rgba(160,100,255,0.34)) drop-shadow(0 0 12px rgba(140,80,255,0.15)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(160,100,255,0.46)) drop-shadow(0 0 22px rgba(130,60,255,0.26)); }
+  50%  { filter: brightness(1.06) drop-shadow(0 0 6px rgba(110,170,255,0.54)) drop-shadow(0 0 11px rgba(170,110,255,0.63)) drop-shadow(0 0 28px rgba(140,70,255,0.36)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(160,100,255,0.46)) drop-shadow(0 0 22px rgba(130,60,255,0.26)); }
 }
 
 .echo-logo-neon {
@@ -98,21 +98,26 @@ export function TopBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-8 h-16 backdrop-blur-xl border-b"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-8 backdrop-blur-xl border-b"
       style={{
         background: "oklch(0.07 0.005 240 / 0.90)",
         borderColor: "oklch(0.15 0.006 240)",
+        height: "72px",
       }}
     >
       {/* Neon Logo — floats directly on dark header, no background panel */}
-      <div className="relative flex items-center">
+      <div
+        className="relative flex items-center"
+        style={{ marginLeft: "16px", marginTop: "8px" }}
+      >
         <img
           src={ECHO_NEON_LOGO}
           alt="ECHO"
           className="echo-logo-neon select-none"
           style={{
-            height: "clamp(42px, 6.5vw, 54px)",
-            width: "auto",
+            width: "320px",
+            height: "auto",
+            maxWidth: "min(320px, 42vw)",
             objectFit: "contain",
             imageRendering: "auto",
             display: "block",
@@ -122,63 +127,65 @@ export function TopBar() {
         />
       </div>
 
-      {/* Phantom wallet button */}
-      <button
-        type="button"
-        onClick={isConnected ? disconnect : connect}
-        data-ocid="wallet.button"
-        className="group flex items-center gap-2 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
-        style={{
-          backgroundColor: "oklch(0.22 0.12 290)",
-          paddingLeft: "10px",
-          paddingRight: "12px",
-          paddingTop: "7px",
-          paddingBottom: "7px",
-          border: "1px solid oklch(0.55 0.25 290 / 0.4)",
-          boxShadow: "0 0 14px oklch(0.55 0.25 290 / 0.12)",
-        }}
-        onMouseEnter={(e) => {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.backgroundColor = "oklch(0.27 0.15 290)";
-          el.style.borderColor = "oklch(0.55 0.25 290 / 0.65)";
-          el.style.boxShadow = "0 0 20px oklch(0.55 0.25 290 / 0.22)";
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLButtonElement;
-          el.style.backgroundColor = "oklch(0.22 0.12 290)";
-          el.style.borderColor = "oklch(0.55 0.25 290 / 0.4)";
-          el.style.boxShadow = "0 0 14px oklch(0.55 0.25 290 / 0.12)";
-        }}
-        onMouseDown={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "oklch(0.18 0.10 290)";
-        }}
-        onMouseUp={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "oklch(0.27 0.15 290)";
-        }}
-      >
-        <PhantomLogo size={18} />
-        {isConnected && walletAddress ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-start",
-              gap: "1px",
-            }}
-          >
-            <span
-              style={{ fontSize: "12px", fontWeight: 500, lineHeight: "1.2" }}
+      {/* Phantom wallet button — vertically centered */}
+      <div className="flex items-center" style={{ marginTop: "8px" }}>
+        <button
+          type="button"
+          onClick={isConnected ? disconnect : connect}
+          data-ocid="wallet.button"
+          className="group flex items-center gap-2 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
+          style={{
+            backgroundColor: "oklch(0.22 0.12 290)",
+            paddingLeft: "10px",
+            paddingRight: "12px",
+            paddingTop: "7px",
+            paddingBottom: "7px",
+            border: "1px solid oklch(0.55 0.25 290 / 0.4)",
+            boxShadow: "0 0 14px oklch(0.55 0.25 290 / 0.12)",
+          }}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget as HTMLButtonElement;
+            el.style.backgroundColor = "oklch(0.27 0.15 290)";
+            el.style.borderColor = "oklch(0.55 0.25 290 / 0.65)";
+            el.style.boxShadow = "0 0 20px oklch(0.55 0.25 290 / 0.22)";
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget as HTMLButtonElement;
+            el.style.backgroundColor = "oklch(0.22 0.12 290)";
+            el.style.borderColor = "oklch(0.55 0.25 290 / 0.4)";
+            el.style.boxShadow = "0 0 14px oklch(0.55 0.25 290 / 0.12)";
+          }}
+          onMouseDown={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+              "oklch(0.18 0.10 290)";
+          }}
+          onMouseUp={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+              "oklch(0.27 0.15 290)";
+          }}
+        >
+          <PhantomLogo size={18} />
+          {isConnected && walletAddress ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: "1px",
+              }}
             >
-              Phantom &bull; {truncateAddress(walletAddress)}
-            </span>
-            <OwnershipLine count={ownedAlbumIds.length} />
-          </div>
-        ) : (
-          <span className="leading-none text-[13px]">Connect Phantom</span>
-        )}
-      </button>
+              <span
+                style={{ fontSize: "12px", fontWeight: 500, lineHeight: "1.2" }}
+              >
+                Phantom &bull; {truncateAddress(walletAddress)}
+              </span>
+              <OwnershipLine count={ownedAlbumIds.length} />
+            </div>
+          ) : (
+            <span className="leading-none text-[13px]">Connect Phantom</span>
+          )}
+        </button>
+      </div>
     </header>
   );
 }
