@@ -188,6 +188,66 @@ function getMarketAlbum(albumId: string): MarketAlbum {
   };
 }
 
+// ─── Soundwave Visualizer ─────────────────────────────────────────────────────
+const WAVE_BARS = Array.from({ length: 40 }, (_, i) => ({
+  id: `wb${i}`,
+  duration: 1.8 + ((i * 17) % 7) * 0.09,
+  phase: (i * 0.13) % (1.8 + ((i * 17) % 7) * 0.09),
+}));
+
+function SoundwaveVisualizer({ activityPct }: { activityPct: number }) {
+  const active = activityPct > 0;
+  // amplitude: 0.15 at low, up to 0.85 at full
+  const amplitude = active ? 0.12 + activityPct * 0.0073 : 0;
+  const minScale = active ? Math.max(0.04, 0.5 - amplitude) : 0.04;
+  const maxScale = active ? Math.min(1, 0.5 + amplitude) : 0.04;
+
+  return (
+    <>
+      <style>{`
+        @keyframes echoWave {
+          0%, 100% { transform: scaleY(var(--min-scale)); }
+          50%       { transform: scaleY(var(--max-scale)); }
+        }
+      `}</style>
+      <div
+        className="flex items-center justify-between w-full"
+        style={{ height: 28 }}
+        aria-hidden="true"
+      >
+        {WAVE_BARS.map(({ id, duration, phase }) => {
+          const delay = -phase;
+          return (
+            <div
+              key={id}
+              style={
+                {
+                  width: 2,
+                  height: "100%",
+                  borderRadius: 1,
+                  background:
+                    "linear-gradient(to bottom, oklch(0.75 0.18 210), oklch(0.55 0.22 280))",
+                  boxShadow: active
+                    ? "0 0 4px oklch(0.75 0.18 210 / 0.5)"
+                    : "none",
+                  transformOrigin: "center",
+                  animation: active
+                    ? `echoWave ${duration}s ease-in-out ${delay}s infinite`
+                    : "none",
+                  "--min-scale": minScale,
+                  "--max-scale": maxScale,
+                  transform: active ? undefined : `scaleY(${minScale})`,
+                  transition: "transform 600ms ease, box-shadow 600ms ease",
+                } as React.CSSProperties
+              }
+            />
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
 // ─── Volume Signal Card ───────────────────────────────────────────────────────
 type VolumeTab = "listening" | "trading";
 
@@ -204,17 +264,14 @@ function VolumeSignalCard({
   );
   const tradingPct = Math.min(100, (album.transaction_volume / maxVol) * 100);
 
-  const currentPct = activeTab === "listening" ? listeningPct : tradingPct;
   const fillColor =
-    activeTab === "listening"
-      ? "linear-gradient(90deg, oklch(0.55 0.12 210), oklch(0.82 0.15 210))"
-      : "linear-gradient(90deg, oklch(0.40 0.20 290), oklch(0.60 0.28 290))";
+    "linear-gradient(90deg, oklch(0.40 0.20 290), oklch(0.60 0.28 290))";
   const cardGlow =
     activeTab === "listening"
       ? "0 0 18px oklch(0.55 0.12 210 / 0.12)"
       : "0 0 18px oklch(0.50 0.22 290 / 0.12)";
 
-  // Animate bar on tab switch: reset to 0, then animate to target
+  // Animate trading bar on tab switch
   useEffect(() => {
     const el = barRef.current;
     if (!el) return;
@@ -222,10 +279,10 @@ function VolumeSignalCard({
     el.style.width = "0%";
     const t = setTimeout(() => {
       el.style.transition = "width 700ms ease-out";
-      el.style.width = `${currentPct}%`;
+      el.style.width = `${tradingPct}%`;
     }, 50);
     return () => clearTimeout(t);
-  }, [currentPct]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tradingPct]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -282,58 +339,74 @@ function VolumeSignalCard({
         </div>
       </div>
 
-      {/* Animated label + value */}
-      <div className="mb-3">
-        <AnimatePresence mode="wait">
+      {/* Animated content */}
+      <AnimatePresence mode="wait">
+        {activeTab === "listening" ? (
           <motion.div
-            key={activeTab}
+            key="listening"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-between"
           >
-            <span
-              className="text-[11px] uppercase tracking-widest font-medium"
+            {/* Label */}
+            <p
+              className="text-[11px] uppercase tracking-widest font-medium mb-3"
               style={{ color: "oklch(0.45 0.008 240)" }}
             >
-              {activeTab === "listening"
-                ? "Listening Volume"
-                : "Transaction Volume"}
-            </span>
-            <span
-              className="text-[13px] font-mono font-semibold flex items-center gap-1.5"
-              style={{
-                color:
-                  activeTab === "listening"
-                    ? "oklch(0.82 0.15 210)"
-                    : "oklch(0.72 0.20 290)",
-              }}
-            >
-              {activeTab === "listening" ? (
-                `${(album.listening_volume / 1000).toFixed(0)}k plays`
-              ) : (
-                <>
-                  <SolSymbol className="w-3.5 h-3.5" />
-                  {album.transaction_volume.toFixed(1)}
-                </>
-              )}
-            </span>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+              Live Listening Signal
+            </p>
 
-      {/* Animated bar */}
-      <div
-        className="h-2 rounded-full overflow-hidden"
-        style={{ background: "oklch(0.96 0.005 220 / 0.06)" }}
-      >
-        <div
-          ref={barRef}
-          className="h-full rounded-full"
-          style={{ width: "0%", background: fillColor }}
-        />
-      </div>
+            {/* Soundwave */}
+            <SoundwaveVisualizer activityPct={listeningPct} />
+
+            {/* Value */}
+            <p
+              className="text-[12px] font-mono font-semibold mt-2"
+              style={{ color: "oklch(0.82 0.15 210)" }}
+            >
+              {`${(album.listening_volume / 1000).toFixed(0)}k plays`}
+            </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="trading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Label + value row */}
+            <div className="flex items-center justify-between mb-3">
+              <span
+                className="text-[11px] uppercase tracking-widest font-medium"
+                style={{ color: "oklch(0.45 0.008 240)" }}
+              >
+                Transaction Volume
+              </span>
+              <span
+                className="text-[13px] font-mono font-semibold flex items-center gap-1.5"
+                style={{ color: "oklch(0.72 0.20 290)" }}
+              >
+                <SolSymbol className="w-3.5 h-3.5" />
+                {album.transaction_volume.toFixed(1)}
+              </span>
+            </div>
+
+            {/* Trading bar */}
+            <div
+              className="h-2 rounded-full overflow-hidden"
+              style={{ background: "oklch(0.96 0.005 220 / 0.06)" }}
+            >
+              <div
+                ref={barRef}
+                className="h-full rounded-full"
+                style={{ width: "0%", background: fillColor }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
