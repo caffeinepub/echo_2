@@ -1,7 +1,8 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lock, Pause, Play } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { ALBUMS } from "../data/albums";
 
 interface MarketDetailPageProps {
@@ -9,254 +10,695 @@ interface MarketDetailPageProps {
   onBack: () => void;
 }
 
-const PRICE_HISTORY = [
-  { date: "Mar 24", price: 2.1, buyer: "r3ab...2kxq" },
-  { date: "Mar 19", price: 1.9, buyer: "4nwt...hf3p" },
-  { date: "Mar 11", price: 2.3, buyer: "xpq9...rt7z" },
-  { date: "Feb 28", price: 1.7, buyer: "mqy2...6b4s" },
+// ─── Local market data for all albums ────────────────────────────────────────
+interface MarketAlbum {
+  id: string;
+  title: string;
+  artist: string;
+  artworkSrc: string | null;
+  floor_price_sol: number;
+  total_supply: number;
+  circulating_supply: number;
+  transaction_volume: number;
+  listening_volume: number;
+  change_24h_pct: number;
+  tracks: {
+    number: number;
+    title: string;
+    duration: string;
+    plays: number;
+    preview_url: string;
+  }[];
+  listings: { edition: number; seller: string; price: number }[];
+}
+
+const MARKET_ALBUMS: MarketAlbum[] = [
+  {
+    id: "echo_001",
+    title: "Fragments",
+    artist: "Halo Drift",
+    artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
+    floor_price_sol: 2.6,
+    total_supply: 150,
+    circulating_supply: 89,
+    transaction_volume: 18.4,
+    listening_volume: 142000,
+    change_24h_pct: 12.2,
+    tracks: [
+      {
+        number: 1,
+        title: "Glass Wings",
+        duration: "3:42",
+        plays: 38240,
+        preview_url: "",
+      },
+      {
+        number: 2,
+        title: "Fade Protocol",
+        duration: "4:11",
+        plays: 29810,
+        preview_url: "",
+      },
+      {
+        number: 3,
+        title: "Infrared",
+        duration: "2:58",
+        plays: 22100,
+        preview_url: "",
+      },
+      {
+        number: 4,
+        title: "Hollow Pulse",
+        duration: "5:03",
+        plays: 18450,
+        preview_url: "",
+      },
+      {
+        number: 5,
+        title: "Drift",
+        duration: "3:27",
+        plays: 14400,
+        preview_url: "",
+      },
+    ],
+    listings: [
+      { edition: 12, seller: "7f3k...92x", price: 2.9 },
+      { edition: 44, seller: "mq9p...8ts", price: 3.1 },
+      { edition: 7, seller: "r4xb...2kz", price: 2.7 },
+      { edition: 91, seller: "w2nt...hf4", price: 3.4 },
+    ],
+  },
+  {
+    id: "echo_002",
+    title: "Charcoal",
+    artist: "Vessel",
+    artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
+    floor_price_sol: 1.8,
+    total_supply: 120,
+    circulating_supply: 61,
+    transaction_volume: 7.8,
+    listening_volume: 118000,
+    change_24h_pct: 4.7,
+    tracks: [
+      {
+        number: 1,
+        title: "Ember",
+        duration: "4:22",
+        plays: 31200,
+        preview_url: "",
+      },
+      {
+        number: 2,
+        title: "Smoke Signal",
+        duration: "3:55",
+        plays: 25800,
+        preview_url: "",
+      },
+      {
+        number: 3,
+        title: "Ash",
+        duration: "5:14",
+        plays: 20100,
+        preview_url: "",
+      },
+      {
+        number: 4,
+        title: "Residue",
+        duration: "3:33",
+        plays: 15300,
+        preview_url: "",
+      },
+      {
+        number: 5,
+        title: "Kindling",
+        duration: "4:01",
+        plays: 11600,
+        preview_url: "",
+      },
+    ],
+    listings: [
+      { edition: 3, seller: "9pqr...44m", price: 2.0 },
+      { edition: 18, seller: "xk7z...91w", price: 1.95 },
+      { edition: 55, seller: "bn2q...7rs", price: 2.1 },
+    ],
+  },
 ];
 
-const RECENT_SALES = [
-  { text: "pale.moon bought #089", price: "2.8", time: "5m ago" },
-  { text: "#021 sold for", price: "2.4", time: "44m ago" },
-  { text: "orbit.nine listed #007 for", price: "2.1", time: "11m ago" },
-];
+function getMarketAlbum(albumId: string): MarketAlbum {
+  const found = MARKET_ALBUMS.find((a) => a.id === albumId);
+  if (found) return found;
+  // Fallback for market-only albums
+  return {
+    id: albumId,
+    title: albumId.replace("ta-", "Album "),
+    artist: "Unknown Artist",
+    artworkSrc: null,
+    floor_price_sol: 1.0,
+    total_supply: 100,
+    circulating_supply: 40,
+    transaction_volume: 2.5,
+    listening_volume: 50000,
+    change_24h_pct: 0,
+    tracks: [
+      {
+        number: 1,
+        title: "Track 1",
+        duration: "3:30",
+        plays: 12000,
+        preview_url: "",
+      },
+      {
+        number: 2,
+        title: "Track 2",
+        duration: "4:00",
+        plays: 9800,
+        preview_url: "",
+      },
+      {
+        number: 3,
+        title: "Track 3",
+        duration: "3:15",
+        plays: 7200,
+        preview_url: "",
+      },
+    ],
+    listings: [
+      { edition: 5, seller: "4abc...11z", price: 1.1 },
+      { edition: 21, seller: "8dfg...55w", price: 1.2 },
+    ],
+  };
+}
 
-export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
-  const album = ALBUMS.find((a) => a.id === albumId);
-  const [listPrice, setListPrice] = useState("");
-  const [listed, setListed] = useState(false);
+// ─── Volume Bar ───────────────────────────────────────────────────────────────
+function VolumeBar({
+  label,
+  value,
+  displayValue,
+  maxValue,
+  fillColor,
+  delay,
+}: {
+  label: string;
+  value: number;
+  displayValue: string;
+  maxValue: number;
+  fillColor: string;
+  delay: number;
+}) {
+  const pct = Math.min(100, (value / maxValue) * 100);
+  const barRef = useRef<HTMLDivElement>(null);
 
-  if (!album) return null;
-
-  const marketCap = (album.floorPrice * album.editions_in_circulation).toFixed(
-    1,
-  );
-
-  function handleConfirmListing() {
-    if (!listPrice) return;
-    setListed(true);
-  }
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const timer = setTimeout(
+      () => {
+        el.style.width = `${pct}%`;
+      },
+      delay * 1000 + 100,
+    );
+    return () => clearTimeout(timer);
+  }, [pct, delay]);
 
   return (
-    <div className="px-6 md:px-12 pt-6 pb-4">
-      <motion.button
-        type="button"
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        onClick={onBack}
-        data-ocid="market_detail.back.button"
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-10"
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <span
+          className="text-[11px] uppercase tracking-widest font-medium"
+          style={{ color: "oklch(0.45 0.008 240)" }}
+        >
+          {label}
+        </span>
+        <span
+          className="text-[13px] font-mono font-semibold"
+          style={{ color: "oklch(0.88 0.005 220)" }}
+        >
+          {displayValue}
+        </span>
+      </div>
+      <div
+        className="h-2 rounded-full overflow-hidden"
+        style={{ background: "oklch(0.96 0.005 220 / 0.06)" }}
       >
-        <ArrowLeft size={16} />
-        <span>Market</span>
-      </motion.button>
+        <div
+          ref={barRef}
+          className="h-full rounded-full transition-all duration-1000 ease-out"
+          style={{ width: "0%", background: fillColor }}
+        />
+      </div>
+    </div>
+  );
+}
 
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
+  const album = getMarketAlbum(albumId);
+  const libAlbum = ALBUMS.find((a) => a.id === albumId);
+  const [playingTrack, setPlayingTrack] = useState<number | null>(null);
+  const [playCounts, setPlayCounts] = useState<number[]>(
+    album.tracks.map((t) => t.plays),
+  );
+  const { currentTrack, isPlaying, play, stop } = useAudioPlayer();
+  const isPlayingAlbum = currentTrack?.id === `${albumId}-art` && isPlaying;
+
+  const mktCap = album.floor_price_sol * album.circulating_supply;
+  const positive = album.change_24h_pct >= 0;
+
+  // Live play count pulse (every 30s)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const idx = Math.floor(Math.random() * album.tracks.length);
+      setPlayCounts((prev) => {
+        const next = [...prev];
+        next[idx] = next[idx] + Math.floor(Math.random() * 30 + 5);
+        return next;
+      });
+      setPlayingTrack(idx);
+      setTimeout(() => setPlayingTrack(null), 1200);
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [album.tracks.length]);
+
+  function toggleArtPlay() {
+    if (isPlayingAlbum) {
+      stop();
+    } else {
+      play({
+        id: `${albumId}-art`,
+        title: album.tracks[0]?.title ?? album.title,
+        artist: album.artist,
+        artworkSrc: album.artworkSrc,
+        preview_url: album.tracks[0]?.preview_url ?? "",
+      });
+    }
+  }
+
+  function handleTrackPreview(trackIdx: number) {
+    const track = album.tracks[trackIdx];
+    const tid = `${albumId}-track-${trackIdx}`;
+    if (currentTrack?.id === tid && isPlaying) {
+      stop();
+    } else {
+      play({
+        id: tid,
+        title: track.title,
+        artist: album.artist,
+        artworkSrc: album.artworkSrc,
+        preview_url: track.preview_url,
+      });
+    }
+  }
+
+  const maxVol = Math.max(
+    album.transaction_volume,
+    album.listening_volume / 10000,
+  );
+
+  return (
+    <div
+      className="min-h-screen pb-32"
+      style={{ background: "oklch(0.07 0.005 240)" }}
+    >
+      {/* Back button */}
+      <div className="px-5 pt-5 pb-2">
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={onBack}
+          data-ocid="market_detail.back.button"
+          className="flex items-center gap-1.5 text-sm transition-colors"
+          style={{ color: "oklch(0.45 0.008 240)" }}
+        >
+          <ArrowLeft size={15} />
+          <span>Discover</span>
+        </motion.button>
+      </div>
+
+      {/* ── Artwork ── */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="flex justify-center mb-8"
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="flex justify-center pt-6 pb-6 px-5"
       >
-        <div className="relative w-48 h-48 md:w-64 md:h-64 rounded-3xl overflow-hidden glow-mixed shadow-album">
-          <img
-            src={album.artworkSrc}
-            alt={album.title}
-            className="w-full h-full object-cover"
-          />
+        <div className="relative" style={{ width: 160, height: 160 }}>
+          {/* Glow ring when playing */}
+          {isPlayingAlbum && (
+            <div
+              className="absolute inset-0 rounded-full animate-glow-pulse"
+              style={{
+                boxShadow:
+                  "0 0 0 3px oklch(0.55 0.25 290 / 0.7), 0 0 30px oklch(0.55 0.25 290 / 0.3), 0 0 60px oklch(0.55 0.25 290 / 0.1)",
+              }}
+            />
+          )}
+          {/* Art */}
+          <div
+            className={`w-full h-full rounded-full overflow-hidden ${
+              isPlayingAlbum ? "animate-spin-slow" : ""
+            }`}
+            style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}
+          >
+            {album.artworkSrc ? (
+              <img
+                src={album.artworkSrc}
+                alt={album.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full"
+                style={{
+                  background:
+                    "linear-gradient(135deg, oklch(0.18 0.007 240), oklch(0.12 0.006 240))",
+                }}
+              />
+            )}
+          </div>
+          {/* Play overlay */}
+          <button
+            type="button"
+            onClick={toggleArtPlay}
+            data-ocid="market_detail.primary_button"
+            className="absolute inset-0 rounded-full flex items-center justify-center transition-opacity"
+            style={{ background: "oklch(0.05 0.003 240 / 0.55)" }}
+            aria-label={isPlayingAlbum ? "Pause" : "Preview"}
+          >
+            {isPlayingAlbum ? (
+              <Pause className="w-8 h-8" style={{ color: "white" }} />
+            ) : (
+              <Play className="w-8 h-8 ml-1" style={{ color: "white" }} />
+            )}
+          </button>
         </div>
       </motion.div>
 
+      {/* ── Title block ── */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
-        className="text-center mb-6"
+        transition={{ duration: 0.35, delay: 0.12 }}
+        className="text-center px-5 mb-1"
       >
-        <h1 className="text-2xl font-bold text-foreground mb-1">
+        <h1
+          className="text-[22px] font-bold leading-tight"
+          style={{ color: "oklch(0.96 0.005 220)" }}
+        >
           {album.title}
         </h1>
-        <p className="text-sm text-muted-foreground">{album.artist}</p>
+        <p
+          className="text-[14px] mt-1"
+          style={{ color: "oklch(0.45 0.008 240)" }}
+        >
+          {album.artist}
+        </p>
+        <p
+          className="text-[11px] mt-1.5 uppercase tracking-widest"
+          style={{ color: "oklch(0.35 0.006 240)" }}
+        >
+          {album.total_supply} editions · {albumId.toUpperCase()}
+        </p>
       </motion.div>
 
-      {/* Header stat row */}
+      {/* ── Change badge ── */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.22 }}
-        className="flex items-center justify-center gap-8 mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.18 }}
+        className="flex justify-center mt-3 mb-6"
       >
-        <div className="text-center">
-          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
-            MCap
-          </p>
-          <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            <SolSymbol className="w-3 h-3 mr-2" />
-            {marketCap}
-          </p>
-        </div>
-        <div className="w-px h-6 bg-border/20" />
-        <div className="text-center">
-          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
-            Supply
-          </p>
-          <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            {album.editions_in_circulation} / {album.supply}
-          </p>
-        </div>
-        <div className="w-px h-6 bg-border/20" />
-        <div className="text-center">
-          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
-            Recent Txns
-          </p>
-          <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            {RECENT_SALES.length}
-          </p>
-        </div>
+        <span
+          className="px-3 py-1 rounded-full text-[12px] font-mono font-semibold"
+          style={{
+            background: positive
+              ? "oklch(0.76 0.18 160 / 0.12)"
+              : "oklch(0.65 0.22 10 / 0.12)",
+            color: positive ? "oklch(0.76 0.18 160)" : "oklch(0.65 0.22 10)",
+            border: `1px solid ${positive ? "oklch(0.76 0.18 160 / 0.25)" : "oklch(0.65 0.22 10 / 0.25)"}`,
+            textShadow: positive
+              ? "0 0 8px oklch(0.76 0.18 160 / 0.4)"
+              : "0 0 8px oklch(0.65 0.22 10 / 0.4)",
+          }}
+        >
+          {positive ? "+" : ""}
+          {album.change_24h_pct.toFixed(1)}% 24H
+        </span>
       </motion.div>
 
-      <div className="max-w-sm mx-auto space-y-6">
+      <div className="px-5 space-y-5 max-w-xl mx-auto">
+        {/* ── Market data grid ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-card border border-border rounded-2xl p-5"
+          transition={{ duration: 0.35, delay: 0.2 }}
+          className="grid grid-cols-3 gap-2.5"
         >
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            Collection
-          </h2>
-          <div className="flex flex-wrap gap-x-4 gap-y-4 justify-between">
-            {[
-              { label: "Supply", value: String(album.supply) },
-              { label: "In Circulation", value: String(album.minted) },
-              { label: "Owners", value: String(album.owners) },
-              { label: "Floor", value: "2.1", solPrice: true as const },
-              { label: "Last Sale", value: "2.4", solPrice: true as const },
-            ].map(({ label, value, solPrice }) => (
-              <div key={label} className="text-center min-w-[56px]">
-                <p className="text-lg font-bold text-foreground font-mono">
-                  {solPrice ? (
-                    <>
-                      <SolSymbol className="mr-2" />
-                      {value}
-                    </>
-                  ) : (
-                    value
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-        >
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            Price History
-          </h2>
-          <div className="space-y-2">
-            {PRICE_HISTORY.map((entry) => (
-              <div
-                key={`${entry.date}-${entry.buyer}`}
-                data-ocid="market_detail.item.1"
-                className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3"
-              >
-                <span className="text-xs text-muted-foreground">
-                  {entry.date}
+          {[
+            {
+              label: "Market Cap",
+              value: (
+                <span
+                  className="flex items-center gap-1.5 justify-center"
+                  style={{ color: "oklch(0.82 0.15 210)" }}
+                >
+                  <SolSymbol className="w-3.5 h-3.5" />
+                  {mktCap.toFixed(1)}
                 </span>
-                <span className="text-sm font-medium text-foreground font-mono">
-                  <SolSymbol className="mr-2" />
-                  {entry.price}
+              ),
+            },
+            {
+              label: "Total Supply",
+              value: (
+                <span style={{ color: "oklch(0.88 0.005 220)" }}>
+                  {album.total_supply}
                 </span>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {entry.buyer}
+              ),
+            },
+            {
+              label: "Circulating",
+              value: (
+                <span style={{ color: "oklch(0.88 0.005 220)" }}>
+                  {album.circulating_supply} / {album.total_supply}
                 </span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-        >
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            Recent Sales
-          </h2>
-          <div className="space-y-1.5">
-            {RECENT_SALES.map((entry) => (
-              <div
-                key={`${entry.text}-${entry.time}`}
-                className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3"
-              >
-                <span className="text-xs text-muted-foreground flex-1 min-w-0 truncate mr-2">
-                  {entry.text}{" "}
-                  <span className="font-mono text-foreground/70">
-                    <SolSymbol className="mr-2" />
-                    {entry.price}
-                  </span>
-                </span>
-                <span className="text-[11px] font-mono text-muted-foreground/50 shrink-0">
-                  {entry.time}
-                </span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="bg-card border border-border rounded-2xl p-5"
-        >
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
-            List for Sale
-          </h2>
-          {listed ? (
+              ),
+            },
+          ].map(({ label, value }) => (
             <div
-              data-ocid="market_detail.success_state"
-              className="text-center py-4"
+              key={label}
+              className="rounded-2xl px-3 py-4 text-center"
+              style={{
+                background: "oklch(0.10 0.006 240)",
+                border: "1px solid oklch(0.18 0.007 240)",
+              }}
             >
-              <p className="text-sm font-semibold text-foreground">
-                Listed for <SolSymbol className="mr-2" />
-                {listPrice}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Your album is now listed on the market.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="number"
-                  value={listPrice}
-                  onChange={(e) => setListPrice(e.target.value)}
-                  placeholder="Enter price in SOL"
-                  data-ocid="market_detail.price.input"
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-echo-blue transition-colors"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  SOL
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleConfirmListing}
-                disabled={!listPrice}
-                data-ocid="market_detail.confirm_button"
-                className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold uppercase tracking-widest hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+              <p
+                className="text-[9px] uppercase tracking-widest mb-2"
+                style={{ color: "oklch(0.38 0.007 240)" }}
               >
-                Confirm Listing
-              </button>
+                {label}
+              </p>
+              <p className="text-[15px] font-mono font-semibold tabular-nums">
+                {value}
+              </p>
             </div>
-          )}
+          ))}
+        </motion.div>
+
+        {/* ── Volume bars ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.28 }}
+          className="rounded-2xl px-5 py-5"
+          style={{
+            background: "oklch(0.10 0.006 240)",
+            border: "1px solid oklch(0.18 0.007 240)",
+          }}
+        >
+          <p
+            className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-4"
+            style={{ color: "oklch(0.45 0.008 240)" }}
+          >
+            Volume
+          </p>
+          <VolumeBar
+            label="Transaction Vol"
+            value={album.transaction_volume}
+            displayValue={`${album.transaction_volume.toFixed(1)} SOL`}
+            maxValue={maxVol}
+            fillColor="linear-gradient(90deg, oklch(0.40 0.20 290), oklch(0.60 0.28 290))"
+            delay={0.3}
+          />
+          <VolumeBar
+            label="Listening Vol"
+            value={album.listening_volume / 10000}
+            displayValue={`${(album.listening_volume / 1000).toFixed(0)}k plays`}
+            maxValue={maxVol}
+            fillColor="linear-gradient(90deg, oklch(0.55 0.12 210), oklch(0.82 0.15 210))"
+            delay={0.45}
+          />
+        </motion.div>
+
+        {/* ── Track list ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.34 }}
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "oklch(0.10 0.006 240)",
+            border: "1px solid oklch(0.18 0.007 240)",
+          }}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold"
+              style={{ color: "oklch(0.45 0.008 240)" }}
+            >
+              Tracks
+            </p>
+          </div>
+          {album.tracks.map((track, idx) => {
+            const tid = `${albumId}-track-${idx}`;
+            const isTrackPlaying = currentTrack?.id === tid && isPlaying;
+            const isPulsing = playingTrack === idx;
+            const isOwned = libAlbum != null;
+
+            return (
+              <div
+                key={track.number}
+                data-ocid={`market_detail.item.${idx + 1}`}
+                className="flex items-center gap-3 px-5 py-3 border-t"
+                style={{ borderColor: "oklch(0.14 0.006 240)" }}
+              >
+                <span
+                  className="text-[12px] font-mono w-5 shrink-0 text-right"
+                  style={{ color: "oklch(0.35 0.006 240)" }}
+                >
+                  {track.number}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-[13px] font-medium truncate"
+                    style={{
+                      color: isOwned
+                        ? "oklch(0.90 0.005 220)"
+                        : "oklch(0.55 0.007 240)",
+                    }}
+                  >
+                    {track.title}
+                  </p>
+                  <p
+                    className="text-[11px] font-mono mt-0.5"
+                    style={{ color: "oklch(0.38 0.007 240)" }}
+                  >
+                    {track.duration}
+                  </p>
+                </div>
+                {/* Play count */}
+                <span
+                  className={`text-[12px] font-mono tabular-nums shrink-0 ${
+                    isPulsing ? "animate-value-flash" : ""
+                  }`}
+                  style={{
+                    color: isPulsing
+                      ? "oklch(0.82 0.15 210)"
+                      : "oklch(0.42 0.008 240)",
+                  }}
+                >
+                  {playCounts[idx] >= 1000
+                    ? `${(playCounts[idx] / 1000).toFixed(1)}k`
+                    : playCounts[idx]}
+                </span>
+                {/* Preview / lock */}
+                {isOwned ? (
+                  <button
+                    type="button"
+                    onClick={() => handleTrackPreview(idx)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors"
+                    style={{ background: "oklch(0.14 0.006 240)" }}
+                    aria-label={isTrackPlaying ? "Pause" : "Preview"}
+                  >
+                    {isTrackPlaying ? (
+                      <Pause
+                        className="w-3.5 h-3.5"
+                        style={{ color: "oklch(0.55 0.25 290)" }}
+                      />
+                    ) : (
+                      <Play
+                        className="w-3.5 h-3.5 ml-0.5"
+                        style={{ color: "oklch(0.55 0.25 290)" }}
+                      />
+                    )}
+                  </button>
+                ) : (
+                  <div
+                    className="w-8 h-8 flex items-center justify-center rounded-full shrink-0"
+                    style={{ background: "oklch(0.13 0.006 240)" }}
+                  >
+                    <Lock
+                      className="w-3 h-3"
+                      style={{ color: "oklch(0.32 0.006 240)" }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </motion.div>
+
+        {/* ── Secondary market listings ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.4 }}
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "oklch(0.10 0.006 240)",
+            border: "1px solid oklch(0.18 0.007 240)",
+          }}
+        >
+          <div className="px-5 pt-5 pb-3">
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold"
+              style={{ color: "oklch(0.45 0.008 240)" }}
+            >
+              Listings
+            </p>
+          </div>
+          {album.listings.map((listing, idx) => (
+            <div
+              key={`${listing.edition}-${listing.seller}`}
+              data-ocid={`market_detail.row.${idx + 1}`}
+              className="flex items-center gap-3 px-5 py-3.5 border-t"
+              style={{ borderColor: "oklch(0.14 0.006 240)" }}
+            >
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[13px] font-medium"
+                  style={{ color: "oklch(0.78 0.005 220)" }}
+                >
+                  Edition #{String(listing.edition).padStart(3, "0")}
+                </p>
+                <p
+                  className="text-[11px] font-mono mt-0.5"
+                  style={{ color: "oklch(0.38 0.007 240)" }}
+                >
+                  {listing.seller}
+                </p>
+              </div>
+              <div className="text-right">
+                <p
+                  className="text-[15px] font-mono font-semibold flex items-center gap-1.5"
+                  style={{ color: "oklch(0.82 0.15 210)" }}
+                >
+                  <SolSymbol className="w-3.5 h-3.5" />
+                  {listing.price.toFixed(2)}
+                </p>
+              </div>
+            </div>
+          ))}
         </motion.div>
       </div>
     </div>

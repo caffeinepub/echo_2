@@ -1,9 +1,46 @@
 import { useWallet } from "../hooks/useWallet";
 
-const ECHO_LOGO_DARK =
-  "/assets/uploads/echo_primary_logo_transparent-019d2c1a-ab89-7669-bf3e-9906cbb6a311-1.png";
+const ECHO_NEON_LOGO =
+  "/assets/uploads/0d571062-3a81-47ee-b3d5-a0715dc4b306-019d30bd-f0bb-77b0-bf7b-5caa38fb0c54-1.png";
 
-// Phantom ghost logo - official ghost shape
+// Neon animation keyframes injected once
+const NEON_STYLES = `
+@keyframes echo-neon-flicker {
+  0%   { opacity: 1; filter: brightness(1.0) drop-shadow(0 0 8px rgba(160,100,255,0.55)) drop-shadow(0 0 18px rgba(80,180,255,0.3)); }
+  6%   { opacity: 0.82; filter: brightness(0.88); }
+  10%  { opacity: 1; filter: brightness(1.05) drop-shadow(0 0 10px rgba(160,100,255,0.6)); }
+  13%  { opacity: 0.78; filter: brightness(0.82); }
+  16%  { opacity: 1; filter: brightness(1.0) drop-shadow(0 0 8px rgba(160,100,255,0.5)); }
+  20%  { opacity: 0.9; filter: brightness(0.92); }
+  24%  { opacity: 1; filter: brightness(1.02) drop-shadow(0 0 9px rgba(160,100,255,0.55)) drop-shadow(0 0 20px rgba(80,180,255,0.28)); }
+  100% { opacity: 1; filter: brightness(1.02) drop-shadow(0 0 9px rgba(160,100,255,0.55)) drop-shadow(0 0 20px rgba(80,180,255,0.28)); }
+}
+
+@keyframes echo-neon-pulse {
+  0%   { filter: brightness(1.0) drop-shadow(0 0 7px rgba(150,90,255,0.45)) drop-shadow(0 0 16px rgba(70,170,255,0.22)); }
+  45%  { filter: brightness(1.06) drop-shadow(0 0 14px rgba(160,100,255,0.65)) drop-shadow(0 0 28px rgba(80,180,255,0.38)) drop-shadow(0 0 40px rgba(130,80,240,0.18)); }
+  55%  { filter: brightness(1.04) drop-shadow(0 0 12px rgba(155,95,255,0.60)) drop-shadow(0 0 24px rgba(75,175,255,0.32)); }
+  100% { filter: brightness(1.0) drop-shadow(0 0 7px rgba(150,90,255,0.45)) drop-shadow(0 0 16px rgba(70,170,255,0.22)); }
+}
+
+.echo-logo-neon {
+  animation:
+    echo-neon-flicker 0.85s ease-out forwards,
+    echo-neon-pulse 3.6s ease-in-out 0.85s infinite;
+  will-change: filter;
+}
+`;
+
+let styleInjected = false;
+function injectNeonStyles() {
+  if (styleInjected) return;
+  const el = document.createElement("style");
+  el.textContent = NEON_STYLES;
+  document.head.appendChild(el);
+  styleInjected = true;
+}
+
+// Phantom ghost logo — official ghost shape
 function PhantomLogo({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -45,7 +82,7 @@ function OwnershipLine({ count }: { count: number }) {
         fontSize: "11px",
         fontWeight: 400,
         lineHeight: "1.2",
-        opacity: 0.7,
+        opacity: 0.65,
         letterSpacing: "0.02em",
       }}
     >
@@ -58,66 +95,28 @@ export function TopBar() {
   const { isConnected, walletAddress, ownedAlbumIds, connect, disconnect } =
     useWallet();
 
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 h-16 bg-background/80 backdrop-blur-xl border-b border-border">
-      {/* Hidden SVG grain filter */}
-      <svg
-        width="0"
-        height="0"
-        aria-hidden="true"
-        style={{ position: "absolute" }}
-      >
-        <defs>
-          <filter id="echoGrainHeader">
-            <feTurbulence
-              type="fractalNoise"
-              baseFrequency="0.65"
-              numOctaves="3"
-              stitchTiles="stitch"
-              result="noise"
-            />
-            <feColorMatrix
-              type="saturate"
-              values="0"
-              in="noise"
-              result="grayNoise"
-            />
-            <feBlend
-              in="SourceGraphic"
-              in2="grayNoise"
-              mode="overlay"
-              result="blend"
-            />
-            <feComposite in="blend" in2="SourceGraphic" operator="in" />
-          </filter>
-        </defs>
-      </svg>
+  // Inject animation CSS once on mount
+  injectNeonStyles();
 
-      {/* Logo */}
+  return (
+    <header
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-8 h-16 backdrop-blur-xl border-b"
+      style={{
+        background: "oklch(0.07 0.005 240 / 0.90)",
+        borderColor: "oklch(0.15 0.006 240)",
+      }}
+    >
+      {/* Neon Logo */}
       <div className="relative flex items-center">
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "#F5F1E8",
-            filter: "blur(18px)",
-            opacity: 0.06,
-            borderRadius: "9999px",
-            transform: "scale(1.7)",
-            zIndex: 0,
-            pointerEvents: "none",
-          }}
-        />
         <img
-          src={ECHO_LOGO_DARK}
+          src={ECHO_NEON_LOGO}
           alt="ECHO"
-          className="relative select-none object-contain"
+          className="echo-logo-neon select-none object-contain"
           style={{
-            height: "clamp(26px, 4vw, 34px)",
+            height: "clamp(40px, 6vw, 52px)",
             width: "auto",
-            zIndex: 1,
-            filter:
-              "url(#echoGrainHeader) sepia(0.12) brightness(1.02) contrast(0.97)",
+            imageRendering: "crisp-edges",
+            display: "block",
           }}
           draggable={false}
         />
@@ -128,32 +127,38 @@ export function TopBar() {
         type="button"
         onClick={isConnected ? disconnect : connect}
         data-ocid="wallet.button"
-        className="group flex items-center gap-2.5 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
+        className="group flex items-center gap-2 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
         style={{
-          backgroundColor: "#7C3AED",
-          paddingLeft: "12px",
-          paddingRight: "14px",
-          paddingTop: "8px",
-          paddingBottom: "8px",
+          backgroundColor: "oklch(0.22 0.12 290)",
+          paddingLeft: "10px",
+          paddingRight: "12px",
+          paddingTop: "7px",
+          paddingBottom: "7px",
+          border: "1px solid oklch(0.55 0.25 290 / 0.4)",
+          boxShadow: "0 0 14px oklch(0.55 0.25 290 / 0.12)",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#6D28D9";
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.backgroundColor = "oklch(0.27 0.15 290)";
+          el.style.borderColor = "oklch(0.55 0.25 290 / 0.65)";
+          el.style.boxShadow = "0 0 20px oklch(0.55 0.25 290 / 0.22)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#7C3AED";
+          const el = e.currentTarget as HTMLButtonElement;
+          el.style.backgroundColor = "oklch(0.22 0.12 290)";
+          el.style.borderColor = "oklch(0.55 0.25 290 / 0.4)";
+          el.style.boxShadow = "0 0 14px oklch(0.55 0.25 290 / 0.12)";
         }}
         onMouseDown={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#5B21B6";
+            "oklch(0.18 0.10 290)";
         }}
         onMouseUp={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "#6D28D9";
+            "oklch(0.27 0.15 290)";
         }}
       >
-        <PhantomLogo size={20} />
+        <PhantomLogo size={18} />
         {isConnected && walletAddress ? (
           <div
             style={{
@@ -164,14 +169,14 @@ export function TopBar() {
             }}
           >
             <span
-              style={{ fontSize: "13px", fontWeight: 500, lineHeight: "1.2" }}
+              style={{ fontSize: "12px", fontWeight: 500, lineHeight: "1.2" }}
             >
               Phantom &bull; {truncateAddress(walletAddress)}
             </span>
             <OwnershipLine count={ownedAlbumIds.length} />
           </div>
         ) : (
-          <span className="leading-none">Connect Phantom</span>
+          <span className="leading-none text-[13px]">Connect Phantom</span>
         )}
       </button>
     </header>

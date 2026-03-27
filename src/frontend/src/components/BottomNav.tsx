@@ -13,11 +13,18 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "market", label: "Discover", Icon: Compass },
 ];
 
-const PURPLE = "#AB9FF2";
+const VIOLET = "oklch(0.65 0.20 290)";
+const VIOLET_GLOW = "0 0 12px oklch(0.55 0.25 290 / 0.45)";
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around bg-background/75 backdrop-blur-xl border-t border-border h-[68px]">
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around h-[68px] backdrop-blur-xl border-t"
+      style={{
+        background: "oklch(0.08 0.005 240 / 0.92)",
+        borderColor: "oklch(0.16 0.006 240)",
+      }}
+    >
       {tabs.map(({ id, label, Icon }) => {
         const isActive = activeTab === id;
         return (
@@ -26,17 +33,29 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             key={id}
             data-ocid={`nav.${id}.tab`}
             onClick={() => onTabChange(id)}
-            className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-colors relative"
-            style={{ color: isActive ? PURPLE : undefined }}
+            className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-all relative"
+            style={{
+              color: isActive ? VIOLET : "oklch(0.38 0.006 240)",
+            }}
           >
             {isActive && (
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                style={{ backgroundColor: PURPLE }}
+                style={{
+                  background: VIOLET,
+                  boxShadow: VIOLET_GLOW,
+                }}
               />
             )}
             <Icon size={20} />
-            <span className="text-[10px]">{label}</span>
+            <span
+              className="text-[10px]"
+              style={{
+                color: isActive ? VIOLET : "oklch(0.38 0.006 240)",
+              }}
+            >
+              {label}
+            </span>
           </button>
         );
       })}

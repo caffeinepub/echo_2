@@ -6,25 +6,31 @@
   :root {
     --radius: 1rem;
     /* Dark theme — permanent */
-    --background: 0.09 0.005 240;
+    --background: 0.07 0.005 240;
     --foreground: 0.96 0.005 220;
-    --card: 0.14 0.007 240;
+    --card: 0.1 0.006 240;
     --card-foreground: 0.96 0.005 220;
-    --popover: 0.14 0.007 240;
+    --popover: 0.12 0.006 240;
     --popover-foreground: 0.96 0.005 220;
     --primary: 0.96 0.005 220;
     --primary-foreground: 0.11 0.006 240;
-    --secondary: 0.18 0.008 240;
+    --secondary: 0.14 0.007 240;
     --secondary-foreground: 0.96 0.005 220;
-    --muted: 0.16 0.007 240;
-    --muted-foreground: 0.58 0.012 220;
-    --accent: 0.55 0.22 265;
+    --muted: 0.13 0.006 240;
+    --muted-foreground: 0.45 0.008 240;
+    --accent: 0.55 0.25 290;
     --accent-foreground: 0.96 0.005 220;
-    --destructive: 0.704 0.191 22.216;
-    --destructive-foreground: 0.205 0 0;
-    --border: 0.22 0.008 240;
-    --input: 0.22 0.008 240;
-    --ring: 0.55 0.22 265;
+    --destructive: 0.65 0.22 10;
+    --destructive-foreground: 0.96 0.005 220;
+    --border: 0.18 0.007 240;
+    --input: 0.18 0.007 240;
+    --ring: 0.55 0.25 290;
+    /* Brand tokens */
+    --violet: 0.55 0.25 290;
+    --cyan: 0.82 0.15 210;
+    --mint: 0.76 0.18 160;
+    --magenta: 0.65 0.22 10;
+    --gold: 0.8 0.15 80;
     --echo-blue: 0.55 0.22 265;
     --echo-cyan: 0.82 0.13 210;
     --echo-violet: 0.55 0.22 290;
@@ -33,36 +39,41 @@
     --chart-3: 0.769 0.188 70.08;
     --chart-4: 0.627 0.265 303.9;
     --chart-5: 0.645 0.246 16.439;
-    --sidebar: 0.14 0.007 240;
+    --sidebar: 0.1 0.006 240;
     --sidebar-foreground: 0.96 0.005 220;
-    --sidebar-primary: 0.55 0.22 265;
+    --sidebar-primary: 0.55 0.25 290;
     --sidebar-primary-foreground: 0.96 0.005 220;
-    --sidebar-accent: 0.18 0.008 240;
+    --sidebar-accent: 0.14 0.007 240;
     --sidebar-accent-foreground: 0.96 0.005 220;
-    --sidebar-border: 0.22 0.008 240;
-    --sidebar-ring: 0.55 0.22 265;
+    --sidebar-border: 0.18 0.007 240;
+    --sidebar-ring: 0.55 0.25 290;
   }
 
   .dark {
-    --background: 0.09 0.005 240;
+    --background: 0.07 0.005 240;
     --foreground: 0.96 0.005 220;
-    --card: 0.14 0.007 240;
+    --card: 0.1 0.006 240;
     --card-foreground: 0.96 0.005 220;
-    --popover: 0.14 0.007 240;
+    --popover: 0.12 0.006 240;
     --popover-foreground: 0.96 0.005 220;
     --primary: 0.96 0.005 220;
     --primary-foreground: 0.11 0.006 240;
-    --secondary: 0.18 0.008 240;
+    --secondary: 0.14 0.007 240;
     --secondary-foreground: 0.96 0.005 220;
-    --muted: 0.16 0.007 240;
-    --muted-foreground: 0.58 0.012 220;
-    --accent: 0.55 0.22 265;
+    --muted: 0.13 0.006 240;
+    --muted-foreground: 0.45 0.008 240;
+    --accent: 0.55 0.25 290;
     --accent-foreground: 0.96 0.005 220;
-    --destructive: 0.704 0.191 22.216;
-    --destructive-foreground: 0.205 0 0;
-    --border: 0.22 0.008 240;
-    --input: 0.22 0.008 240;
-    --ring: 0.55 0.22 265;
+    --destructive: 0.65 0.22 10;
+    --destructive-foreground: 0.96 0.005 220;
+    --border: 0.18 0.007 240;
+    --input: 0.18 0.007 240;
+    --ring: 0.55 0.25 290;
+    --violet: 0.55 0.25 290;
+    --cyan: 0.82 0.15 210;
+    --mint: 0.76 0.18 160;
+    --magenta: 0.65 0.22 10;
+    --gold: 0.8 0.15 80;
     --echo-blue: 0.55 0.22 265;
     --echo-cyan: 0.82 0.13 210;
     --echo-violet: 0.55 0.22 290;
@@ -71,14 +82,14 @@
     --chart-3: 0.769 0.188 70.08;
     --chart-4: 0.627 0.265 303.9;
     --chart-5: 0.645 0.246 16.439;
-    --sidebar: 0.14 0.007 240;
+    --sidebar: 0.1 0.006 240;
     --sidebar-foreground: 0.96 0.005 220;
-    --sidebar-primary: 0.55 0.22 265;
+    --sidebar-primary: 0.55 0.25 290;
     --sidebar-primary-foreground: 0.96 0.005 220;
-    --sidebar-accent: 0.18 0.008 240;
+    --sidebar-accent: 0.14 0.007 240;
     --sidebar-accent-foreground: 0.96 0.005 220;
-    --sidebar-border: 0.22 0.008 240;
-    --sidebar-ring: 0.55 0.22 265;
+    --sidebar-border: 0.18 0.007 240;
+    --sidebar-ring: 0.55 0.25 290;
   }
 
   * {
@@ -94,24 +105,61 @@
 }
 
 @layer utilities {
+  /* Glow utilities */
+  .glow-violet {
+    box-shadow: 0 0 20px oklch(0.55 0.25 290 / 0.35), 0 0 60px
+      oklch(0.55 0.25 290 / 0.12);
+  }
+  .glow-cyan {
+    box-shadow: 0 0 20px oklch(0.82 0.15 210 / 0.35);
+  }
+  .glow-mint {
+    text-shadow: 0 0 8px oklch(0.76 0.18 160 / 0.6);
+  }
+  .glow-magenta {
+    text-shadow: 0 0 8px oklch(0.65 0.22 10 / 0.6);
+  }
+  .glow-gold {
+    box-shadow: 0 0 16px oklch(0.8 0.15 80 / 0.4);
+  }
   .glow-blue {
     box-shadow: 0 0 40px 8px oklch(0.55 0.22 265 / 0.35), 0 0 80px 16px
       oklch(0.55 0.22 265 / 0.15);
   }
-  .glow-violet {
-    box-shadow: 0 0 40px 8px oklch(0.55 0.22 290 / 0.35), 0 0 80px 16px
-      oklch(0.55 0.22 290 / 0.15);
-  }
-  /* Neutral radial glow — barely noticeable, lifts artwork off dark bg */
   .glow-mixed {
     box-shadow: 0 0 40px 12px rgba(255, 255, 255, 0.04), 0 0 80px 24px
       rgba(220, 215, 205, 0.03);
   }
-  /* Album artwork shadow — deep dark lift with whisper of neutral light */
   .shadow-album {
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 40px 8px
       rgba(255, 255, 255, 0.03);
   }
+
+  /* Panel utility */
+  .panel {
+    background: oklch(0.1 0.006 240);
+    border: 1px solid oklch(0.18 0.007 240);
+    border-radius: 16px;
+  }
+
+  /* Animation utilities */
+  .animate-spin-slow {
+    animation: spin-slow 10s linear infinite;
+  }
+  .animate-crown-float {
+    animation: crown-float 2.5s ease-in-out infinite;
+  }
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  .animate-value-flash {
+    animation: value-flash 0.8s ease-out;
+  }
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Misc */
   .card-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
@@ -127,7 +175,57 @@
   }
 }
 
-/* Minting animation keyframes */
+/* ── Keyframe Animations ── */
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes crown-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes value-flash {
+  0% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 @keyframes pulse-ring {
   0% {
     transform: scale(0.95);
@@ -152,33 +250,14 @@
   }
 }
 
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Collectible card shimmer sweep — fires once on mount */
-@keyframes shimmer-sweep {
-  0% {
-    transform: translateX(-120%) skewX(-12deg);
-    opacity: 1;
-  }
+@keyframes live-dot {
+  0%,
   100% {
-    transform: translateX(220%) skewX(-12deg);
-    opacity: 0;
+    opacity: 1;
+    transform: scale(1);
   }
-}
-
-/* Slow spin for the flip affordance arrow */
-@keyframes spin-arrow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
   }
 }
