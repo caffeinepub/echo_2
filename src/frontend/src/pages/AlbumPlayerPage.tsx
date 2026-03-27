@@ -495,6 +495,10 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
   if (!album) return null;
 
   const collectorData = ALBUM_COLLECTOR_DATA[album.id];
+  const marketCap = (album.floorPrice * album.editions_in_circulation).toFixed(
+    1,
+  );
+  const recentTxnCount = collectorData?.recentActivity.length ?? 0;
 
   function makeTrackId(index: number) {
     return `${album!.id}_track_${index}`;
@@ -671,7 +675,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.15 }}
-        className="text-center mb-8"
+        className="text-center mb-6"
       >
         <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-1">
           {album.title}
@@ -680,6 +684,42 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground">
           {formatEdition(album.userEdition)} of {album.supply}
         </span>
+      </motion.div>
+
+      {/* Header stat row */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.22 }}
+        className="flex items-center justify-center gap-8 mb-8"
+      >
+        <div className="text-center">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
+            MCap
+          </p>
+          <p className="text-sm font-mono text-foreground/70 tabular-nums">
+            <SolSymbol className="inline-block w-3 h-3 opacity-60 mr-0.5" />{" "}
+            {marketCap}
+          </p>
+        </div>
+        <div className="w-px h-6 bg-border/20" />
+        <div className="text-center">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
+            Supply
+          </p>
+          <p className="text-sm font-mono text-foreground/70 tabular-nums">
+            {album.editions_in_circulation} / {album.supply}
+          </p>
+        </div>
+        <div className="w-px h-6 bg-border/20" />
+        <div className="text-center">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/35 font-medium mb-0.5">
+            Recent Txns
+          </p>
+          <p className="text-sm font-mono text-foreground/70 tabular-nums">
+            {recentTxnCount}
+          </p>
+        </div>
       </motion.div>
 
       {/* Content — swaps based on flip state */}
