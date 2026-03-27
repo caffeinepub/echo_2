@@ -484,7 +484,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
   const album = ALBUMS.find((a) => a.id === albumId);
   const { currentTrack, isPlaying, playLibrary, playPreview, pause, resume } =
     useAudioPlayer();
-  const { ownedAlbumIds } = useWalletContext();
+  const { ownedAlbumIds, getCirculatingSupply } = useWalletContext();
 
   const [activeTrack, setActiveTrack] = useState(0);
   const [progress, setProgress] = useState(0.3);
@@ -502,9 +502,8 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
 
   const isOwned = ownedAlbumIds.includes(album.id);
   const collectorData = ALBUM_COLLECTOR_DATA[album.id];
-  const marketCap = (album.floorPrice * album.editions_in_circulation).toFixed(
-    1,
-  );
+  const circulatingSupply = getCirculatingSupply(album.id);
+  const marketCap = (album.floorPrice * circulatingSupply).toFixed(1);
   const recentTxnCount = collectorData?.recentActivity.length ?? 0;
 
   function makeTrackId(index: number) {
@@ -523,7 +522,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         title: album!.tracks[index].title,
         artist: album!.artist,
         artworkSrc: album!.artworkSrc,
-        preview_url: "",
+        preview_url: album!.tracks[index].full_url,
       });
     } else {
       playPreview({
@@ -531,7 +530,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         title: album!.tracks[index].title,
         artist: album!.artist,
         artworkSrc: album!.artworkSrc,
-        preview_url: "",
+        preview_url: album!.tracks[index].preview_url,
       });
     }
   }
@@ -708,7 +707,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         <p className="text-muted-foreground text-sm mb-3">{album.artist}</p>
         <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground">
           {isOwned
-            ? `${formatEdition(ownedAlbumIds.includes(album.id) ? album.editions_in_circulation + 1 : album.userEdition)} of ${album.supply}`
+            ? `${formatEdition(ownedAlbumIds.includes(album.id) ? circulatingSupply : album.userEdition)} of ${album.supply}`
             : `${formatEdition(album.userEdition)} of ${album.supply}`}
         </span>
       </motion.div>
@@ -735,7 +734,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
             Supply
           </p>
           <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            {album.editions_in_circulation} / {album.supply}
+            {circulatingSupply} / {album.supply}
           </p>
         </div>
         <div className="w-px h-6 bg-border/20" />

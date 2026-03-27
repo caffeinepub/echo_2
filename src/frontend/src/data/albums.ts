@@ -2,6 +2,8 @@ export interface Track {
   number: number;
   title: string;
   duration: string;
+  preview_url: string;
+  full_url: string;
 }
 
 export interface Album {
@@ -18,10 +20,11 @@ export interface Album {
   owners: number;
   minted: number;
   isSoldOut: boolean;
-  mintOpensInMs: number | null; // ms from now, null if past
+  mintOpensInMs: number | null;
   editions_in_circulation: number;
   volume_24h_sol: number;
   mintPrice: number;
+  nft_mint_address: string;
 }
 
 export const ALBUMS: Album[] = [
@@ -34,11 +37,41 @@ export const ALBUMS: Album[] = [
     supply: 150,
     userEdition: 42,
     tracks: [
-      { number: 1, title: "Glass Wings", duration: "3:42" },
-      { number: 2, title: "Fade Protocol", duration: "4:11" },
-      { number: 3, title: "Infrared", duration: "2:58" },
-      { number: 4, title: "Hollow Pulse", duration: "5:03" },
-      { number: 5, title: "Drift", duration: "3:27" },
+      {
+        number: 1,
+        title: "Glass Wings",
+        duration: "3:42",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 2,
+        title: "Fade Protocol",
+        duration: "4:11",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 3,
+        title: "Infrared",
+        duration: "2:58",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 4,
+        title: "Hollow Pulse",
+        duration: "5:03",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 5,
+        title: "Drift",
+        duration: "3:27",
+        preview_url: "",
+        full_url: "",
+      },
     ],
     floorPrice: 2.6,
     lastSoldPrice: 2.1,
@@ -49,6 +82,7 @@ export const ALBUMS: Album[] = [
     editions_in_circulation: 89,
     volume_24h_sol: 12.4,
     mintPrice: 1.8,
+    nft_mint_address: "FragmentsHaloDrift1111111111111111111111111",
   },
   {
     id: "echo_002",
@@ -59,11 +93,41 @@ export const ALBUMS: Album[] = [
     supply: 120,
     userEdition: 7,
     tracks: [
-      { number: 1, title: "Ember", duration: "4:22" },
-      { number: 2, title: "Smoke Signal", duration: "3:55" },
-      { number: 3, title: "Ash", duration: "5:14" },
-      { number: 4, title: "Residue", duration: "3:33" },
-      { number: 5, title: "Kindling", duration: "4:01" },
+      {
+        number: 1,
+        title: "Ember",
+        duration: "4:22",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 2,
+        title: "Smoke Signal",
+        duration: "3:55",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 3,
+        title: "Ash",
+        duration: "5:14",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 4,
+        title: "Residue",
+        duration: "3:33",
+        preview_url: "",
+        full_url: "",
+      },
+      {
+        number: 5,
+        title: "Kindling",
+        duration: "4:01",
+        preview_url: "",
+        full_url: "",
+      },
     ],
     floorPrice: 1.8,
     lastSoldPrice: 1.6,
@@ -74,6 +138,7 @@ export const ALBUMS: Album[] = [
     editions_in_circulation: 61,
     volume_24h_sol: 7.8,
     mintPrice: 2.0,
+    nft_mint_address: "CharcoalVesselNFT222222222222222222222222222",
   },
 ];
 

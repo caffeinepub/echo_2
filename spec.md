@@ -1,41 +1,40 @@
-# ECHO — Phase 1 Mint Flow
+# ECHO — Phantom Wallet + NFT-Gated Playback
 
 ## Current State
 
-- `useWallet` hook is a stub (no real Phantom integration, just local state)
-- `useMockData` always returns all ALBUMS as both `ownedAlbums` and `allAlbums` — no real ownership
-- ReleaseTile shows album info but no Buy button and no SOL mint price
-- Album data (`albums.ts`) has no `mintPrice` field
-- Library shows all albums as owned (no ownership gate)
-- Streaming is fully unlocked for everyone — no preview-only restriction
-- AlbumPlayerPage has no ownership check
+The app has a fully simulated WalletContext using a hardcoded wallet address (`7KxM3nRabPqFdwW1P9m`) with simulated `connect()` and `mintAlbum()`. There is no real Phantom wallet adapter integration. Album and track data (`albums.ts`) have no `preview_url` or `full_url` fields per track — the AudioPlayerContext passes empty strings for `preview_url`. The ownership check is localStorage-keyed but uses the hardcoded address rather than a real wallet public key.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `mintPrice: number` field to Album type and ALBUMS data (Fragments: 1.8 SOL, Charcoal: 2.0 SOL)
-- `WalletContext` (React context) that wraps the existing `useWallet` stub but also stores owned album IDs (keyed by wallet address) in localStorage. Exposes: `isConnected`, `walletAddress`, `connect()`, `disconnect()`, `ownedAlbumIds: string[]`, `mintAlbum(albumId: string): Promise<void>`
-- `mintAlbum()` simulates a Phantom transaction: show a confirmation modal → mock SOL deduction → assign next available edition number → persist owned album to localStorage → resolve
-- Buy button on live ReleaseTile (only when `isSoldOut === false` and `mintOpensInMs === 0`). Shows SOL mint price with SolSymbol. Clicking opens MintModal.
-- `MintModal` component: shows album artwork, title, edition count info, mint price in SOL, "Approve in Phantom" CTA. On confirm: calls `mintAlbum()`, shows loading state, then success state with assigned edition number (e.g. #090). Minimal dark modal, no clutter.
-- `useMockData` updated to derive `ownedAlbums` from wallet context's `ownedAlbumIds` instead of returning all albums
+- Real Phantom wallet connection via `window.solana` (Phantom browser extension API)
+- `nft_mint_address` field to Album type (mock address string per album, for future on-chain matching)
+- Per-track `preview_url` (30s clip) and `full_url` (full track) fields to Album Track type
+- `circulatingSupply` state in WalletContext that decreases on successful mint
+- TypeScript type declaration for `window.solana` (Phantom provider)
 
 ### Modify
-- `useWallet` — extend to accept wallet address (mock: use a static address like `"ph4nt0m...w4ll3t"`) and expose it. Connect should set a static mock address.
-- `ReleaseTile` — add mint price display and Buy button for live releases
-- `AlbumPlayerPage` — add ownership check. If album is NOT owned, show 30s preview mode: play button plays a 30s preview (use `playPreview`), show a subtle "Preview" label, show a "Buy to unlock full album" CTA that navigates to Releases. If owned, show full playback mode as today.
-- `LibraryPage` — show empty state with prompt to browse Releases if no owned albums
-- Album detail pages (MarketDetailPage) — no changes needed for Phase 1
+- `WalletContext`: replace `connect()` simulation with real `window.solana.connect()` call; on connect, derive wallet address from public key; fall back gracefully if Phantom not installed (show toast or alert)
+- `WalletContext.mintAlbum()`: keep simulated transaction structure but add a `window.solana.signTransaction()` call stub that catches rejection/cancellation; on success decrement the album's circulating supply (in component state)
+- `Album` data type: add `nft_mint_address: string`, and update `Track` type to include `preview_url: string` and `full_url: string`
+- `ALBUMS` data: populate `nft_mint_address` with mock Solana mint addresses, and add placeholder `preview_url` and `full_url` strings per track (empty strings fine — player degrades gracefully)
+- `AudioPlayerContext.playPreview()`: pass `track.preview_url` to the audio element
+- `AudioPlayerContext.playLibrary()`: pass `track.full_url` to the audio element instead of `preview_url`
+- `AlbumPlayerPage.dispatchPlay()`: pass the track's `preview_url` or `full_url` based on ownership
+- Supply display: use live circulating supply from WalletContext rather than static album data field after a mint
 
 ### Remove
-- Nothing removed
+- Hardcoded `WALLET_ADDRESS` constant in WalletContext
+- `LS_CONNECTED` key assumption of a static address; key localStorage by real wallet public key
 
 ## Implementation Plan
 
-1. Update `Album` type and ALBUMS data to add `mintPrice` field. Set Fragments to 1.8, Charcoal to 2.0. Also set `mintOpensInMs: 0` for Fragments so it shows as live.
-2. Create `WalletContext.tsx` in `context/`: manages `isConnected`, `walletAddress`, `ownedAlbumIds` (localStorage), `mintAlbum(albumId)`. Wire into `App.tsx` as provider around everything. Update `useWallet` to read from this context.
-3. Update `useMockData` to read `ownedAlbumIds` from WalletContext. `ownedAlbums` returns only ALBUMS whose IDs are in `ownedAlbumIds`.
-4. Create `MintModal.tsx`: minimal dark modal. Shows artwork, title, price, edition count. States: idle → confirming ("Waiting for Phantom...") → success ("Edition #090 minted!"). On success, close after 2s delay.
-5. Update `ReleaseTile` in `ReleasesPage.tsx`: show `⬡ {album.mintPrice}` using SolSymbol for live albums, add Buy button that opens MintModal (pass albumId). Prevent tile click from opening album detail when Buy is tapped.
-6. Update `AlbumPlayerPage`: check if album is owned via WalletContext. If not owned: use `playPreview` mode, show "Preview" label on player, disable full track list interaction (show as locked with blur or muted), add sticky "Own this album · SOL 1.8" banner at bottom that triggers MintModal.
-7. Update `LibraryPage`: empty state prompts to browse Releases.
+1. Add `PhantomProvider` TypeScript interface to a `types/phantom.ts` file and extend `Window` interface
+2. Update `Album` and `Track` types in `data/albums.ts`; populate mock `nft_mint_address`, `preview_url`, `full_url` on all tracks
+3. Rewrite `WalletContext.tsx`:
+   - `connect()`: calls `window.solana?.connect()`, reads `publicKey.toString()`, stores in state; if `window.solana` is undefined, shows `alert('Please install Phantom wallet')` 
+   - `mintAlbum()`: simulates 1.5s delay, calls `window.solana?.signMessage()` as a stub (catches errors), then records ownership in localStorage keyed by real address and decrements circulatingSupply
+   - Reconnect on mount if `window.solana?.isConnected` is true
+4. Update `AudioPlayerContext.tsx`: `playLibrary()` uses `full_url` field passed in; `playPreview()` uses `preview_url`
+5. Update `AlbumPlayerPage.tsx`: pass `track.preview_url` or `track.full_url` in `dispatchPlay()` based on ownership
+6. Ensure supply stat row shows live circulating supply from WalletContext after mint
