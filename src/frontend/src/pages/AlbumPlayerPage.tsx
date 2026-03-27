@@ -452,7 +452,7 @@ function CollectorPanel({
                 <p className="text-sm font-mono text-foreground/70">
                   {s.sol ? (
                     <>
-                      <SolSymbol className="mr-2" />
+                      <SolSymbol className="mr-2" animated={true} />
                       {s.value}
                     </>
                   ) : (
@@ -724,7 +724,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
             MCap
           </p>
           <p className="text-sm font-mono text-foreground/70 tabular-nums">
-            <SolSymbol className="w-3 h-3 mr-2" />
+            <SolSymbol className="w-3 h-3 mr-2" animated={true} />
             {marketCap}
           </p>
         </div>
@@ -951,7 +951,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                   <span className="text-xs text-muted-foreground/60">
                     Full album
                     <span className="mx-1.5 text-muted-foreground/30">·</span>
-                    <SolSymbol className="mr-2" />
+                    <SolSymbol className="mr-2" animated={true} />
                     <span className="font-mono">{album.mintPrice}</span>
                   </span>
                   <button

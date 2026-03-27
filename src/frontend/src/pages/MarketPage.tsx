@@ -239,7 +239,7 @@ function SignalCard({
           color: isSol ? "oklch(0.82 0.15 210)" : "oklch(0.94 0.005 220)",
         }}
       >
-        {isSol && <SolSymbol className="w-3.5 h-3.5" />}
+        {isSol && <SolSymbol className="w-3.5 h-3.5" animated={true} />}
         {value}
       </p>
     </motion.div>

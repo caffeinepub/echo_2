@@ -485,7 +485,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   className="flex items-center gap-1.5 justify-center"
                   style={{ color: "oklch(0.82 0.15 210)" }}
                 >
-                  <SolSymbol className="w-3.5 h-3.5" />
+                  <SolSymbol className="w-3.5 h-3.5" animated={true} />
                   {mktCap.toFixed(1)}
                 </span>
               ),
@@ -688,7 +688,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   className="text-[15px] font-mono font-semibold flex items-center gap-1.5"
                   style={{ color: "oklch(0.82 0.15 210)" }}
                 >
-                  <SolSymbol className="w-3.5 h-3.5" />
+                  <SolSymbol className="w-3.5 h-3.5" animated={true} />
                   {listing.price.toFixed(2)}
                 </p>
               </div>

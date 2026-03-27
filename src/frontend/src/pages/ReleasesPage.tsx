@@ -99,7 +99,7 @@ function ReleaseTile({
         </p>
         {!album.isSoldOut && (
           <p className="text-xs font-mono text-foreground/70 mt-0.5 flex items-center gap-0">
-            <SolSymbol className="mr-2" />
+            <SolSymbol className="mr-2" animated={true} />
             {album.mintPrice}
           </p>
         )}

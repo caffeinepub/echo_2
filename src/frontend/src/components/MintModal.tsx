@@ -190,7 +190,7 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                       Mint price
                     </span>
                     <span className="text-lg font-mono font-medium text-foreground/90">
-                      <SolSymbol className="mr-2" />
+                      <SolSymbol className="mr-2" animated={true} />
                       {album.mintPrice}
                     </span>
                   </div>
