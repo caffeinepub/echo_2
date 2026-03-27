@@ -1,8 +1,13 @@
+import { useWalletContext } from "../context/WalletContext";
 import { ALBUMS, type Album } from "../data/albums";
 
-// Stub hook — swap in real NFT ownership data here later
 export function useMockData() {
-  const ownedAlbums: Album[] = ALBUMS;
+  const { ownedAlbumIds, isConnected } = useWalletContext();
+
+  const ownedAlbums: Album[] = isConnected
+    ? ALBUMS.filter((a) => ownedAlbumIds.includes(a.id))
+    : [];
+
   const allAlbums: Album[] = ALBUMS;
 
   return { ownedAlbums, allAlbums };

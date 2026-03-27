@@ -1,10 +1,12 @@
 import { motion } from "motion/react";
+import { useWalletContext } from "../context/WalletContext";
 import { formatEdition } from "../data/albums";
 import type { Album } from "../data/albums";
 import { useMockData } from "../hooks/useMockData";
 
 interface LibraryPageProps {
   onAlbumClick: (albumId: string) => void;
+  onBrowseReleases?: () => void;
 }
 
 function AlbumCard({
@@ -49,8 +51,12 @@ function AlbumCard({
   );
 }
 
-export function LibraryPage({ onAlbumClick }: LibraryPageProps) {
+export function LibraryPage({
+  onAlbumClick,
+  onBrowseReleases,
+}: LibraryPageProps) {
   const { ownedAlbums } = useMockData();
+  const { isConnected } = useWalletContext();
 
   return (
     <div className="px-6 md:px-12 pt-8 pb-4">
@@ -63,12 +69,31 @@ export function LibraryPage({ onAlbumClick }: LibraryPageProps) {
         Library
       </motion.h1>
 
-      {ownedAlbums.length === 0 ? (
+      {!isConnected ? (
         <div
           data-ocid="library.empty_state"
-          className="flex flex-col items-center justify-center py-24 text-muted-foreground"
+          className="flex flex-col items-center justify-center py-24 text-center"
         >
-          <p className="text-sm">No albums in your collection yet.</p>
+          <p className="text-sm text-muted-foreground/60">
+            Connect your wallet to see your collection.
+          </p>
+        </div>
+      ) : ownedAlbums.length === 0 ? (
+        <div
+          data-ocid="library.empty_state"
+          className="flex flex-col items-center justify-center py-24 text-center gap-3"
+        >
+          <p className="text-sm text-muted-foreground/60">No albums yet.</p>
+          {onBrowseReleases && (
+            <button
+              type="button"
+              onClick={onBrowseReleases}
+              data-ocid="library.primary_button"
+              className="text-xs text-muted-foreground/40 hover:text-foreground/60 transition-colors underline underline-offset-2"
+            >
+              Browse Releases to find your first drop.
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">

@@ -21,9 +21,8 @@ export interface Album {
   mintOpensInMs: number | null; // ms from now, null if past
   editions_in_circulation: number;
   volume_24h_sol: number;
+  mintPrice: number;
 }
-
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
 export const ALBUMS: Album[] = [
   {
@@ -46,9 +45,10 @@ export const ALBUMS: Album[] = [
     owners: 89,
     minted: 89,
     isSoldOut: false,
-    mintOpensInMs: TWO_HOURS_MS,
+    mintOpensInMs: 0,
     editions_in_circulation: 89,
     volume_24h_sol: 12.4,
+    mintPrice: 1.8,
   },
   {
     id: "echo_002",
@@ -73,6 +73,7 @@ export const ALBUMS: Album[] = [
     mintOpensInMs: null,
     editions_in_circulation: 61,
     volume_24h_sol: 7.8,
+    mintPrice: 2.0,
   },
 ];
 

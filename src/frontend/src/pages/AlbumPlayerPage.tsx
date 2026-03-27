@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  Lock,
   Pause,
   Play,
   Repeat,
@@ -8,8 +9,10 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { MintModal } from "../components/MintModal";
 import { SolSymbol } from "../components/SolSymbol";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useWalletContext } from "../context/WalletContext";
 import { ALBUMS, formatEdition } from "../data/albums";
 
 interface AlbumPlayerPageProps {
@@ -478,14 +481,16 @@ function CollectorPanel({
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
   const album = ALBUMS.find((a) => a.id === albumId);
-  const { currentTrack, isPlaying, playLibrary, pause, resume } =
+  const { currentTrack, isPlaying, playLibrary, playPreview, pause, resume } =
     useAudioPlayer();
+  const { ownedAlbumIds } = useWalletContext();
 
   const [activeTrack, setActiveTrack] = useState(0);
   const [progress, setProgress] = useState(0.3);
   const [isLooping, setIsLooping] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHint, setShowHint] = useState(true);
+  const [showMintModal, setShowMintModal] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setShowHint(false), 3000);
@@ -494,6 +499,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
 
   if (!album) return null;
 
+  const isOwned = ownedAlbumIds.includes(album.id);
   const collectorData = ALBUM_COLLECTOR_DATA[album.id];
   const marketCap = (album.floorPrice * album.editions_in_circulation).toFixed(
     1,
@@ -509,47 +515,57 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
     currentTrack?.id === currentTrackId && isPlaying;
   const isCurrentAlbumActive = currentTrack?.id?.startsWith(album.id);
 
-  function dispatchPlayLibrary(index: number) {
-    playLibrary({
-      id: makeTrackId(index),
-      title: album!.tracks[index].title,
-      artist: album!.artist,
-      artworkSrc: album!.artworkSrc,
-      preview_url: "",
-    });
+  function dispatchPlay(index: number) {
+    if (isOwned) {
+      playLibrary({
+        id: makeTrackId(index),
+        title: album!.tracks[index].title,
+        artist: album!.artist,
+        artworkSrc: album!.artworkSrc,
+        preview_url: "",
+      });
+    } else {
+      playPreview({
+        id: makeTrackId(index),
+        title: album!.tracks[index].title,
+        artist: album!.artist,
+        artworkSrc: album!.artworkSrc,
+        preview_url: "",
+      });
+    }
   }
 
   function handlePrev() {
     const next = Math.max(0, activeTrack - 1);
     setActiveTrack(next);
     setProgress(0);
-    if (isCurrentAlbumActive) dispatchPlayLibrary(next);
+    if (isCurrentAlbumActive) dispatchPlay(next);
   }
 
   function handleNext() {
     const isLast = activeTrack === album!.tracks.length - 1;
     if (isLooping && isLast) {
       setProgress(0);
-      dispatchPlayLibrary(activeTrack);
+      dispatchPlay(activeTrack);
     } else {
       const next = Math.min(album!.tracks.length - 1, activeTrack + 1);
       setActiveTrack(next);
       setProgress(0);
-      if (isCurrentAlbumActive) dispatchPlayLibrary(next);
+      if (isCurrentAlbumActive) dispatchPlay(next);
     }
   }
 
   function handleTrackClick(index: number) {
     setActiveTrack(index);
     setProgress(0);
-    dispatchPlayLibrary(index);
+    dispatchPlay(index);
   }
 
   function handleMainPlayPause() {
     if (currentTrack?.id === currentTrackId) {
       isPlaying ? pause() : resume();
     } else {
-      dispatchPlayLibrary(activeTrack);
+      dispatchPlay(activeTrack);
     }
   }
 
@@ -559,7 +575,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
     setProgress(Math.max(0, Math.min(1, x / rect.width)));
   }
 
-  // Neutral waveform colors — soft linen/parchment at low opacity
+  // Neutral waveform colors
   const playedBarColor = isLooping
     ? "rgba(237, 235, 230, 0.65)"
     : "rgba(232, 230, 225, 0.55)";
@@ -617,6 +633,14 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                 alt={album.title}
                 className="w-full h-full object-cover"
               />
+              {/* Preview badge overlay for non-owners */}
+              {!isOwned && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="text-[9px] tracking-widest uppercase text-white/50 font-mono">
+                    Preview
+                  </span>
+                </div>
+              )}
             </button>
 
             {/* Back face */}
@@ -682,7 +706,9 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
         </h1>
         <p className="text-muted-foreground text-sm mb-3">{album.artist}</p>
         <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground">
-          {formatEdition(album.userEdition)} of {album.supply}
+          {isOwned
+            ? `${formatEdition(ownedAlbumIds.includes(album.id) ? album.editions_in_circulation + 1 : album.userEdition)} of ${album.supply}`
+            : `${formatEdition(album.userEdition)} of ${album.supply}`}
         </span>
       </motion.div>
 
@@ -766,7 +792,7 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                     />
                   ))}
                 </div>
-                {/* Scrub handle — soft neutral ivory */}
+                {/* Scrub handle */}
                 <div
                   className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full z-10 group-hover:scale-110 transition-transform"
                   style={{
@@ -788,7 +814,6 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                 >
                   <SkipBack size={22} />
                 </button>
-                {/* Play button — ivory/bone material feel */}
                 <button
                   type="button"
                   onClick={handleMainPlayPause}
@@ -894,6 +919,13 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                       >
                         {track.title}
                       </span>
+                      {/* Lock icon for non-owners */}
+                      {!isOwned && (
+                        <Lock
+                          size={10}
+                          className="text-muted-foreground/25 flex-shrink-0"
+                        />
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {track.duration}
                       </span>
@@ -902,6 +934,38 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
                 })}
               </div>
             </div>
+
+            {/* Sticky buy banner for non-owners */}
+            {!isOwned && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="max-w-sm mx-auto mt-8 mb-4"
+              >
+                <div
+                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-border/20"
+                  style={{ backgroundColor: "oklch(0.12 0.005 265)" }}
+                  data-ocid="player.panel"
+                >
+                  <span className="text-xs text-muted-foreground/60">
+                    Full album
+                    <span className="mx-1.5 text-muted-foreground/30">·</span>
+                    <SolSymbol className="mr-0.5 opacity-60" />
+                    <span className="font-mono">{album.mintPrice}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMintModal(true)}
+                    data-ocid="player.primary_button"
+                    className="text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: "#7C3AED" }}
+                  >
+                    Buy Edition
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -921,6 +985,15 @@ export function AlbumPlayerPage({ albumId, onBack }: AlbumPlayerPageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mint modal */}
+      {showMintModal && (
+        <MintModal
+          albumId={album.id}
+          onClose={() => setShowMintModal(false)}
+          onSuccess={() => setShowMintModal(false)}
+        />
+      )}
     </div>
   );
 }

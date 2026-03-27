@@ -1,5 +1,8 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { MintModal } from "../components/MintModal";
+import { SolSymbol } from "../components/SolSymbol";
+import { useWalletContext } from "../context/WalletContext";
 import type { Album } from "../data/albums";
 import { useMockData } from "../hooks/useMockData";
 
@@ -31,7 +34,8 @@ function useCountdown(targetMs: number | null) {
 
 function statusText(album: Album, countdown: string): string {
   if (album.isSoldOut) return "Sold out";
-  if (!album.mintOpensInMs || album.mintOpensInMs === 0) return "Live now";
+  if (album.mintOpensInMs === 0 || album.mintOpensInMs === null)
+    return "Live now";
   return `Releases in ${countdown}`;
 }
 
@@ -39,13 +43,18 @@ function ReleaseTile({
   album,
   index,
   onAlbumClick,
+  isOwned,
+  onBuyClick,
 }: {
   album: Album;
   index: number;
   onAlbumClick: (id: string) => void;
+  isOwned: boolean;
+  onBuyClick: (id: string) => void;
 }) {
   const countdown = useCountdown(album.mintOpensInMs);
   const status = statusText(album, countdown);
+  const live = !album.isSoldOut && album.mintOpensInMs === 0;
 
   return (
     <motion.button
@@ -72,6 +81,9 @@ function ReleaseTile({
             </span>
           </>
         )}
+        {live && !isOwned && (
+          <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-green-400/70" />
+        )}
       </div>
 
       {/* Info */}
@@ -85,9 +97,39 @@ function ReleaseTile({
         <p className="text-[10px] text-muted-foreground/50 tracking-wide mt-1">
           {album.supply} Editions
         </p>
+        {!album.isSoldOut && (
+          <p className="text-xs font-mono text-foreground/70 mt-0.5 flex items-center gap-0.5">
+            <SolSymbol className="opacity-70" />
+            {album.mintPrice}
+          </p>
+        )}
         <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5">
           {status}
         </p>
+
+        {/* Buy / Owned indicator */}
+        {live && (
+          <div className="mt-2">
+            {isOwned ? (
+              <span className="text-[10px] font-mono text-green-400/60">
+                Owned
+              </span>
+            ) : (
+              <button
+                type="button"
+                data-ocid={`releases.item.${index + 1}.button`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBuyClick(album.id);
+                }}
+                className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#7C3AED" }}
+              >
+                Buy
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </motion.button>
   );
@@ -99,6 +141,8 @@ interface ReleasesPageProps {
 
 export function ReleasesPage({ onAlbumClick }: ReleasesPageProps) {
   const { allAlbums } = useMockData();
+  const { ownedAlbumIds } = useWalletContext();
+  const [mintModalAlbumId, setMintModalAlbumId] = useState<string | null>(null);
 
   return (
     <div className="px-4 md:px-8 pt-8 pb-4">
@@ -117,9 +161,18 @@ export function ReleasesPage({ onAlbumClick }: ReleasesPageProps) {
             album={album}
             index={i}
             onAlbumClick={onAlbumClick}
+            isOwned={ownedAlbumIds.includes(album.id)}
+            onBuyClick={(id) => setMintModalAlbumId(id)}
           />
         ))}
       </div>
+
+      {mintModalAlbumId && (
+        <MintModal
+          albumId={mintModalAlbumId}
+          onClose={() => setMintModalAlbumId(null)}
+        />
+      )}
     </div>
   );
 }

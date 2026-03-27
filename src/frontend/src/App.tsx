@@ -4,6 +4,7 @@ import { MiniPlayer } from "./components/MiniPlayer";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
+import { WalletProvider } from "./context/WalletContext";
 import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
@@ -45,39 +46,46 @@ export default function App() {
   }
 
   return (
-    <AudioPlayerProvider>
-      <div className="min-h-screen bg-background">
-        {showSplash && <SplashScreen />}
+    <WalletProvider>
+      <AudioPlayerProvider>
+        <div className="min-h-screen bg-background">
+          {showSplash && <SplashScreen />}
 
-        <TopBar />
+          <TopBar />
 
-        <main className="pt-16 pb-[68px] min-h-screen">
-          {view.type === "tab" && view.tab === "library" && (
-            <LibraryPage onAlbumClick={handleAlbumClick} />
-          )}
-          {view.type === "tab" && view.tab === "releases" && (
-            <ReleasesPage onAlbumClick={handleAlbumClick} />
-          )}
-          {view.type === "tab" && view.tab === "market" && (
-            <MarketPage onAlbumClick={handleMarketAlbumClick} />
-          )}
-          {view.type === "album-player" && (
-            <AlbumPlayerPage
-              albumId={view.albumId}
-              onBack={() => setView({ type: "tab", tab: view.fromTab })}
-            />
-          )}
-          {view.type === "market-detail" && (
-            <MarketDetailPage
-              albumId={view.albumId}
-              onBack={() => setView({ type: "tab", tab: "market" })}
-            />
-          )}
-        </main>
+          <main className="pt-16 pb-[68px] min-h-screen">
+            {view.type === "tab" && view.tab === "library" && (
+              <LibraryPage
+                onAlbumClick={handleAlbumClick}
+                onBrowseReleases={() =>
+                  setView({ type: "tab", tab: "releases" })
+                }
+              />
+            )}
+            {view.type === "tab" && view.tab === "releases" && (
+              <ReleasesPage onAlbumClick={handleAlbumClick} />
+            )}
+            {view.type === "tab" && view.tab === "market" && (
+              <MarketPage onAlbumClick={handleMarketAlbumClick} />
+            )}
+            {view.type === "album-player" && (
+              <AlbumPlayerPage
+                albumId={view.albumId}
+                onBack={() => setView({ type: "tab", tab: view.fromTab })}
+              />
+            )}
+            {view.type === "market-detail" && (
+              <MarketDetailPage
+                albumId={view.albumId}
+                onBack={() => setView({ type: "tab", tab: "market" })}
+              />
+            )}
+          </main>
 
-        <MiniPlayer />
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
-    </AudioPlayerProvider>
+          <MiniPlayer />
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+      </AudioPlayerProvider>
+    </WalletProvider>
   );
 }
