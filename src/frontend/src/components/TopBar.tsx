@@ -1,7 +1,7 @@
 import { useWallet } from "../hooks/useWallet";
 
 const ECHO_NEON_LOGO =
-  "/assets/uploads/0d571062-3a81-47ee-b3d5-a0715dc4b306-019d30bd-f0bb-77b0-bf7b-5caa38fb0c54-1.png";
+  "/assets/generated/echo-logo-transparent.dim_900x500.png";
 
 // Neon animation keyframes injected once
 const NEON_STYLES = `
@@ -116,6 +116,7 @@ export function TopBar() {
             height: "clamp(40px, 6vw, 52px)",
             width: "auto",
             imageRendering: "crisp-edges",
+
             display: "block",
           }}
           draggable={false}
