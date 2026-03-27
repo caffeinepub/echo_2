@@ -107,13 +107,16 @@ function ReleaseTile({
           {status}
         </p>
 
-        {/* Buy / Owned indicator */}
+        {/* Buy / Play Album indicator */}
         {live && (
           <div className="mt-2">
             {isOwned ? (
-              <span className="text-[10px] font-mono text-green-400/60">
-                Owned
-              </span>
+              <button
+                type="button"
+                className="text-[10px] px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground/60 font-medium"
+              >
+                Play Album
+              </button>
             ) : (
               <button
                 type="button"

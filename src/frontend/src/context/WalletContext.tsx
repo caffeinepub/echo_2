@@ -23,7 +23,10 @@ interface WalletContextValue {
   ownedEditions: Record<string, number>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
-  mintAlbum: (albumId: string) => Promise<{ editionNumber: number }>;
+  mintAlbum: (
+    albumId: string,
+    opts?: { onApproved?: () => void },
+  ) => Promise<{ editionNumber: number }>;
   getCirculatingSupply: (albumId: string) => number;
 }
 
@@ -63,7 +66,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           setOwnedEntries(entries);
         })
         .catch(() => {
-          // Silent reconnect failed — clear stale flag
           localStorage.removeItem(LS_CONNECTED);
         });
     }
@@ -102,7 +104,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const mintAlbum = useCallback(
-    async (albumId: string): Promise<{ editionNumber: number }> => {
+    async (
+      albumId: string,
+      opts?: { onApproved?: () => void },
+    ): Promise<{ editionNumber: number }> => {
+      // Phase 1: simulate wallet approval delay (1000ms)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      opts?.onApproved?.();
+
+      // Phase 2: simulate minting on-chain (1500ms)
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const album = ALBUMS.find((a) => a.id === albumId);

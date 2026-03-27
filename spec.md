@@ -1,40 +1,28 @@
-# ECHO — Phantom Wallet + NFT-Gated Playback
+# ECHO — Minting Animation Flow
 
 ## Current State
-
-The app has a fully simulated WalletContext using a hardcoded wallet address (`7KxM3nRabPqFdwW1P9m`) with simulated `connect()` and `mintAlbum()`. There is no real Phantom wallet adapter integration. Album and track data (`albums.ts`) have no `preview_url` or `full_url` fields per track — the AudioPlayerContext passes empty strings for `preview_url`. The ownership check is localStorage-keyed but uses the hardcoded address rather than a real wallet public key.
+The app has a `MintModal` component with states: `idle`, `connect`, `confirming`, `success`, `error`. The `confirming` state shows a simple spinner. The `mintAlbum` function in `WalletContext` simulates a 1.5s delay with no phased progress. The Releases page shows a small "Buy" button that becomes "Owned" text after purchase.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Real Phantom wallet connection via `window.solana` (Phantom browser extension API)
-- `nft_mint_address` field to Album type (mock address string per album, for future on-chain matching)
-- Per-track `preview_url` (30s clip) and `full_url` (full track) fields to Album Track type
-- `circulatingSupply` state in WalletContext that decreases on successful mint
-- TypeScript type declaration for `window.solana` (Phantom provider)
+- New mint UX states inside `MintModal`: `awaiting_approval`, `minting`, `confirmed`
+- `awaiting_approval` state: Phantom ghost logo, breathing pulse ring animation, text "Waiting for Phantom approval..."
+- `minting` state: album cover artwork centered large, animated SVG rotating progress ring around it, soft radial glow (purple/indigo low opacity), minimal particle dots orbiting, cycling status text "Minting your album..." / "Recording ownership on Solana..."
+- `confirmed` state: animated SVG checkmark draw-in, text "Album minted successfully" / "Now in your wallet" / "Full album unlocked"
+- Smooth AnimatePresence crossfade transitions between all states
+- `WalletContext.mintAlbum` accepts optional `onApproved?: () => void` callback, called after 1s simulated approval, resolves after 2.5s total
 
 ### Modify
-- `WalletContext`: replace `connect()` simulation with real `window.solana.connect()` call; on connect, derive wallet address from public key; fall back gracefully if Phantom not installed (show toast or alert)
-- `WalletContext.mintAlbum()`: keep simulated transaction structure but add a `window.solana.signTransaction()` call stub that catches rejection/cancellation; on success decrement the album's circulating supply (in component state)
-- `Album` data type: add `nft_mint_address: string`, and update `Track` type to include `preview_url: string` and `full_url: string`
-- `ALBUMS` data: populate `nft_mint_address` with mock Solana mint addresses, and add placeholder `preview_url` and `full_url` strings per track (empty strings fine — player degrades gracefully)
-- `AudioPlayerContext.playPreview()`: pass `track.preview_url` to the audio element
-- `AudioPlayerContext.playLibrary()`: pass `track.full_url` to the audio element instead of `preview_url`
-- `AlbumPlayerPage.dispatchPlay()`: pass the track's `preview_url` or `full_url` based on ownership
-- Supply display: use live circulating supply from WalletContext rather than static album data field after a mint
+- `MintModal.tsx`: replace old `confirming` state with 3-phase flow (awaiting_approval → minting → confirmed)
+- `WalletContext.mintAlbum`: add `onApproved` callback param
+- `ReleasesPage.tsx` ReleaseTile: owned indicator changes to "Play Album" pill button
 
 ### Remove
-- Hardcoded `WALLET_ADDRESS` constant in WalletContext
-- `LS_CONNECTED` key assumption of a static address; key localStorage by real wallet public key
+- Old single-spinner `confirming` state in MintModal
 
 ## Implementation Plan
-
-1. Add `PhantomProvider` TypeScript interface to a `types/phantom.ts` file and extend `Window` interface
-2. Update `Album` and `Track` types in `data/albums.ts`; populate mock `nft_mint_address`, `preview_url`, `full_url` on all tracks
-3. Rewrite `WalletContext.tsx`:
-   - `connect()`: calls `window.solana?.connect()`, reads `publicKey.toString()`, stores in state; if `window.solana` is undefined, shows `alert('Please install Phantom wallet')` 
-   - `mintAlbum()`: simulates 1.5s delay, calls `window.solana?.signMessage()` as a stub (catches errors), then records ownership in localStorage keyed by real address and decrements circulatingSupply
-   - Reconnect on mount if `window.solana?.isConnected` is true
-4. Update `AudioPlayerContext.tsx`: `playLibrary()` uses `full_url` field passed in; `playPreview()` uses `preview_url`
-5. Update `AlbumPlayerPage.tsx`: pass `track.preview_url` or `track.full_url` in `dispatchPlay()` based on ownership
-6. Ensure supply stat row shows live circulating supply from WalletContext after mint
+1. Update `WalletContext.mintAlbum` signature to accept `onApproved?: () => void`, call at 1s, resolve at 2.5s
+2. Rewrite MintModal states with the 3-phase animation flow
+3. Wire handleBuy: set awaiting_approval → onApproved sets minting → resolve sets confirmed
+4. Update ReleaseTile owned CTA to "Play Album" pill
