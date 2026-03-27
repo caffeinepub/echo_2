@@ -3,23 +3,23 @@ import { useWallet } from "../hooks/useWallet";
 const ECHO_NEON_LOGO =
   "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
-// Glow values increased ~35% from previous, with outer purple aura (~22px) and blue inner glow
+// Glow values reduced ~10% from previous 35%-boosted values
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
   5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 5px rgba(100,160,255,0.50)) drop-shadow(0 0 9px rgba(170,120,255,0.62)); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.56)); }
   12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)); }
   18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.58)) drop-shadow(0 0 22px rgba(130,60,255,0.32)); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
 }
 
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(160,100,255,0.46)) drop-shadow(0 0 22px rgba(130,60,255,0.26)); }
-  50%  { filter: brightness(1.06) drop-shadow(0 0 6px rgba(110,170,255,0.54)) drop-shadow(0 0 11px rgba(170,110,255,0.63)) drop-shadow(0 0 28px rgba(140,70,255,0.36)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 4px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(160,100,255,0.46)) drop-shadow(0 0 22px rgba(130,60,255,0.26)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.36)) drop-shadow(0 0 6px rgba(160,100,255,0.41)) drop-shadow(0 0 18px rgba(130,60,255,0.23)); }
+  50%  { filter: brightness(1.05) drop-shadow(0 0 5px rgba(110,170,255,0.48)) drop-shadow(0 0 10px rgba(170,110,255,0.57)) drop-shadow(0 0 24px rgba(140,70,255,0.32)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.36)) drop-shadow(0 0 6px rgba(160,100,255,0.41)) drop-shadow(0 0 18px rgba(130,60,255,0.23)); }
 }
 
 .echo-logo-neon {
@@ -105,19 +105,19 @@ export function TopBar() {
         height: "72px",
       }}
     >
-      {/* Neon Logo — floats directly on dark header, no background panel */}
+      {/* Neon Logo — 220px, vertically centered, 16px left margin */}
       <div
-        className="relative flex items-center"
-        style={{ marginLeft: "16px", marginTop: "8px" }}
+        className="relative flex items-center self-center"
+        style={{ marginLeft: "16px" }}
       >
         <img
           src={ECHO_NEON_LOGO}
           alt="ECHO"
           className="echo-logo-neon select-none"
           style={{
-            width: "320px",
+            width: "220px",
             height: "auto",
-            maxWidth: "min(320px, 42vw)",
+            maxWidth: "min(220px, 36vw)",
             objectFit: "contain",
             imageRendering: "auto",
             display: "block",
@@ -128,7 +128,7 @@ export function TopBar() {
       </div>
 
       {/* Phantom wallet button — vertically centered */}
-      <div className="flex items-center" style={{ marginTop: "8px" }}>
+      <div className="flex items-center self-center">
         <button
           type="button"
           onClick={isConnected ? disconnect : connect}
