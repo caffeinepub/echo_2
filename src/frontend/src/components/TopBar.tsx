@@ -3,23 +3,24 @@ import { useWallet } from "../hooks/useWallet";
 const ECHO_NEON_LOGO =
   "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
-// Glow values reduced ~7% from previous values for refined, intentional neon feel
+// Crisp neon feel: tighter glow radii, sharper tube edges, controlled purple aura
+// Outer glow reduced ~20%, purple aura tightened, inner blur sharpened for precision
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
   5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 3.5px rgba(100,160,255,0.42)) drop-shadow(0 0 7.5px rgba(170,120,255,0.52)); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 2px rgba(255,240,210,0.95)) drop-shadow(0 0 5px rgba(170,120,255,0.46)); }
   12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)); }
   18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
 }
 
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.33)) drop-shadow(0 0 5.5px rgba(160,100,255,0.38)) drop-shadow(0 0 17px rgba(130,60,255,0.21)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 4.5px rgba(110,170,255,0.45)) drop-shadow(0 0 9px rgba(170,110,255,0.53)) drop-shadow(0 0 22px rgba(140,70,255,0.30)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.33)) drop-shadow(0 0 5.5px rgba(160,100,255,0.38)) drop-shadow(0 0 17px rgba(130,60,255,0.21)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.88)) drop-shadow(0 0 4px rgba(160,100,255,0.34)) drop-shadow(0 0 13px rgba(130,60,255,0.18)); }
+  50%  { filter: brightness(1.04) drop-shadow(0 0 2px rgba(255,240,210,0.95)) drop-shadow(0 0 6.5px rgba(170,110,255,0.46)) drop-shadow(0 0 17px rgba(140,70,255,0.25)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.88)) drop-shadow(0 0 4px rgba(160,100,255,0.34)) drop-shadow(0 0 13px rgba(130,60,255,0.18)); }
 }
 
 .echo-logo-neon {
