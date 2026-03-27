@@ -3,23 +3,23 @@ import { useWallet } from "../hooks/useWallet";
 const ECHO_NEON_LOGO =
   "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
-// Glow values reduced ~10% from previous 35%-boosted values
+// Glow values reduced ~7% from previous values for refined, intentional neon feel
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
+  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
   5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 4px rgba(100,160,255,0.45)) drop-shadow(0 0 8px rgba(170,120,255,0.56)); }
+  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 3.5px rgba(100,160,255,0.42)) drop-shadow(0 0 7.5px rgba(170,120,255,0.52)); }
   12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)); }
+  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)); }
   18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 3px rgba(100,160,255,0.40)) drop-shadow(0 0 7px rgba(170,120,255,0.52)) drop-shadow(0 0 18px rgba(130,60,255,0.28)); }
+  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
+  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 2.8px rgba(100,160,255,0.37)) drop-shadow(0 0 6.5px rgba(170,120,255,0.48)) drop-shadow(0 0 17px rgba(130,60,255,0.26)); }
 }
 
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.36)) drop-shadow(0 0 6px rgba(160,100,255,0.41)) drop-shadow(0 0 18px rgba(130,60,255,0.23)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 5px rgba(110,170,255,0.48)) drop-shadow(0 0 10px rgba(170,110,255,0.57)) drop-shadow(0 0 24px rgba(140,70,255,0.32)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 3px rgba(100,160,255,0.36)) drop-shadow(0 0 6px rgba(160,100,255,0.41)) drop-shadow(0 0 18px rgba(130,60,255,0.23)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.33)) drop-shadow(0 0 5.5px rgba(160,100,255,0.38)) drop-shadow(0 0 17px rgba(130,60,255,0.21)); }
+  50%  { filter: brightness(1.05) drop-shadow(0 0 4.5px rgba(110,170,255,0.45)) drop-shadow(0 0 9px rgba(170,110,255,0.53)) drop-shadow(0 0 22px rgba(140,70,255,0.30)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 2.8px rgba(100,160,255,0.33)) drop-shadow(0 0 5.5px rgba(160,100,255,0.38)) drop-shadow(0 0 17px rgba(130,60,255,0.21)); }
 }
 
 .echo-logo-neon {
@@ -98,26 +98,25 @@ export function TopBar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 md:px-8 backdrop-blur-xl border-b"
+      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between backdrop-blur-xl border-b"
       style={{
         background: "oklch(0.07 0.005 240 / 0.90)",
         borderColor: "oklch(0.15 0.006 240)",
         height: "72px",
+        paddingLeft: "16px",
+        paddingRight: "20px",
       }}
     >
-      {/* Neon Logo — 220px, vertically centered, 16px left margin */}
-      <div
-        className="relative flex items-center self-center"
-        style={{ marginLeft: "16px" }}
-      >
+      {/* Neon Logo — 180px, 6px top offset for optical balance */}
+      <div className="relative flex items-center" style={{ paddingTop: "6px" }}>
         <img
           src={ECHO_NEON_LOGO}
           alt="ECHO"
           className="echo-logo-neon select-none"
           style={{
-            width: "220px",
+            width: "180px",
             height: "auto",
-            maxWidth: "min(220px, 36vw)",
+            maxWidth: "min(180px, 30vw)",
             objectFit: "contain",
             imageRendering: "auto",
             display: "block",
