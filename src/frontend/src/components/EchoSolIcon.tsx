@@ -4,7 +4,7 @@
  * Matches Echo logo neon aesthetic.
  *
  * Props:
- *   size      — width/height in px (default 16)
+ *   size      — height in px (default 16); width is always auto to preserve aspect ratio
  *   animated  — slow glow-pulse keyframe animation (default false)
  *   className — additional Tailwind / CSS classes
  */
@@ -37,6 +37,7 @@ export function EchoSolIcon({
           flex-shrink: 0;
           image-rendering: auto;
           margin-right: 6px;
+          width: auto;
         }
         .echo-sol-animated {
           animation: echo-sol-neon-pulse 5s ease-in-out infinite;
@@ -46,10 +47,15 @@ export function EchoSolIcon({
         src="/assets/generated/sol-icon-transparent.dim_128x128.png"
         alt="SOL"
         aria-hidden="true"
-        width={size}
         height={size}
         onError={() => setFailed(true)}
         className={`echo-sol-static${animated ? " echo-sol-animated" : ""}${className ? ` ${className}` : ""}`}
+        style={{
+          height: size,
+          width: "auto",
+          objectFit: "contain",
+          marginRight: 6,
+        }}
       />
     </>
   );
