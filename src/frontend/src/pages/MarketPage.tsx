@@ -224,7 +224,7 @@ function SignalCard({
             ? "0 0 24px oklch(0.82 0.15 210 / 0.08), inset 0 1px 0 oklch(0.82 0.15 210 / 0.05)"
             : accent === "violet"
               ? "0 0 24px oklch(0.55 0.25 290 / 0.08), inset 0 1px 0 oklch(0.55 0.25 290 / 0.05)"
-              : undefined,
+              : "0 1px 4px oklch(0 0 0 / 0.05), 0 4px 12px oklch(0 0 0 / 0.04)",
       }}
     >
       <p
@@ -403,9 +403,11 @@ function AlbumRow({
       transition={{ duration: 0.28, delay: index * 0.04 }}
       data-ocid={`discover.item.${rank}`}
       onClick={() => onAlbumClick(album.id)}
-      className="flex items-center gap-3 px-4 py-3.5 mb-1.5 rounded-2xl cursor-pointer transition-colors"
+      className="flex items-center gap-3 px-4 py-3.5 mb-1.5 rounded-2xl cursor-pointer transition-colors album-row-card"
       style={{
-        background: isActive ? "oklch(0.12 0.012 290)" : "var(--echo-surface)",
+        background: isActive
+          ? "oklch(0.55 0.25 290 / 0.08)"
+          : "var(--echo-surface)",
         border: isActive
           ? "1px solid oklch(0.55 0.25 290 / 0.35)"
           : "1px solid var(--echo-border-subtle)",
