@@ -2,8 +2,8 @@ import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { CommentsModal } from "../components/CommentsModal";
+import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
-import { SolSymbol } from "../components/SolSymbol";
 import { useWalletContext } from "../context/WalletContext";
 import type { SONGS, SongComment } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
@@ -31,7 +31,7 @@ function useCountdown(targetMs: number | null) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-interface SongFeedCardProps {
+interface LineupRowProps {
   song: (typeof SONGS)[0];
   index: number;
   likes: number;
@@ -40,13 +40,15 @@ interface SongFeedCardProps {
   minted: number;
   isOwned: boolean;
   isPlaying: boolean;
+  isExpanded: boolean;
   onToggleLike: () => void;
   onOpenComments: () => void;
   onBuy: () => void;
   onTogglePlay: () => void;
+  onToggleExpand: () => void;
 }
 
-function SongFeedCard({
+function LineupRow({
   song,
   index,
   likes,
@@ -55,16 +57,19 @@ function SongFeedCard({
   minted,
   isOwned,
   isPlaying,
+  isExpanded,
   onToggleLike,
   onOpenComments,
   onBuy,
   onTogglePlay,
-}: SongFeedCardProps) {
+  onToggleExpand,
+}: LineupRowProps) {
   const countdown = useCountdown(
     song.mintOpensInMs !== 0 && song.mintOpensInMs !== null
       ? song.mintOpensInMs
       : null,
   );
+
   const [progress, setProgress] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -96,277 +101,362 @@ function SongFeedCard({
   const isSoldOut = song.isSoldOut;
   const isLive = !isUpcoming && !isSoldOut;
 
-  const mintPercent = song.supply > 0 ? (minted / song.supply) * 100 : 0;
-
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 16 }}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.45,
-        delay: index * 0.06,
+        duration: 0.4,
+        delay: index * 0.05,
         ease: [0.22, 1, 0.36, 1],
       }}
       data-ocid={`releases.item.${index + 1}`}
     >
-      {/* Artwork — full width, edge-to-edge */}
-      <div className="relative w-full aspect-square overflow-hidden">
-        <img
-          src={song.artworkSrc}
-          alt={song.title}
-          className="w-full h-full object-cover"
-          style={{
-            transform: isPlaying ? "scale(1.03)" : "scale(1)",
-            transition: "transform 0.8s ease",
-          }}
-        />
-
-        {/* Overlay for sold-out */}
-        {isSoldOut && (
-          <>
-            <div className="absolute inset-0 bg-black/40" />
-            <span
-              className="absolute top-4 left-4 text-[10px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-sm"
-              style={{
-                border: "1px solid rgba(255,255,255,0.15)",
-                color: "rgba(255,255,255,0.45)",
-                backgroundColor: "rgba(0,0,0,0.5)",
-              }}
-            >
-              Sold Out
-            </span>
-          </>
-        )}
-
-        {/* Overlay for upcoming */}
-        {isUpcoming && (
-          <>
-            <div className="absolute inset-0 bg-black/30" />
-            <div
-              className="absolute top-4 left-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{
-                backgroundColor: "rgba(0,0,0,0.6)",
-                border: "1px solid rgba(251, 191, 36, 0.25)",
-              }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70" />
-              <span className="text-[10px] font-mono text-amber-400/80 tracking-wide">
-                Upcoming
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* Live indicator */}
-        {isLive && (
-          <div className="absolute top-4 right-4 flex items-center gap-1.5">
-            <span
-              className="w-1.5 h-1.5 rounded-full bg-green-400/70"
-              style={{ boxShadow: "0 0 6px rgba(74,222,128,0.6)" }}
-            />
-          </div>
-        )}
-
-        {/* Play button on artwork */}
-        {!isSoldOut && (
-          <button
-            type="button"
-            onClick={onTogglePlay}
-            data-ocid={`releases.item.${index + 1}.toggle`}
-            className="absolute bottom-4 right-4 flex items-center justify-center rounded-full transition-all"
+      {/* Collapsed Row */}
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="w-full text-left transition-colors"
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <div
+          className="flex items-center gap-3 px-4"
+          style={{ minHeight: 76, paddingTop: 10, paddingBottom: 10 }}
+        >
+          {/* Artwork thumbnail */}
+          <div
+            className="flex-shrink-0 overflow-hidden relative"
             style={{
-              width: 44,
-              height: 44,
-              backgroundColor: "rgba(0,0,0,0.65)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              backdropFilter: "blur(8px)",
-              boxShadow: isPlaying ? "0 0 20px rgba(124,58,237,0.5)" : "none",
+              width: 56,
+              height: 56,
+              borderRadius: 4,
+              opacity: isSoldOut ? 0.45 : 1,
             }}
           >
-            {isPlaying ? (
-              <Pause size={16} className="text-white" fill="white" />
-            ) : (
-              <Play
-                size={16}
-                className="text-white"
-                fill="white"
-                style={{ marginLeft: 2 }}
-              />
+            <img
+              src={song.artworkSrc}
+              alt={song.title}
+              className="w-full h-full object-cover"
+            />
+            {isPlaying && (
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+              >
+                <div className="w-1 h-1 rounded-full bg-violet-400 animate-ping" />
+              </div>
             )}
-          </button>
-        )}
+          </div>
 
-        {/* Pulse ring when playing */}
-        {isPlaying && (
-          <div
-            className="absolute bottom-4 right-4 rounded-full pointer-events-none"
-            style={{
-              width: 44,
-              height: 44,
-              animation: "feed-pulse 2s ease-out infinite",
-              border: "1.5px solid rgba(124,58,237,0.5)",
-            }}
-          />
-        )}
-      </div>
-
-      {/* Song info */}
-      <div className="px-4 pt-3">
-        <p className="text-lg font-semibold text-white leading-snug">
-          {song.title}
-        </p>
-        <p className="text-sm text-white/50 mt-0.5">{song.artist}</p>
-      </div>
-
-      {/* Preview progress bar */}
-      <div className="px-4 pt-3 flex items-center gap-3">
-        <span className="text-[11px] text-white/30 font-mono">30s preview</span>
-        <div
-          className="flex-1 rounded-full overflow-hidden"
-          style={{ height: 2, backgroundColor: "rgba(255,255,255,0.1)" }}
-        >
-          <div
-            className="h-full rounded-full transition-all duration-1000"
-            style={{
-              width: `${progress}%`,
-              background: "linear-gradient(90deg, #7C3AED, #a78bfa)",
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Action row */}
-      <div className="px-4 pt-3 flex items-center gap-5">
-        <button
-          type="button"
-          onClick={onToggleLike}
-          data-ocid={`releases.item.${index + 1}.toggle`}
-          className="flex items-center gap-1.5 transition-transform active:scale-90"
-        >
-          <Heart
-            size={20}
-            className={isLiked ? "text-pink-400" : "text-white/40"}
-            fill={isLiked ? "currentColor" : "none"}
-          />
-          <span className="text-sm text-white/50">{likes}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenComments}
-          data-ocid={`releases.item.${index + 1}.button`}
-          className="flex items-center gap-1.5 transition-transform active:scale-90"
-        >
-          <MessageCircle size={20} className="text-white/40" />
-          <span className="text-sm text-white/50">{comments.length}</span>
-        </button>
-      </div>
-
-      {/* Mint info */}
-      <div className="px-4 pt-2 pb-1">
-        {isUpcoming ? (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-mono text-amber-400/80">
-              Mint opens in {countdown}
-            </span>
-            <button
-              type="button"
-              disabled
-              className="mt-1 w-full py-2.5 rounded-xl text-sm font-medium text-white/30 cursor-not-allowed"
+          {/* Title + Artist */}
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-white leading-tight truncate"
+              style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.01em" }}
+            >
+              {song.title}
+            </p>
+            <p
+              className="truncate mt-0.5"
               style={{
-                backgroundColor: "rgba(124,58,237,0.2)",
-                border: "1px solid rgba(124,58,237,0.15)",
+                fontSize: 12,
+                color: "rgba(255,255,255,0.38)",
+                letterSpacing: "0.01em",
               }}
             >
-              <span className="flex items-center justify-center gap-2">
-                <SolSymbol />
-                {song.mintPrice} SOL
-              </span>
-            </button>
+              {song.artist}
+            </p>
           </div>
-        ) : isSoldOut ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+
+          {/* Status */}
+          <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+            {isUpcoming && (
+              <>
+                <span
+                  className="font-mono uppercase"
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.14em",
+                    color: "#FBBF24",
+                    opacity: 0.85,
+                  }}
+                >
+                  Upcoming
+                </span>
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(251,191,36,0.55)",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {countdown}
+                </span>
+              </>
+            )}
+            {isLive && (
+              <>
+                <div className="flex items-center gap-1">
+                  <span
+                    className="rounded-full"
+                    style={{
+                      width: 5,
+                      height: 5,
+                      backgroundColor: "#4ADE80",
+                      boxShadow: "0 0 5px rgba(74,222,128,0.7)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: 9,
+                      letterSpacing: "0.14em",
+                      color: "rgba(74,222,128,0.75)",
+                    }}
+                  >
+                    Live
+                  </span>
+                </div>
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {minted} / {song.supply}
+                </span>
+              </>
+            )}
+            {isSoldOut && (
               <span
-                className="text-[11px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-sm"
+                className="font-mono uppercase"
                 style={{
-                  border: "1px solid rgba(255,100,100,0.2)",
-                  color: "rgba(255,120,120,0.5)",
+                  fontSize: 9,
+                  letterSpacing: "0.14em",
+                  color: "rgba(255,100,100,0.55)",
                 }}
               >
                 Sold Out
               </span>
-              <span className="text-[12px] text-white/25 font-mono">
-                {song.supply} / {song.supply} minted
-              </span>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {/* Supply row */}
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] text-white/40 font-mono">
-                {minted} / {song.supply} minted
-              </span>
-              {isOwned && (
-                <span
-                  className="text-[10px] font-mono tracking-widest uppercase px-1.5 py-0.5 rounded-sm"
+        </div>
+      </button>
+
+      {/* Expanded Panel */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            key="expand"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: "hidden" }}
+          >
+            <div
+              className="px-4 py-4 flex flex-col gap-3"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.025)",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {/* Preview row */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePlay();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.toggle`}
+                  disabled={isSoldOut}
+                  className="flex-shrink-0 flex items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                   style={{
-                    border: "1px solid rgba(124,58,237,0.3)",
-                    color: "rgba(167,139,250,0.7)",
+                    width: 32,
+                    height: 32,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    backgroundColor: isPlaying
+                      ? "rgba(124,58,237,0.3)"
+                      : "rgba(255,255,255,0.06)",
                   }}
                 >
-                  Owned
-                </span>
-              )}
-            </div>
-            {/* Progress bar */}
-            <div
-              className="w-full rounded-full overflow-hidden"
-              style={{ height: 2, backgroundColor: "rgba(255,255,255,0.08)" }}
-            >
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${mintPercent}%`,
-                  background:
-                    "linear-gradient(90deg, rgba(124,58,237,0.8), rgba(167,139,250,0.5))",
-                }}
-              />
-            </div>
-            {/* Price + buy */}
-            <div className="flex items-center gap-3 mt-0.5">
-              <span className="flex items-center gap-1 text-sm text-white/70 font-mono">
-                <SolSymbol />
-                {song.mintPrice}
-              </span>
-              {isOwned ? (
-                <button
-                  type="button"
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white/50 border"
-                  style={{ borderColor: "rgba(255,255,255,0.1)" }}
-                >
-                  Play Song
+                  {isPlaying ? (
+                    <Pause size={12} className="text-white" fill="white" />
+                  ) : (
+                    <Play
+                      size={12}
+                      className="text-white/80"
+                      fill="currentColor"
+                      style={{ marginLeft: 1 }}
+                    />
+                  )}
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onBuy}
-                  data-ocid={`releases.item.${index + 1}.primary_button`}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80"
-                  style={{ backgroundColor: "#7C3AED" }}
-                >
-                  Buy
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Separator */}
-      <div className="mt-4 border-t border-white/5" />
-    </motion.article>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: 10,
+                        color: "rgba(255,255,255,0.3)",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
+                      30s preview
+                    </span>
+                    {isPlaying && (
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: 10,
+                          color: "rgba(124,58,237,0.7)",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        playing
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="w-full rounded-full overflow-hidden"
+                    style={{
+                      height: 2,
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{
+                        width: `${progress}%`,
+                        background: "linear-gradient(90deg, #7C3AED, #a78bfa)",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Social row */}
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleLike();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.toggle`}
+                  className="flex items-center gap-1.5 transition-transform active:scale-90"
+                >
+                  <Heart
+                    size={14}
+                    className={isLiked ? "text-pink-400" : "text-white/30"}
+                    fill={isLiked ? "currentColor" : "none"}
+                  />
+                  <span
+                    style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}
+                  >
+                    {likes}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenComments();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.button`}
+                  className="flex items-center gap-1.5 transition-transform active:scale-90"
+                >
+                  <MessageCircle size={14} className="text-white/30" />
+                  <span
+                    style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}
+                  >
+                    {comments.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Mint row */}
+              {!isSoldOut && (
+                <div
+                  className="flex items-center justify-between pt-1"
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  <div className="flex items-center">
+                    <EchoSolIcon size={14} />
+                    <span
+                      className="font-mono"
+                      style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}
+                    >
+                      {song.mintPrice} SOL
+                    </span>
+                  </div>
+
+                  {isOwned ? (
+                    <span
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: "0.14em",
+                        color: "rgba(167,139,250,0.6)",
+                        border: "1px solid rgba(124,58,237,0.2)",
+                        padding: "3px 8px",
+                        borderRadius: 3,
+                      }}
+                    >
+                      Owned
+                    </span>
+                  ) : isUpcoming ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="font-mono cursor-not-allowed"
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: "0.04em",
+                        color: "rgba(251,191,36,0.45)",
+                        border: "1px solid rgba(251,191,36,0.15)",
+                        padding: "4px 10px",
+                        borderRadius: 4,
+                        backgroundColor: "transparent",
+                      }}
+                    >
+                      Opens in {countdown}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBuy();
+                      }}
+                      data-ocid={`releases.item.${index + 1}.primary_button`}
+                      className="font-medium text-white transition-opacity hover:opacity-90 active:opacity-75"
+                      style={{
+                        fontSize: 12,
+                        letterSpacing: "0.04em",
+                        backgroundColor: "#7C3AED",
+                        padding: "6px 16px",
+                        borderRadius: 4,
+                      }}
+                    >
+                      Mint
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -401,6 +491,7 @@ export function ReleasesPage({
   const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
   const [mintModalAlbumId, setMintModalAlbumId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Simulate live updates
   useEffect(() => {
@@ -477,23 +568,45 @@ export function ReleasesPage({
     setPlayingId((prev) => (prev === id ? null : id));
   }
 
+  function handleToggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
   const openCommentsSong = openCommentsId
     ? allAlbums.find((s) => s.id === openCommentsId)
     : null;
 
   return (
     <>
-      <style>{`
-        @keyframes feed-pulse {
-          0% { transform: scale(1); opacity: 0.6; }
-          100% { transform: scale(1.7); opacity: 0; }
-        }
-      `}</style>
+      <div className="pb-24 pt-2">
+        {/* Page header */}
+        <div className="px-4 pt-4 pb-5">
+          <p
+            className="uppercase tracking-widest font-mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: "rgba(255,255,255,0.22)",
+            }}
+          >
+            Lineup
+          </p>
+          <div
+            className="mt-2"
+            style={{ height: 1, backgroundColor: "rgba(255,255,255,0.06)" }}
+          />
+          <p
+            className="mt-2"
+            style={{ fontSize: 10, color: "rgba(255,255,255,0.16)" }}
+          >
+            {allAlbums.length} drop{allAlbums.length !== 1 ? "s" : ""}
+          </p>
+        </div>
 
-      <div className="pb-24 pt-4">
-        <div className="flex flex-col gap-0">
+        {/* Lineup rows */}
+        <div>
           {allAlbums.map((song, i) => (
-            <SongFeedCard
+            <LineupRow
               key={song.id}
               song={song}
               index={i}
@@ -503,10 +616,12 @@ export function ReleasesPage({
               minted={mintedMap[song.id] ?? song.minted}
               isOwned={ownedAlbumIds.includes(song.id)}
               isPlaying={playingId === song.id}
+              isExpanded={expandedId === song.id}
               onToggleLike={() => handleToggleLike(song.id)}
               onOpenComments={() => setOpenCommentsId(song.id)}
               onBuy={() => setMintModalAlbumId(song.id)}
               onTogglePlay={() => handleTogglePlay(song.id)}
+              onToggleExpand={() => handleToggleExpand(song.id)}
             />
           ))}
         </div>

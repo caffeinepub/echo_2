@@ -1,34 +1,51 @@
 # ECHO
 
 ## Current State
-The Releases tab renders a 2-column grid of compact song tiles (`ReleaseTile`). Each tile shows square artwork, song title, artist, edition count, mint price, status text, and a small Buy button. The data model (`Song`) already supports `mintOpensInMs`, `isSoldOut`, `editions_in_circulation`, `supply`, and `mintPrice`. Mock data has 2 songs (Fragments live, Charcoal sold out). The MintModal handles the full mint flow.
+ReleasesPage.tsx renders a vertical feed of large full-bleed song cards (`SongFeedCard`). Each card:
+- Shows full-width square artwork at the top
+- Song title + artist below
+- Preview progress bar
+- Like/comment action row
+- Mint info section (countdown / minted count / buy button)
+- Full-width `<motion.article>` separated by thin dividers
+
+The result is heavy, card-like, and feels like an NFT drop grid.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `likes` and `comments` fields to the `Song` data model (mock values)
-- A new `SongFeedCard` component: full-width vertical card with large artwork, song info, 30s preview player, like button with live count, comment button, mint status (X/Y minted), countdown timer for upcoming drops, and Buy/Mint button
-- `CommentsModal` component: slide-up panel showing comment list (wallet address, text, timestamp) and a comment input field
-- Social state management: local `likes` map and `comments` map (keyed by song id) with optimistic updates
-- Countdown timer hook (already exists, reuse)
-- Sold Out badge overlay on artwork
-- Auto-live like/mint count simulation (increments every few seconds for realism)
+- `LineupRow` component: a compact horizontal row (not a full card)
+- Small square artwork thumbnail (48–56px) on the left
+- Song title (bold, white) + artist name (muted) stacked in center column
+- Status badge (Upcoming / Live / Sold Out) on the right
+- Countdown timer displayed inline when status is Upcoming: "Mint opens in HH:MM:SS"
+- Minted count displayed inline when status is Live: "87 / 150 minted"
+- Tap-to-expand accordion behavior: tapping a row reveals an expanded panel below it
+- Expanded panel contains: preview play/pause button (30s), like button with count, comment button with count, mint price + mint button
+- Thin horizontal rule separating rows (very subtle, low opacity)
+- A page header/section label: e.g. "DROPS" or "LINEUP" in small caps, editorial style
 
 ### Modify
-- `ReleasesPage`: replace 2-column grid with a vertical scrolling single-column feed of `SongFeedCard` components, newest first
-- `songs.ts`: add `likes`, `comments` array, and a 3rd upcoming song (future `mintOpensInMs`) to demo countdown state
-- Remove the old `ReleaseTile` component
+- Remove `SongFeedCard` component entirely
+- Remove full-width artwork display from the feed view (artwork only shows as small thumbnail)
+- Replace heavy card layout with slim lineup rows
+- Keep all existing state logic (likes, comments, mint, countdown, play timer) — just move it into the new row + expand panel structure
+- Keep `CommentsModal` and `MintModal` integrations intact
 
 ### Remove
-- Grid layout in ReleasesPage
-- `ReleaseTile` component
-- Any tracklist or multi-track references in Releases context
+- Full-width artwork panel
+- Preview progress bar from the main card view (move to expanded state)
+- Heavy card container styles (borders, background panels, large padding blocks)
 
 ## Implementation Plan
-1. Extend `Song` type with `likes: number` and `comments: SongComment[]`
-2. Add 3rd mock song with `mintOpensInMs > 0` for countdown demo
-3. Build `CommentsModal` (slide-up, shows comments, allows adding a new one)
-4. Build `SongFeedCard` with: large artwork (aspect-square), play preview button, like/comment action row, mint supply bar, countdown or Buy button
-5. Replace `ReleasesPage` body with vertical scroll feed using `SongFeedCard`
-6. Wire local state for likes/comments with optimistic updates and subtle live count simulation
-7. Validate and fix any type errors
+1. Replace `SongFeedCard` with a new `LineupRow` component in `ReleasesPage.tsx`
+2. `LineupRow` default state: `[thumbnail] [title + artist] [status/count/timer]` in a single horizontal row
+3. Expanded state (toggled on row tap): slides open a detail panel beneath the row with play controls, like/comment, price, and buy button
+4. Use `AnimatePresence` + `motion.div` for the expand/collapse animation (smooth height, opacity)
+5. Status column logic:
+   - Upcoming: amber label + countdown timer line below
+   - Live: green dot + "XX / YY minted" line
+   - Sold Out: muted red/white label
+6. Keep all existing state hooks (likesMap, mintedMap, commentsMap, playingId, likeTimer, mintTimer)
+7. Section header at top: small-caps editorial label (e.g. "LINEUP" or "DROPS") with a thin rule
+8. Dark premium styling: no heavy box shadows, no rounded card panels, minimal borders, generous row height (~72–80px), editorial typography
