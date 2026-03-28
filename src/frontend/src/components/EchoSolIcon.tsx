@@ -1,11 +1,11 @@
 /**
  * EchoSolIcon — Official Solana mark (three stacked parallelogram bars).
  * Uses the exact official path geometry with the canonical purple → teal gradient.
- * Optimized for dark backgrounds, crisp at 16–18px.
+ * Optimized for dark backgrounds, crisp at 14–16px.
  *
  * Props:
- *   size      — height in px (default 16)
- *   large     — if true, height is 18px (for stat cards)
+ *   size      — height in px (default 14)
+ *   large     — if true, height is 16px (for stat cards)
  *   animated  — slow glow-pulse keyframe animation (default false)
  *   className — additional CSS classes
  */
@@ -20,7 +20,7 @@ export function EchoSolIcon({
   animated?: boolean;
   className?: string;
 }) {
-  const height = size ?? (large ? 18 : 16);
+  const height = size ?? (large ? 16 : 14);
   // Official Solana mark viewBox is 397.7 x 311.7; aspect ratio ≈ 1.277
   const width = Math.round(height * 1.277);
 
@@ -51,7 +51,7 @@ export function EchoSolIcon({
           display: "inline-block",
           flexShrink: 0,
           verticalAlign: "middle",
-          marginRight: 7,
+          marginRight: 6,
         }}
       >
         <defs>
