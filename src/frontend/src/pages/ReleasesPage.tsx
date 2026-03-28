@@ -116,23 +116,34 @@ function LineupRow({
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full text-left transition-colors"
+        className="w-full text-left"
         style={{
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: isExpanded
+            ? "none"
+            : "1px solid rgba(255,255,255,0.055)",
+          transition: "background 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+            "rgba(255,255,255,0.02)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+            "transparent";
         }}
       >
         <div
-          className="flex items-center gap-3 px-4"
-          style={{ minHeight: 76, paddingTop: 10, paddingBottom: 10 }}
+          className="flex items-center px-4"
+          style={{ paddingTop: 12, paddingBottom: 12, gap: 12 }}
         >
           {/* Artwork thumbnail */}
           <div
             className="flex-shrink-0 overflow-hidden relative"
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 4,
-              opacity: isSoldOut ? 0.45 : 1,
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              opacity: isSoldOut ? 0.35 : 1,
             }}
           >
             <img
@@ -143,27 +154,35 @@ function LineupRow({
             {isPlaying && (
               <div
                 className="absolute inset-0 flex items-center justify-center"
-                style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
+                style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
               >
-                <div className="w-1 h-1 rounded-full bg-violet-400 animate-ping" />
+                <span
+                  className="block rounded-full"
+                  style={{
+                    width: 5,
+                    height: 5,
+                    backgroundColor: "#a78bfa",
+                    animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite",
+                  }}
+                />
               </div>
             )}
           </div>
 
           {/* Title + Artist */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0" style={{ paddingRight: 8 }}>
             <p
-              className="text-white leading-tight truncate"
+              className="text-white leading-snug truncate"
               style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.01em" }}
             >
               {song.title}
             </p>
             <p
-              className="truncate mt-0.5"
+              className="truncate"
               style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.38)",
-                letterSpacing: "0.01em",
+                fontSize: 11,
+                color: "rgba(255,255,255,0.32)",
+                marginTop: 2,
               }}
             >
               {song.artist}
@@ -171,26 +190,28 @@ function LineupRow({
           </div>
 
           {/* Status */}
-          <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+          <div
+            className="flex-shrink-0 flex flex-col items-end"
+            style={{ gap: 2, maxWidth: 110 }}
+          >
             {isUpcoming && (
               <>
                 <span
                   className="font-mono uppercase"
                   style={{
-                    fontSize: 9,
-                    letterSpacing: "0.14em",
-                    color: "#FBBF24",
-                    opacity: 0.85,
+                    fontSize: 8,
+                    letterSpacing: "0.18em",
+                    color: "rgba(251,191,36,0.6)",
                   }}
                 >
-                  Upcoming
+                  DROPS IN
                 </span>
                 <span
                   className="font-mono"
                   style={{
-                    fontSize: 10,
-                    color: "rgba(251,191,36,0.55)",
-                    letterSpacing: "0.04em",
+                    fontSize: 11,
+                    color: "rgba(251,191,36,0.4)",
+                    letterSpacing: "0.06em",
                   }}
                 >
                   {countdown}
@@ -199,37 +220,34 @@ function LineupRow({
             )}
             {isLive && (
               <>
-                <div className="flex items-center gap-1">
+                <span
+                  className="font-mono uppercase flex items-center"
+                  style={{
+                    fontSize: 8,
+                    letterSpacing: "0.18em",
+                    color: "rgba(74,222,128,0.7)",
+                    gap: 3,
+                  }}
+                >
+                  LIVE NOW
                   <span
-                    className="rounded-full"
                     style={{
-                      width: 5,
-                      height: 5,
-                      backgroundColor: "#4ADE80",
-                      boxShadow: "0 0 5px rgba(74,222,128,0.7)",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: 9,
-                      letterSpacing: "0.14em",
-                      color: "rgba(74,222,128,0.75)",
+                      display: "inline-block",
+                      animation: "livePulse 1.4s ease-in-out infinite",
                     }}
                   >
-                    Live
+                    ●
                   </span>
-                </div>
+                </span>
                 <span
                   className="font-mono"
                   style={{
                     fontSize: 10,
                     color: "rgba(255,255,255,0.3)",
-                    letterSpacing: "0.02em",
+                    letterSpacing: "0.03em",
                   }}
                 >
-                  {minted} / {song.supply}
+                  {minted} / {song.supply} minted
                 </span>
               </>
             )}
@@ -237,12 +255,12 @@ function LineupRow({
               <span
                 className="font-mono uppercase"
                 style={{
-                  fontSize: 9,
-                  letterSpacing: "0.14em",
-                  color: "rgba(255,100,100,0.55)",
+                  fontSize: 8,
+                  letterSpacing: "0.18em",
+                  color: "rgba(255,255,255,0.2)",
                 }}
               >
-                Sold Out
+                SOLD OUT
               </span>
             )}
           </div>
@@ -261,14 +279,17 @@ function LineupRow({
             style={{ overflow: "hidden" }}
           >
             <div
-              className="px-4 py-4 flex flex-col gap-3"
               style={{
-                backgroundColor: "rgba(255,255,255,0.025)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "1px solid rgba(255,255,255,0.07)",
+                borderBottom: "1px solid rgba(255,255,255,0.055)",
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
               }}
             >
               {/* Preview row */}
-              <div className="flex items-center gap-3">
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -277,65 +298,67 @@ function LineupRow({
                   }}
                   data-ocid={`releases.item.${index + 1}.toggle`}
                   disabled={isSoldOut}
-                  className="flex-shrink-0 flex items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                   style={{
-                    width: 32,
-                    height: 32,
-                    border: "1px solid rgba(255,255,255,0.14)",
+                    flexShrink: 0,
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "1px solid rgba(255,255,255,0.12)",
                     backgroundColor: isPlaying
-                      ? "rgba(124,58,237,0.3)"
-                      : "rgba(255,255,255,0.06)",
+                      ? "rgba(124,58,237,0.2)"
+                      : "rgba(255,255,255,0.04)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: isSoldOut ? "not-allowed" : "pointer",
+                    opacity: isSoldOut ? 0.3 : 1,
+                    transition: "background 0.15s",
                   }}
                 >
                   {isPlaying ? (
-                    <Pause size={12} className="text-white" fill="white" />
+                    <Pause size={11} color="white" fill="white" />
                   ) : (
                     <Play
-                      size={12}
-                      className="text-white/80"
-                      fill="currentColor"
+                      size={11}
+                      color="rgba(255,255,255,0.8)"
+                      fill="rgba(255,255,255,0.8)"
                       style={{ marginLeft: 1 }}
                     />
                   )}
                 </button>
 
-                <div className="flex-1 flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="font-mono"
-                      style={{
-                        fontSize: 10,
-                        color: "rgba(255,255,255,0.3)",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      30s preview
-                    </span>
-                    {isPlaying && (
-                      <span
-                        className="font-mono"
-                        style={{
-                          fontSize: 10,
-                          color: "rgba(124,58,237,0.7)",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        playing
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className="w-full rounded-full overflow-hidden"
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  <span
+                    className="font-mono uppercase"
                     style={{
-                      height: 2,
-                      backgroundColor: "rgba(255,255,255,0.08)",
+                      fontSize: 9,
+                      color: "rgba(255,255,255,0.25)",
+                      letterSpacing: "0.12em",
+                    }}
+                  >
+                    30S PREVIEW
+                  </span>
+                  <div
+                    style={{
+                      height: 1.5,
+                      borderRadius: 1,
+                      backgroundColor: "rgba(255,255,255,0.07)",
+                      overflow: "hidden",
                     }}
                   >
                     <div
-                      className="h-full rounded-full transition-all duration-1000"
                       style={{
+                        height: "100%",
                         width: `${progress}%`,
-                        background: "linear-gradient(90deg, #7C3AED, #a78bfa)",
+                        background: "linear-gradient(90deg,#7C3AED,#a78bfa)",
+                        transition: "width 1s linear",
                       }}
                     />
                   </div>
@@ -343,7 +366,7 @@ function LineupRow({
               </div>
 
               {/* Social row */}
-              <div className="flex items-center gap-4">
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -351,15 +374,23 @@ function LineupRow({
                     onToggleLike();
                   }}
                   data-ocid={`releases.item.${index + 1}.toggle`}
-                  className="flex items-center gap-1.5 transition-transform active:scale-90"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
                 >
                   <Heart
-                    size={14}
-                    className={isLiked ? "text-pink-400" : "text-white/30"}
-                    fill={isLiked ? "currentColor" : "none"}
+                    size={13}
+                    color={isLiked ? "#f472b6" : "rgba(255,255,255,0.25)"}
+                    fill={isLiked ? "#f472b6" : "none"}
                   />
                   <span
-                    style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}
+                    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}
                   >
                     {likes}
                   </span>
@@ -372,28 +403,46 @@ function LineupRow({
                     onOpenComments();
                   }}
                   data-ocid={`releases.item.${index + 1}.button`}
-                  className="flex items-center gap-1.5 transition-transform active:scale-90"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
                 >
-                  <MessageCircle size={14} className="text-white/30" />
+                  <MessageCircle size={13} color="rgba(255,255,255,0.25)" />
                   <span
-                    style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}
+                    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}
                   >
                     {comments.length}
                   </span>
                 </button>
               </div>
 
-              {/* Mint row */}
+              {/* Price + action row */}
               {!isSoldOut && (
                 <div
-                  className="flex items-center justify-between pt-1"
-                  style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingTop: 2,
+                  }}
                 >
-                  <div className="flex items-center">
-                    <EchoSolIcon size={14} />
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <EchoSolIcon size={13} />
                     <span
                       className="font-mono"
-                      style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}
+                      style={{
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.5)",
+                        marginLeft: 2,
+                      }}
                     >
                       {song.mintPrice} SOL
                     </span>
@@ -404,32 +453,26 @@ function LineupRow({
                       className="font-mono uppercase"
                       style={{
                         fontSize: 9,
-                        letterSpacing: "0.14em",
-                        color: "rgba(167,139,250,0.6)",
+                        letterSpacing: "0.1em",
+                        color: "rgba(167,139,250,0.5)",
                         border: "1px solid rgba(124,58,237,0.2)",
                         padding: "3px 8px",
-                        borderRadius: 3,
+                        borderRadius: 2,
                       }}
                     >
-                      Owned
+                      OWNED
                     </span>
                   ) : isUpcoming ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="font-mono cursor-not-allowed"
+                    <span
+                      className="font-mono uppercase"
                       style={{
-                        fontSize: 10,
-                        letterSpacing: "0.04em",
-                        color: "rgba(251,191,36,0.45)",
-                        border: "1px solid rgba(251,191,36,0.15)",
-                        padding: "4px 10px",
-                        borderRadius: 4,
-                        backgroundColor: "transparent",
+                        fontSize: 9,
+                        letterSpacing: "0.06em",
+                        color: "rgba(251,191,36,0.4)",
                       }}
                     >
-                      Opens in {countdown}
-                    </button>
+                      OPENS IN {countdown}
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -438,16 +481,20 @@ function LineupRow({
                         onBuy();
                       }}
                       data-ocid={`releases.item.${index + 1}.primary_button`}
-                      className="font-medium text-white transition-opacity hover:opacity-90 active:opacity-75"
+                      className="font-mono uppercase"
                       style={{
-                        fontSize: 12,
-                        letterSpacing: "0.04em",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        letterSpacing: "0.1em",
                         backgroundColor: "#7C3AED",
-                        padding: "6px 16px",
-                        borderRadius: 4,
+                        color: "white",
+                        padding: "6px 18px",
+                        borderRadius: 2,
+                        border: "none",
+                        cursor: "pointer",
                       }}
                     >
-                      Mint
+                      MINT
                     </button>
                   )}
                 </div>
@@ -576,31 +623,61 @@ export function ReleasesPage({
     ? allAlbums.find((s) => s.id === openCommentsId)
     : null;
 
+  // Pad drop count to 2 digits
+  const dropCount = String(allAlbums.length).padStart(2, "0");
+
   return (
     <>
-      <div className="pb-24 pt-2">
-        {/* Page header */}
-        <div className="px-4 pt-4 pb-5">
-          <p
-            className="uppercase tracking-widest font-mono"
+      <style>{`
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
+
+      <div className="pb-24">
+        {/* Editorial page header */}
+        <div
+          style={{
+            padding: "20px 16px 0",
+          }}
+        >
+          <div
             style={{
-              fontSize: 10,
-              letterSpacing: "0.22em",
-              color: "rgba(255,255,255,0.22)",
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              paddingBottom: 12,
             }}
           >
-            Lineup
-          </p>
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.22em",
+                color: "rgba(255,255,255,0.6)",
+              }}
+            >
+              LINEUP
+            </span>
+            <span
+              className="font-mono"
+              style={{
+                fontSize: 10,
+                color: "rgba(255,255,255,0.25)",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {dropCount} DROPS
+            </span>
+          </div>
           <div
-            className="mt-2"
-            style={{ height: 1, backgroundColor: "rgba(255,255,255,0.06)" }}
+            style={{
+              height: 1,
+              backgroundColor: "rgba(255,255,255,0.07)",
+            }}
           />
-          <p
-            className="mt-2"
-            style={{ fontSize: 10, color: "rgba(255,255,255,0.16)" }}
-          >
-            {allAlbums.length} drop{allAlbums.length !== 1 ? "s" : ""}
-          </p>
         </div>
 
         {/* Lineup rows */}
