@@ -32,7 +32,7 @@ function getStatusLabel(
   return null;
 }
 
-function SongCard({
+function VideoCard({
   song,
   index,
   onPlay,
@@ -71,7 +71,7 @@ function SongCard({
         )}
       </div>
 
-      {/* Artwork */}
+      {/* Artwork / thumbnail */}
       <div className="relative rounded-xl overflow-hidden aspect-square">
         <img
           src={song.artworkSrc}
@@ -87,6 +87,19 @@ function SongCard({
             }}
           />
         )}
+        {/* Category badge */}
+        <div className="absolute bottom-1.5 left-1.5">
+          <span
+            className="text-[8px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded"
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              color: "rgba(255,255,255,0.75)",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            {song.category}
+          </span>
+        </div>
       </div>
 
       {/* Info */}
@@ -165,42 +178,42 @@ export function LibraryPage({
 }: LibraryPageProps) {
   const { ownedAlbums } = useMockData();
   const { isConnected } = useWalletContext();
-  const audioPlayer = useAudioPlayer();
+  const videoPlayer = useAudioPlayer();
 
   const [lastPlayedMap, setLastPlayedMap] = useState<Record<string, number>>(
     {},
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const queueIds = audioPlayer.queue.map((t) => t.id);
+  const queueIds = videoPlayer.queue.map((t) => t.id);
   const isLibraryPlaying =
-    audioPlayer.isPlaying && audioPlayer.currentTrack?.mode === "library";
+    videoPlayer.isPlaying && videoPlayer.currentTrack?.mode === "library";
 
   // Sort by most recently played descending; unplayed go to bottom
-  const sortedSongs = [...ownedAlbums].sort((a, b) => {
+  const sortedVideos = [...ownedAlbums].sort((a, b) => {
     const ta = lastPlayedMap[a.id] ?? 0;
     const tb = lastPlayedMap[b.id] ?? 0;
     return tb - ta;
   });
 
   function handlePlay(song: Song) {
-    audioPlayer.playLibrary({
+    videoPlayer.playLibrary({
       id: song.id,
       title: song.title,
-      artist: song.artist,
+      creator: song.creator,
       artworkSrc: song.artworkSrc,
-      preview_url: song.preview_url,
+      video_url: song.video_preview_url,
     });
     setLastPlayedMap((prev) => ({ ...prev, [song.id]: Date.now() }));
   }
 
   function handleQueue(song: Song) {
-    audioPlayer.addToQueue({
+    videoPlayer.addToQueue({
       id: song.id,
       title: song.title,
-      artist: song.artist,
+      creator: song.creator,
       artworkSrc: song.artworkSrc,
-      preview_url: song.preview_url,
+      video_url: song.video_preview_url,
     });
   }
 
@@ -229,7 +242,7 @@ export function LibraryPage({
           data-ocid="library.empty_state"
           className="flex flex-col items-center justify-center py-24 text-center gap-3"
         >
-          <p className="text-sm text-muted-foreground/60">No songs yet.</p>
+          <p className="text-sm text-muted-foreground/60">No videos yet.</p>
           {onBrowseReleases && (
             <button
               type="button"
@@ -243,19 +256,19 @@ export function LibraryPage({
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
-          {sortedSongs.map((song, i) => {
+          {sortedVideos.map((song, i) => {
             const isCurrentlyPlaying =
-              audioPlayer.currentTrack?.id === song.id && isLibraryPlaying;
+              videoPlayer.currentTrack?.id === song.id && isLibraryPlaying;
             const status = getStatusLabel(
               song,
-              audioPlayer.currentTrack?.id ?? null,
+              videoPlayer.currentTrack?.id ?? null,
               isLibraryPlaying,
               queueIds,
               lastPlayedMap,
               i === 0,
             );
             return (
-              <SongCard
+              <VideoCard
                 key={song.id}
                 song={song}
                 index={i}

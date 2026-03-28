@@ -6,7 +6,7 @@ import { MiniPlayer } from "./components/MiniPlayer";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
-import { AudioPlayerProvider } from "./context/AudioPlayerContext";
+import { VideoPlayerProvider } from "./context/AudioPlayerContext";
 import { WalletProvider } from "./context/WalletContext";
 import { SolPriceProvider } from "./contexts/SolPriceContext";
 import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
@@ -52,7 +52,7 @@ function AppContent() {
 
   return (
     <WalletProvider>
-      <AudioPlayerProvider>
+      <VideoPlayerProvider>
         <div className="min-h-screen bg-background">
           {showSplash && <SplashScreen />}
 
@@ -95,7 +95,7 @@ function AppContent() {
           <MiniPlayer />
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
         </div>
-      </AudioPlayerProvider>
+      </VideoPlayerProvider>
     </WalletProvider>
   );
 }

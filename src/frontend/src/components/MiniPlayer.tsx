@@ -406,7 +406,7 @@ export function MiniPlayer() {
                   className="text-[11px] truncate mt-0.5"
                   style={{ color: "var(--echo-text-muted)" }}
                 >
-                  {currentTrack.artist}
+                  {currentTrack.creator}
                 </p>
                 {isLibrary && queue.length > 0 && (
                   <p className="text-[9px] uppercase tracking-widest text-cyan-400/40 mt-0.5">
