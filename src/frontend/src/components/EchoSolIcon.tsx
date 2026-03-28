@@ -4,8 +4,8 @@
  * Colors: top bar cyan, middle bar purple, bottom bar magenta.
  *
  * Props:
- *   size      — height in px (default 16); width scales with aspect ratio
- *   large     — if true, height is 18px (for stat cards)
+ *   size      — height in px (default 14); width scales with aspect ratio
+ *   large     — if true, height is 16px (for stat cards)
  *   animated  — slow glow-pulse keyframe animation (default false)
  *   className — additional CSS classes
  */
@@ -20,7 +20,7 @@ export function EchoSolIcon({
   animated?: boolean;
   className?: string;
 }) {
-  const height = size ?? (large ? 18 : 16);
+  const height = size ?? (large ? 16 : 14);
   // viewBox is 20x16; preserve aspect ratio
   const width = Math.round((height * 20) / 16);
 
@@ -29,8 +29,8 @@ export function EchoSolIcon({
       {animated && (
         <style>{`
           @keyframes echo-sol-pulse {
-            0%, 100% { filter: drop-shadow(0 0 2px rgba(0,245,212,0.2)) drop-shadow(0 0 3px rgba(153,69,255,0.15)) brightness(1); }
-            50%       { filter: drop-shadow(0 0 3px rgba(0,245,212,0.35)) drop-shadow(0 0 4px rgba(153,69,255,0.25)) brightness(1.05); }
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(26,235,212,0.15)) drop-shadow(0 0 3px rgba(143,82,232,0.12)) brightness(1); }
+            50%       { filter: drop-shadow(0 0 3px rgba(26,235,212,0.28)) drop-shadow(0 0 4px rgba(143,82,232,0.22)) brightness(1.05); }
           }
           .echo-sol-animated { animation: echo-sol-pulse 5s ease-in-out infinite; }
         `}</style>
@@ -54,15 +54,15 @@ export function EchoSolIcon({
           marginRight: 6,
           filter: animated
             ? undefined
-            : "drop-shadow(0 0 2px rgba(0,245,212,0.2)) drop-shadow(0 0 3px rgba(153,69,255,0.15))",
+            : "drop-shadow(0 0 2px rgba(26,235,212,0.15)) drop-shadow(0 0 3px rgba(143,82,232,0.12))",
         }}
       >
-        {/* Top bar — cyan */}
-        <path d="M2 0.5 L14.5 0.5 L18 3.5 L5.5 3.5 Z" fill="#00F5D4" />
-        {/* Middle bar — purple */}
-        <path d="M1 6.5 L13.5 6.5 L17 9.5 L4.5 9.5 Z" fill="#9945FF" />
-        {/* Bottom bar — magenta */}
-        <path d="M2 12.5 L14.5 12.5 L18 15.5 L5.5 15.5 Z" fill="#FF2D78" />
+        {/* Top bar — cyan (slightly desaturated) */}
+        <path d="M2 0.5 L14.5 0.5 L18 3.5 L5.5 3.5 Z" fill="#1AEBD4" />
+        {/* Middle bar — purple (slightly desaturated) */}
+        <path d="M1 6.5 L13.5 6.5 L17 9.5 L4.5 9.5 Z" fill="#8F52E8" />
+        {/* Bottom bar — magenta (slightly desaturated) */}
+        <path d="M2 12.5 L14.5 12.5 L18 15.5 L5.5 15.5 Z" fill="#E83D78" />
       </svg>
     </>
   );
