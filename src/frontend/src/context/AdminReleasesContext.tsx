@@ -15,9 +15,12 @@ export interface AdminRelease {
   title: string;
   artist: string;
   audioFileName?: string;
+  audioDataUrl?: string;
+  audioExternalUrl?: string;
   artworkDataUrl?: string;
   priceSOL: number;
   supply: number;
+  mintedCount?: number;
   releaseDate?: string;
   description?: string;
   genre?: string;
@@ -55,7 +58,7 @@ function saveReleases(releases: AdminRelease[]) {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(releases));
   } catch {
-    // quota exceeded — fail silently
+    // quota exceeded
   }
 }
 
@@ -111,8 +114,8 @@ export function AdminReleasesProvider({
         r.id === id
           ? {
               ...r,
-              status: "live",
-              visibility: "public",
+              status: "live" as ReleaseStatus,
+              visibility: "public" as Visibility,
               updatedAt: new Date().toISOString(),
             }
           : r,
@@ -124,7 +127,11 @@ export function AdminReleasesProvider({
     setReleases((prev) =>
       prev.map((r) =>
         r.id === id
-          ? { ...r, status: "draft", updatedAt: new Date().toISOString() }
+          ? {
+              ...r,
+              status: "draft" as ReleaseStatus,
+              updatedAt: new Date().toISOString(),
+            }
           : r,
       ),
     );
@@ -134,7 +141,11 @@ export function AdminReleasesProvider({
     setReleases((prev) =>
       prev.map((r) =>
         r.id === id
-          ? { ...r, status: "archived", updatedAt: new Date().toISOString() }
+          ? {
+              ...r,
+              status: "archived" as ReleaseStatus,
+              updatedAt: new Date().toISOString(),
+            }
           : r,
       ),
     );
