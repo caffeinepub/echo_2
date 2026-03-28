@@ -2,9 +2,12 @@ import { Loader2, Pause, Play, Search, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
+import { SolUsdValue } from "../components/SolUsdValue";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useSolPriceContext } from "../contexts/SolPriceContext";
+import { formatUSD } from "../utils/formatUSD";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────────────────
 type SortMode = "marketcap" | "volume" | "change";
 
 interface AlbumEntry {
@@ -25,7 +28,7 @@ interface AlbumEntry {
   daysAtNumber1: number;
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Mock data ──────────────────────────────────────────────────────────────────────────────
 const BASE_ALBUMS: AlbumEntry[] = [
   {
     id: "echo_001",
@@ -165,7 +168,7 @@ const BASE_ALBUMS: AlbumEntry[] = [
   },
 ];
 
-// ─── Crown Icon ───────────────────────────────────────────────────────────────
+// ─── Crown Icon ────────────────────────────────────────────────────────────────────────────────
 function CrownIcon() {
   return (
     <svg
@@ -189,20 +192,24 @@ function CrownIcon() {
   );
 }
 
-// ─── Signal Card ──────────────────────────────────────────────────────────────
+// ─── Signal Card ───────────────────────────────────────────────────────────────────────────────
 function SignalCard({
   label,
-  value,
-  isSol,
+  solValue,
+  plainValue,
   index,
   accent,
 }: {
   label: string;
-  value: string;
-  isSol: boolean;
+  /** If provided, show SOL value + USD equivalent */
+  solValue?: number;
+  /** If provided (non-SOL stat), show as plain text */
+  plainValue?: string;
   index: number;
   accent?: "violet" | "cyan";
 }) {
+  const { solPrice } = useSolPriceContext();
+
   const borderColor =
     accent === "violet"
       ? "oklch(0.55 0.25 290 / 0.3)"
@@ -215,7 +222,7 @@ function SignalCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.08 + index * 0.07 }}
-      className="rounded-2xl px-4 py-3.5 flex flex-col gap-1.5"
+      className="rounded-2xl px-4 py-3.5 flex flex-col gap-1"
       style={{
         background: "var(--echo-surface)",
         border: `1px solid ${borderColor}`,
@@ -233,20 +240,35 @@ function SignalCard({
       >
         {label}
       </p>
-      <p
-        className="text-base font-mono font-semibold tabular-nums leading-tight flex items-center gap-2"
-        style={{
-          color: isSol ? "oklch(0.82 0.15 210)" : "var(--echo-text-dim)",
-        }}
-      >
-        {isSol && <SolSymbol large animated={true} />}
-        {value}
-      </p>
+      {solValue !== undefined ? (
+        <div>
+          <p
+            className="text-base font-mono font-semibold tabular-nums leading-tight flex items-center gap-2"
+            style={{ color: "oklch(0.82 0.15 210)" }}
+          >
+            <SolSymbol large animated={true} />
+            {solValue.toLocaleString("en-US", { maximumFractionDigits: 1 })}
+          </p>
+          <p
+            className="text-[11px] font-mono tabular-nums mt-0.5"
+            style={{ color: "var(--echo-text-dark)", opacity: 0.75 }}
+          >
+            {formatUSD(solValue * solPrice)}
+          </p>
+        </div>
+      ) : (
+        <p
+          className="text-base font-mono font-semibold tabular-nums leading-tight"
+          style={{ color: "var(--echo-text-dim)" }}
+        >
+          {plainValue}
+        </p>
+      )}
     </motion.div>
   );
 }
 
-// ─── Change badge ─────────────────────────────────────────────────────────────
+// ─── Change badge ──────────────────────────────────────────────────────────────────────────────
 function ChangeBadge({ pct, flash }: { pct: number; flash?: boolean }) {
   const positive = pct >= 0;
   return (
@@ -267,7 +289,7 @@ function ChangeBadge({ pct, flash }: { pct: number; flash?: boolean }) {
   );
 }
 
-// ─── Artwork circle ───────────────────────────────────────────────────────────
+// ─── Artwork circle ─────────────────────────────────────────────────────────────────────────────
 function ArtCircle({
   src,
   title,
@@ -336,7 +358,7 @@ function ArtCircle({
   );
 }
 
-// ─── Album Row ────────────────────────────────────────────────────────────────
+// ─── Album Row ───────────────────────────────────────────────────────────────────────────────
 function AlbumRow({
   album,
   rank,
@@ -355,6 +377,7 @@ function AlbumRow({
   flashId: string | null;
 }) {
   const { currentTrack, isPlaying } = useAudioPlayer();
+  const { solPrice } = useSolPriceContext();
   const isActive = currentTrack?.id === album.id && isPlaying;
   const mktCap = album.floor_price_sol * album.editions_in_circulation;
   const isFlashing = flashId === album.id;
@@ -366,26 +389,46 @@ function AlbumRow({
     case "marketcap":
       metricNode = (
         <span
-          className={`text-[13px] font-mono tabular-nums flex items-center gap-1.5 ${
+          className={`text-[13px] font-mono tabular-nums flex flex-col items-end ${
             isFlashing ? "animate-value-flash" : ""
           }`}
-          style={{ color: "oklch(0.82 0.15 210)" }}
         >
-          <SolSymbol animated={true} />
-          {mktCap.toFixed(1)}
+          <span
+            className="flex items-center gap-1.5"
+            style={{ color: "oklch(0.82 0.15 210)" }}
+          >
+            <SolSymbol animated={true} />
+            {mktCap.toFixed(1)}
+          </span>
+          <span
+            className="text-[10px] font-mono tabular-nums"
+            style={{ color: "var(--echo-text-dark)", opacity: 0.7 }}
+          >
+            {formatUSD(mktCap * solPrice)}
+          </span>
         </span>
       );
       break;
     case "volume":
       metricNode = (
         <span
-          className={`text-[13px] font-mono tabular-nums flex items-center gap-1.5 ${
+          className={`text-[13px] font-mono tabular-nums flex flex-col items-end ${
             isFlashing ? "animate-value-flash" : ""
           }`}
-          style={{ color: "oklch(0.82 0.15 210)" }}
         >
-          <SolSymbol animated={true} />
-          {album.volume_24h_sol.toFixed(1)}
+          <span
+            className="flex items-center gap-1.5"
+            style={{ color: "oklch(0.82 0.15 210)" }}
+          >
+            <SolSymbol animated={true} />
+            {album.volume_24h_sol.toFixed(1)}
+          </span>
+          <span
+            className="text-[10px] font-mono tabular-nums"
+            style={{ color: "var(--echo-text-dark)", opacity: 0.7 }}
+          >
+            {formatUSD(album.volume_24h_sol * solPrice)}
+          </span>
         </span>
       );
       break;
@@ -469,7 +512,7 @@ function AlbumRow({
       </div>
 
       {/* Metric */}
-      <div className="text-right min-w-[60px]">{metricNode}</div>
+      <div className="text-right min-w-[68px]">{metricNode}</div>
 
       {/* Change */}
       <div className="w-[56px] text-right">
@@ -479,7 +522,7 @@ function AlbumRow({
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main page ──────────────────────────────────────────────────────────────────────────────
 interface MarketPageProps {
   onAlbumClick: (albumId: string) => void;
 }
@@ -653,28 +696,20 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
         <div className="grid grid-cols-2 gap-2.5 mb-8">
           <SignalCard
             label="Total Market Cap"
-            value="1,847"
-            isSol={true}
+            solValue={1847}
             index={0}
             accent="cyan"
           />
           <SignalCard
             label="24H Volume"
-            value="312.4"
-            isSol={true}
+            solValue={312.4}
             index={1}
             accent="cyan"
           />
-          <SignalCard
-            label="Active Listeners"
-            value="14.2k"
-            isSol={false}
-            index={2}
-          />
+          <SignalCard label="Active Listeners" plainValue="14.2k" index={2} />
           <SignalCard
             label="Live Releases"
-            value="3"
-            isSol={false}
+            plainValue="3"
             index={3}
             accent="violet"
           />
@@ -748,7 +783,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           <span className="flex-1 text-[9px] uppercase tracking-widest">
             Album
           </span>
-          <span className="text-[9px] uppercase tracking-widest min-w-[60px] text-right">
+          <span className="text-[9px] uppercase tracking-widest min-w-[68px] text-right">
             {sortMode === "marketcap"
               ? "MCap"
               : sortMode === "volume"

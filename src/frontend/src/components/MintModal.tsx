@@ -2,7 +2,9 @@ import { AlertCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useWalletContext } from "../context/WalletContext";
+import { useSolPriceContext } from "../contexts/SolPriceContext";
 import { SONGS, formatEdition } from "../data/songs";
+import { formatUSD } from "../utils/formatUSD";
 import { SolSymbol } from "./SolSymbol";
 
 interface MintModalProps {
@@ -38,6 +40,7 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
     return () => clearTimeout(t);
   }, [mintState]);
 
+  const { solPrice } = useSolPriceContext();
   const song = SONGS.find((s) => s.id === albumId);
   if (!song) return null;
 
@@ -202,10 +205,15 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                     <span className="text-xs text-muted-foreground/50">
                       Mint price
                     </span>
-                    <span className="text-lg font-mono font-medium text-foreground/90">
-                      <SolSymbol animated={true} />
-                      {song.mintPrice}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-lg font-mono font-medium text-foreground/90 flex items-center justify-end gap-1">
+                        <SolSymbol animated={true} />
+                        {song.mintPrice}
+                      </span>
+                      <span className="text-[11px] font-mono text-muted-foreground/40">
+                        {formatUSD(song.mintPrice * solPrice)}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-[11px] text-muted-foreground/35 -mt-2">
                     Transaction will open in Phantom.

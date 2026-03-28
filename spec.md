@@ -1,29 +1,38 @@
-# ECHO — Light Mode Theme
+# ECHO
 
 ## Current State
-App is dark-mode only with a rich near-black background, soft panel borders, glowing text accents, and premium neon aesthetic. All colors are hardcoded as dark-mode values in CSS/Tailwind classes and inline styles.
+The Releases tab is an editorial lineup/list view inspired by festival schedules. Each song appears as a slim row with small thumbnail, title, artist, status badge, and an expandable section for preview/minting. It uses `LineupRow` components in `ReleasesPage.tsx`.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Light mode CSS theme via `prefers-color-scheme: light` media query AND a manual toggle (sun/moon icon in header)
-- CSS custom properties (variables) for all theme-sensitive values so both modes share the same structure
-- Light mode token set: white/near-white backgrounds, near-black primary text, medium gray secondary text, cool gray borders, light elevated surfaces for cards and player
-- Theme toggle button in header (small, minimal, sun/moon icon)
+- YouTube/TikTok-style vertical video feed replacing the lineup view
+- Horizontal scrollable category tabs at the top (All, Trending, Live Now, Upcoming, Sold Out, New, Electronic, Ambient, Hip Hop, Experimental)
+- Full-width media cards with large 16:9+ artwork area as the primary focus
+- Gradient overlay on media area for text readability
+- Info overlay (title, artist, mint status) inside the media area
+- NFT data row below media: SOL price, USD price, animated mint progress bar
+- Action row: primary "Mint NFT" button (glowing purple), secondary "Play 30s" button
+- Card enter-viewport animations: fade in + slight upward motion
+- Like and comment buttons on each card
+- Countdown timers for upcoming drops
+- SOLD OUT state on cards
+- Live mint count updates
+- Waveform animation overlay on media area when preview is playing
 
 ### Modify
-- Refactor all background, text, border, and surface colors to use CSS variables instead of hardcoded dark values
-- Reduce glow/bloom intensity by ~30% in light mode (purple glows become more subtle, not removed)
-- Player surface: light elevated in light mode, dark icons, keep purple progress accent
-- Keep all accent colors identical: purple, solana gradient, green/red percentages, cyan
+- `ReleasesPage.tsx` — full redesign replacing lineup rows with video feed cards
+- Category filtering logic based on selected tab
 
 ### Remove
-- Nothing removed — dark mode fully preserved as default
+- `LineupRow` component and editorial lineup design
+- "LINEUP" header with drop count
 
 ## Implementation Plan
-1. Add CSS custom properties to `index.css` for dark (default) and light mode token sets
-2. Implement a theme context/hook with localStorage persistence and system preference detection
-3. Add a toggle button (sun/moon) to the header alongside the Phantom wallet button
-4. Replace hardcoded color values throughout all components with CSS variables
-5. Ensure glow filters/box-shadows use variable opacity so they reduce automatically in light mode
-6. Test all three tabs (Library, Releases, Discover), player, modals, and leaderboard in both modes
+1. Replace `ReleasesPage.tsx` with new video feed implementation
+2. Add `CategoryTabs` component (horizontal scrollable pill tabs)
+3. Add `ReleaseFeedCard` component with media area, overlay, data row, action row
+4. Add waveform animation component for playing state
+5. Add IntersectionObserver-based fade-in animations for cards entering viewport
+6. Wire category tabs to filter `allAlbums` mock data
+7. Preserve existing like/comment/mint modal logic

@@ -3,14 +3,16 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useSolPriceContext } from "../contexts/SolPriceContext";
 import { SONGS } from "../data/songs";
+import { formatUSD } from "../utils/formatUSD";
 
 interface MarketDetailPageProps {
   albumId: string;
   onBack: () => void;
 }
 
-// ─── Local market data for all songs ─────────────────────────────────────────
+// ─── Local market data for all songs ────────────────────────────────────────────────────────────────
 interface MarketSong {
   id: string;
   title: string;
@@ -84,7 +86,7 @@ function getMarketSong(albumId: string): MarketSong {
   };
 }
 
-// ─── Soundwave Visualizer ─────────────────────────────────────────────────────
+// ─── Soundwave Visualizer ───────────────────────────────────────────────────────────────────────
 const WAVE_BARS = Array.from({ length: 40 }, (_, i) => ({
   id: `wb${i}`,
   duration: 1.8 + ((i * 17) % 7) * 0.09,
@@ -140,7 +142,7 @@ function SoundwaveVisualizer({ activityPct }: { activityPct: number }) {
   );
 }
 
-// ─── Echo Signal Card ────────────────────────────────────────────────────────
+// ─── Echo Signal Card ────────────────────────────────────────────────────────────────────────────
 function VolumeSignalCard({ song }: { song: MarketSong }) {
   const listeningPct = Math.min(
     100,
@@ -173,11 +175,34 @@ function VolumeSignalCard({ song }: { song: MarketSong }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Market Cap Cell ────────────────────────────────────────────────────────────────────────────
+function SolValueCell({ sol }: { sol: number }) {
+  const { solPrice } = useSolPriceContext();
+  return (
+    <span className="flex flex-col items-center gap-0.5">
+      <span
+        className="flex items-center gap-1.5 justify-center"
+        style={{ color: "oklch(0.82 0.15 210)" }}
+      >
+        <SolSymbol large animated={true} />
+        {sol.toFixed(1)}
+      </span>
+      <span
+        className="text-[10px] font-mono tabular-nums"
+        style={{ color: "var(--echo-text-muted)", opacity: 0.65 }}
+      >
+        {formatUSD(sol * solPrice)}
+      </span>
+    </span>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────────────────────
 export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
   const song = getMarketSong(albumId);
   const libSong = SONGS.find((s) => s.id === albumId);
   const { currentTrack, isPlaying, play, stop } = useAudioPlayer();
+  const { solPrice } = useSolPriceContext();
   const [_unused] = useState(0);
   const isPlayingSong = currentTrack?.id === `${albumId}-art` && isPlaying;
 
@@ -314,7 +339,11 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               ? "oklch(0.76 0.18 160 / 0.12)"
               : "oklch(0.65 0.22 10 / 0.12)",
             color: positive ? "oklch(0.76 0.18 160)" : "oklch(0.65 0.22 10)",
-            border: `1px solid ${positive ? "oklch(0.76 0.18 160 / 0.25)" : "oklch(0.65 0.22 10 / 0.25)"}`,
+            border: `1px solid ${
+              positive
+                ? "oklch(0.76 0.18 160 / 0.25)"
+                : "oklch(0.65 0.22 10 / 0.25)"
+            }`,
             textShadow: positive
               ? "0 0 8px oklch(0.76 0.18 160 / 0.4)"
               : "0 0 8px oklch(0.65 0.22 10 / 0.4)",
@@ -336,15 +365,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           {[
             {
               label: "Market Cap",
-              value: (
-                <span
-                  className="flex items-center gap-1.5 justify-center"
-                  style={{ color: "oklch(0.82 0.15 210)" }}
-                >
-                  <SolSymbol large animated={true} />
-                  {mktCap.toFixed(1)}
-                </span>
-              ),
+              value: <SolValueCell sol={mktCap} />,
             },
             {
               label: "Total Supply",
@@ -427,13 +448,22 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   #{String(listing.edition).padStart(3, "0")} · {listing.seller}
                 </p>
               </div>
-              <p
-                className="text-[15px] font-mono font-semibold shrink-0 flex items-center gap-1"
-                style={{ color: "oklch(0.82 0.15 210)" }}
-              >
-                <SolSymbol animated={true} />
-                {listing.price}
-              </p>
+              {/* Listing price: SOL primary, USD secondary */}
+              <div className="shrink-0 text-right">
+                <p
+                  className="text-[15px] font-mono font-semibold flex items-center gap-1 justify-end"
+                  style={{ color: "oklch(0.82 0.15 210)" }}
+                >
+                  <SolSymbol animated={true} />
+                  {listing.price}
+                </p>
+                <p
+                  className="text-[10px] font-mono tabular-nums"
+                  style={{ color: "var(--echo-text-dark)", opacity: 0.65 }}
+                >
+                  {formatUSD(listing.price * solPrice)}
+                </p>
+              </div>
               <button
                 type="button"
                 className="shrink-0 text-[10px] font-mono border rounded-lg px-2 py-1 transition-all"
@@ -492,19 +522,33 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   >
                     {s.label}
                   </p>
-                  <p
-                    className="text-sm font-mono"
-                    style={{ color: "var(--echo-text-secondary)" }}
-                  >
-                    {s.sol ? (
-                      <>
+                  {s.sol ? (
+                    <div>
+                      <p
+                        className="text-sm font-mono flex items-center gap-1"
+                        style={{ color: "var(--echo-text-secondary)" }}
+                      >
                         <SolSymbol animated={true} />
                         {s.value}
-                      </>
-                    ) : (
-                      s.value
-                    )}
-                  </p>
+                      </p>
+                      <p
+                        className="text-[10px] font-mono tabular-nums mt-0.5"
+                        style={{
+                          color: "var(--echo-text-dark)",
+                          opacity: 0.65,
+                        }}
+                      >
+                        {formatUSD(Number(s.value) * solPrice)}
+                      </p>
+                    </div>
+                  ) : (
+                    <p
+                      className="text-sm font-mono"
+                      style={{ color: "var(--echo-text-secondary)" }}
+                    >
+                      {s.value}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -514,3 +558,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
     </div>
   );
 }
+
+// Suppress unused import warning from original file
+const _Lock = Lock;
+void _Lock;

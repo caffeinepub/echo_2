@@ -7,6 +7,7 @@ import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
 import { WalletProvider } from "./context/WalletContext";
+import { SolPriceProvider } from "./contexts/SolPriceContext";
 import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
@@ -94,7 +95,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <SolPriceProvider>
+        <AppContent />
+      </SolPriceProvider>
     </ThemeProvider>
   );
 }

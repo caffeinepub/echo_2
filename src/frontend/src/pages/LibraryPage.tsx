@@ -1,5 +1,5 @@
 import { ListPlus, Pause, Play } from "lucide-react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useWalletContext } from "../context/WalletContext";
@@ -39,6 +39,8 @@ function SongCard({
   onQueue,
   status,
   isCurrentlyPlaying,
+  isSelected,
+  onSelect,
 }: {
   song: Song;
   index: number;
@@ -46,6 +48,8 @@ function SongCard({
   onQueue: () => void;
   status: { label: string; color: string } | null;
   isCurrentlyPlaying: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
   return (
     <motion.div
@@ -53,7 +57,8 @@ function SongCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.07, 0.4) }}
       data-ocid={`library.item.${index + 1}`}
-      className="flex flex-col"
+      className="flex flex-col cursor-pointer"
+      onClick={onSelect}
     >
       {/* Status label */}
       <div className="h-5 mb-1 px-0.5">
@@ -89,17 +94,44 @@ function SongCard({
         <p className="text-[13px] font-semibold text-foreground/90 truncate leading-tight">
           {song.title}
         </p>
-        <p className="text-[11px] text-muted-foreground/40 mt-0.5">
-          {formatEdition(song.userEdition)}
-        </p>
+        {!isSelected && (
+          <p className="text-[11px] text-muted-foreground/40 mt-0.5">
+            {formatEdition(song.userEdition)}
+          </p>
+        )}
       </div>
+
+      {/* Edition badge — shown when card is selected and user owns an edition */}
+      <AnimatePresence>
+        {isSelected && song.userEdition > 0 && (
+          <motion.div
+            key="edition-badge"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="mt-2 px-0.5"
+          >
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border text-[9px] font-medium uppercase tracking-[0.18em] select-none bg-[#F8F9FC] border-[#E7EAF1] text-[#1A1A2E] dark:bg-white/[0.05] dark:border-white/[0.12] dark:text-white/60"
+              style={{ boxShadow: "var(--edition-badge-glow, none)" }}
+            >
+              ECHO EDITION {String(song.userEdition).padStart(3, "0")} /{" "}
+              {song.supply}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Controls */}
       <div className="flex items-center gap-2 mt-2.5 px-0.5">
         <button
           type="button"
           data-ocid={`library.primary_button.${index + 1}`}
-          onClick={onPlay}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlay();
+          }}
           aria-label={isCurrentlyPlaying ? "Pause" : "Play"}
           className="w-7 h-7 flex items-center justify-center rounded-full bg-white/[0.06] hover:bg-violet-500/20 border border-white/[0.06] hover:border-violet-500/30 transition-all duration-200"
         >
@@ -113,7 +145,10 @@ function SongCard({
         <button
           type="button"
           data-ocid={`library.secondary_button.${index + 1}`}
-          onClick={onQueue}
+          onClick={(e) => {
+            e.stopPropagation();
+            onQueue();
+          }}
           aria-label="Add to queue"
           className="w-7 h-7 flex items-center justify-center rounded-full bg-white/[0.04] hover:bg-cyan-500/10 border border-white/[0.04] hover:border-cyan-500/20 transition-all duration-200"
         >
@@ -135,6 +170,7 @@ export function LibraryPage({
   const [lastPlayedMap, setLastPlayedMap] = useState<Record<string, number>>(
     {},
   );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const queueIds = audioPlayer.queue.map((t) => t.id);
   const isLibraryPlaying =
@@ -227,6 +263,10 @@ export function LibraryPage({
                 onQueue={() => handleQueue(song)}
                 status={status}
                 isCurrentlyPlaying={isCurrentlyPlaying}
+                isSelected={selectedId === song.id}
+                onSelect={() =>
+                  setSelectedId((prev) => (prev === song.id ? null : song.id))
+                }
               />
             );
           })}
