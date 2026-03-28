@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { MintModal } from "../components/MintModal";
 import { SolSymbol } from "../components/SolSymbol";
 import { useWalletContext } from "../context/WalletContext";
-import type { Album } from "../data/albums";
+import type { Song } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
 
 function useCountdown(targetMs: number | null) {
@@ -15,13 +15,11 @@ function useCountdown(targetMs: number | null) {
   useEffect(() => {
     if (targetMs === null) return;
     const end = Date.now() + targetMs;
-
     const interval = setInterval(() => {
       const left = Math.max(0, end - Date.now());
       setRemaining(left);
       if (left === 0) clearInterval(interval);
     }, 1000);
-
     return () => clearInterval(interval);
   }, [targetMs]);
 
@@ -32,29 +30,29 @@ function useCountdown(targetMs: number | null) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function statusText(album: Album, countdown: string): string {
-  if (album.isSoldOut) return "Sold out";
-  if (album.mintOpensInMs === 0 || album.mintOpensInMs === null)
+function statusText(song: Song, countdown: string): string {
+  if (song.isSoldOut) return "Sold out";
+  if (song.mintOpensInMs === 0 || song.mintOpensInMs === null)
     return "Live now";
   return `Releases in ${countdown}`;
 }
 
 function ReleaseTile({
-  album,
+  song,
   index,
-  onAlbumClick,
+  onSongClick,
   isOwned,
   onBuyClick,
 }: {
-  album: Album;
+  song: Song;
   index: number;
-  onAlbumClick: (id: string) => void;
+  onSongClick: (id: string) => void;
   isOwned: boolean;
   onBuyClick: (id: string) => void;
 }) {
-  const countdown = useCountdown(album.mintOpensInMs);
-  const status = statusText(album, countdown);
-  const live = !album.isSoldOut && album.mintOpensInMs === 0;
+  const countdown = useCountdown(song.mintOpensInMs);
+  const status = statusText(song, countdown);
+  const live = !song.isSoldOut && song.mintOpensInMs === 0;
 
   return (
     <motion.button
@@ -63,17 +61,17 @@ function ReleaseTile({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, delay: index * 0.08 }}
       data-ocid={`releases.item.${index + 1}`}
-      onClick={() => onAlbumClick(album.id)}
+      onClick={() => onSongClick(song.id)}
       className="w-full text-left bg-card border border-border/40 rounded-xl overflow-hidden hover:scale-[1.02] transition-transform cursor-pointer"
     >
       {/* Square artwork */}
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={album.artworkSrc}
-          alt={album.title}
+          src={song.artworkSrc}
+          alt={song.title}
           className="w-full h-full object-cover"
         />
-        {album.isSoldOut && (
+        {song.isSoldOut && (
           <>
             <div className="absolute inset-0 bg-black/30" />
             <span className="absolute top-2 left-2 text-[9px] tracking-widest uppercase text-white/50 select-none">
@@ -89,25 +87,24 @@ function ReleaseTile({
       {/* Info */}
       <div className="px-2 pt-2 pb-3">
         <p className="text-sm font-medium text-foreground truncate leading-snug">
-          {album.title}
+          {song.title}
         </p>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {album.artist}
+          {song.artist}
         </p>
         <p className="text-[10px] text-muted-foreground/50 tracking-wide mt-1">
-          {album.supply} Editions
+          {song.supply} Editions
         </p>
-        {!album.isSoldOut && (
+        {!song.isSoldOut && (
           <p className="text-xs font-mono text-foreground/70 mt-0.5 flex items-center gap-0">
             <SolSymbol animated={true} />
-            {album.mintPrice}
+            {song.mintPrice}
           </p>
         )}
         <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5">
           {status}
         </p>
 
-        {/* Buy / Play Album indicator */}
         {live && (
           <div className="mt-2">
             {isOwned ? (
@@ -115,7 +112,7 @@ function ReleaseTile({
                 type="button"
                 className="text-[10px] px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground/60 font-medium"
               >
-                Play Album
+                Play Song
               </button>
             ) : (
               <button
@@ -123,7 +120,7 @@ function ReleaseTile({
                 data-ocid={`releases.item.${index + 1}.button`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onBuyClick(album.id);
+                  onBuyClick(song.id);
                 }}
                 className="text-[10px] px-2 py-0.5 rounded-full text-white font-medium transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "#7C3AED" }}
@@ -158,13 +155,13 @@ export function ReleasesPage({ onAlbumClick }: ReleasesPageProps) {
         Releases
       </motion.h1>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {allAlbums.map((album, i) => (
+        {allAlbums.map((song, i) => (
           <ReleaseTile
-            key={album.id}
-            album={album}
+            key={song.id}
+            song={song}
             index={i}
-            onAlbumClick={onAlbumClick}
-            isOwned={ownedAlbumIds.includes(album.id)}
+            onSongClick={onAlbumClick}
+            isOwned={ownedAlbumIds.includes(song.id)}
             onBuyClick={(id) => setMintModalAlbumId(id)}
           />
         ))}

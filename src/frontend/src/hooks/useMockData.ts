@@ -1,14 +1,14 @@
 import { useWalletContext } from "../context/WalletContext";
-import { ALBUMS, type Album } from "../data/albums";
+import { SONGS, type Song } from "../data/songs";
 
 export function useMockData() {
   const { ownedAlbumIds, isConnected } = useWalletContext();
 
-  const ownedAlbums: Album[] = isConnected
-    ? ALBUMS.filter((a) => ownedAlbumIds.includes(a.id))
+  const ownedAlbums: Song[] = isConnected
+    ? SONGS.filter((s) => ownedAlbumIds.includes(s.id))
     : [];
 
-  const allAlbums: Album[] = ALBUMS;
+  const allAlbums: Song[] = SONGS;
 
   return { ownedAlbums, allAlbums };
 }

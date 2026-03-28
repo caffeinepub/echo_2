@@ -1,17 +1,17 @@
 import { ArrowLeft, Lock, Pause, Play } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SolSymbol } from "../components/SolSymbol";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
-import { ALBUMS } from "../data/albums";
+import { SONGS } from "../data/songs";
 
 interface MarketDetailPageProps {
   albumId: string;
   onBack: () => void;
 }
 
-// ─── Local market data for all albums ────────────────────────────────────────
-interface MarketAlbum {
+// ─── Local market data for all songs ─────────────────────────────────────────
+interface MarketSong {
   id: string;
   title: string;
   artist: string;
@@ -22,17 +22,10 @@ interface MarketAlbum {
   transaction_volume: number;
   listening_volume: number;
   change_24h_pct: number;
-  tracks: {
-    number: number;
-    title: string;
-    duration: string;
-    plays: number;
-    preview_url: string;
-  }[];
   listings: { edition: number; seller: string; price: number }[];
 }
 
-const MARKET_ALBUMS: MarketAlbum[] = [
+const MARKET_SONGS: MarketSong[] = [
   {
     id: "echo_001",
     title: "Fragments",
@@ -44,43 +37,6 @@ const MARKET_ALBUMS: MarketAlbum[] = [
     transaction_volume: 18.4,
     listening_volume: 142000,
     change_24h_pct: 12.2,
-    tracks: [
-      {
-        number: 1,
-        title: "Glass Wings",
-        duration: "3:42",
-        plays: 38240,
-        preview_url: "",
-      },
-      {
-        number: 2,
-        title: "Fade Protocol",
-        duration: "4:11",
-        plays: 29810,
-        preview_url: "",
-      },
-      {
-        number: 3,
-        title: "Infrared",
-        duration: "2:58",
-        plays: 22100,
-        preview_url: "",
-      },
-      {
-        number: 4,
-        title: "Hollow Pulse",
-        duration: "5:03",
-        plays: 18450,
-        preview_url: "",
-      },
-      {
-        number: 5,
-        title: "Drift",
-        duration: "3:27",
-        plays: 14400,
-        preview_url: "",
-      },
-    ],
     listings: [
       { edition: 12, seller: "7f3k...92x", price: 2.9 },
       { edition: 44, seller: "mq9p...8ts", price: 3.1 },
@@ -99,43 +55,6 @@ const MARKET_ALBUMS: MarketAlbum[] = [
     transaction_volume: 7.8,
     listening_volume: 118000,
     change_24h_pct: 4.7,
-    tracks: [
-      {
-        number: 1,
-        title: "Ember",
-        duration: "4:22",
-        plays: 31200,
-        preview_url: "",
-      },
-      {
-        number: 2,
-        title: "Smoke Signal",
-        duration: "3:55",
-        plays: 25800,
-        preview_url: "",
-      },
-      {
-        number: 3,
-        title: "Ash",
-        duration: "5:14",
-        plays: 20100,
-        preview_url: "",
-      },
-      {
-        number: 4,
-        title: "Residue",
-        duration: "3:33",
-        plays: 15300,
-        preview_url: "",
-      },
-      {
-        number: 5,
-        title: "Kindling",
-        duration: "4:01",
-        plays: 11600,
-        preview_url: "",
-      },
-    ],
     listings: [
       { edition: 3, seller: "9pqr...44m", price: 2.0 },
       { edition: 18, seller: "xk7z...91w", price: 1.95 },
@@ -144,12 +63,12 @@ const MARKET_ALBUMS: MarketAlbum[] = [
   },
 ];
 
-function getMarketAlbum(albumId: string): MarketAlbum {
-  const found = MARKET_ALBUMS.find((a) => a.id === albumId);
+function getMarketSong(albumId: string): MarketSong {
+  const found = MARKET_SONGS.find((s) => s.id === albumId);
   if (found) return found;
   return {
     id: albumId,
-    title: albumId.replace("ta-", "Album "),
+    title: albumId,
     artist: "Unknown Artist",
     artworkSrc: null,
     floor_price_sol: 1.0,
@@ -158,29 +77,6 @@ function getMarketAlbum(albumId: string): MarketAlbum {
     transaction_volume: 2.5,
     listening_volume: 50000,
     change_24h_pct: 0,
-    tracks: [
-      {
-        number: 1,
-        title: "Track 1",
-        duration: "3:30",
-        plays: 12000,
-        preview_url: "",
-      },
-      {
-        number: 2,
-        title: "Track 2",
-        duration: "4:00",
-        plays: 9800,
-        preview_url: "",
-      },
-      {
-        number: 3,
-        title: "Track 3",
-        duration: "3:15",
-        plays: 7200,
-        preview_url: "",
-      },
-    ],
     listings: [
       { edition: 5, seller: "4abc...11z", price: 1.1 },
       { edition: 21, seller: "8dfg...55w", price: 1.2 },
@@ -197,8 +93,7 @@ const WAVE_BARS = Array.from({ length: 40 }, (_, i) => ({
 
 function SoundwaveVisualizer({ activityPct }: { activityPct: number }) {
   const active = activityPct > 0;
-  // amplitude: 0.15 at low, up to 0.85 at full
-  const amplitude = active ? 0.12 + activityPct * 0.0073 : 0;
+  const amplitude = active ? 0.15 + (activityPct / 100) * 0.7 : 0;
   const minScale = active ? Math.max(0.04, 0.5 - amplitude) : 0.04;
   const maxScale = active ? Math.min(1, 0.5 + amplitude) : 0.04;
 
@@ -215,44 +110,41 @@ function SoundwaveVisualizer({ activityPct }: { activityPct: number }) {
         style={{ height: 28 }}
         aria-hidden="true"
       >
-        {WAVE_BARS.map(({ id, duration, phase }) => {
-          const delay = -phase;
-          return (
-            <div
-              key={id}
-              style={
-                {
-                  width: 2,
-                  height: "100%",
-                  borderRadius: 1,
-                  background:
-                    "linear-gradient(to bottom, oklch(0.75 0.18 210), oklch(0.55 0.22 280))",
-                  boxShadow: active
-                    ? "0 0 4px oklch(0.75 0.18 210 / 0.5)"
-                    : "none",
-                  transformOrigin: "center",
-                  animation: active
-                    ? `echoWave ${duration}s ease-in-out ${delay}s infinite`
-                    : "none",
-                  "--min-scale": minScale,
-                  "--max-scale": maxScale,
-                  transform: active ? undefined : `scaleY(${minScale})`,
-                  transition: "transform 600ms ease, box-shadow 600ms ease",
-                } as React.CSSProperties
-              }
-            />
-          );
-        })}
+        {WAVE_BARS.map(({ id, duration, phase }) => (
+          <div
+            key={id}
+            style={
+              {
+                width: 2,
+                height: "100%",
+                borderRadius: 1,
+                background:
+                  "linear-gradient(to bottom, oklch(0.75 0.18 210), oklch(0.55 0.22 280))",
+                boxShadow: active
+                  ? "0 0 4px oklch(0.75 0.18 210 / 0.5)"
+                  : "none",
+                transformOrigin: "center",
+                animation: active
+                  ? `echoWave ${duration}s ease-in-out ${-phase}s infinite`
+                  : "none",
+                "--min-scale": minScale,
+                "--max-scale": maxScale,
+                transform: active ? undefined : `scaleY(${minScale})`,
+                transition: "transform 600ms ease, box-shadow 600ms ease",
+              } as React.CSSProperties
+            }
+          />
+        ))}
       </div>
     </>
   );
 }
 
 // ─── Echo Signal Card ────────────────────────────────────────────────────────
-function VolumeSignalCard({ album }: { album: MarketAlbum }) {
+function VolumeSignalCard({ song }: { song: MarketSong }) {
   const listeningPct = Math.min(
     100,
-    (album.listening_volume / 10000 / 14.2) * 100,
+    (song.listening_volume / 10000 / 14.2) * 100,
   );
 
   return (
@@ -275,7 +167,7 @@ function VolumeSignalCard({ album }: { album: MarketAlbum }) {
         className="text-[12px] font-mono font-semibold mt-2"
         style={{ color: "oklch(0.82 0.15 210)" }}
       >
-        142k plays
+        {(song.listening_volume / 1000).toFixed(0)}k plays
       </p>
     </div>
   );
@@ -283,59 +175,25 @@ function VolumeSignalCard({ album }: { album: MarketAlbum }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
-  const album = getMarketAlbum(albumId);
-  const libAlbum = ALBUMS.find((a) => a.id === albumId);
-  const [playingTrack, setPlayingTrack] = useState<number | null>(null);
-  const [playCounts, setPlayCounts] = useState<number[]>(
-    album.tracks.map((t) => t.plays),
-  );
+  const song = getMarketSong(albumId);
+  const libSong = SONGS.find((s) => s.id === albumId);
   const { currentTrack, isPlaying, play, stop } = useAudioPlayer();
-  const isPlayingAlbum = currentTrack?.id === `${albumId}-art` && isPlaying;
+  const [_unused] = useState(0);
+  const isPlayingSong = currentTrack?.id === `${albumId}-art` && isPlaying;
 
-  const mktCap = album.floor_price_sol * album.circulating_supply;
-  const positive = album.change_24h_pct >= 0;
-
-  // Live play count pulse (every 30s)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const idx = Math.floor(Math.random() * album.tracks.length);
-      setPlayCounts((prev) => {
-        const next = [...prev];
-        next[idx] = next[idx] + Math.floor(Math.random() * 30 + 5);
-        return next;
-      });
-      setPlayingTrack(idx);
-      setTimeout(() => setPlayingTrack(null), 1200);
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [album.tracks.length]);
+  const mktCap = song.floor_price_sol * song.circulating_supply;
+  const positive = song.change_24h_pct >= 0;
 
   function toggleArtPlay() {
-    if (isPlayingAlbum) {
+    if (isPlayingSong) {
       stop();
     } else {
       play({
         id: `${albumId}-art`,
-        title: album.tracks[0]?.title ?? album.title,
-        artist: album.artist,
-        artworkSrc: album.artworkSrc,
-        preview_url: album.tracks[0]?.preview_url ?? "",
-      });
-    }
-  }
-
-  function handleTrackPreview(trackIdx: number) {
-    const track = album.tracks[trackIdx];
-    const tid = `${albumId}-track-${trackIdx}`;
-    if (currentTrack?.id === tid && isPlaying) {
-      stop();
-    } else {
-      play({
-        id: tid,
-        title: track.title,
-        artist: album.artist,
-        artworkSrc: album.artworkSrc,
-        preview_url: track.preview_url,
+        title: song.title,
+        artist: song.artist,
+        artworkSrc: song.artworkSrc,
+        preview_url: "",
       });
     }
   }
@@ -369,7 +227,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
         className="flex justify-center pt-6 pb-6 px-5"
       >
         <div className="relative" style={{ width: 160, height: 160 }}>
-          {isPlayingAlbum && (
+          {isPlayingSong && (
             <div
               className="absolute inset-0 rounded-full animate-glow-pulse"
               style={{
@@ -379,15 +237,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             />
           )}
           <div
-            className={`w-full h-full rounded-full overflow-hidden ${
-              isPlayingAlbum ? "animate-spin-slow" : ""
-            }`}
+            className={`w-full h-full rounded-full overflow-hidden ${isPlayingSong ? "animate-spin-slow" : ""}`}
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}
           >
-            {album.artworkSrc ? (
+            {song.artworkSrc ? (
               <img
-                src={album.artworkSrc}
-                alt={album.title}
+                src={song.artworkSrc}
+                alt={song.title}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -406,9 +262,9 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             data-ocid="market_detail.primary_button"
             className="absolute inset-0 rounded-full flex items-center justify-center transition-opacity"
             style={{ background: "oklch(0.05 0.003 240 / 0.55)" }}
-            aria-label={isPlayingAlbum ? "Pause" : "Preview"}
+            aria-label={isPlayingSong ? "Pause" : "Preview"}
           >
-            {isPlayingAlbum ? (
+            {isPlayingSong ? (
               <Pause className="w-8 h-8" style={{ color: "white" }} />
             ) : (
               <Play className="w-8 h-8 ml-1" style={{ color: "white" }} />
@@ -428,19 +284,19 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           className="text-[22px] font-bold leading-tight"
           style={{ color: "oklch(0.96 0.005 220)" }}
         >
-          {album.title}
+          {song.title}
         </h1>
         <p
           className="text-[14px] mt-1"
           style={{ color: "oklch(0.45 0.008 240)" }}
         >
-          {album.artist}
+          {song.artist}
         </p>
         <p
           className="text-[11px] mt-1.5 uppercase tracking-widest"
           style={{ color: "oklch(0.35 0.006 240)" }}
         >
-          {album.total_supply} editions · {albumId.toUpperCase()}
+          {song.total_supply} editions · {albumId.toUpperCase()}
         </p>
       </motion.div>
 
@@ -465,7 +321,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           }}
         >
           {positive ? "+" : ""}
-          {album.change_24h_pct.toFixed(1)}% 24H
+          {song.change_24h_pct.toFixed(1)}% 24H
         </span>
       </motion.div>
 
@@ -494,7 +350,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               label: "Total Supply",
               value: (
                 <span style={{ color: "oklch(0.88 0.005 220)" }}>
-                  {album.total_supply}
+                  {song.total_supply}
                 </span>
               ),
             },
@@ -502,7 +358,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               label: "Circulating",
               value: (
                 <span style={{ color: "oklch(0.88 0.005 220)" }}>
-                  {album.circulating_supply} / {album.total_supply}
+                  {song.circulating_supply} / {song.total_supply}
                 </span>
               ),
             },
@@ -534,10 +390,10 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.28 }}
         >
-          <VolumeSignalCard album={album} />
+          <VolumeSignalCard song={song} />
         </motion.div>
 
-        {/* ── Track list ── */}
+        {/* ── Secondary market listings ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -553,116 +409,10 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               className="text-[10px] uppercase tracking-[0.16em] font-semibold"
               style={{ color: "oklch(0.45 0.008 240)" }}
             >
-              Tracks
-            </p>
-          </div>
-          {album.tracks.map((track, idx) => {
-            const tid = `${albumId}-track-${idx}`;
-            const isTrackPlaying = currentTrack?.id === tid && isPlaying;
-            const isPulsing = playingTrack === idx;
-            const isOwned = libAlbum != null;
-
-            return (
-              <div
-                key={track.number}
-                data-ocid={`market_detail.item.${idx + 1}`}
-                className="flex items-center gap-3 px-5 py-3 border-t"
-                style={{ borderColor: "oklch(0.14 0.006 240)" }}
-              >
-                <span
-                  className="text-[12px] font-mono w-5 shrink-0 text-right"
-                  style={{ color: "oklch(0.35 0.006 240)" }}
-                >
-                  {track.number}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="text-[13px] font-medium truncate"
-                    style={{
-                      color: isOwned
-                        ? "oklch(0.90 0.005 220)"
-                        : "oklch(0.55 0.007 240)",
-                    }}
-                  >
-                    {track.title}
-                  </p>
-                  <p
-                    className="text-[11px] font-mono mt-0.5"
-                    style={{ color: "oklch(0.38 0.007 240)" }}
-                  >
-                    {track.duration}
-                  </p>
-                </div>
-                <span
-                  className={`text-[12px] font-mono tabular-nums shrink-0 ${
-                    isPulsing ? "animate-value-flash" : ""
-                  }`}
-                  style={{
-                    color: isPulsing
-                      ? "oklch(0.82 0.15 210)"
-                      : "oklch(0.42 0.008 240)",
-                  }}
-                >
-                  {playCounts[idx] >= 1000
-                    ? `${(playCounts[idx] / 1000).toFixed(1)}k`
-                    : playCounts[idx]}
-                </span>
-                {isOwned ? (
-                  <button
-                    type="button"
-                    onClick={() => handleTrackPreview(idx)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors"
-                    style={{ background: "oklch(0.14 0.006 240)" }}
-                    aria-label={isTrackPlaying ? "Pause" : "Preview"}
-                  >
-                    {isTrackPlaying ? (
-                      <Pause
-                        className="w-3.5 h-3.5"
-                        style={{ color: "oklch(0.55 0.25 290)" }}
-                      />
-                    ) : (
-                      <Play
-                        className="w-3.5 h-3.5 ml-0.5"
-                        style={{ color: "oklch(0.55 0.25 290)" }}
-                      />
-                    )}
-                  </button>
-                ) : (
-                  <div
-                    className="w-8 h-8 flex items-center justify-center rounded-full shrink-0"
-                    style={{ background: "oklch(0.13 0.006 240)" }}
-                  >
-                    <Lock
-                      className="w-3 h-3"
-                      style={{ color: "oklch(0.32 0.006 240)" }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </motion.div>
-
-        {/* ── Secondary market listings ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.4 }}
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: "oklch(0.10 0.006 240)",
-            border: "1px solid oklch(0.18 0.007 240)",
-          }}
-        >
-          <div className="px-5 pt-5 pb-3">
-            <p
-              className="text-[10px] uppercase tracking-[0.16em] font-semibold"
-              style={{ color: "oklch(0.45 0.008 240)" }}
-            >
               Listings
             </p>
           </div>
-          {album.listings.map((listing, idx) => (
+          {song.listings.map((listing, idx) => (
             <div
               key={`${listing.edition}-${listing.seller}`}
               data-ocid={`market_detail.row.${idx + 1}`}
@@ -672,29 +422,94 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               <div className="flex-1 min-w-0">
                 <p
                   className="text-[13px] font-medium"
-                  style={{ color: "oklch(0.78 0.005 220)" }}
+                  style={{ color: "oklch(0.60 0.005 240)" }}
                 >
-                  Edition #{String(listing.edition).padStart(3, "0")}
-                </p>
-                <p
-                  className="text-[11px] font-mono mt-0.5"
-                  style={{ color: "oklch(0.38 0.007 240)" }}
-                >
-                  {listing.seller}
+                  #{String(listing.edition).padStart(3, "0")} · {listing.seller}
                 </p>
               </div>
-              <div className="text-right">
-                <p
-                  className="text-[15px] font-mono font-semibold flex items-center gap-1.5"
-                  style={{ color: "oklch(0.82 0.15 210)" }}
-                >
-                  <SolSymbol large animated={true} />
-                  {listing.price.toFixed(2)}
-                </p>
-              </div>
+              <p
+                className="text-[15px] font-mono font-semibold shrink-0 flex items-center gap-1"
+                style={{ color: "oklch(0.82 0.15 210)" }}
+              >
+                <SolSymbol animated={true} />
+                {listing.price}
+              </p>
+              <button
+                type="button"
+                className="shrink-0 text-[10px] font-mono border rounded-lg px-2 py-1 transition-all"
+                style={{
+                  borderColor: "oklch(0.22 0.007 240)",
+                  color: "oklch(0.50 0.007 240)",
+                }}
+              >
+                Buy
+              </button>
             </div>
           ))}
         </motion.div>
+
+        {/* ── Library info ── */}
+        {libSong && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.4 }}
+            className="rounded-2xl px-5 py-4"
+            style={{
+              background: "oklch(0.10 0.006 240)",
+              border: "1px solid oklch(0.18 0.007 240)",
+            }}
+          >
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-3"
+              style={{ color: "oklch(0.45 0.008 240)" }}
+            >
+              Song Info
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  label: "Floor",
+                  value: libSong.floorPrice.toFixed(1),
+                  sol: true,
+                },
+                {
+                  label: "Last Sale",
+                  value: libSong.lastSoldPrice.toFixed(1),
+                  sol: true,
+                },
+                { label: "Owners", value: String(libSong.owners), sol: false },
+                {
+                  label: "Supply",
+                  value: `${libSong.editions_in_circulation} / ${libSong.supply}`,
+                  sol: false,
+                },
+              ].map((s) => (
+                <div key={s.label}>
+                  <p
+                    className="text-[9px] uppercase tracking-widest mb-1"
+                    style={{ color: "oklch(0.32 0.006 240)" }}
+                  >
+                    {s.label}
+                  </p>
+                  <p
+                    className="text-sm font-mono"
+                    style={{ color: "oklch(0.70 0.005 240)" }}
+                  >
+                    {s.sol ? (
+                      <>
+                        <SolSymbol animated={true} />
+                        {s.value}
+                      </>
+                    ) : (
+                      s.value
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

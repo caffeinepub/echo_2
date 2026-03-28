@@ -1,21 +1,44 @@
 # ECHO
 
 ## Current State
-The app uses `EchoSolIcon.tsx` which loads a square PNG asset (`sol-icon-transparent.dim_128x128.png`) at 16px height. The existing PNG is square (1:1), which means when rendered at `height: 16px; width: auto`, it displays too narrow/small. Some placements may still have forced square containers.
+ECHO is a music collectibles platform built around Albums with multi-track lists. The data model (`albums.ts`) has an `Album` interface with a `tracks: Track[]` array. Pages like `AlbumPlayerPage.tsx` render full track lists with prev/next controls, lock icons per track, and "Track Dominance" analytics. `ReleasesPage.tsx` displays album grid cards with album-level data. `MarketPage.tsx` and `MarketDetailPage.tsx` also reference album/track concepts.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new to add beyond updated asset path
+- New `Song` interface replacing `Album`: `{ id, collectionName, title, artist, artworkSrc, supply, userEdition, preview_url, full_url, floorPrice, lastSoldPrice, owners, minted, isSoldOut, mintOpensInMs, editions_in_circulation, volume_24h_sol, mintPrice, nft_mint_address, marketCap, signalStrength }`
+- `SONGS` export (rename from `ALBUMS`) with same 2 mock entries, titles become the song title (no sub-tracks)
+- New `SongDetailPage` replacing `AlbumPlayerPage`: layout = cover artwork → song title → artist → stats row (Market Cap, 24H Volume, Edition Supply, Collectors) → ECHO SIGNAL waveform section → Listen button (preview) → Collect button (buy edition)
+- Animated waveform component reused from existing ECHO SIGNAL pattern
 
 ### Modify
-- `EchoSolIcon.tsx`: update `src` to use the new wide horizontal PNG `/assets/generated/sol-icon-echo.dim_96x32.png` (96x32, 3:1 aspect ratio). Ensure CSS is `height: 16px (or 18px for stat cards), width: auto, object-fit: contain, flex-shrink: 0, display: inline-block, vertical-align: middle, margin-right: 6px`. Add optional `size` prop that accepts `'default' | 'large'` or keep as number. Add subtle glow via `filter: drop-shadow(0 0 3px rgba(139,92,246,0.6)) drop-shadow(0 0 6px rgba(34,211,238,0.3))` on the img. Keep the 5s pulse animation.
-- Remove any wrapping square container (`w-4 h-4`, `w-5 h-5` etc.) around `EchoSolIcon` usages in all pages/components.
+- `data/albums.ts` → rename to `data/songs.ts`, remove `Track` interface, remove `tracks` field, rename `Album` → `Song`, rename `ALBUMS` → `SONGS`
+- `ReleasesPage.tsx` → update imports to use `Song`/`SONGS`; tile shows song title, artist, edition supply, price; remove any track count references
+- `LibraryPage.tsx` → update imports; remove track list rendering; show song as single playable item
+- `MarketPage.tsx` and `MarketDetailPage.tsx` → update imports; remove track list sections; rename "Album" labels to "Song"
+- `AlbumPlayerPage.tsx` → replace with `SongDetailPage.tsx`: remove track list, prev/next track controls, loop button, track dominance section; replace with Listen + Collect buttons and waveform signal
+- `MintModal.tsx` → update any "album" labels to "song"
+- `AudioPlayerContext.tsx` → update track references to work with single-song model
+- `App.tsx` → update routing from AlbumPlayerPage to SongDetailPage
+- `hooks/useMockData.ts` → update to use SONGS
+- All UI text: "Album" → "Song", "Tracks" → removed, "Track list" → removed
 
 ### Remove
-- Any `w-[n]px h-[n]px` or forced square wrapper divs/spans around the SOL icon
+- `Track` interface
+- `tracks` array from data model
+- Track list section UI in all pages
+- Prev/Next track controls (SkipBack/SkipForward) in player
+- Track Dominance analytics section
+- Loop button (Repeat icon)
+- "Track" or "Tracks" heading anywhere in UI
 
 ## Implementation Plan
-1. Update `EchoSolIcon.tsx` to use new asset path, correct CSS, and add drop-shadow glow
-2. Audit `MarketPage.tsx`, `MarketDetailPage.tsx`, `ReleasesPage.tsx`, `AlbumPlayerPage.tsx`, `MintModal.tsx` for any forced square containers around EchoSolIcon and remove them
-3. Validate and build
+1. Rename/rewrite `data/albums.ts` → `data/songs.ts` with `Song` interface and `SONGS` export
+2. Rewrite `AlbumPlayerPage.tsx` → `SongDetailPage.tsx` with new layout: artwork, title, artist, stats, waveform, Listen + Collect buttons
+3. Update `ReleasesPage.tsx` to use Song/SONGS, remove track references
+4. Update `LibraryPage.tsx` to use Song/SONGS
+5. Update `MarketPage.tsx` and `MarketDetailPage.tsx` to use Song/SONGS, remove track list sections
+6. Update `MintModal.tsx` text
+7. Update `AudioPlayerContext.tsx` for single-song model
+8. Update `App.tsx` routing
+9. Update `hooks/useMockData.ts`

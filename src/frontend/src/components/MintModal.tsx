@@ -2,7 +2,7 @@ import { AlertCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useWalletContext } from "../context/WalletContext";
-import { ALBUMS, formatEdition } from "../data/albums";
+import { SONGS, formatEdition } from "../data/songs";
 import { SolSymbol } from "./SolSymbol";
 
 interface MintModalProps {
@@ -26,20 +26,20 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
   );
   const [editionNumber, setEditionNumber] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [mintingText, setMintingText] = useState("Minting your album...");
+  const [mintingText, setMintingText] = useState("Minting your song...");
 
   // Cycling minting status text — must be before early return
   useEffect(() => {
     if (mintState !== "minting") return;
-    setMintingText("Minting your album...");
+    setMintingText("Minting your song...");
     const t = setTimeout(() => {
       setMintingText("Recording ownership on Solana...");
     }, 1200);
     return () => clearTimeout(t);
   }, [mintState]);
 
-  const album = ALBUMS.find((a) => a.id === albumId);
-  if (!album) return null;
+  const song = SONGS.find((s) => s.id === albumId);
+  if (!song) return null;
 
   const isLocked = mintState === "awaiting_approval" || mintState === "minting";
 
@@ -76,6 +76,20 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
         }}
         data-ocid="mint.modal"
       >
+        <style>{`
+          @keyframes pulse-ring {
+            0% { transform: scale(0.88); opacity: 0.7; }
+            100% { transform: scale(1.25); opacity: 0; }
+          }
+          @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes orbit {
+            0% { transform: rotate(0deg) translateX(96px) rotate(0deg); }
+            100% { transform: rotate(360deg) translateX(96px) rotate(-360deg); }
+          }
+        `}</style>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -84,7 +98,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
           className="relative w-full max-w-sm rounded-2xl border border-border/30 overflow-hidden"
           style={{ backgroundColor: "oklch(0.12 0.005 265)" }}
         >
-          {/* Close button — hidden during locked states */}
           {!isLocked && (
             <button
               type="button"
@@ -140,7 +153,7 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                       Connect wallet to mint
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      Connect your Phantom wallet to purchase {album.title}.
+                      Connect your Phantom wallet to purchase {song.title}.
                     </p>
                   </div>
                   <button
@@ -167,20 +180,20 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                 >
                   <div className="flex items-center gap-4">
                     <img
-                      src={album.artworkSrc}
-                      alt={album.title}
+                      src={song.artworkSrc}
+                      alt={song.title}
                       className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
                     />
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">
-                        {album.title}
+                        {song.title}
                       </p>
                       <p className="text-xs text-muted-foreground/60 mt-0.5">
-                        {album.artist}
+                        {song.artist}
                       </p>
                       <p className="text-[11px] text-muted-foreground/40 mt-1">
-                        {album.supply} Editions ·{" "}
-                        {album.editions_in_circulation} minted
+                        {song.supply} Editions · {song.editions_in_circulation}{" "}
+                        minted
                       </p>
                     </div>
                   </div>
@@ -191,7 +204,7 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                     </span>
                     <span className="text-lg font-mono font-medium text-foreground/90">
                       <SolSymbol animated={true} />
-                      {album.mintPrice}
+                      {song.mintPrice}
                     </span>
                   </div>
                   <p className="text-[11px] text-muted-foreground/35 -mt-2">
@@ -220,12 +233,10 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                   className="flex flex-col items-center text-center gap-6 py-4"
                   data-ocid="mint.loading_state"
                 >
-                  {/* Phantom logo with pulse rings */}
                   <div
                     className="relative flex items-center justify-center"
                     style={{ width: 96, height: 96 }}
                   >
-                    {/* Outer pulse ring */}
                     <div
                       className="absolute rounded-full"
                       style={{
@@ -235,7 +246,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         animation: "pulse-ring 2s ease-out infinite",
                       }}
                     />
-                    {/* Inner pulse ring */}
                     <div
                       className="absolute rounded-full"
                       style={{
@@ -245,7 +255,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         animation: "pulse-ring 2s ease-out infinite 0.4s",
                       }}
                     />
-                    {/* Phantom logo */}
                     <img
                       src="/assets/uploads/img_3646-019d2cf5-e619-74bd-8ead-a4765433f691-1.png"
                       alt="Phantom"
@@ -275,12 +284,10 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                   className="flex flex-col items-center text-center gap-6 py-2"
                   data-ocid="mint.loading_state"
                 >
-                  {/* Artwork + rotating ring + particles */}
                   <div
                     className="relative flex items-center justify-center"
                     style={{ width: 220, height: 220 }}
                   >
-                    {/* Soft glow behind artwork */}
                     <div
                       className="absolute rounded-2xl"
                       style={{
@@ -289,8 +296,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         boxShadow: "0 0 60px 20px rgba(109, 40, 217, 0.25)",
                       }}
                     />
-
-                    {/* SVG rotating progress ring */}
                     <svg
                       width="200"
                       height="200"
@@ -337,8 +342,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         strokeDashoffset="125"
                       />
                     </svg>
-
-                    {/* Particle dots orbiting */}
                     <div
                       className="absolute rounded-full"
                       style={{
@@ -395,17 +398,13 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         transformOrigin: "0 0",
                       }}
                     />
-
-                    {/* Album artwork */}
                     <img
-                      src={album.artworkSrc}
-                      alt={album.title}
+                      src={song.artworkSrc}
+                      alt={song.title}
                       className="rounded-2xl object-cover z-10 relative"
                       style={{ width: 160, height: 160 }}
                     />
                   </div>
-
-                  {/* Cycling minting text */}
                   <AnimatePresence mode="wait">
                     <motion.p
                       key={mintingText}
@@ -432,7 +431,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                   className="flex flex-col items-center text-center gap-5 py-2"
                   data-ocid="mint.success_state"
                 >
-                  {/* Animated checkmark */}
                   <div className="relative">
                     <div
                       style={{
@@ -475,24 +473,20 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                       />
                     </svg>
                   </div>
-
                   <div className="space-y-1.5">
                     <p className="text-base font-semibold text-foreground/90">
-                      Album minted successfully
+                      Song minted successfully
                     </p>
                     <p className="text-xs text-muted-foreground/60">
                       Now in your wallet
                     </p>
                     <p className="text-xs text-muted-foreground/60">
-                      Full album unlocked
+                      Full song unlocked
                     </p>
                   </div>
-
-                  {/* Edition badge */}
                   <span className="text-[11px] font-mono text-muted-foreground/50 border border-border/40 px-2 py-0.5 rounded-full">
                     {formatEdition(editionNumber)}
                   </span>
-
                   <button
                     type="button"
                     onClick={onClose}

@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useWalletContext } from "../context/WalletContext";
-import { formatEdition } from "../data/albums";
-import type { Album } from "../data/albums";
+import { formatEdition } from "../data/songs";
+import type { Song } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
 
 interface LibraryPageProps {
@@ -9,11 +9,11 @@ interface LibraryPageProps {
   onBrowseReleases?: () => void;
 }
 
-function AlbumCard({
-  album,
+function SongCard({
+  song,
   index,
   onClick,
-}: { album: Album; index: number; onClick: () => void }) {
+}: { song: Song; index: number; onClick: () => void }) {
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
@@ -25,11 +25,10 @@ function AlbumCard({
     >
       <div className="relative rounded-2xl overflow-hidden aspect-square mb-3">
         <img
-          src={album.artworkSrc}
-          alt={album.title}
+          src={song.artworkSrc}
+          alt={song.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {/* Glow on hover */}
         <div
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{
@@ -41,10 +40,10 @@ function AlbumCard({
       </div>
       <div className="px-1">
         <p className="text-sm font-semibold text-foreground truncate">
-          {album.title}
+          {song.title}
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {formatEdition(album.userEdition)}
+          {formatEdition(song.userEdition)}
         </p>
       </div>
     </motion.button>
@@ -83,7 +82,7 @@ export function LibraryPage({
           data-ocid="library.empty_state"
           className="flex flex-col items-center justify-center py-24 text-center gap-3"
         >
-          <p className="text-sm text-muted-foreground/60">No albums yet.</p>
+          <p className="text-sm text-muted-foreground/60">No songs yet.</p>
           {onBrowseReleases && (
             <button
               type="button"
@@ -97,12 +96,12 @@ export function LibraryPage({
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
-          {ownedAlbums.map((album, i) => (
-            <AlbumCard
-              key={album.id}
-              album={album}
+          {ownedAlbums.map((song, i) => (
+            <SongCard
+              key={song.id}
+              song={song}
               index={i}
-              onClick={() => onAlbumClick(album.id)}
+              onClick={() => onAlbumClick(song.id)}
             />
           ))}
         </div>
