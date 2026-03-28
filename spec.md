@@ -1,35 +1,43 @@
-# ECHO
+# ECHO — Manage Releases Admin Page
 
 ## Current State
-All market cap, pricing, and volume values are displayed in SOL only across the app (Discover stat cards, leaderboard rows, drop detail dashboard, releases lineup, library/NFT stats, mint prices). A custom Solana gradient icon appears inline with all SOL values.
+- App has three tabs: Library, Releases, Discover (market)
+- Navigation is handled in App.tsx with a `Tab` type and `View` union
+- WalletContext provides `walletAddress` and `isConnected`
+- All releases are currently static mock data in `data/albums.ts`
+- No admin interface exists; no upload or management workflow
 
 ## Requested Changes (Diff)
 
 ### Add
-- A `useSolPrice` hook that fetches the live SOL → USD price (via CoinGecko public API or similar HTTP outcall) and refreshes periodically (every 60s)
-- A `formatUSD` utility that formats dollar amounts cleanly: no decimals for values ≥$1 (comma-separated), 2 decimals for values <$1
-- A `SolUsdValue` display component that renders SOL primary + USD secondary in two layout variants: stacked (for stat cards) and inline (for compact rows)
+- `ManageReleasesPage` — full admin CMS page, only accessible to the configured admin wallet
+- `AdminReleasesContext` — local state manager for admin-managed releases (localStorage-backed), with CRUD operations and status transitions
+- Admin tab entry point: hidden from regular bottom nav; accessible via long-press or hidden gesture on Echo logo, OR by navigating to a dedicated tab type `"admin"` that doesn't appear in public nav
+- Upload form with fields: track title, artist name, audio file, artwork file, price (SOL), supply/edition count, optional release date, optional description, optional genre/tag, rights status (Original/Licensed/Private test), visibility (Private/Scheduled/Public)
+- Rights confirmation checkbox: "I confirm I have the rights or permission to upload this track." required before publishing
+- Release status workflow: Draft → Scheduled → Live → Archived
+- Per-release admin actions: Publish, Unpublish, Archive, Delete, Edit metadata
+- Filter bar: All / Draft / Scheduled / Live / Archived
+- Search input: by title and artist
+- Access denied screen when non-admin wallet connects
+- `ADMIN_WALLET_ADDRESS` constant at top of admin page for easy configuration
 
 ### Modify
-- **Discover stat cards** (Total Market Cap, 24H Volume, Active Viewers, Live Releases): show USD below SOL value in smaller softer text
-- **Leaderboard rows**: show USD inline after SOL — e.g. "231.4 SOL • $34,710" or as a small secondary line
-- **Drop detail dashboard** (market cap card, volume card, price): stacked SOL + USD
-- **Releases lineup rows**: mint price shows USD inline
-- **Library/NFT detail**: any SOL price or market cap shows USD secondary
-- **Mint modal / buy button**: show USD equivalent below SOL price
-- No Solana logo placed next to USD values; SOL logo only accompanies the SOL figure
+- `App.tsx` — add `"admin"` to the `View` type; add navigation logic to show ManageReleasesPage; add a hidden admin access button in TopBar or as a discreet link
+- `BottomNav.tsx` — admin tab NOT added to public nav; admin access must be discreet
+- `TopBar.tsx` — add a small discreet "Manage" link or icon that only appears when admin wallet is connected
 
 ### Remove
-- Nothing removed
+- Nothing removed from existing public-facing pages
 
 ## Implementation Plan
-1. Add `useSolPrice` hook — fetches CoinGecko `simple/price?ids=solana&vs_currencies=usd` in frontend (fetch in useEffect, refresh every 60s), exposes `solPrice: number`
-2. Add `formatUSD(usdValue: number): string` utility
-3. Add `SolUsdValue` component with `variant: 'stacked' | 'inline'` prop
-4. Wire `useSolPrice` at app root via context so all components share one price
-5. Update Discover stat cards to use stacked variant
-6. Update leaderboard rows to use inline variant
-7. Update drop detail dashboard cards
-8. Update releases lineup rows
-9. Update library NFT stats / mint prices
-10. Ensure dark and light mode text colors apply correctly to USD secondary text
+1. Create `src/frontend/src/context/AdminReleasesContext.tsx` — stores releases in localStorage, provides CRUD, status transitions, filtering/search helpers
+2. Create `src/frontend/src/pages/ManageReleasesPage.tsx` — full admin CMS UI:
+   - Access control: check `walletAddress === ADMIN_WALLET_ADDRESS`; show "Access Denied" otherwise
+   - Header with page title + "New Release" button
+   - Filter pills (All/Draft/Scheduled/Live/Archived) + search input
+   - Release table/list with per-row actions (Publish, Unpublish, Archive, Delete, Edit)
+   - Upload/Edit modal with all required + optional fields, rights status, visibility selector, rights confirmation checkbox
+3. Update `App.tsx` to include admin view type and render ManageReleasesPage
+4. Update `TopBar.tsx` to show a discreet admin link (small icon/label, only visible to admin wallet)
+5. Wrap app with AdminReleasesProvider

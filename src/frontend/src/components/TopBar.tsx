@@ -1,5 +1,6 @@
-import { Moon, Sun } from "lucide-react";
+import { Moon, Settings2, Sun } from "lucide-react";
 import { useTheme } from "../ThemeContext";
+import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useWallet } from "../hooks/useWallet";
 
 const ECHO_NEON_LOGO =
@@ -92,7 +93,11 @@ function OwnershipLine({ count }: { count: number }) {
   );
 }
 
-export function TopBar() {
+interface TopBarProps {
+  onAdminClick?: () => void;
+}
+
+export function TopBar({ onAdminClick }: TopBarProps) {
   const { isConnected, walletAddress, ownedAlbumIds, connect, disconnect } =
     useWallet();
   const { theme, toggleTheme } = useTheme();
@@ -100,6 +105,12 @@ export function TopBar() {
   injectNeonStyles();
 
   const isLight = theme === "light";
+
+  // Only show admin button if wallet is connected and matches the configured admin address
+  const isAdmin =
+    ADMIN_WALLET_ADDRESS !== "" &&
+    isConnected &&
+    walletAddress === ADMIN_WALLET_ADDRESS;
 
   return (
     <header
@@ -132,6 +143,40 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center self-center gap-2">
+        {/* Admin Manage button — only visible to admin wallet */}
+        {isAdmin && onAdminClick && (
+          <button
+            type="button"
+            onClick={onAdminClick}
+            data-ocid="topbar.admin.button"
+            aria-label="Manage Releases"
+            title="Manage Releases"
+            className="flex items-center gap-1.5 rounded-lg transition-all duration-150"
+            style={{
+              padding: "5px 10px",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "oklch(0.65 0.20 290)",
+              background: "oklch(0.45 0.20 290 / 0.12)",
+              border: "1px solid oklch(0.55 0.25 290 / 0.25)",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "oklch(0.45 0.20 290 / 0.22)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "oklch(0.45 0.20 290 / 0.12)";
+            }}
+          >
+            <Settings2 size={12} />
+            Manage
+          </button>
+        )}
+
         {/* Theme toggle */}
         <button
           type="button"
