@@ -1,51 +1,29 @@
-# ECHO
+# ECHO — Light Mode Theme
 
 ## Current State
-ReleasesPage.tsx renders a vertical feed of large full-bleed song cards (`SongFeedCard`). Each card:
-- Shows full-width square artwork at the top
-- Song title + artist below
-- Preview progress bar
-- Like/comment action row
-- Mint info section (countdown / minted count / buy button)
-- Full-width `<motion.article>` separated by thin dividers
-
-The result is heavy, card-like, and feels like an NFT drop grid.
+App is dark-mode only with a rich near-black background, soft panel borders, glowing text accents, and premium neon aesthetic. All colors are hardcoded as dark-mode values in CSS/Tailwind classes and inline styles.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `LineupRow` component: a compact horizontal row (not a full card)
-- Small square artwork thumbnail (48–56px) on the left
-- Song title (bold, white) + artist name (muted) stacked in center column
-- Status badge (Upcoming / Live / Sold Out) on the right
-- Countdown timer displayed inline when status is Upcoming: "Mint opens in HH:MM:SS"
-- Minted count displayed inline when status is Live: "87 / 150 minted"
-- Tap-to-expand accordion behavior: tapping a row reveals an expanded panel below it
-- Expanded panel contains: preview play/pause button (30s), like button with count, comment button with count, mint price + mint button
-- Thin horizontal rule separating rows (very subtle, low opacity)
-- A page header/section label: e.g. "DROPS" or "LINEUP" in small caps, editorial style
+- Light mode CSS theme via `prefers-color-scheme: light` media query AND a manual toggle (sun/moon icon in header)
+- CSS custom properties (variables) for all theme-sensitive values so both modes share the same structure
+- Light mode token set: white/near-white backgrounds, near-black primary text, medium gray secondary text, cool gray borders, light elevated surfaces for cards and player
+- Theme toggle button in header (small, minimal, sun/moon icon)
 
 ### Modify
-- Remove `SongFeedCard` component entirely
-- Remove full-width artwork display from the feed view (artwork only shows as small thumbnail)
-- Replace heavy card layout with slim lineup rows
-- Keep all existing state logic (likes, comments, mint, countdown, play timer) — just move it into the new row + expand panel structure
-- Keep `CommentsModal` and `MintModal` integrations intact
+- Refactor all background, text, border, and surface colors to use CSS variables instead of hardcoded dark values
+- Reduce glow/bloom intensity by ~30% in light mode (purple glows become more subtle, not removed)
+- Player surface: light elevated in light mode, dark icons, keep purple progress accent
+- Keep all accent colors identical: purple, solana gradient, green/red percentages, cyan
 
 ### Remove
-- Full-width artwork panel
-- Preview progress bar from the main card view (move to expanded state)
-- Heavy card container styles (borders, background panels, large padding blocks)
+- Nothing removed — dark mode fully preserved as default
 
 ## Implementation Plan
-1. Replace `SongFeedCard` with a new `LineupRow` component in `ReleasesPage.tsx`
-2. `LineupRow` default state: `[thumbnail] [title + artist] [status/count/timer]` in a single horizontal row
-3. Expanded state (toggled on row tap): slides open a detail panel beneath the row with play controls, like/comment, price, and buy button
-4. Use `AnimatePresence` + `motion.div` for the expand/collapse animation (smooth height, opacity)
-5. Status column logic:
-   - Upcoming: amber label + countdown timer line below
-   - Live: green dot + "XX / YY minted" line
-   - Sold Out: muted red/white label
-6. Keep all existing state hooks (likesMap, mintedMap, commentsMap, playingId, likeTimer, mintTimer)
-7. Section header at top: small-caps editorial label (e.g. "LINEUP" or "DROPS") with a thin rule
-8. Dark premium styling: no heavy box shadows, no rounded card panels, minimal borders, generous row height (~72–80px), editorial typography
+1. Add CSS custom properties to `index.css` for dark (default) and light mode token sets
+2. Implement a theme context/hook with localStorage persistence and system preference detection
+3. Add a toggle button (sun/moon) to the header alongside the Phantom wallet button
+4. Replace hardcoded color values throughout all components with CSS variables
+5. Ensure glow filters/box-shadows use variable opacity so they reduce automatically in light mode
+6. Test all three tabs (Library, Releases, Discover), player, modals, and leaderboard in both modes

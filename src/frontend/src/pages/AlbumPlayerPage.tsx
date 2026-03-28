@@ -167,7 +167,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
   return (
     <div
       className="min-h-screen pb-32"
-      style={{ background: "oklch(0.07 0.005 240)" }}
+      style={{ background: "var(--echo-bg)" }}
     >
       {/* Back button */}
       <div className="px-5 pt-5 pb-2">
@@ -178,7 +178,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
           onClick={onBack}
           data-ocid="song_detail.back.button"
           className="flex items-center gap-1.5 text-sm transition-colors"
-          style={{ color: "oklch(0.45 0.008 240)" }}
+          style={{ color: "var(--echo-text-secondary)" }}
         >
           <ArrowLeft size={15} />
           <span>Back</span>
@@ -216,7 +216,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
       >
         <h1
           className="text-[24px] font-bold leading-tight"
-          style={{ color: "oklch(0.96 0.005 220)" }}
+          style={{ color: "var(--echo-text)" }}
         >
           {song.title}
         </h1>
@@ -271,20 +271,20 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
               key={label}
               className="rounded-xl px-2 py-3 text-center"
               style={{
-                background: "oklch(0.10 0.006 240)",
-                border: "1px solid oklch(0.18 0.007 240)",
+                background: "var(--echo-surface)",
+                border: "1px solid var(--echo-border)",
               }}
             >
               <p
                 className="text-[9px] uppercase tracking-widest mb-1.5"
-                style={{ color: "oklch(0.38 0.007 240)" }}
+                style={{ color: "var(--echo-text-muted)" }}
               >
                 {label}
               </p>
               <p
                 className="text-[13px] font-mono font-semibold tabular-nums flex items-center justify-center gap-0.5"
                 style={{
-                  color: sol ? "oklch(0.82 0.15 210)" : "oklch(0.88 0.005 220)",
+                  color: sol ? "oklch(0.82 0.15 210)" : "var(--echo-text-dim)",
                 }}
               >
                 {sol && <SolSymbol animated={true} />}
@@ -301,14 +301,14 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
           transition={{ duration: 0.35, delay: 0.28 }}
           className="rounded-2xl px-5 py-5"
           style={{
-            background: "oklch(0.10 0.006 240)",
-            border: "1px solid oklch(0.18 0.007 240)",
+            background: "var(--echo-surface)",
+            border: "1px solid var(--echo-border)",
             boxShadow: "0 0 18px oklch(0.55 0.12 210 / 0.12)",
           }}
         >
           <p
             className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-4"
-            style={{ color: "oklch(0.45 0.008 240)" }}
+            style={{ color: "var(--echo-text-secondary)" }}
           >
             ECHO SIGNAL
           </p>
@@ -334,7 +334,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
             data-ocid="song_detail.secondary_button"
             className="flex-1 py-3 rounded-xl text-sm font-medium transition-all border"
             style={{
-              borderColor: "oklch(0.28 0.008 240)",
+              borderColor: "var(--echo-text-dark)",
               color: "oklch(0.75 0.005 240)",
               background: "transparent",
             }}
@@ -374,14 +374,14 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
             transition={{ duration: 0.35, delay: 0.4 }}
             className="rounded-2xl overflow-hidden"
             style={{
-              background: "oklch(0.10 0.006 240)",
-              border: "1px solid oklch(0.18 0.007 240)",
+              background: "var(--echo-surface)",
+              border: "1px solid var(--echo-border)",
             }}
           >
             <div className="px-5 pt-5 pb-3">
               <p
                 className="text-[10px] uppercase tracking-[0.16em] font-semibold"
-                style={{ color: "oklch(0.45 0.008 240)" }}
+                style={{ color: "var(--echo-text-secondary)" }}
               >
                 Listings
               </p>
@@ -391,7 +391,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
                 key={listing.edition}
                 data-ocid={`song_detail.row.${idx + 1}`}
                 className="flex items-center gap-3 px-5 py-3.5 border-t group"
-                style={{ borderColor: "oklch(0.14 0.006 240)" }}
+                style={{ borderColor: "var(--echo-border-faint)" }}
               >
                 <span
                   className="text-[12px] font-mono shrink-0"
@@ -410,7 +410,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
                 </div>
                 <span
                   className="text-[11px] font-mono"
-                  style={{ color: "oklch(0.38 0.007 240)" }}
+                  style={{ color: "var(--echo-text-muted)" }}
                 >
                   {listing.seller}
                 </span>
@@ -418,7 +418,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
                   type="button"
                   className="ml-1 shrink-0 text-[10px] font-mono border rounded-lg px-2 py-1 transition-all duration-150 opacity-0 group-hover:opacity-100"
                   style={{
-                    borderColor: "oklch(0.25 0.007 240)",
+                    borderColor: "var(--echo-border)",
                     color: "oklch(0.55 0.007 240)",
                   }}
                 >
@@ -437,14 +437,14 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
             transition={{ duration: 0.35, delay: 0.46 }}
             className="rounded-2xl overflow-hidden"
             style={{
-              background: "oklch(0.10 0.006 240)",
-              border: "1px solid oklch(0.18 0.007 240)",
+              background: "var(--echo-surface)",
+              border: "1px solid var(--echo-border)",
             }}
           >
             <div className="px-5 pt-5 pb-3">
               <p
                 className="text-[10px] uppercase tracking-[0.16em] font-semibold"
-                style={{ color: "oklch(0.45 0.008 240)" }}
+                style={{ color: "var(--echo-text-secondary)" }}
               >
                 Recent Activity
               </p>
@@ -454,7 +454,7 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
                 key={item.description}
                 data-ocid={`song_detail.item.${idx + 1}`}
                 className="flex items-center justify-between px-5 py-3 border-t"
-                style={{ borderColor: "oklch(0.14 0.006 240)" }}
+                style={{ borderColor: "var(--echo-border-faint)" }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 mr-3">
                   <span
@@ -462,14 +462,14 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
                   />
                   <p
                     className="text-sm truncate"
-                    style={{ color: "oklch(0.60 0.005 240)" }}
+                    style={{ color: "var(--echo-text-secondary)" }}
                   >
                     {item.description}
                   </p>
                 </div>
                 <span
                   className="text-[11px] font-mono shrink-0"
-                  style={{ color: "oklch(0.35 0.006 240)" }}
+                  style={{ color: "var(--echo-text-dark)" }}
                 >
                   {item.time}
                 </span>

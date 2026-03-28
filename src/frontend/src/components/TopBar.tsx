@@ -1,10 +1,11 @@
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "../ThemeContext";
 import { useWallet } from "../hooks/useWallet";
 
 const ECHO_NEON_LOGO =
   "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
 
 // Crisp neon feel: tighter glow radii, sharper tube edges, controlled purple aura
-// Outer glow reduced ~20%, purple aura tightened, inner blur sharpened for precision
 const NEON_STYLES = `
 @keyframes echo-neon-flicker {
   0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
@@ -40,7 +41,7 @@ function injectNeonStyles() {
   styleInjected = true;
 }
 
-// Phantom ghost logo — official ghost shape
+// Phantom ghost logo
 function PhantomLogo({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -94,21 +95,24 @@ function OwnershipLine({ count }: { count: number }) {
 export function TopBar() {
   const { isConnected, walletAddress, ownedAlbumIds, connect, disconnect } =
     useWallet();
+  const { theme, toggleTheme } = useTheme();
 
   injectNeonStyles();
+
+  const isLight = theme === "light";
 
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between backdrop-blur-xl border-b"
       style={{
-        background: "oklch(0.07 0.005 240 / 0.90)",
-        borderColor: "oklch(0.15 0.006 240)",
+        background: "var(--echo-header-bg)",
+        borderColor: "var(--echo-header-border)",
         height: "72px",
         paddingLeft: "16px",
         paddingRight: "20px",
       }}
     >
-      {/* Neon Logo — 180px, 6px top offset for optical balance */}
+      {/* Neon Logo */}
       <div className="relative flex items-center" style={{ paddingTop: "6px" }}>
         <img
           src={ECHO_NEON_LOGO}
@@ -127,15 +131,40 @@ export function TopBar() {
         />
       </div>
 
-      {/* Phantom wallet button — vertically centered */}
-      <div className="flex items-center self-center">
+      <div className="flex items-center self-center gap-2">
+        {/* Theme toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          data-ocid="topbar.toggle"
+          aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
+          className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
+          style={{
+            color: isLight ? "oklch(0.35 0.006 240)" : "oklch(0.55 0.008 240)",
+            background: "transparent",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = isLight
+              ? "oklch(0 0 0 / 0.07)"
+              : "oklch(1 0 0 / 0.07)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "transparent";
+          }}
+        >
+          {isLight ? <Moon size={16} /> : <Sun size={16} />}
+        </button>
+
+        {/* Phantom wallet button */}
         <button
           type="button"
           onClick={isConnected ? disconnect : connect}
           data-ocid="wallet.button"
-          className="group flex items-center gap-2 rounded-xl text-white font-medium text-sm transition-all duration-150 select-none"
+          className="group flex items-center gap-2 rounded-xl font-medium text-sm transition-all duration-150 select-none"
           style={{
             backgroundColor: "oklch(0.22 0.12 290)",
+            color: "white",
             paddingLeft: "10px",
             paddingRight: "12px",
             paddingTop: "7px",

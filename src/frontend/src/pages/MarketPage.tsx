@@ -208,7 +208,7 @@ function SignalCard({
       ? "oklch(0.55 0.25 290 / 0.3)"
       : accent === "cyan"
         ? "oklch(0.82 0.15 210 / 0.25)"
-        : "oklch(0.18 0.007 240)";
+        : "var(--echo-border)";
 
   return (
     <motion.div
@@ -217,7 +217,7 @@ function SignalCard({
       transition={{ duration: 0.35, delay: 0.08 + index * 0.07 }}
       className="rounded-2xl px-4 py-3.5 flex flex-col gap-1.5"
       style={{
-        background: "oklch(0.10 0.006 240)",
+        background: "var(--echo-surface)",
         border: `1px solid ${borderColor}`,
         boxShadow:
           accent === "cyan"
@@ -229,14 +229,14 @@ function SignalCard({
     >
       <p
         className="text-[9px] uppercase tracking-[0.16em] font-medium"
-        style={{ color: "oklch(0.45 0.008 240)" }}
+        style={{ color: "var(--echo-text-secondary)" }}
       >
         {label}
       </p>
       <p
         className="text-base font-mono font-semibold tabular-nums leading-tight flex items-center gap-2"
         style={{
-          color: isSol ? "oklch(0.82 0.15 210)" : "oklch(0.94 0.005 220)",
+          color: isSol ? "oklch(0.82 0.15 210)" : "var(--echo-text-dim)",
         }}
       >
         {isSol && <SolSymbol large animated={true} />}
@@ -313,7 +313,7 @@ function ArtCircle({
             className="w-full h-full rounded-full"
             style={{
               background:
-                "linear-gradient(135deg, oklch(0.18 0.007 240), oklch(0.13 0.006 240))",
+                "linear-gradient(135deg, var(--echo-border), var(--echo-elevated))",
             }}
           />
         )}
@@ -321,17 +321,14 @@ function ArtCircle({
       {/* Play/pause overlay */}
       <div
         className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ background: "oklch(0.05 0.003 240 / 0.7)" }}
+        style={{ background: "var(--echo-bg)" }}
       >
         {isPlaying ? (
-          <Pause
-            className="w-4 h-4"
-            style={{ color: "oklch(0.96 0.005 220)" }}
-          />
+          <Pause className="w-4 h-4" style={{ color: "var(--echo-text)" }} />
         ) : (
           <Play
             className="w-4 h-4 ml-0.5"
-            style={{ color: "oklch(0.96 0.005 220)" }}
+            style={{ color: "var(--echo-text)" }}
           />
         )}
       </div>
@@ -408,12 +405,10 @@ function AlbumRow({
       onClick={() => onAlbumClick(album.id)}
       className="flex items-center gap-3 px-4 py-3.5 mb-1.5 rounded-2xl cursor-pointer transition-colors"
       style={{
-        background: isActive
-          ? "oklch(0.12 0.012 290)"
-          : "oklch(0.10 0.006 240)",
+        background: isActive ? "oklch(0.12 0.012 290)" : "var(--echo-surface)",
         border: isActive
           ? "1px solid oklch(0.55 0.25 290 / 0.35)"
-          : "1px solid oklch(0.16 0.006 240)",
+          : "1px solid var(--echo-border-subtle)",
         boxShadow:
           isHot && !isActive
             ? "0 0 0 0 transparent"
@@ -431,7 +426,7 @@ function AlbumRow({
             className="text-[12px] tabular-nums font-mono"
             style={{
               color:
-                rank <= 3 ? "oklch(0.70 0.005 220)" : "oklch(0.35 0.005 240)",
+                rank <= 3 ? "var(--echo-text-dim)" : "var(--echo-text-dark)",
             }}
           >
             {rank}
@@ -451,14 +446,14 @@ function AlbumRow({
       <div className="flex-1 min-w-0">
         <p
           className="text-[14px] font-medium truncate leading-tight"
-          style={{ color: "oklch(0.94 0.005 220)" }}
+          style={{ color: "var(--echo-text-dim)" }}
         >
           {album.title}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <p
             className="text-[11px] truncate"
-            style={{ color: "oklch(0.42 0.008 240)" }}
+            style={{ color: "var(--echo-text-secondary)" }}
           >
             {album.artist}
           </p>
@@ -625,7 +620,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
       >
         <Search
           className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: "oklch(0.50 0.010 240)" }}
+          style={{ color: "var(--echo-text-secondary)" }}
         />
         <input
           type="text"
@@ -635,9 +630,9 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           data-ocid="discover.search_input"
           className="w-full pl-10 pr-4 py-3 text-sm outline-none transition-all rounded-2xl"
           style={{
-            background: "oklch(0.11 0.006 240)",
-            border: "1px solid oklch(0.20 0.007 240)",
-            color: "oklch(0.88 0.005 220)",
+            background: "var(--echo-surface)",
+            border: "1px solid var(--echo-border)",
+            color: "var(--echo-text-dim)",
           }}
           onFocus={(e) => {
             e.currentTarget.style.borderColor = "oklch(0.55 0.25 290 / 0.6)";
@@ -645,7 +640,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
               "0 0 0 1px oklch(0.55 0.25 290 / 0.15), 0 0 20px oklch(0.55 0.25 290 / 0.08)";
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = "oklch(0.20 0.007 240)";
+            e.currentTarget.style.borderColor = "var(--echo-border)";
             e.currentTarget.style.boxShadow = "none";
           }}
         />
@@ -709,7 +704,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
                         : "transparent",
                       color: active
                         ? "oklch(0.78 0.20 290)"
-                        : "oklch(0.40 0.008 240)",
+                        : "var(--echo-text-muted)",
                       border: active
                         ? "1px solid oklch(0.55 0.25 290 / 0.35)"
                         : "1px solid transparent",
@@ -744,7 +739,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
         {/* Column headers */}
         <div
           className="flex items-center gap-3 px-4 mb-2"
-          style={{ color: "oklch(0.35 0.006 240)" }}
+          style={{ color: "var(--echo-text-dark)" }}
         >
           <span className="w-6 shrink-0" />
           <span className="w-14 shrink-0" />
@@ -768,7 +763,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           <p
             data-ocid="discover.empty_state"
             className="text-sm py-12 text-center"
-            style={{ color: "oklch(0.35 0.006 240)" }}
+            style={{ color: "var(--echo-text-dark)" }}
           >
             No albums found
           </p>
@@ -806,7 +801,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
 
       <p
         className="text-center text-[10px] mt-4 font-mono"
-        style={{ color: "oklch(0.28 0.005 240)" }}
+        style={{ color: "var(--echo-text-dark)" }}
       >
         Tap artwork to preview · Click row to explore
       </p>

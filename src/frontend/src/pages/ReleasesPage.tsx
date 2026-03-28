@@ -181,7 +181,7 @@ function LineupRow({
               className="truncate"
               style={{
                 fontSize: 11,
-                color: "rgba(255,255,255,0.32)",
+                color: "var(--echo-text-muted)",
                 marginTop: 2,
               }}
             >
@@ -243,7 +243,7 @@ function LineupRow({
                   className="font-mono"
                   style={{
                     fontSize: 10,
-                    color: "rgba(255,255,255,0.3)",
+                    color: "var(--echo-text-muted)",
                     letterSpacing: "0.03em",
                   }}
                 >
@@ -257,7 +257,7 @@ function LineupRow({
                 style={{
                   fontSize: 8,
                   letterSpacing: "0.18em",
-                  color: "rgba(255,255,255,0.2)",
+                  color: "var(--echo-text-dark)",
                 }}
               >
                 SOLD OUT
@@ -320,8 +320,8 @@ function LineupRow({
                   ) : (
                     <Play
                       size={11}
-                      color="rgba(255,255,255,0.8)"
-                      fill="rgba(255,255,255,0.8)"
+                      color="var(--echo-text-dim)"
+                      fill="var(--echo-text-dim)"
                       style={{ marginLeft: 1 }}
                     />
                   )}
@@ -339,7 +339,7 @@ function LineupRow({
                     className="font-mono uppercase"
                     style={{
                       fontSize: 9,
-                      color: "rgba(255,255,255,0.25)",
+                      color: "var(--echo-text-dark)",
                       letterSpacing: "0.12em",
                     }}
                   >
@@ -386,11 +386,11 @@ function LineupRow({
                 >
                   <Heart
                     size={13}
-                    color={isLiked ? "#f472b6" : "rgba(255,255,255,0.25)"}
+                    color={isLiked ? "#f472b6" : "var(--echo-text-dark)"}
                     fill={isLiked ? "#f472b6" : "none"}
                   />
                   <span
-                    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}
+                    style={{ fontSize: 11, color: "var(--echo-text-muted)" }}
                   >
                     {likes}
                   </span>
@@ -413,9 +413,9 @@ function LineupRow({
                     padding: 0,
                   }}
                 >
-                  <MessageCircle size={13} color="rgba(255,255,255,0.25)" />
+                  <MessageCircle size={13} color="var(--echo-text-dark)" />
                   <span
-                    style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}
+                    style={{ fontSize: 11, color: "var(--echo-text-muted)" }}
                   >
                     {comments.length}
                   </span>
@@ -440,7 +440,7 @@ function LineupRow({
                       className="font-mono"
                       style={{
                         fontSize: 12,
-                        color: "rgba(255,255,255,0.5)",
+                        color: "var(--echo-text-secondary)",
                         marginLeft: 2,
                       }}
                     >
@@ -656,7 +656,7 @@ export function ReleasesPage({
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: "0.22em",
-                color: "rgba(255,255,255,0.6)",
+                color: "var(--echo-text-secondary)",
               }}
             >
               LINEUP
@@ -665,7 +665,7 @@ export function ReleasesPage({
               className="font-mono"
               style={{
                 fontSize: 10,
-                color: "rgba(255,255,255,0.25)",
+                color: "var(--echo-text-dark)",
                 letterSpacing: "0.08em",
               }}
             >

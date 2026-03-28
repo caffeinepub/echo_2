@@ -1,7 +1,10 @@
+import { ListPlus, Pause, Play } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useWalletContext } from "../context/WalletContext";
-import { formatEdition } from "../data/songs";
 import type { Song } from "../data/songs";
+import { formatEdition } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
 
 interface LibraryPageProps {
@@ -9,53 +12,161 @@ interface LibraryPageProps {
   onBrowseReleases?: () => void;
 }
 
+function getStatusLabel(
+  song: Song,
+  currentTrackId: string | null,
+  isLibraryPlaying: boolean,
+  queueIds: string[],
+  lastPlayedMap: Record<string, number>,
+  isTopItem: boolean,
+): { label: string; color: string } | null {
+  if (currentTrackId === song.id && isLibraryPlaying) {
+    return { label: "NOW PLAYING", color: "text-violet-400" };
+  }
+  if (queueIds.includes(song.id)) {
+    return { label: "QUEUED", color: "text-cyan-400" };
+  }
+  if (isTopItem && lastPlayedMap[song.id]) {
+    return { label: "RECENTLY PLAYED", color: "text-foreground/30" };
+  }
+  return null;
+}
+
 function SongCard({
   song,
   index,
-  onClick,
-}: { song: Song; index: number; onClick: () => void }) {
+  onPlay,
+  onQueue,
+  status,
+  isCurrentlyPlaying,
+}: {
+  song: Song;
+  index: number;
+  onPlay: () => void;
+  onQueue: () => void;
+  status: { label: string; color: string } | null;
+  isCurrentlyPlaying: boolean;
+}) {
   return (
-    <motion.button
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      onClick={onClick}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.07, 0.4) }}
       data-ocid={`library.item.${index + 1}`}
-      className="group text-left w-full focus:outline-none"
+      className="flex flex-col"
     >
-      <div className="relative rounded-2xl overflow-hidden aspect-square mb-3">
+      {/* Status label */}
+      <div className="h-5 mb-1 px-0.5">
+        {status && (
+          <span
+            className={`text-[9px] uppercase tracking-widest font-medium ${status.color}`}
+          >
+            {status.label}
+          </span>
+        )}
+      </div>
+
+      {/* Artwork */}
+      <div className="relative rounded-xl overflow-hidden aspect-square">
         <img
           src={song.artworkSrc}
           alt={song.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="w-full h-full object-cover"
         />
-        <div
-          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{
-            boxShadow:
-              "inset 0 0 0 1px oklch(0.55 0.22 265 / 0.4), 0 0 40px 8px oklch(0.55 0.22 265 / 0.3), 0 0 80px 20px oklch(0.55 0.22 290 / 0.2)",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {isCurrentlyPlaying && (
+          <div
+            className="absolute inset-0 rounded-xl pointer-events-none"
+            style={{
+              boxShadow:
+                "inset 0 0 0 1.5px oklch(0.55 0.22 265 / 0.5), 0 0 30px 6px oklch(0.55 0.22 265 / 0.25)",
+            }}
+          />
+        )}
       </div>
-      <div className="px-1">
-        <p className="text-sm font-semibold text-foreground truncate">
+
+      {/* Info */}
+      <div className="mt-2 px-0.5">
+        <p className="text-[13px] font-semibold text-foreground/90 truncate leading-tight">
           {song.title}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <p className="text-[11px] text-muted-foreground/40 mt-0.5">
           {formatEdition(song.userEdition)}
         </p>
       </div>
-    </motion.button>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2 mt-2.5 px-0.5">
+        <button
+          type="button"
+          data-ocid={`library.primary_button.${index + 1}`}
+          onClick={onPlay}
+          aria-label={isCurrentlyPlaying ? "Pause" : "Play"}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-white/[0.06] hover:bg-violet-500/20 border border-white/[0.06] hover:border-violet-500/30 transition-all duration-200"
+        >
+          {isCurrentlyPlaying ? (
+            <Pause className="w-3.5 h-3.5 text-violet-400" />
+          ) : (
+            <Play className="w-3.5 h-3.5 text-foreground/60" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          data-ocid={`library.secondary_button.${index + 1}`}
+          onClick={onQueue}
+          aria-label="Add to queue"
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-white/[0.04] hover:bg-cyan-500/10 border border-white/[0.04] hover:border-cyan-500/20 transition-all duration-200"
+        >
+          <ListPlus className="w-3.5 h-3.5 text-foreground/40" />
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
 export function LibraryPage({
-  onAlbumClick,
+  onAlbumClick: _onAlbumClick,
   onBrowseReleases,
 }: LibraryPageProps) {
   const { ownedAlbums } = useMockData();
   const { isConnected } = useWalletContext();
+  const audioPlayer = useAudioPlayer();
+
+  const [lastPlayedMap, setLastPlayedMap] = useState<Record<string, number>>(
+    {},
+  );
+
+  const queueIds = audioPlayer.queue.map((t) => t.id);
+  const isLibraryPlaying =
+    audioPlayer.isPlaying && audioPlayer.currentTrack?.mode === "library";
+
+  // Sort by most recently played descending; unplayed go to bottom
+  const sortedSongs = [...ownedAlbums].sort((a, b) => {
+    const ta = lastPlayedMap[a.id] ?? 0;
+    const tb = lastPlayedMap[b.id] ?? 0;
+    return tb - ta;
+  });
+
+  function handlePlay(song: Song) {
+    audioPlayer.playLibrary({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      artworkSrc: song.artworkSrc,
+      preview_url: song.preview_url,
+    });
+    setLastPlayedMap((prev) => ({ ...prev, [song.id]: Date.now() }));
+  }
+
+  function handleQueue(song: Song) {
+    audioPlayer.addToQueue({
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      artworkSrc: song.artworkSrc,
+      preview_url: song.preview_url,
+    });
+  }
 
   return (
     <div className="px-6 md:px-12 pt-8 pb-4">
@@ -95,15 +206,30 @@ export function LibraryPage({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 md:gap-6">
-          {ownedAlbums.map((song, i) => (
-            <SongCard
-              key={song.id}
-              song={song}
-              index={i}
-              onClick={() => onAlbumClick(song.id)}
-            />
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+          {sortedSongs.map((song, i) => {
+            const isCurrentlyPlaying =
+              audioPlayer.currentTrack?.id === song.id && isLibraryPlaying;
+            const status = getStatusLabel(
+              song,
+              audioPlayer.currentTrack?.id ?? null,
+              isLibraryPlaying,
+              queueIds,
+              lastPlayedMap,
+              i === 0,
+            );
+            return (
+              <SongCard
+                key={song.id}
+                song={song}
+                index={i}
+                onPlay={() => handlePlay(song)}
+                onQueue={() => handleQueue(song)}
+                status={status}
+                isCurrentlyPlaying={isCurrentlyPlaying}
+              />
+            );
+          })}
         </div>
       )}
     </div>

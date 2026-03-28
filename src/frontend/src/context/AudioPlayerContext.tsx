@@ -12,12 +12,21 @@ export interface PlayerTrack {
 interface AudioPlayerContextValue {
   currentTrack: PlayerTrack | null;
   isPlaying: boolean;
-  play: (track: Omit<PlayerTrack, "mode">) => void; // alias for playPreview
+  queue: PlayerTrack[];
+  loopMode: "off" | "loop";
+  currentTime: number;
+  duration: number;
+  play: (track: Omit<PlayerTrack, "mode">) => void;
   playPreview: (track: Omit<PlayerTrack, "mode">) => void;
   playLibrary: (track: Omit<PlayerTrack, "mode">) => void;
+  addToQueue: (track: Omit<PlayerTrack, "mode">) => void;
+  skipNext: () => void;
+  skipPrevious: () => void;
+  setLoopMode: (mode: "off" | "loop") => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
+  seek: (seconds: number) => void;
 }
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
@@ -27,8 +36,21 @@ export function AudioPlayerProvider({
 }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [queue, setQueue] = useState<PlayerTrack[]>([]);
+  const [loopMode, setLoopMode] = useState<"off" | "loop">("off");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loopModeRef = useRef<"off" | "loop">("off");
+  const queueRef = useRef<PlayerTrack[]>([]);
+  const currentTrackRef = useRef<PlayerTrack | null>(null);
+
+  function syncLoopMode(mode: "off" | "loop") {
+    loopModeRef.current = mode;
+    setLoopMode(mode);
+  }
 
   function clearTimer() {
     if (timerRef.current) {
@@ -41,16 +63,69 @@ export function AudioPlayerProvider({
     clearTimer();
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
       audioRef.current = null;
     }
     setCurrentTrack(null);
+    currentTrackRef.current = null;
     setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }
+
+  function startAudio(track: PlayerTrack, onEnd?: () => void) {
+    clearTimer();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
+      audioRef.current = null;
+    }
+
+    setCurrentTrack(track);
+    currentTrackRef.current = track;
+    setIsPlaying(true);
+    setCurrentTime(0);
+    setDuration(0);
+
+    if (track.preview_url) {
+      const audio = new Audio(track.preview_url);
+      audioRef.current = audio;
+      audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+      audio.onloadedmetadata = () => setDuration(audio.duration || 0);
+      if (onEnd) audio.onended = onEnd;
+      audio.play().catch(() => {});
+    }
+  }
+
+  function handleLibraryEnd() {
+    const mode = loopModeRef.current;
+    const q = queueRef.current;
+    const track = currentTrackRef.current;
+
+    if (mode === "loop" && track) {
+      startAudio(track, handleLibraryEnd);
+      return;
+    }
+
+    if (q.length > 0) {
+      const [next, ...rest] = q;
+      queueRef.current = rest;
+      setQueue(rest);
+      startAudio(next, handleLibraryEnd);
+    } else {
+      setCurrentTrack(null);
+      currentTrackRef.current = null;
+      setIsPlaying(false);
+    }
   }
 
   function playPreview(track: Omit<PlayerTrack, "mode">) {
     const fullTrack: PlayerTrack = { ...track, mode: "preview" };
 
-    // Same track — toggle
     if (currentTrack?.id === track.id && currentTrack.mode === "preview") {
       if (isPlaying) {
         audioRef.current?.pause();
@@ -62,18 +137,25 @@ export function AudioPlayerProvider({
       return;
     }
 
-    // Stop current
     clearTimer();
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
       audioRef.current = null;
     }
 
     setCurrentTrack(fullTrack);
+    currentTrackRef.current = fullTrack;
+    setCurrentTime(0);
+    setDuration(0);
 
     if (track.preview_url) {
       const audio = new Audio(track.preview_url);
       audioRef.current = audio;
+      audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+      audio.onloadedmetadata = () => setDuration(audio.duration || 0);
       audio.play().catch(() => {});
       timerRef.current = setTimeout(() => {
         stopAudio();
@@ -86,7 +168,6 @@ export function AudioPlayerProvider({
   function playLibrary(track: Omit<PlayerTrack, "mode">) {
     const fullTrack: PlayerTrack = { ...track, mode: "library" };
 
-    // Same track — toggle play/pause
     if (currentTrack?.id === track.id && currentTrack.mode === "library") {
       if (isPlaying) {
         audioRef.current?.pause();
@@ -98,22 +179,51 @@ export function AudioPlayerProvider({
       return;
     }
 
-    // Stop current (no 30s timer for library)
-    clearTimer();
+    queueRef.current = [];
+    setQueue([]);
+
+    startAudio(fullTrack, handleLibraryEnd);
+  }
+
+  function addToQueue(track: Omit<PlayerTrack, "mode">) {
+    const fullTrack: PlayerTrack = { ...track, mode: "library" };
+    const updated = [...queueRef.current, fullTrack];
+    queueRef.current = updated;
+    setQueue(updated);
+  }
+
+  function skipNext() {
+    const q = queueRef.current;
+    if (q.length > 0) {
+      const [next, ...rest] = q;
+      queueRef.current = rest;
+      setQueue(rest);
+      startAudio(next, handleLibraryEnd);
+    } else {
+      stopAudio();
+    }
+  }
+
+  function skipPrevious() {
+    if (!audioRef.current) {
+      stopAudio();
+      return;
+    }
+    if (audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      setCurrentTime(0);
+      audioRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      stopAudio();
+    }
+  }
+
+  function seek(seconds: number) {
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+      audioRef.current.currentTime = seconds;
+      setCurrentTime(seconds);
     }
-
-    setCurrentTrack(fullTrack);
-
-    if (track.preview_url) {
-      const audio = new Audio(track.preview_url);
-      audioRef.current = audio;
-      audio.play().catch(() => {});
-    }
-    // Even without real audio, set playing = true (mock playback)
-    setIsPlaying(true);
   }
 
   function pause() {
@@ -131,12 +241,21 @@ export function AudioPlayerProvider({
       value={{
         currentTrack,
         isPlaying,
+        queue,
+        loopMode,
+        currentTime,
+        duration,
         play: playPreview,
         playPreview,
         playLibrary,
+        addToQueue,
+        skipNext,
+        skipPrevious,
+        setLoopMode: syncLoopMode,
         pause,
         resume,
         stop: stopAudio,
+        seek,
       }}
     >
       {children}

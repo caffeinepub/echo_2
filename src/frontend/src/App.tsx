@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useEffect } from "react";
+import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { MiniPlayer } from "./components/MiniPlayer";
 import { SplashScreen } from "./components/SplashScreen";
@@ -16,12 +18,11 @@ type View =
   | { type: "album-player"; albumId: string; fromTab: Tab }
   | { type: "market-detail"; albumId: string };
 
-export default function App() {
+function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    document.documentElement.classList.add("dark");
     const timer = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(timer);
   }, []);
@@ -87,5 +88,13 @@ export default function App() {
         </div>
       </AudioPlayerProvider>
     </WalletProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

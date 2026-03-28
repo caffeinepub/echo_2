@@ -47,6 +47,32 @@
     --sidebar-accent-foreground: 0.96 0.005 220;
     --sidebar-border: 0.18 0.007 240;
     --sidebar-ring: 0.55 0.25 290;
+
+    /* ── Echo semantic surface tokens (dark defaults) ── */
+    --echo-bg: oklch(0.07 0.005 240);
+    --echo-bg-alpha: oklch(0.07 0.005 240 / 0.9);
+    --echo-surface: oklch(0.1 0.006 240);
+    --echo-surface-alt: oklch(0.12 0.006 240);
+    --echo-elevated: oklch(0.14 0.007 240);
+    --echo-border: oklch(0.18 0.007 240);
+    --echo-border-subtle: oklch(0.16 0.006 240);
+    --echo-border-faint: oklch(0.14 0.006 240);
+    --echo-text: oklch(0.96 0.005 220);
+    --echo-text-dim: oklch(0.88 0.005 220);
+    --echo-text-secondary: oklch(0.45 0.008 240);
+    --echo-text-muted: oklch(0.38 0.006 240);
+    --echo-text-dark: oklch(0.32 0.006 240);
+    --echo-nav-bg: oklch(0.08 0.005 240 / 0.92);
+    --echo-nav-border: oklch(0.16 0.006 240);
+    --echo-header-bg: oklch(0.07 0.005 240 / 0.9);
+    --echo-header-border: oklch(0.15 0.006 240);
+    /* Glow tokens */
+    --glow-violet-shadow: 0 0 20px oklch(0.55 0.25 290 / 0.35), 0 0 60px
+      oklch(0.55 0.25 290 / 0.12);
+    --glow-cyan-shadow: 0 0 20px oklch(0.82 0.15 210 / 0.35);
+    --glow-gold-shadow: 0 0 16px oklch(0.8 0.15 80 / 0.4);
+    --glow-blue-shadow: 0 0 40px 8px oklch(0.55 0.22 265 / 0.35), 0 0 80px 16px
+      oklch(0.55 0.22 265 / 0.15);
   }
 
   .dark {
@@ -92,6 +118,58 @@
     --sidebar-ring: 0.55 0.25 290;
   }
 
+  /* ── Light mode overrides ── */
+  [data-theme="light"] {
+    --background: 0.97 0.003 240;
+    --foreground: 0.12 0.008 240;
+    --card: 0.94 0.004 240;
+    --card-foreground: 0.12 0.008 240;
+    --popover: 0.93 0.004 240;
+    --popover-foreground: 0.12 0.008 240;
+    --primary: 0.12 0.008 240;
+    --primary-foreground: 0.97 0.003 240;
+    --secondary: 0.9 0.005 240;
+    --secondary-foreground: 0.12 0.008 240;
+    --muted: 0.92 0.004 240;
+    --muted-foreground: 0.5 0.01 240;
+    --accent: 0.55 0.25 290;
+    --accent-foreground: 0.97 0.003 240;
+    --destructive: 0.55 0.22 10;
+    --destructive-foreground: 0.97 0.003 240;
+    --border: 0.84 0.005 240;
+    --input: 0.84 0.005 240;
+    --ring: 0.55 0.25 290;
+    --sidebar: 0.94 0.004 240;
+    --sidebar-foreground: 0.12 0.008 240;
+    --sidebar-border: 0.84 0.005 240;
+
+    /* ── Echo semantic surface tokens (light) ── */
+    --echo-bg: oklch(0.97 0.003 240);
+    --echo-bg-alpha: oklch(0.97 0.003 240 / 0.95);
+    --echo-surface: oklch(0.93 0.004 240);
+    --echo-surface-alt: oklch(0.91 0.004 240);
+    --echo-elevated: oklch(0.88 0.005 240);
+    --echo-border: oklch(0.82 0.004 240);
+    --echo-border-subtle: oklch(0.85 0.004 240);
+    --echo-border-faint: oklch(0.87 0.003 240);
+    --echo-text: oklch(0.12 0.008 240);
+    --echo-text-dim: oklch(0.2 0.007 240);
+    --echo-text-secondary: oklch(0.48 0.01 240);
+    --echo-text-muted: oklch(0.58 0.008 240);
+    --echo-text-dark: oklch(0.65 0.006 240);
+    --echo-nav-bg: oklch(0.95 0.003 240 / 0.95);
+    --echo-nav-border: oklch(0.86 0.004 240);
+    --echo-header-bg: oklch(0.97 0.003 240 / 0.95);
+    --echo-header-border: oklch(0.87 0.003 240);
+    /* Glow tokens — reduced intensity in light */
+    --glow-violet-shadow: 0 0 14px oklch(0.55 0.25 290 / 0.16), 0 0 36px
+      oklch(0.55 0.25 290 / 0.06);
+    --glow-cyan-shadow: 0 0 14px oklch(0.82 0.15 210 / 0.18);
+    --glow-gold-shadow: 0 0 12px oklch(0.8 0.15 80 / 0.22);
+    --glow-blue-shadow: 0 0 24px 4px oklch(0.55 0.22 265 / 0.16), 0 0 48px 8px
+      oklch(0.55 0.22 265 / 0.07);
+  }
+
   * {
     @apply border-border;
   }
@@ -105,13 +183,12 @@
 }
 
 @layer utilities {
-  /* Glow utilities */
+  /* Glow utilities — use CSS var tokens for adaptive intensity */
   .glow-violet {
-    box-shadow: 0 0 20px oklch(0.55 0.25 290 / 0.35), 0 0 60px
-      oklch(0.55 0.25 290 / 0.12);
+    box-shadow: var(--glow-violet-shadow);
   }
   .glow-cyan {
-    box-shadow: 0 0 20px oklch(0.82 0.15 210 / 0.35);
+    box-shadow: var(--glow-cyan-shadow);
   }
   .glow-mint {
     text-shadow: 0 0 8px oklch(0.76 0.18 160 / 0.6);
@@ -120,25 +197,23 @@
     text-shadow: 0 0 8px oklch(0.65 0.22 10 / 0.6);
   }
   .glow-gold {
-    box-shadow: 0 0 16px oklch(0.8 0.15 80 / 0.4);
+    box-shadow: var(--glow-gold-shadow);
   }
   .glow-blue {
-    box-shadow: 0 0 40px 8px oklch(0.55 0.22 265 / 0.35), 0 0 80px 16px
-      oklch(0.55 0.22 265 / 0.15);
+    box-shadow: var(--glow-blue-shadow);
   }
   .glow-mixed {
-    box-shadow: 0 0 40px 12px rgba(255, 255, 255, 0.04), 0 0 80px 24px
-      rgba(220, 215, 205, 0.03);
+    box-shadow: 0 0 40px 12px rgba(0, 0, 0, 0.04), 0 0 80px 24px
+      rgba(0, 0, 0, 0.02);
   }
   .shadow-album {
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 40px 8px
-      rgba(255, 255, 255, 0.03);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15), 0 0 40px 8px rgba(0, 0, 0, 0.04);
   }
 
-  /* Panel utility */
+  /* Panel utility — adaptive */
   .panel {
-    background: oklch(0.1 0.006 240);
-    border: 1px solid oklch(0.18 0.007 240);
+    background: var(--echo-surface);
+    border: 1px solid var(--echo-border);
     border-radius: 16px;
   }
 
@@ -173,6 +248,42 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+}
+
+/* ── Light mode neon logo override ── */
+[data-theme="light"] .echo-logo-neon {
+  animation: echo-neon-breathe-light 3.8s ease-in-out infinite !important;
+}
+
+@keyframes echo-neon-breathe-light {
+  0%,
+  100% {
+    filter: brightness(0.92) drop-shadow(0 0 1px rgba(130, 60, 255, 0.22))
+      drop-shadow(0 0 3px rgba(130, 60, 255, 0.12));
+  }
+  50% {
+    filter: brightness(0.96) drop-shadow(0 0 2px rgba(130, 60, 255, 0.3))
+      drop-shadow(0 0 6px rgba(130, 60, 255, 0.16));
+  }
+}
+
+/* ── Light mode transparent-white overlay overrides ── */
+/* These Tailwind classes use white opacity overlays — adapt for light mode */
+[data-theme="light"] .bg-white\/\[0\.06\],
+[data-theme="light"] .bg-white\/\[0\.08\],
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: oklch(0 0 0 / 0.04);
+}
+[data-theme="light"] .hover\:bg-white\/\[0\.06\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.08\]:hover {
+  background-color: oklch(0 0 0 / 0.06);
+}
+[data-theme="light"] .border-white\/\[0\.06\],
+[data-theme="light"] .border-white\/\[0\.08\] {
+  border-color: oklch(0 0 0 / 0.08);
+}
+[data-theme="light"] .border-t.border-white\/\[0\.06\] {
+  border-color: oklch(0 0 0 / 0.08);
 }
 
 /* ── Keyframe Animations ── */

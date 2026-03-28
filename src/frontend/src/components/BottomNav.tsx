@@ -21,8 +21,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around h-[68px] backdrop-blur-xl border-t"
       style={{
-        background: "oklch(0.08 0.005 240 / 0.92)",
-        borderColor: "oklch(0.16 0.006 240)",
+        background: "var(--echo-nav-bg)",
+        borderColor: "var(--echo-nav-border)",
       }}
     >
       {tabs.map(({ id, label, Icon }) => {
@@ -35,7 +35,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onClick={() => onTabChange(id)}
             className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-all relative"
             style={{
-              color: isActive ? VIOLET : "oklch(0.38 0.006 240)",
+              color: isActive ? VIOLET : "var(--echo-text-dark)",
             }}
           >
             {isActive && (
@@ -51,7 +51,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             <span
               className="text-[10px]"
               style={{
-                color: isActive ? VIOLET : "oklch(0.38 0.006 240)",
+                color: isActive ? VIOLET : "var(--echo-text-dark)",
               }}
             >
               {label}

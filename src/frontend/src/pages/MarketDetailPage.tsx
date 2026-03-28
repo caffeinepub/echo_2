@@ -151,14 +151,14 @@ function VolumeSignalCard({ song }: { song: MarketSong }) {
     <div
       className="rounded-2xl px-5 py-5"
       style={{
-        background: "oklch(0.10 0.006 240)",
-        border: "1px solid oklch(0.18 0.007 240)",
+        background: "var(--echo-surface)",
+        border: "1px solid var(--echo-border)",
         boxShadow: "0 0 18px oklch(0.55 0.12 210 / 0.12)",
       }}
     >
       <p
         className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-4"
-        style={{ color: "oklch(0.45 0.008 240)" }}
+        style={{ color: "var(--echo-text-secondary)" }}
       >
         ECHO SIGNAL
       </p>
@@ -201,7 +201,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
   return (
     <div
       className="min-h-screen pb-32"
-      style={{ background: "oklch(0.07 0.005 240)" }}
+      style={{ background: "var(--echo-bg)" }}
     >
       {/* Back button */}
       <div className="px-5 pt-5 pb-2">
@@ -212,7 +212,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           onClick={onBack}
           data-ocid="market_detail.back.button"
           className="flex items-center gap-1.5 text-sm transition-colors"
-          style={{ color: "oklch(0.45 0.008 240)" }}
+          style={{ color: "var(--echo-text-secondary)" }}
         >
           <ArrowLeft size={15} />
           <span>Discover</span>
@@ -251,7 +251,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                 className="w-full h-full"
                 style={{
                   background:
-                    "linear-gradient(135deg, oklch(0.18 0.007 240), oklch(0.12 0.006 240))",
+                    "linear-gradient(135deg, var(--echo-border), var(--echo-surface-alt))",
                 }}
               />
             )}
@@ -261,7 +261,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             onClick={toggleArtPlay}
             data-ocid="market_detail.primary_button"
             className="absolute inset-0 rounded-full flex items-center justify-center transition-opacity"
-            style={{ background: "oklch(0.05 0.003 240 / 0.55)" }}
+            style={{ background: "var(--echo-bg)" }}
             aria-label={isPlayingSong ? "Pause" : "Preview"}
           >
             {isPlayingSong ? (
@@ -282,19 +282,19 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
       >
         <h1
           className="text-[22px] font-bold leading-tight"
-          style={{ color: "oklch(0.96 0.005 220)" }}
+          style={{ color: "var(--echo-text)" }}
         >
           {song.title}
         </h1>
         <p
           className="text-[14px] mt-1"
-          style={{ color: "oklch(0.45 0.008 240)" }}
+          style={{ color: "var(--echo-text-secondary)" }}
         >
           {song.artist}
         </p>
         <p
           className="text-[11px] mt-1.5 uppercase tracking-widest"
-          style={{ color: "oklch(0.35 0.006 240)" }}
+          style={{ color: "var(--echo-text-dark)" }}
         >
           {song.total_supply} editions · {albumId.toUpperCase()}
         </p>
@@ -349,7 +349,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             {
               label: "Total Supply",
               value: (
-                <span style={{ color: "oklch(0.88 0.005 220)" }}>
+                <span style={{ color: "var(--echo-text-dim)" }}>
                   {song.total_supply}
                 </span>
               ),
@@ -357,7 +357,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             {
               label: "Circulating",
               value: (
-                <span style={{ color: "oklch(0.88 0.005 220)" }}>
+                <span style={{ color: "var(--echo-text-dim)" }}>
                   {song.circulating_supply} / {song.total_supply}
                 </span>
               ),
@@ -367,13 +367,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               key={label}
               className="rounded-2xl px-3 py-4 text-center"
               style={{
-                background: "oklch(0.10 0.006 240)",
-                border: "1px solid oklch(0.18 0.007 240)",
+                background: "var(--echo-surface)",
+                border: "1px solid var(--echo-border)",
               }}
             >
               <p
                 className="text-[9px] uppercase tracking-widest mb-2"
-                style={{ color: "oklch(0.38 0.007 240)" }}
+                style={{ color: "var(--echo-text-muted)" }}
               >
                 {label}
               </p>
@@ -400,14 +400,14 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           transition={{ duration: 0.35, delay: 0.34 }}
           className="rounded-2xl overflow-hidden"
           style={{
-            background: "oklch(0.10 0.006 240)",
-            border: "1px solid oklch(0.18 0.007 240)",
+            background: "var(--echo-surface)",
+            border: "1px solid var(--echo-border)",
           }}
         >
           <div className="px-5 pt-5 pb-3">
             <p
               className="text-[10px] uppercase tracking-[0.16em] font-semibold"
-              style={{ color: "oklch(0.45 0.008 240)" }}
+              style={{ color: "var(--echo-text-secondary)" }}
             >
               Listings
             </p>
@@ -417,12 +417,12 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               key={`${listing.edition}-${listing.seller}`}
               data-ocid={`market_detail.row.${idx + 1}`}
               className="flex items-center gap-3 px-5 py-3.5 border-t"
-              style={{ borderColor: "oklch(0.14 0.006 240)" }}
+              style={{ borderColor: "var(--echo-border-faint)" }}
             >
               <div className="flex-1 min-w-0">
                 <p
                   className="text-[13px] font-medium"
-                  style={{ color: "oklch(0.60 0.005 240)" }}
+                  style={{ color: "var(--echo-text-secondary)" }}
                 >
                   #{String(listing.edition).padStart(3, "0")} · {listing.seller}
                 </p>
@@ -438,8 +438,8 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                 type="button"
                 className="shrink-0 text-[10px] font-mono border rounded-lg px-2 py-1 transition-all"
                 style={{
-                  borderColor: "oklch(0.22 0.007 240)",
-                  color: "oklch(0.50 0.007 240)",
+                  borderColor: "var(--echo-border)",
+                  color: "var(--echo-text-secondary)",
                 }}
               >
                 Buy
@@ -456,13 +456,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             transition={{ duration: 0.35, delay: 0.4 }}
             className="rounded-2xl px-5 py-4"
             style={{
-              background: "oklch(0.10 0.006 240)",
-              border: "1px solid oklch(0.18 0.007 240)",
+              background: "var(--echo-surface)",
+              border: "1px solid var(--echo-border)",
             }}
           >
             <p
               className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-3"
-              style={{ color: "oklch(0.45 0.008 240)" }}
+              style={{ color: "var(--echo-text-secondary)" }}
             >
               Song Info
             </p>
@@ -488,13 +488,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                 <div key={s.label}>
                   <p
                     className="text-[9px] uppercase tracking-widest mb-1"
-                    style={{ color: "oklch(0.32 0.006 240)" }}
+                    style={{ color: "var(--echo-text-dark)" }}
                   >
                     {s.label}
                   </p>
                   <p
                     className="text-sm font-mono"
-                    style={{ color: "oklch(0.70 0.005 240)" }}
+                    style={{ color: "var(--echo-text-secondary)" }}
                   >
                     {s.sol ? (
                       <>
