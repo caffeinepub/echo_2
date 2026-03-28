@@ -140,11 +140,9 @@ export function TopBar() {
           aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
           className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
           style={{
-            color: isLight ? "oklch(0.32 0.006 240)" : "oklch(0.55 0.008 240)",
+            color: isLight ? "#0F172A" : "oklch(0.55 0.008 240)",
             background: "transparent",
-            border: isLight
-              ? "1px solid oklch(0.88 0.005 240)"
-              : "1px solid transparent",
+            border: isLight ? "1px solid #E6EAF2" : "1px solid transparent",
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background = isLight

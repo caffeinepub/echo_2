@@ -120,54 +120,54 @@
 
   /* ── Light mode overrides ── */
   [data-theme="light"] {
-    --background: 0.975 0.004 240;
-    --foreground: 0.1 0.008 240;
+    --background: 0.978 0.005 240;
+    --foreground: 0.13 0.014 255;
     --card: 1 0 0;
-    --card-foreground: 0.1 0.008 240;
+    --card-foreground: 0.13 0.014 255;
     --popover: 1 0 0;
-    --popover-foreground: 0.1 0.008 240;
-    --primary: 0.1 0.008 240;
-    --primary-foreground: 0.975 0.004 240;
-    --secondary: 0.95 0.004 240;
-    --secondary-foreground: 0.1 0.008 240;
-    --muted: 0.96 0.003 240;
-    --muted-foreground: 0.48 0.01 240;
+    --popover-foreground: 0.13 0.014 255;
+    --primary: 0.13 0.014 255;
+    --primary-foreground: 0.978 0.005 240;
+    --secondary: 0.97 0.005 240;
+    --secondary-foreground: 0.13 0.014 255;
+    --muted: 0.96 0.004 240;
+    --muted-foreground: 0.6 0.01 240;
     --accent: 0.55 0.25 290;
     --accent-foreground: 1 0 0;
     --destructive: 0.55 0.22 10;
     --destructive-foreground: 1 0 0;
-    --border: 0.88 0.005 240;
-    --input: 0.95 0.003 240;
+    --border: 0.915 0.006 240;
+    --input: 1 0 0;
     --ring: 0.55 0.25 290;
     --sidebar: 1 0 0;
-    --sidebar-foreground: 0.1 0.008 240;
-    --sidebar-border: 0.88 0.005 240;
+    --sidebar-foreground: 0.13 0.014 255;
+    --sidebar-border: 0.915 0.006 240;
 
-    /* ── Echo semantic surface tokens (light refined) ── */
-    --echo-bg: oklch(0.975 0.004 240);
-    --echo-bg-alpha: oklch(0.975 0.004 240 / 0.96);
-    --echo-surface: oklch(1 0 0);
-    --echo-surface-alt: oklch(0.97 0.003 240);
-    --echo-elevated: oklch(0.96 0.004 240);
-    --echo-border: oklch(0.88 0.005 240);
-    --echo-border-subtle: oklch(0.91 0.004 240);
-    --echo-border-faint: oklch(0.93 0.003 240);
-    --echo-text: oklch(0.1 0.008 240);
-    --echo-text-dim: oklch(0.14 0.007 240);
-    --echo-text-secondary: oklch(0.42 0.01 240);
-    --echo-text-muted: oklch(0.52 0.008 240);
-    --echo-text-dark: oklch(0.48 0.008 240);
-    --echo-nav-bg: oklch(1 0 0 / 0.97);
-    --echo-nav-border: oklch(0.88 0.005 240);
-    --echo-header-bg: oklch(1 0 0 / 0.97);
-    --echo-header-border: oklch(0.9 0.004 240);
+    /* Echo semantic surface tokens */
+    --echo-bg: #f8f9fc;
+    --echo-bg-alpha: rgba(248, 249, 252, 0.97);
+    --echo-surface: #ffffff;
+    --echo-surface-alt: #ffffff;
+    --echo-elevated: #f8f9fc;
+    --echo-border: #e8ecf3;
+    --echo-border-subtle: #e6eaf2;
+    --echo-border-faint: #edf0f7;
+    --echo-text: #0f172a;
+    --echo-text-dim: #1e293b;
+    --echo-text-secondary: #5b6475;
+    --echo-text-muted: #8a94a6;
+    --echo-text-dark: #6b7280;
+    --echo-nav-bg: rgba(255, 255, 255, 0.98);
+    --echo-nav-border: #e6eaf2;
+    --echo-header-bg: rgba(255, 255, 255, 0.98);
+    --echo-header-border: #e6eaf2;
     /* Glow tokens — refined intensity for light */
-    --glow-violet-shadow: 0 0 12px oklch(0.55 0.25 290 / 0.14), 0 0 28px
-      oklch(0.55 0.25 290 / 0.06);
-    --glow-cyan-shadow: 0 0 12px oklch(0.82 0.15 210 / 0.15);
-    --glow-gold-shadow: 0 0 10px oklch(0.8 0.15 80 / 0.2);
-    --glow-blue-shadow: 0 0 20px 4px oklch(0.55 0.22 265 / 0.13), 0 0 40px 8px
-      oklch(0.55 0.22 265 / 0.06);
+    --glow-violet-shadow: 0 0 10px oklch(0.55 0.25 290 / 0.12), 0 0 24px
+      oklch(0.55 0.25 290 / 0.05);
+    --glow-cyan-shadow: 0 0 10px oklch(0.82 0.15 210 / 0.12);
+    --glow-gold-shadow: 0 0 8px oklch(0.8 0.15 80 / 0.18);
+    --glow-blue-shadow: 0 0 16px 4px oklch(0.55 0.22 265 / 0.1), 0 0 32px 8px
+      oklch(0.55 0.22 265 / 0.05);
   }
 
   * {
@@ -252,22 +252,74 @@
 
 /* ── Light mode panel shadow ── */
 [data-theme="light"] .panel {
-  box-shadow: 0 1px 4px oklch(0 0 0 / 0.06), 0 4px 16px oklch(0 0 0 / 0.04);
+  background: #ffffff;
+  border: 1px solid #e8ecf3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
-/* ── Light mode album row card shadow ── */
+/* ── Light mode album row card ── */
 [data-theme="light"] .album-row-card {
-  box-shadow: 0 1px 4px oklch(0 0 0 / 0.06), 0 2px 8px oklch(0 0 0 / 0.04);
+  background: #ffffff;
+  border: 1px solid #e8ecf3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* ── Light mode nav shadow ── */
+/* ── Light mode nav ── */
 [data-theme="light"] nav.fixed.bottom-0 {
-  box-shadow: 0 -1px 0 oklch(0.88 0.005 240), 0 -4px 16px oklch(0 0 0 / 0.06);
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-top: 1px solid #e6eaf2 !important;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* ── Light mode search placeholder ── */
+/* ── Light mode search / text inputs ── */
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="search"] {
+  background: #ffffff !important;
+  border-color: #e6eaf2 !important;
+  color: #0f172a !important;
+}
 [data-theme="light"] input::placeholder {
-  color: oklch(0.58 0.008 240);
+  color: #8a94a6 !important;
+}
+
+/* ── Light mode stat cards ── */
+[data-theme="light"] .stat-card {
+  background: #ffffff;
+  border-color: #e6eaf2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07), 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Light mode leaderboard rows ── */
+[data-theme="light"] .leaderboard-row {
+  background: #ffffff;
+  border: 1px solid #e8ecf3;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* ── Light mode header ── */
+[data-theme="light"] header.fixed {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-bottom: 1px solid #e6eaf2 !important;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Light mode mini player ── */
+[data-theme="light"] .mini-player {
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid #e6eaf2;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Light mode category tabs ── */
+[data-theme="light"] .category-tab {
+  background: #ffffff;
+  border: 1px solid #e8ecf3;
+  color: #5b6475;
+}
+[data-theme="light"] .category-tab.active {
+  background: oklch(0.55 0.25 290 / 0.08);
+  border-color: rgba(139, 92, 246, 0.25);
+  color: oklch(0.55 0.25 290);
 }
 
 /* ── Light mode neon logo override ── */
@@ -288,7 +340,6 @@
 }
 
 /* ── Light mode transparent-white overlay overrides ── */
-/* These Tailwind classes use white opacity overlays — adapt for light mode */
 [data-theme="light"] .bg-white\/\[0\.06\],
 [data-theme="light"] .bg-white\/\[0\.08\],
 [data-theme="light"] .bg-white\/\[0\.04\] {

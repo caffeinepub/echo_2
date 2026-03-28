@@ -1,6 +1,7 @@
 import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "../ThemeContext";
 import { CommentsModal } from "../components/CommentsModal";
 import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
@@ -41,6 +42,7 @@ interface LineupRowProps {
   isOwned: boolean;
   isPlaying: boolean;
   isExpanded: boolean;
+  isLight: boolean;
   onToggleLike: () => void;
   onOpenComments: () => void;
   onBuy: () => void;
@@ -58,6 +60,7 @@ function LineupRow({
   isOwned,
   isPlaying,
   isExpanded,
+  isLight,
   onToggleLike,
   onOpenComments,
   onBuy,
@@ -101,6 +104,38 @@ function LineupRow({
   const isSoldOut = song.isSoldOut;
   const isLive = !isUpcoming && !isSoldOut;
 
+  // Light/dark conditional values
+  const rowBorderBottom = isLight
+    ? "1px solid #E6EAF2"
+    : "1px solid rgba(255,255,255,0.055)";
+  const rowHoverBg = isLight ? "#FFFFFF" : "rgba(255,255,255,0.02)";
+  const titleColor = isLight ? "#0F172A" : "white";
+  const dropsInLabel = isLight ? "#B45309" : "rgba(251,191,36,0.6)";
+  const dropsInTimer = isLight ? "#D97706" : "rgba(251,191,36,0.4)";
+  const liveNowColor = isLight ? "#16A34A" : "rgba(74,222,128,0.7)";
+  const mintedColor = isLight
+    ? "var(--echo-text-secondary)"
+    : "var(--echo-text-muted)";
+  const soldOutColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const expandedBorderTop = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const expandedBorderBottom = isLight ? "#E6EAF2" : "rgba(255,255,255,0.055)";
+  const progressTrackBg = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const playBtnBorder = isLight ? "#E6EAF2" : "rgba(255,255,255,0.12)";
+  const playBtnBg = isPlaying
+    ? isLight
+      ? "rgba(124,58,237,0.15)"
+      : "rgba(124,58,237,0.2)"
+    : isLight
+      ? "rgba(0,0,0,0.04)"
+      : "rgba(255,255,255,0.04)";
+  const playIconColor = isLight ? "#5B6475" : "var(--echo-text-dim)";
+  const previewLabelColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const socialIconColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const socialCountColor = isLight ? "#7C8596" : "var(--echo-text-muted)";
+  const opensInColor = isLight ? "#B45309" : "rgba(251,191,36,0.4)";
+  const ownedBorder = isLight ? "rgba(124,58,237,0.3)" : "rgba(124,58,237,0.2)";
+  const ownedText = isLight ? "rgba(109,40,217,0.7)" : "rgba(167,139,250,0.5)";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -118,14 +153,12 @@ function LineupRow({
         onClick={onToggleExpand}
         className="w-full text-left"
         style={{
-          borderBottom: isExpanded
-            ? "none"
-            : "1px solid rgba(255,255,255,0.055)",
+          borderBottom: isExpanded ? "none" : rowBorderBottom,
           transition: "background 0.15s",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "rgba(255,255,255,0.02)";
+            rowHoverBg;
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.backgroundColor =
@@ -172,8 +205,13 @@ function LineupRow({
           {/* Title + Artist */}
           <div className="flex-1 min-w-0" style={{ paddingRight: 8 }}>
             <p
-              className="text-white leading-snug truncate"
-              style={{ fontSize: 14, fontWeight: 600, letterSpacing: "0.01em" }}
+              className="leading-snug truncate"
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                letterSpacing: "0.01em",
+                color: titleColor,
+              }}
             >
               {song.title}
             </p>
@@ -181,7 +219,7 @@ function LineupRow({
               className="truncate"
               style={{
                 fontSize: 11,
-                color: "var(--echo-text-muted)",
+                color: isLight ? "#5B6475" : "var(--echo-text-muted)",
                 marginTop: 2,
               }}
             >
@@ -201,7 +239,7 @@ function LineupRow({
                   style={{
                     fontSize: 8,
                     letterSpacing: "0.18em",
-                    color: "rgba(251,191,36,0.6)",
+                    color: dropsInLabel,
                   }}
                 >
                   DROPS IN
@@ -210,7 +248,7 @@ function LineupRow({
                   className="font-mono"
                   style={{
                     fontSize: 11,
-                    color: "rgba(251,191,36,0.4)",
+                    color: dropsInTimer,
                     letterSpacing: "0.06em",
                   }}
                 >
@@ -225,7 +263,7 @@ function LineupRow({
                   style={{
                     fontSize: 8,
                     letterSpacing: "0.18em",
-                    color: "rgba(74,222,128,0.7)",
+                    color: liveNowColor,
                     gap: 3,
                   }}
                 >
@@ -243,7 +281,7 @@ function LineupRow({
                   className="font-mono"
                   style={{
                     fontSize: 10,
-                    color: "var(--echo-text-muted)",
+                    color: mintedColor,
                     letterSpacing: "0.03em",
                   }}
                 >
@@ -257,7 +295,7 @@ function LineupRow({
                 style={{
                   fontSize: 8,
                   letterSpacing: "0.18em",
-                  color: "var(--echo-text-dark)",
+                  color: soldOutColor,
                 }}
               >
                 SOLD OUT
@@ -280,8 +318,8 @@ function LineupRow({
           >
             <div
               style={{
-                borderTop: "1px solid rgba(255,255,255,0.07)",
-                borderBottom: "1px solid rgba(255,255,255,0.055)",
+                borderTop: `1px solid ${expandedBorderTop}`,
+                borderBottom: `1px solid ${expandedBorderBottom}`,
                 padding: "14px 16px",
                 display: "flex",
                 flexDirection: "column",
@@ -303,10 +341,8 @@ function LineupRow({
                     width: 28,
                     height: 28,
                     borderRadius: "50%",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    backgroundColor: isPlaying
-                      ? "rgba(124,58,237,0.2)"
-                      : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${playBtnBorder}`,
+                    backgroundColor: playBtnBg,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -316,12 +352,16 @@ function LineupRow({
                   }}
                 >
                   {isPlaying ? (
-                    <Pause size={11} color="white" fill="white" />
+                    <Pause
+                      size={11}
+                      color={isLight ? "#0F172A" : "white"}
+                      fill={isLight ? "#0F172A" : "white"}
+                    />
                   ) : (
                     <Play
                       size={11}
-                      color="var(--echo-text-dim)"
-                      fill="var(--echo-text-dim)"
+                      color={playIconColor}
+                      fill={playIconColor}
                       style={{ marginLeft: 1 }}
                     />
                   )}
@@ -339,7 +379,7 @@ function LineupRow({
                     className="font-mono uppercase"
                     style={{
                       fontSize: 9,
-                      color: "var(--echo-text-dark)",
+                      color: previewLabelColor,
                       letterSpacing: "0.12em",
                     }}
                   >
@@ -349,7 +389,7 @@ function LineupRow({
                     style={{
                       height: 1.5,
                       borderRadius: 1,
-                      backgroundColor: "rgba(255,255,255,0.07)",
+                      backgroundColor: progressTrackBg,
                       overflow: "hidden",
                     }}
                   >
@@ -386,12 +426,10 @@ function LineupRow({
                 >
                   <Heart
                     size={13}
-                    color={isLiked ? "#f472b6" : "var(--echo-text-dark)"}
+                    color={isLiked ? "#f472b6" : socialIconColor}
                     fill={isLiked ? "#f472b6" : "none"}
                   />
-                  <span
-                    style={{ fontSize: 11, color: "var(--echo-text-muted)" }}
-                  >
+                  <span style={{ fontSize: 11, color: socialCountColor }}>
                     {likes}
                   </span>
                 </button>
@@ -413,10 +451,8 @@ function LineupRow({
                     padding: 0,
                   }}
                 >
-                  <MessageCircle size={13} color="var(--echo-text-dark)" />
-                  <span
-                    style={{ fontSize: 11, color: "var(--echo-text-muted)" }}
-                  >
+                  <MessageCircle size={13} color={socialIconColor} />
+                  <span style={{ fontSize: 11, color: socialCountColor }}>
                     {comments.length}
                   </span>
                 </button>
@@ -454,8 +490,8 @@ function LineupRow({
                       style={{
                         fontSize: 9,
                         letterSpacing: "0.1em",
-                        color: "rgba(167,139,250,0.5)",
-                        border: "1px solid rgba(124,58,237,0.2)",
+                        color: ownedText,
+                        border: `1px solid ${ownedBorder}`,
                         padding: "3px 8px",
                         borderRadius: 2,
                       }}
@@ -468,7 +504,7 @@ function LineupRow({
                       style={{
                         fontSize: 9,
                         letterSpacing: "0.06em",
-                        color: "rgba(251,191,36,0.4)",
+                        color: opensInColor,
                       }}
                     >
                       OPENS IN {countdown}
@@ -516,6 +552,8 @@ export function ReleasesPage({
 }: ReleasesPageProps) {
   const { allAlbums } = useMockData();
   const { ownedAlbumIds, walletAddress } = useWalletContext();
+  const { theme } = useTheme();
+  const isLight = theme === "light";
 
   const [likesMap, setLikesMap] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
@@ -626,6 +664,9 @@ export function ReleasesPage({
   // Pad drop count to 2 digits
   const dropCount = String(allAlbums.length).padStart(2, "0");
 
+  const headerDividerColor = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const dropCountColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+
   return (
     <>
       <style>{`
@@ -635,7 +676,14 @@ export function ReleasesPage({
         }
       `}</style>
 
-      <div className="pb-24">
+      <div
+        className="pb-24"
+        style={
+          isLight
+            ? { backgroundColor: "#F8F9FC", minHeight: "100%" }
+            : undefined
+        }
+      >
         {/* Editorial page header */}
         <div
           style={{
@@ -665,7 +713,7 @@ export function ReleasesPage({
               className="font-mono"
               style={{
                 fontSize: 10,
-                color: "var(--echo-text-dark)",
+                color: dropCountColor,
                 letterSpacing: "0.08em",
               }}
             >
@@ -675,7 +723,7 @@ export function ReleasesPage({
           <div
             style={{
               height: 1,
-              backgroundColor: "rgba(255,255,255,0.07)",
+              backgroundColor: headerDividerColor,
             }}
           />
         </div>
@@ -694,6 +742,7 @@ export function ReleasesPage({
               isOwned={ownedAlbumIds.includes(song.id)}
               isPlaying={playingId === song.id}
               isExpanded={expandedId === song.id}
+              isLight={isLight}
               onToggleLike={() => handleToggleLike(song.id)}
               onOpenComments={() => setOpenCommentsId(song.id)}
               onBuy={() => setMintModalAlbumId(song.id)}
