@@ -1,6 +1,6 @@
 /**
  * Admin wallet address for the Manage Releases page.
- * Replace with your Phantom wallet address to enable admin access.
- * Leave empty string to disable admin access entirely.
+ * Only this wallet will see the ⚙ Manage button and have access to admin features.
  */
-export const ADMIN_WALLET_ADDRESS = ""; // TODO: replace with your Phantom wallet address
+export const ADMIN_WALLET_ADDRESS: string =
+  "CMTUHW1sLksKxUJLhbCgNDPC7oSJdB4prkJXxVLKePiQ";
