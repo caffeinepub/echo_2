@@ -11,7 +11,6 @@ import type { SONGS, SongComment } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
 import { formatUSD } from "../utils/formatUSD";
 
-// ─── Countdown hook ───────────────────────────────────────────────────────────
 function useCountdown(targetMs: number | null) {
   const [remaining, setRemaining] = useState<number>(() =>
     targetMs === null ? 0 : targetMs,
@@ -35,134 +34,8 @@ function useCountdown(targetMs: number | null) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-// ─── Category tabs ────────────────────────────────────────────────────────────
-const CATEGORIES = [
-  "All",
-  "Trending",
-  "Live Now",
-  "Upcoming",
-  "Sold Out",
-  "New",
-  "Electronic",
-  "Ambient",
-  "Hip Hop",
-  "Experimental",
-];
-
-type Song = (typeof SONGS)[0];
-
-function filterSongs(songs: Song[], category: string): Song[] {
-  if (category === "Live Now")
-    return songs.filter((s) => !s.isSoldOut && s.mintOpensInMs === 0);
-  if (category === "Upcoming")
-    return songs.filter((s) => s.mintOpensInMs !== null && s.mintOpensInMs > 0);
-  if (category === "Sold Out") return songs.filter((s) => s.isSoldOut);
-  return songs;
-}
-
-// ─── Animated waveform overlay ───────────────────────────────────────────────
-const BAR_COUNT = 28;
-const BAR_KEYS = Array.from({ length: BAR_COUNT }, (_, i) => `bar-${i}`);
-
-function WaveformOverlay() {
-  return (
-    <>
-      <style>{`
-        @keyframes waveBar {
-          0%, 100% { transform: scaleY(0.2); }
-          50% { transform: scaleY(1); }
-        }
-      `}</style>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 3,
-          pointerEvents: "none",
-          zIndex: 3,
-        }}
-      >
-        {BAR_KEYS.map((key, i) => (
-          <div
-            key={key}
-            style={{
-              width: 3,
-              height: 40,
-              borderRadius: 2,
-              background:
-                "linear-gradient(to top, rgba(99,255,255,0.75), rgba(168,85,247,0.65))",
-              transformOrigin: "bottom",
-              animation: `waveBar ${0.8 + (i % 5) * 0.18}s ease-in-out infinite`,
-              animationDelay: `${(i * 0.07) % 0.9}s`,
-            }}
-          />
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ─── Mint price display ───────────────────────────────────────────────────────
-function MintPriceDisplay({ sol }: { sol: number }) {
-  const { solPrice } = useSolPriceContext();
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <EchoSolIcon size={14} />
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "white",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {sol} SOL
-        </span>
-      </div>
-      <span
-        style={{
-          fontSize: 11,
-          color: "rgba(255,255,255,0.45)",
-          paddingLeft: 20,
-        }}
-      >
-        {formatUSD(sol * solPrice)}
-      </span>
-    </div>
-  );
-}
-
-function MintPriceDisplayLight({ sol }: { sol: number }) {
-  const { solPrice } = useSolPriceContext();
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <EchoSolIcon size={14} />
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "#0F172A",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {sol} SOL
-        </span>
-      </div>
-      <span style={{ fontSize: 11, color: "#8A94A6", paddingLeft: 20 }}>
-        {formatUSD(sol * solPrice)}
-      </span>
-    </div>
-  );
-}
-
-// ─── Feed card ────────────────────────────────────────────────────────────────
-interface FeedCardProps {
-  song: Song;
+interface LineupRowProps {
+  song: (typeof SONGS)[0];
   index: number;
   likes: number;
   isLiked: boolean;
@@ -170,14 +43,48 @@ interface FeedCardProps {
   minted: number;
   isOwned: boolean;
   isPlaying: boolean;
+  isExpanded: boolean;
   isLight: boolean;
   onToggleLike: () => void;
   onOpenComments: () => void;
   onBuy: () => void;
   onTogglePlay: () => void;
+  onToggleExpand: () => void;
 }
 
-function ReleaseFeedCard({
+function MintPriceDisplay({ sol }: { sol: number }) {
+  const { solPrice } = useSolPriceContext();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <EchoSolIcon size={13} />
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 12,
+            color: "var(--echo-text-secondary)",
+            marginLeft: 2,
+          }}
+        >
+          {sol} SOL
+        </span>
+      </div>
+      <span
+        className="font-mono"
+        style={{
+          fontSize: 10,
+          color: "var(--echo-text-dark)",
+          opacity: 0.65,
+          marginLeft: 19,
+        }}
+      >
+        {formatUSD(sol * solPrice)}
+      </span>
+    </div>
+  );
+}
+
+function LineupRow({
   song,
   index,
   likes,
@@ -186,582 +93,476 @@ function ReleaseFeedCard({
   minted,
   isOwned,
   isPlaying,
+  isExpanded,
   isLight,
   onToggleLike,
   onOpenComments,
   onBuy,
   onTogglePlay,
-}: FeedCardProps) {
+  onToggleExpand,
+}: LineupRowProps) {
   const countdown = useCountdown(
     song.mintOpensInMs !== 0 && song.mintOpensInMs !== null
       ? song.mintOpensInMs
       : null,
   );
 
-  const mintPercent = Math.min(100, Math.round((minted / song.supply) * 100));
-  const isUpcoming = song.mintOpensInMs !== null && song.mintOpensInMs > 0;
+  const [progress, setProgress] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isPlaying) {
+      setProgress(0);
+      timerRef.current = setInterval(() => {
+        setProgress((p) => {
+          if (p >= 100) {
+            clearInterval(timerRef.current!);
+            return 100;
+          }
+          return p + 100 / 30;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setProgress(0);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPlaying]);
+
+  const isUpcoming =
+    song.mintOpensInMs !== null &&
+    song.mintOpensInMs !== 0 &&
+    song.mintOpensInMs > 0;
   const isSoldOut = song.isSoldOut;
   const isLive = !isUpcoming && !isSoldOut;
 
-  const cardBg = isLight ? "#FFFFFF" : "rgba(255,255,255,0.04)";
-  const cardBorder = isLight
-    ? "1px solid #E8ECF3"
-    : "1px solid rgba(255,255,255,0.08)";
-  const cardShadow = isLight ? "0 2px 16px rgba(0,0,0,0.07)" : "none";
-  const dataRowBg = isLight ? "#F8F9FC" : "rgba(0,0,0,0.25)";
-  const dataRowBorder = isLight
-    ? "1px solid #E8ECF3"
-    : "1px solid rgba(255,255,255,0.06)";
-  const actionRowBg = isLight ? "#FFFFFF" : "transparent";
-  const progressTrackBg = isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.1)";
-  const mintedLabelColor = isLight ? "#5B6475" : "rgba(255,255,255,0.5)";
-  const mintedValueColor = isLight ? "#0F172A" : "white";
-  const socialIconColor = isLight ? "#7C8596" : "rgba(255,255,255,0.45)";
-  const socialCountColor = isLight ? "#5B6475" : "rgba(255,255,255,0.45)";
+  // Light/dark conditional values
+  const rowBorderBottom = isLight
+    ? "1px solid #E6EAF2"
+    : "1px solid rgba(255,255,255,0.055)";
+  const rowHoverBg = isLight ? "#FFFFFF" : "rgba(255,255,255,0.02)";
+  const titleColor = isLight ? "#0F172A" : "white";
+  const dropsInLabel = isLight ? "#B45309" : "rgba(251,191,36,0.6)";
+  const dropsInTimer = isLight ? "#D97706" : "rgba(251,191,36,0.4)";
+  const liveNowColor = isLight ? "#16A34A" : "rgba(74,222,128,0.7)";
+  const mintedColor = isLight
+    ? "var(--echo-text-secondary)"
+    : "var(--echo-text-muted)";
+  const soldOutColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const expandedBorderTop = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const expandedBorderBottom = isLight ? "#E6EAF2" : "rgba(255,255,255,0.055)";
+  const progressTrackBg = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const playBtnBorder = isLight ? "#E6EAF2" : "rgba(255,255,255,0.12)";
+  const playBtnBg = isPlaying
+    ? isLight
+      ? "rgba(124,58,237,0.15)"
+      : "rgba(124,58,237,0.2)"
+    : isLight
+      ? "rgba(0,0,0,0.04)"
+      : "rgba(255,255,255,0.04)";
+  const playIconColor = isLight ? "#5B6475" : "var(--echo-text-dim)";
+  const previewLabelColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const socialIconColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+  const socialCountColor = isLight ? "#7C8596" : "var(--echo-text-muted)";
+  const opensInColor = isLight ? "#B45309" : "rgba(251,191,36,0.4)";
+  const ownedBorder = isLight ? "rgba(124,58,237,0.3)" : "rgba(124,58,237,0.2)";
+  const ownedText = isLight ? "rgba(109,40,217,0.7)" : "rgba(167,139,250,0.5)";
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut", delay: index * 0.05 }}
-      data-ocid={`releases.item.${index + 1}`}
-      style={{
-        background: cardBg,
-        border: cardBorder,
-        boxShadow: cardShadow,
-        borderRadius: 16,
-        overflow: "hidden",
+      transition={{
+        duration: 0.4,
+        delay: index * 0.05,
+        ease: [0.22, 1, 0.36, 1],
       }}
+      data-ocid={`releases.item.${index + 1}`}
     >
-      {/* ── Media area (button for a11y) ── */}
+      {/* Collapsed Row */}
       <button
         type="button"
-        onClick={onTogglePlay}
-        aria-label={isPlaying ? "Pause preview" : "Play 30s preview"}
+        onClick={onToggleExpand}
+        className="w-full text-left"
         style={{
-          position: "relative",
-          display: "block",
-          width: "100%",
-          paddingTop: "66.66%",
-          overflow: "hidden",
-          background: "#0A0A0F",
-          cursor: "pointer",
-          border: "none",
-          padding: 0,
+          borderBottom: isExpanded ? "none" : rowBorderBottom,
+          transition: "background 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+            rowHoverBg;
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+            "transparent";
         }}
       >
-        {/* Padding trick inner wrapper */}
         <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            overflow: "hidden",
-          }}
+          className="flex items-center px-4"
+          style={{ paddingTop: 12, paddingBottom: 12, gap: 12 }}
         >
-          {/* Artwork */}
-          <img
-            src={song.artworkSrc}
-            alt={song.title}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              filter: isSoldOut ? "grayscale(60%) brightness(0.7)" : "none",
-              transition: "filter 0.3s ease",
-            }}
-          />
-
-          {/* Gradient overlay */}
+          {/* Artwork thumbnail */}
           <div
+            className="flex-shrink-0 overflow-hidden relative"
             style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.88) 100%)",
-              zIndex: 1,
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              opacity: isSoldOut ? 0.35 : 1,
             }}
-          />
-
-          {/* Waveform when playing */}
-          <AnimatePresence>
+          >
+            <img
+              src={song.artworkSrc}
+              alt={song.title}
+              className="w-full h-full object-cover"
+            />
             {isPlaying && (
-              <motion.div
-                key="waveform"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                style={{ position: "absolute", inset: 0, zIndex: 3 }}
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
               >
-                <WaveformOverlay />
-              </motion.div>
+                <span
+                  className="block rounded-full"
+                  style={{
+                    width: 5,
+                    height: 5,
+                    backgroundColor: "#a78bfa",
+                    animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite",
+                  }}
+                />
+              </div>
             )}
-          </AnimatePresence>
+          </div>
 
-          {/* Play/pause badge top-right */}
-          <motion.div
-            whileTap={{ scale: 0.9 }}
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              zIndex: 4,
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none",
-            }}
-          >
-            {isPlaying ? (
-              <Pause size={14} color="white" fill="white" />
-            ) : (
-              <Play
-                size={14}
-                color="white"
-                fill="white"
-                style={{ marginLeft: 2 }}
-              />
-            )}
-          </motion.div>
+          {/* Title + Artist */}
+          <div className="flex-1 min-w-0" style={{ paddingRight: 8 }}>
+            <p
+              className="leading-snug truncate"
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                letterSpacing: "0.01em",
+                color: titleColor,
+              }}
+            >
+              {song.title}
+            </p>
+            <p
+              className="truncate"
+              style={{
+                fontSize: 11,
+                color: isLight ? "#5B6475" : "var(--echo-text-muted)",
+                marginTop: 2,
+              }}
+            >
+              {song.artist}
+            </p>
+          </div>
 
-          {/* Info overlay — bottom of media */}
+          {/* Status */}
           <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: "12px 14px 14px",
-              zIndex: 2,
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-            }}
+            className="flex-shrink-0 flex flex-col items-end"
+            style={{ gap: 2, maxWidth: 110 }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p
+            {isUpcoming && (
+              <>
+                <span
+                  className="font-mono uppercase"
+                  style={{
+                    fontSize: 8,
+                    letterSpacing: "0.18em",
+                    color: dropsInLabel,
+                  }}
+                >
+                  DROPS IN
+                </span>
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 11,
+                    color: dropsInTimer,
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {countdown}
+                </span>
+              </>
+            )}
+            {isLive && (
+              <>
+                <span
+                  className="font-mono uppercase flex items-center"
+                  style={{
+                    fontSize: 8,
+                    letterSpacing: "0.18em",
+                    color: liveNowColor,
+                    gap: 3,
+                  }}
+                >
+                  LIVE NOW
+                  <span
+                    style={{
+                      display: "inline-block",
+                      animation: "livePulse 1.4s ease-in-out infinite",
+                    }}
+                  >
+                    ●
+                  </span>
+                </span>
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 10,
+                    color: mintedColor,
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  {minted} / {song.supply} minted
+                </span>
+              </>
+            )}
+            {isSoldOut && (
+              <span
+                className="font-mono uppercase"
                 style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "white",
-                  lineHeight: 1.2,
-                  letterSpacing: "-0.01em",
-                  textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  textAlign: "left",
+                  fontSize: 8,
+                  letterSpacing: "0.18em",
+                  color: soldOutColor,
                 }}
               >
-                {song.title}
-              </p>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "rgba(255,255,255,0.65)",
-                  marginTop: 2,
-                  textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  textAlign: "left",
-                }}
-              >
-                {song.artist}
-              </p>
-            </div>
-
-            {/* Status badge */}
-            <div style={{ flexShrink: 0, marginLeft: 10, textAlign: "right" }}>
-              {isUpcoming && (
-                <div
-                  style={{
-                    background: "rgba(0,0,0,0.55)",
-                    backdropFilter: "blur(6px)",
-                    border: "1px solid rgba(251,191,36,0.3)",
-                    borderRadius: 8,
-                    padding: "4px 8px",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 8,
-                      color: "rgba(251,191,36,0.7)",
-                      letterSpacing: "0.12em",
-                      fontFamily: "monospace",
-                      marginBottom: 1,
-                      textAlign: "right",
-                    }}
-                  >
-                    DROPS IN
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: "rgba(251,191,36,0.9)",
-                      fontFamily: "monospace",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {countdown}
-                  </p>
-                </div>
-              )}
-              {isLive && (
-                <div
-                  style={{
-                    background: "rgba(0,0,0,0.55)",
-                    backdropFilter: "blur(6px)",
-                    border: "1px solid rgba(74,222,128,0.25)",
-                    borderRadius: 8,
-                    padding: "4px 8px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 8,
-                      color: "rgba(74,222,128,0.8)",
-                      letterSpacing: "0.12em",
-                      fontFamily: "monospace",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 3,
-                      marginBottom: 1,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: "#4ade80",
-                        animation: "liveDot 1.4s ease-in-out infinite",
-                        flexShrink: 0,
-                      }}
-                    />
-                    LIVE
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.75)",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {minted} / {song.supply}
-                  </p>
-                </div>
-              )}
-              {isSoldOut && (
-                <div
-                  style={{
-                    background: "rgba(0,0,0,0.55)",
-                    backdropFilter: "blur(6px)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 8,
-                    padding: "4px 10px",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 9,
-                      color: "rgba(255,255,255,0.4)",
-                      letterSpacing: "0.16em",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    SOLD OUT
-                  </p>
-                </div>
-              )}
-            </div>
+                SOLD OUT
+              </span>
+            )}
           </div>
         </div>
       </button>
 
-      {/* ── Data row ── */}
-      <div
-        style={{
-          background: dataRowBg,
-          borderTop: dataRowBorder,
-          borderBottom: dataRowBorder,
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        {isLight ? (
-          <MintPriceDisplayLight sol={song.mintPrice} />
-        ) : (
-          <MintPriceDisplay sol={song.mintPrice} />
-        )}
-
-        {/* Mint progress */}
-        <div style={{ flex: 1, maxWidth: 160, textAlign: "right" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              marginBottom: 5,
-            }}
+      {/* Expanded Panel */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            key="expand"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: "hidden" }}
           >
-            <span
+            <div
               style={{
-                fontSize: 10,
-                color: mintedLabelColor,
-                letterSpacing: "0.08em",
-                fontFamily: "monospace",
-                textTransform: "uppercase",
+                borderTop: `1px solid ${expandedBorderTop}`,
+                borderBottom: `1px solid ${expandedBorderBottom}`,
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
               }}
             >
-              Minted
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: mintedValueColor,
-                fontFamily: "monospace",
-              }}
-            >
-              {minted} / {song.supply}
-            </span>
-          </div>
-          <div
-            style={{
-              height: 4,
-              borderRadius: 4,
-              background: progressTrackBg,
-              overflow: "hidden",
-            }}
-          >
-            <motion.div
-              style={{
-                height: "100%",
-                borderRadius: 4,
-                background: "linear-gradient(90deg, #7C3AED, #a78bfa)",
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${mintPercent}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            />
-          </div>
-        </div>
-      </div>
+              {/* Preview row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePlay();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.toggle`}
+                  disabled={isSoldOut}
+                  style={{
+                    flexShrink: 0,
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: `1px solid ${playBtnBorder}`,
+                    backgroundColor: playBtnBg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: isSoldOut ? "not-allowed" : "pointer",
+                    opacity: isSoldOut ? 0.3 : 1,
+                    transition: "background 0.15s",
+                  }}
+                >
+                  {isPlaying ? (
+                    <Pause
+                      size={11}
+                      color={isLight ? "#0F172A" : "white"}
+                      fill={isLight ? "#0F172A" : "white"}
+                    />
+                  ) : (
+                    <Play
+                      size={11}
+                      color={playIconColor}
+                      fill={playIconColor}
+                      style={{ marginLeft: 1 }}
+                    />
+                  )}
+                </button>
 
-      {/* ── Action row ── */}
-      <div
-        style={{
-          background: actionRowBg,
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        {/* Like */}
-        <button
-          type="button"
-          onClick={onToggleLike}
-          data-ocid={`releases.item.${index + 1}.toggle`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "6px 0",
-            flexShrink: 0,
-          }}
-        >
-          <Heart
-            size={18}
-            color={isLiked ? "#f472b6" : socialIconColor}
-            fill={isLiked ? "#f472b6" : "none"}
-          />
-          <span
-            style={{
-              fontSize: 13,
-              color: isLiked ? "#f472b6" : socialCountColor,
-              fontWeight: isLiked ? 600 : 400,
-            }}
-          >
-            {likes}
-          </span>
-        </button>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  <span
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: 9,
+                      color: previewLabelColor,
+                      letterSpacing: "0.12em",
+                    }}
+                  >
+                    30S PREVIEW
+                  </span>
+                  <div
+                    style={{
+                      height: 1.5,
+                      borderRadius: 1,
+                      backgroundColor: progressTrackBg,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${progress}%`,
+                        background: "linear-gradient(90deg,#7C3AED,#a78bfa)",
+                        transition: "width 1s linear",
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
 
-        {/* Comments */}
-        <button
-          type="button"
-          onClick={onOpenComments}
-          data-ocid={`releases.item.${index + 1}.button`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "6px 0",
-            flexShrink: 0,
-          }}
-        >
-          <MessageCircle size={18} color={socialIconColor} />
-          <span style={{ fontSize: 13, color: socialCountColor }}>
-            {comments.length}
-          </span>
-        </button>
+              {/* Social row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleLike();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.toggle`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  <Heart
+                    size={13}
+                    color={isLiked ? "#f472b6" : socialIconColor}
+                    fill={isLiked ? "#f472b6" : "none"}
+                  />
+                  <span style={{ fontSize: 11, color: socialCountColor }}>
+                    {likes}
+                  </span>
+                </button>
 
-        <div style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenComments();
+                  }}
+                  data-ocid={`releases.item.${index + 1}.button`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  <MessageCircle size={13} color={socialIconColor} />
+                  <span style={{ fontSize: 11, color: socialCountColor }}>
+                    {comments.length}
+                  </span>
+                </button>
+              </div>
 
-        {/* Play 30s */}
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 14px",
-            borderRadius: 20,
-            border: isLight
-              ? "1px solid #E8ECF3"
-              : "1px solid rgba(255,255,255,0.12)",
-            background: isPlaying
-              ? "rgba(124,58,237,0.15)"
-              : isLight
-                ? "rgba(0,0,0,0.04)"
-                : "rgba(255,255,255,0.05)",
-            cursor: "pointer",
-            transition: "background 0.2s",
-            flexShrink: 0,
-          }}
-        >
-          {isPlaying ? (
-            <Pause
-              size={12}
-              color={isLight ? "#7C3AED" : "#a78bfa"}
-              fill={isLight ? "#7C3AED" : "#a78bfa"}
-            />
-          ) : (
-            <Play
-              size={12}
-              color={isLight ? "#7C3AED" : "#a78bfa"}
-              fill={isLight ? "#7C3AED" : "#a78bfa"}
-              style={{ marginLeft: 1 }}
-            />
-          )}
-          <span
-            style={{
-              fontSize: 12,
-              color: isLight ? "#7C3AED" : "#a78bfa",
-              fontWeight: 500,
-            }}
-          >
-            {isPlaying ? "Stop" : "Play 30s"}
-          </span>
-        </button>
+              {/* Price + action row */}
+              {!isSoldOut && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingTop: 2,
+                  }}
+                >
+                  <MintPriceDisplay sol={song.mintPrice} />
 
-        {/* Mint button */}
-        {isSoldOut ? (
-          <button
-            type="button"
-            disabled
-            style={{
-              padding: "8px 18px",
-              borderRadius: 20,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.25)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "not-allowed",
-              flexShrink: 0,
-            }}
-          >
-            Sold Out
-          </button>
-        ) : isOwned ? (
-          <button
-            type="button"
-            disabled
-            style={{
-              padding: "8px 18px",
-              borderRadius: 20,
-              border: "1px solid rgba(74,222,128,0.3)",
-              background: "rgba(74,222,128,0.08)",
-              color: "rgba(74,222,128,0.75)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "default",
-              flexShrink: 0,
-            }}
-          >
-            Owned
-          </button>
-        ) : isUpcoming ? (
-          <button
-            type="button"
-            disabled
-            style={{
-              padding: "8px 16px",
-              borderRadius: 20,
-              border: "1px solid rgba(251,191,36,0.3)",
-              background: "rgba(251,191,36,0.06)",
-              color: "rgba(251,191,36,0.65)",
-              fontSize: 11,
-              fontWeight: 600,
-              cursor: "not-allowed",
-              flexShrink: 0,
-              fontFamily: "monospace",
-              letterSpacing: "0.02em",
-            }}
-          >
-            {countdown}
-          </button>
-        ) : (
-          <motion.button
-            type="button"
-            onClick={onBuy}
-            whileTap={{ scale: 0.96 }}
-            data-ocid={`releases.item.${index + 1}.primary_button`}
-            style={{
-              padding: "8px 20px",
-              borderRadius: 20,
-              border: "none",
-              background: "#7C3AED",
-              color: "white",
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 0 14px rgba(124,58,237,0.45)",
-              flexShrink: 0,
-              letterSpacing: "0.02em",
-            }}
-          >
-            Mint NFT
-          </motion.button>
+                  {isOwned ? (
+                    <span
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: "0.1em",
+                        color: ownedText,
+                        border: `1px solid ${ownedBorder}`,
+                        padding: "3px 8px",
+                        borderRadius: 2,
+                      }}
+                    >
+                      OWNED
+                    </span>
+                  ) : isUpcoming ? (
+                    <span
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: "0.06em",
+                        color: opensInColor,
+                      }}
+                    >
+                      OPENS IN {countdown}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onBuy();
+                      }}
+                      data-ocid={`releases.item.${index + 1}.primary_button`}
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        letterSpacing: "0.1em",
+                        backgroundColor: "#7C3AED",
+                        color: "white",
+                        padding: "6px 18px",
+                        borderRadius: 2,
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      MINT
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 interface ReleasesPageProps {
   onAlbumClick?: (albumId: string) => void;
 }
@@ -773,8 +574,6 @@ export function ReleasesPage({
   const { ownedAlbumIds, walletAddress } = useWalletContext();
   const { theme } = useTheme();
   const isLight = theme === "light";
-
-  const [activeCategory, setActiveCategory] = useState("All");
 
   const [likesMap, setLikesMap] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
@@ -797,13 +596,15 @@ export function ReleasesPage({
   const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
   const [mintModalAlbumId, setMintModalAlbumId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Simulate live updates
   useEffect(() => {
     const likeTimer = setInterval(() => {
       const liveSongs = allAlbums.filter(
         (s) => !s.isSoldOut && s.mintOpensInMs === 0,
       );
-      if (!liveSongs.length) return;
+      if (liveSongs.length === 0) return;
       const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
       setLikesMap((prev) => ({ ...prev, [pick.id]: (prev[pick.id] ?? 0) + 1 }));
     }, 8000);
@@ -812,7 +613,7 @@ export function ReleasesPage({
       const liveSongs = allAlbums.filter(
         (s) => !s.isSoldOut && s.mintOpensInMs === 0,
       );
-      if (!liveSongs.length) return;
+      if (liveSongs.length === 0) return;
       const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
       setMintedMap((prev) => {
         const current = prev[pick.id] ?? pick.minted;
@@ -827,6 +628,7 @@ export function ReleasesPage({
     };
   }, [allAlbums]);
 
+  // Auto-stop after 30s
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (playTimerRef.current) clearTimeout(playTimerRef.current);
@@ -867,146 +669,107 @@ export function ReleasesPage({
     }));
   }
 
+  function handleTogglePlay(id: string) {
+    setPlayingId((prev) => (prev === id ? null : id));
+  }
+
+  function handleToggleExpand(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
   const openCommentsSong = openCommentsId
     ? allAlbums.find((s) => s.id === openCommentsId)
     : null;
-  const filteredSongs = filterSongs(allAlbums, activeCategory);
-  const pageBg = isLight ? "#F8F9FC" : "#0A0A0F";
+
+  // Pad drop count to 2 digits
+  const dropCount = String(allAlbums.length).padStart(2, "0");
+
+  const headerDividerColor = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
+  const dropCountColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
 
   return (
     <>
       <style>{`
-        @keyframes liveDot {
+        @keyframes livePulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.25; }
+          50% { opacity: 0.3; }
         }
-        .feed-tabs-scroll::-webkit-scrollbar { display: none; }
-        .feed-tabs-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       <div
-        style={{ background: pageBg, minHeight: "100%", paddingBottom: 120 }}
+        className="pb-24"
+        style={
+          isLight
+            ? { backgroundColor: "#F8F9FC", minHeight: "100%" }
+            : undefined
+        }
       >
-        {/* ── Category tabs ── */}
+        {/* Editorial page header */}
         <div
           style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            background: isLight
-              ? "rgba(248,249,252,0.92)"
-              : "rgba(10,10,15,0.92)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            borderBottom: isLight
-              ? "1px solid #E8ECF3"
-              : "1px solid rgba(255,255,255,0.07)",
-            paddingTop: 10,
-            paddingBottom: 10,
+            padding: "20px 16px 0",
           }}
         >
           <div
-            className="feed-tabs-scroll"
             style={{
               display: "flex",
-              gap: 8,
-              overflowX: "auto",
-              paddingLeft: 14,
-              paddingRight: 14,
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              paddingBottom: 12,
             }}
           >
-            {CATEGORIES.map((cat) => {
-              const active = cat === activeCategory;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  data-ocid="releases.tab"
-                  style={{
-                    flexShrink: 0,
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    fontSize: 13,
-                    fontWeight: active ? 600 : 400,
-                    color: active
-                      ? "white"
-                      : isLight
-                        ? "#5B6475"
-                        : "rgba(255,255,255,0.5)",
-                    background: active ? "#7C3AED" : "transparent",
-                    border: active
-                      ? "1px solid #7C3AED"
-                      : isLight
-                        ? "1px solid #E8ECF3"
-                        : "1px solid rgba(255,255,255,0.1)",
-                    cursor: "pointer",
-                    transition: "all 0.18s ease",
-                    boxShadow: active
-                      ? "0 0 10px rgba(124,58,237,0.35)"
-                      : "none",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Feed ── */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-            padding: "16px 14px 0",
-          }}
-        >
-          {filteredSongs.length === 0 ? (
-            <div
-              data-ocid="releases.empty_state"
+            <span
+              className="font-mono uppercase"
               style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "60px 20px",
-                color: isLight ? "#8A94A6" : "rgba(255,255,255,0.3)",
-                fontSize: 14,
-                textAlign: "center",
-                gap: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.22em",
+                color: "var(--echo-text-secondary)",
               }}
             >
-              <span style={{ fontSize: 32, marginBottom: 4 }}>🎵</span>
-              <p style={{ fontWeight: 600 }}>No releases in this category</p>
-              <p style={{ fontSize: 12, opacity: 0.7 }}>
-                Check back soon for new drops
-              </p>
-            </div>
-          ) : (
-            filteredSongs.map((song, i) => (
-              <ReleaseFeedCard
-                key={song.id}
-                song={song}
-                index={i}
-                likes={likesMap[song.id] ?? song.likes}
-                isLiked={likedIds.has(song.id)}
-                comments={commentsMap[song.id] ?? song.comments}
-                minted={mintedMap[song.id] ?? song.minted}
-                isOwned={ownedAlbumIds.includes(song.id)}
-                isPlaying={playingId === song.id}
-                isLight={isLight}
-                onToggleLike={() => handleToggleLike(song.id)}
-                onOpenComments={() => setOpenCommentsId(song.id)}
-                onBuy={() => setMintModalAlbumId(song.id)}
-                onTogglePlay={() =>
-                  setPlayingId((prev) => (prev === song.id ? null : song.id))
-                }
-              />
-            ))
-          )}
+              LINEUP
+            </span>
+            <span
+              className="font-mono"
+              style={{
+                fontSize: 10,
+                color: dropCountColor,
+                letterSpacing: "0.08em",
+              }}
+            >
+              {dropCount} DROPS
+            </span>
+          </div>
+          <div
+            style={{
+              height: 1,
+              backgroundColor: headerDividerColor,
+            }}
+          />
+        </div>
+
+        {/* Lineup rows */}
+        <div>
+          {allAlbums.map((song, i) => (
+            <LineupRow
+              key={song.id}
+              song={song}
+              index={i}
+              likes={likesMap[song.id] ?? song.likes}
+              isLiked={likedIds.has(song.id)}
+              comments={commentsMap[song.id] ?? song.comments}
+              minted={mintedMap[song.id] ?? song.minted}
+              isOwned={ownedAlbumIds.includes(song.id)}
+              isPlaying={playingId === song.id}
+              isExpanded={expandedId === song.id}
+              isLight={isLight}
+              onToggleLike={() => handleToggleLike(song.id)}
+              onOpenComments={() => setOpenCommentsId(song.id)}
+              onBuy={() => setMintModalAlbumId(song.id)}
+              onTogglePlay={() => handleTogglePlay(song.id)}
+              onToggleExpand={() => handleToggleExpand(song.id)}
+            />
+          ))}
         </div>
       </div>
 
