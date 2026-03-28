@@ -1,3 +1,10 @@
+export interface SongComment {
+  id: string;
+  walletAddress: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface Song {
   id: string;
   collectionName: string;
@@ -19,9 +26,35 @@ export interface Song {
   mintPrice: number;
   nft_mint_address: string;
   signalStrength: number; // 0–1
+  likes: number;
+  comments: SongComment[];
 }
 
 export const SONGS: Song[] = [
+  {
+    id: "echo_003",
+    collectionName: "ECHO_003",
+    title: "Obsidian",
+    artist: "Nocturne",
+    artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
+    supply: 200,
+    userEdition: 0,
+    preview_url: "",
+    full_url: "",
+    floorPrice: 0,
+    lastSoldPrice: 0,
+    owners: 0,
+    minted: 0,
+    isSoldOut: false,
+    mintOpensInMs: 5400000,
+    editions_in_circulation: 0,
+    volume_24h_sol: 0,
+    mintPrice: 0.35,
+    nft_mint_address: "ObsidianNocturne33333333333333333333333333",
+    signalStrength: 0,
+    likes: 0,
+    comments: [],
+  },
   {
     id: "echo_001",
     collectionName: "ECHO_001",
@@ -43,6 +76,27 @@ export const SONGS: Song[] = [
     mintPrice: 1.8,
     nft_mint_address: "FragmentsHaloDrift1111111111111111111111111",
     signalStrength: 0.72,
+    likes: 142,
+    comments: [
+      {
+        id: "c1",
+        walletAddress: "7f3k...92x",
+        text: "This track hits different at 3am. The texture is insane.",
+        timestamp: Date.now() - 7200000,
+      },
+      {
+        id: "c2",
+        walletAddress: "4xPm...77z",
+        text: "Minted edition #23. Absolute gem.",
+        timestamp: Date.now() - 3600000,
+      },
+      {
+        id: "c3",
+        walletAddress: "9wKr...11q",
+        text: "Halo Drift never misses. Instant classic.",
+        timestamp: Date.now() - 1800000,
+      },
+    ],
   },
   {
     id: "echo_002",
@@ -65,6 +119,21 @@ export const SONGS: Song[] = [
     mintPrice: 2.0,
     nft_mint_address: "CharcoalVesselNFT222222222222222222222222222",
     signalStrength: 0.55,
+    likes: 87,
+    comments: [
+      {
+        id: "c4",
+        walletAddress: "2bXn...44f",
+        text: "Sold out in 6 minutes. Legendary.",
+        timestamp: Date.now() - 86400000,
+      },
+      {
+        id: "c5",
+        walletAddress: "8dYs...55r",
+        text: "The low end on this is something else. Vessel is on another level.",
+        timestamp: Date.now() - 43200000,
+      },
+    ],
   },
 ];
 
