@@ -1,11 +1,12 @@
 import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { AnimatedCover } from "../components/AnimatedCover";
 import { CommentsModal } from "../components/CommentsModal";
 import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
+import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useWalletContext } from "../context/WalletContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
 import type { SONGS, SongComment } from "../data/songs";
@@ -43,7 +44,12 @@ interface LineupRowProps {
   comments: SongComment[];
   minted: number;
   isOwned: boolean;
+  /** true when this track is the active track in the global player AND is playing */
   isPlaying: boolean;
+  /** true when this track is the active track in the global player (playing or paused) */
+  isActive: boolean;
+  /** current playback time from global player (seconds) — only meaningful when isActive */
+  currentTime: number;
   isExpanded: boolean;
   isLight: boolean;
   onToggleLike: () => void;
@@ -94,6 +100,8 @@ function LineupRow({
   minted,
   isOwned,
   isPlaying,
+  isActive,
+  currentTime,
   isExpanded,
   isLight,
   onToggleLike,
@@ -108,29 +116,8 @@ function LineupRow({
       : null,
   );
 
-  const [progress, setProgress] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (isPlaying) {
-      setProgress(0);
-      timerRef.current = setInterval(() => {
-        setProgress((p) => {
-          if (p >= 100) {
-            clearInterval(timerRef.current!);
-            return 100;
-          }
-          return p + 100 / 30;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-      setProgress(0);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isPlaying]);
+  // Progress driven by global player currentTime (30s preview cap)
+  const progress = isActive ? Math.min(100, (currentTime / 30) * 100) : 0;
 
   const isUpcoming =
     song.mintOpensInMs !== null &&
@@ -139,7 +126,6 @@ function LineupRow({
   const isSoldOut = song.isSoldOut;
   const isLive = !isUpcoming && !isSoldOut;
 
-  // Light/dark conditional values
   const rowBorderBottom = isLight
     ? "1px solid #E6EAF2"
     : "1px solid rgba(255,255,255,0.055)";
@@ -156,7 +142,7 @@ function LineupRow({
   const soldOutColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
   const progressTrackBg = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
   const playBtnBorder = isLight ? "#E6EAF2" : "rgba(255,255,255,0.12)";
-  const playBtnBg = isPlaying
+  const playBtnBg = isActive
     ? isLight
       ? "rgba(124,58,237,0.15)"
       : "rgba(124,58,237,0.2)"
@@ -171,7 +157,6 @@ function LineupRow({
   const ownedBorder = isLight ? "rgba(124,58,237,0.3)" : "rgba(124,58,237,0.2)";
   const ownedText = isLight ? "rgba(109,40,217,0.7)" : "rgba(167,139,250,0.5)";
 
-  // Expanded card tint
   const expandedCardBg = isLight
     ? "rgba(124,58,237,0.03)"
     : "rgba(124,58,237,0.04)";
@@ -179,9 +164,11 @@ function LineupRow({
     ? "rgba(124,58,237,0.12)"
     : "rgba(124,58,237,0.18)";
 
-  // Artwork glow when expanded
+  // Glow intensifies when active in the global player
   const artworkGlow = isExpanded
-    ? "0 0 18px 4px rgba(124,58,237,0.35), 0 0 8px 2px rgba(124,58,237,0.2)"
+    ? isActive
+      ? "0 0 24px 6px rgba(124,58,237,0.5), 0 0 10px 3px rgba(124,58,237,0.3)"
+      : "0 0 18px 4px rgba(124,58,237,0.35), 0 0 8px 2px rgba(124,58,237,0.2)"
     : "none";
   const artworkSize = isExpanded ? 112 : 48;
   const artworkRadius = isExpanded ? 7 : 2;
@@ -239,7 +226,7 @@ function LineupRow({
             gap: 14,
           }}
         >
-          {/* Artwork — scales smoothly on expand */}
+          {/* Artwork */}
           <motion.div
             layout
             className="flex-shrink-0 overflow-hidden relative"
@@ -262,23 +249,36 @@ function LineupRow({
               alt={song.title}
               style={{ width: "100%", height: "100%", display: "block" }}
             />
-            {isPlaying && (
+            {/* Lightweight playback indicator overlay on artwork */}
+            {isActive && (
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.4)",
+                  backgroundColor: "rgba(0,0,0,0.38)",
                   borderRadius: artworkRadius,
                 }}
               >
-                <span
-                  className="block rounded-full"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    backgroundColor: "#a78bfa",
-                    animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite",
-                  }}
-                />
+                {isPlaying ? (
+                  <span
+                    className="block rounded-full"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      backgroundColor: "#a78bfa",
+                      animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite",
+                    }}
+                  />
+                ) : (
+                  // Paused indicator — static dot
+                  <span
+                    className="block rounded-full"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      backgroundColor: "rgba(167,139,250,0.5)",
+                    }}
+                  />
+                )}
               </div>
             )}
           </motion.div>
@@ -318,7 +318,6 @@ function LineupRow({
               {song.artist}
             </p>
 
-            {/* Status badge — always visible in the title column */}
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {isUpcoming && (
                 <>
@@ -395,7 +394,7 @@ function LineupRow({
         </div>
       </button>
 
-      {/* Expanded details — fade in below the artwork row */}
+      {/* Expanded details */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
@@ -422,7 +421,11 @@ function LineupRow({
               }}
             />
 
-            {/* Preview row */}
+            {/*
+              Preview row — lightweight trigger + progress bar.
+              The bottom global player is the primary playback surface.
+              We only show a play/pause button and a read-only progress indicator here.
+            */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -487,6 +490,7 @@ function LineupRow({
                 >
                   30S PREVIEW
                 </span>
+                {/* Progress bar synced to global player currentTime */}
                 <div
                   style={{
                     height: 2,
@@ -501,7 +505,9 @@ function LineupRow({
                       width: `${progress}%`,
                       background: "linear-gradient(90deg,#7C3AED,#a78bfa)",
                       boxShadow: "0 0 6px rgba(124,58,237,0.5)",
-                      transition: "width 1s linear",
+                      transition: isActive
+                        ? "width 1s linear"
+                        : "width 0.2s ease",
                     }}
                   />
                 </div>
@@ -651,6 +657,16 @@ export function ReleasesPage({
   const { theme } = useTheme();
   const isLight = theme === "light";
 
+  // ── Global player ──────────────────────────────────────────────────────────
+  const {
+    currentTrack,
+    isPlaying: globalIsPlaying,
+    currentTime,
+    playPreview,
+    pause,
+    resume,
+  } = useAudioPlayer();
+
   const [likesMap, setLikesMap] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     for (const s of allAlbums) map[s.id] = s.likes;
@@ -671,7 +687,6 @@ export function ReleasesPage({
   });
   const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
   const [mintModalAlbumId, setMintModalAlbumId] = useState<string | null>(null);
-  const [playingId, setPlayingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Simulate live updates
@@ -704,18 +719,6 @@ export function ReleasesPage({
     };
   }, [allAlbums]);
 
-  // Auto-stop after 30s
-  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (playTimerRef.current) clearTimeout(playTimerRef.current);
-    if (playingId) {
-      playTimerRef.current = setTimeout(() => setPlayingId(null), 30000);
-    }
-    return () => {
-      if (playTimerRef.current) clearTimeout(playTimerRef.current);
-    };
-  }, [playingId]);
-
   function handleToggleLike(id: string) {
     setLikedIds((prev) => {
       const next = new Set(prev);
@@ -745,8 +748,31 @@ export function ReleasesPage({
     }));
   }
 
-  function handleTogglePlay(id: string) {
-    setPlayingId((prev) => (prev === id ? null : id));
+  /**
+   * Toggle play/pause for a release card.
+   * Routes through the shared AudioPlayerContext — no local audio state.
+   */
+  function handleTogglePlay(song: (typeof allAlbums)[0]) {
+    const isThisTrackActive =
+      currentTrack?.id === song.id && currentTrack.mode === "preview";
+
+    if (isThisTrackActive) {
+      // Same track: toggle pause/resume in the global player
+      if (globalIsPlaying) {
+        pause();
+      } else {
+        resume();
+      }
+    } else {
+      // Different track: load into global player as preview
+      playPreview({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        artworkSrc: song.artworkSrc ?? null,
+        preview_url: song.preview_url ?? "",
+      });
+    }
   }
 
   function handleToggleExpand(id: string) {
@@ -757,7 +783,6 @@ export function ReleasesPage({
     ? allAlbums.find((s) => s.id === openCommentsId)
     : null;
 
-  // Pad drop count to 2 digits
   const dropCount = String(allAlbums.length).padStart(2, "0");
 
   const headerDividerColor = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
@@ -781,11 +806,7 @@ export function ReleasesPage({
         }
       >
         {/* Editorial page header */}
-        <div
-          style={{
-            padding: "20px 16px 0",
-          }}
-        >
+        <div style={{ padding: "20px 16px 0" }}>
           <div
             style={{
               display: "flex",
@@ -826,26 +847,34 @@ export function ReleasesPage({
 
         {/* Lineup rows */}
         <div style={{ paddingTop: 4 }}>
-          {allAlbums.map((song, i) => (
-            <LineupRow
-              key={song.id}
-              song={song}
-              index={i}
-              likes={likesMap[song.id] ?? song.likes}
-              isLiked={likedIds.has(song.id)}
-              comments={commentsMap[song.id] ?? song.comments}
-              minted={mintedMap[song.id] ?? song.minted}
-              isOwned={ownedAlbumIds.includes(song.id)}
-              isPlaying={playingId === song.id}
-              isExpanded={expandedId === song.id}
-              isLight={isLight}
-              onToggleLike={() => handleToggleLike(song.id)}
-              onOpenComments={() => setOpenCommentsId(song.id)}
-              onBuy={() => setMintModalAlbumId(song.id)}
-              onTogglePlay={() => handleTogglePlay(song.id)}
-              onToggleExpand={() => handleToggleExpand(song.id)}
-            />
-          ))}
+          {allAlbums.map((song, i) => {
+            const isThisActive =
+              currentTrack?.id === song.id && currentTrack.mode === "preview";
+            const isThisPlaying = isThisActive && globalIsPlaying;
+
+            return (
+              <LineupRow
+                key={song.id}
+                song={song}
+                index={i}
+                likes={likesMap[song.id] ?? song.likes}
+                isLiked={likedIds.has(song.id)}
+                comments={commentsMap[song.id] ?? song.comments}
+                minted={mintedMap[song.id] ?? song.minted}
+                isOwned={ownedAlbumIds.includes(song.id)}
+                isPlaying={isThisPlaying}
+                isActive={isThisActive}
+                currentTime={isThisActive ? currentTime : 0}
+                isExpanded={expandedId === song.id}
+                isLight={isLight}
+                onToggleLike={() => handleToggleLike(song.id)}
+                onOpenComments={() => setOpenCommentsId(song.id)}
+                onBuy={() => setMintModalAlbumId(song.id)}
+                onTogglePlay={() => handleTogglePlay(song)}
+                onToggleExpand={() => handleToggleExpand(song.id)}
+              />
+            );
+          })}
         </div>
       </div>
 
