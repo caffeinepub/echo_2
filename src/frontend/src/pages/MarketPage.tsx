@@ -7,191 +7,168 @@ import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
 import { formatUSD } from "../utils/formatUSD";
 
-// ─── Types ──────────────────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────────────────
 type SortMode = "marketcap" | "volume" | "change";
 
 interface AlbumEntry {
   id: string;
   title: string;
-  creator: string;
-  category: string;
+  artist: string;
   artworkSrc: string | null;
   floor_price_sol: number;
   editions_in_circulation: number;
   total_supply: number;
   volume_24h_sol: number;
   transaction_volume: number;
-  viewing_volume: number;
-  viewers: number;
-  views_raw: number;
+  listening_volume: number;
+  listeners: number;
+  plays_raw: number;
   change_24h_pct: number;
-  video_url: string;
+  preview_url: string;
   daysAtNumber1: number;
 }
 
-// ─── Mock data ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Mock data ──────────────────────────────────────────────────────────────────────────────
 const BASE_ALBUMS: AlbumEntry[] = [
   {
     id: "echo_001",
     title: "Fragments",
-    creator: "Halo Drift",
-    category: "Visual",
+    artist: "Halo Drift",
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     floor_price_sol: 2.6,
     editions_in_circulation: 89,
     total_supply: 150,
     volume_24h_sol: 18.4,
     transaction_volume: 18.4,
-    viewing_volume: 142000,
-    viewers: 2400,
-    views_raw: 142000,
+    listening_volume: 142000,
+    listeners: 2400,
+    plays_raw: 142000,
     change_24h_pct: 12.2,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 35,
   },
   {
     id: "echo_002",
     title: "Charcoal",
-    creator: "Vessel",
-    category: "Art",
+    artist: "Vessel",
     artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
     floor_price_sol: 1.8,
     editions_in_circulation: 61,
     total_supply: 120,
     volume_24h_sol: 7.8,
     transaction_volume: 7.8,
-    viewing_volume: 118000,
-    viewers: 1800,
-    views_raw: 118000,
+    listening_volume: 118000,
+    listeners: 1800,
+    plays_raw: 118000,
     change_24h_pct: 4.7,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-03",
     title: "Pale Shore",
-    creator: "Mira Fold",
-    category: "Ambient",
+    artist: "Mira Fold",
     artworkSrc: null,
     floor_price_sol: 1.4,
     editions_in_circulation: 45,
     total_supply: 100,
     volume_24h_sol: 5.2,
     transaction_volume: 5.2,
-    viewing_volume: 97000,
-    viewers: 970,
-    views_raw: 97000,
+    listening_volume: 97000,
+    listeners: 970,
+    plays_raw: 97000,
     change_24h_pct: -2.1,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-04",
     title: "Overgrowth",
-    creator: "Kin Solar",
-    category: "Experimental",
+    artist: "Kin Solar",
     artworkSrc: null,
     floor_price_sol: 1.1,
     editions_in_circulation: 38,
     total_supply: 80,
     volume_24h_sol: 3.8,
     transaction_volume: 3.8,
-    viewing_volume: 83000,
-    viewers: 830,
-    views_raw: 83000,
+    listening_volume: 83000,
+    listeners: 830,
+    plays_raw: 83000,
     change_24h_pct: 8.3,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-05",
     title: "Solstice",
-    creator: "Null Tide",
-    category: "Loop",
+    artist: "Null Tide",
     artworkSrc: null,
     floor_price_sol: 0.9,
     editions_in_circulation: 52,
     total_supply: 90,
     volume_24h_sol: 4.1,
     transaction_volume: 4.1,
-    viewing_volume: 74000,
-    viewers: 740,
-    views_raw: 74000,
+    listening_volume: 74000,
+    listeners: 740,
+    plays_raw: 74000,
     change_24h_pct: -0.8,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-06",
     title: "Dusk Index",
-    creator: "Aeris",
-    category: "Animation",
+    artist: "Aeris",
     artworkSrc: null,
     floor_price_sol: 1.2,
     editions_in_circulation: 31,
     total_supply: 75,
     volume_24h_sol: 3.2,
     transaction_volume: 3.2,
-    viewing_volume: 68000,
-    viewers: 680,
-    views_raw: 68000,
+    listening_volume: 68000,
+    listeners: 680,
+    plays_raw: 68000,
     change_24h_pct: 6.1,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-07",
     title: "Between Layers",
-    creator: "Slow Form",
-    category: "Performance",
+    artist: "Slow Form",
     artworkSrc: null,
     floor_price_sol: 0.7,
     editions_in_circulation: 28,
     total_supply: 60,
     volume_24h_sol: 2.1,
     transaction_volume: 2.1,
-    viewing_volume: 61000,
-    viewers: 610,
-    views_raw: 61000,
+    listening_volume: 61000,
+    listeners: 610,
+    plays_raw: 61000,
     change_24h_pct: 1.4,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
   {
     id: "ta-08",
     title: "Mirage",
-    creator: "Echo Field",
-    category: "Fashion",
+    artist: "Echo Field",
     artworkSrc: null,
     floor_price_sol: 0.6,
     editions_in_circulation: 24,
     total_supply: 50,
     volume_24h_sol: 1.8,
     transaction_volume: 1.8,
-    viewing_volume: 54000,
-    viewers: 540,
-    views_raw: 54000,
+    listening_volume: 54000,
+    listeners: 540,
+    plays_raw: 54000,
     change_24h_pct: -3.5,
-    video_url: "",
+    preview_url: "",
     daysAtNumber1: 0,
   },
 ];
 
-const CATEGORIES = [
-  "All",
-  "Art",
-  "Animation",
-  "Fashion",
-  "Experimental",
-  "Meme",
-  "Short Film",
-  "Loop",
-  "Visual",
-  "Ambient",
-  "Performance",
-];
-
-// ─── Crown Icon ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Crown Icon ────────────────────────────────────────────────────────────────────────────────
 function CrownIcon() {
   return (
     <svg
@@ -215,7 +192,7 @@ function CrownIcon() {
   );
 }
 
-// ─── Signal Card ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Signal Card ───────────────────────────────────────────────────────────────────────────────
 function SignalCard({
   label,
   solValue,
@@ -224,7 +201,9 @@ function SignalCard({
   accent,
 }: {
   label: string;
+  /** If provided, show SOL value + USD equivalent */
   solValue?: number;
+  /** If provided (non-SOL stat), show as plain text */
   plainValue?: string;
   index: number;
   accent?: "violet" | "cyan";
@@ -289,7 +268,7 @@ function SignalCard({
   );
 }
 
-// ─── Change badge ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Change badge ──────────────────────────────────────────────────────────────────────────────
 function ChangeBadge({ pct, flash }: { pct: number; flash?: boolean }) {
   const positive = pct >= 0;
   return (
@@ -310,7 +289,7 @@ function ChangeBadge({ pct, flash }: { pct: number; flash?: boolean }) {
   );
 }
 
-// ─── Artwork circle ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Artwork circle ─────────────────────────────────────────────────────────────────────────────
 function ArtCircle({
   src,
   title,
@@ -333,6 +312,7 @@ function ArtCircle({
       className="relative shrink-0 focus:outline-none group"
       style={{ width: 56, height: 56 }}
     >
+      {/* Spinning ring + glow when playing */}
       {isPlaying && (
         <span
           className="absolute inset-0 rounded-full"
@@ -342,6 +322,7 @@ function ArtCircle({
           }}
         />
       )}
+      {/* Art circle */}
       <div
         className={`w-full h-full rounded-full overflow-hidden ${
           isPlaying ? "animate-spin-slow" : ""
@@ -359,6 +340,7 @@ function ArtCircle({
           />
         )}
       </div>
+      {/* Play/pause overlay */}
       <div
         className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         style={{ background: "var(--echo-bg)" }}
@@ -376,7 +358,7 @@ function ArtCircle({
   );
 }
 
-// ─── Album Row ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Album Row ───────────────────────────────────────────────────────────────────────────────
 function AlbumRow({
   album,
   rank,
@@ -472,9 +454,12 @@ function AlbumRow({
         border: isActive
           ? "1px solid oklch(0.55 0.25 290 / 0.35)"
           : "1px solid var(--echo-border-subtle)",
-        boxShadow: isActive
-          ? "0 0 20px oklch(0.55 0.25 290 / 0.12)"
-          : undefined,
+        boxShadow:
+          isHot && !isActive
+            ? "0 0 0 0 transparent"
+            : isActive
+              ? "0 0 20px oklch(0.55 0.25 290 / 0.12)"
+              : undefined,
       }}
     >
       {/* Rank */}
@@ -502,7 +487,7 @@ function AlbumRow({
         onPress={() => onPreviewToggle(album)}
       />
 
-      {/* Title + creator */}
+      {/* Title + artist */}
       <div className="flex-1 min-w-0">
         <p
           className="text-[14px] font-medium truncate leading-tight"
@@ -510,23 +495,13 @@ function AlbumRow({
         >
           {album.title}
         </p>
-        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+        <div className="flex items-center gap-1.5 mt-0.5">
           <p
             className="text-[11px] truncate"
             style={{ color: "var(--echo-text-secondary)" }}
           >
-            {album.creator}
+            {album.artist}
           </p>
-          <span
-            className="text-[9px] px-1.5 py-0.5 rounded font-medium"
-            style={{
-              background: "oklch(0.55 0.25 290 / 0.1)",
-              color: "oklch(0.72 0.18 290)",
-              border: "1px solid oklch(0.55 0.25 290 / 0.15)",
-            }}
-          >
-            {album.category}
-          </span>
           {isHot && (
             <TrendingUp
               className="w-3 h-3 shrink-0"
@@ -547,7 +522,7 @@ function AlbumRow({
   );
 }
 
-// ─── Main page ───────────────────────────────────────────────────────────────────────────────────────
+// ─── Main page ──────────────────────────────────────────────────────────────────────────────
 interface MarketPageProps {
   onAlbumClick: (albumId: string) => void;
 }
@@ -555,7 +530,6 @@ interface MarketPageProps {
 export function MarketPage({ onAlbumClick }: MarketPageProps) {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("marketcap");
-  const [categoryFilter, setCategoryFilter] = useState("All");
   const [albums, setAlbums] = useState<AlbumEntry[]>(BASE_ALBUMS);
   const [visibleCount, setVisibleCount] = useState(8);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -568,13 +542,15 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
     const timer = setInterval(() => {
       setAlbums((prev) =>
         prev.map((a) => {
-          const delta = 1 + (Math.random() * 0.04 - 0.02);
-          return {
+          const delta = 1 + (Math.random() * 0.04 - 0.02); // ±2%
+          const updated = {
             ...a,
             floor_price_sol: Math.max(0.01, a.floor_price_sol * delta),
           };
+          return updated;
         }),
       );
+      // flash a random album
       const randomId =
         BASE_ALBUMS[Math.floor(Math.random() * BASE_ALBUMS.length)].id;
       setFlashId(randomId);
@@ -628,24 +604,21 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
       play({
         id: album.id,
         title: album.title,
-        creator: album.creator,
+        artist: album.artist,
         artworkSrc: album.artworkSrc,
-        video_url: album.video_url,
+        preview_url: album.preview_url,
       });
     }
   }
 
   const sortedAlbums = useMemo(() => {
-    let list = [...albums];
-    if (categoryFilter !== "All") {
-      list = list.filter((a) => a.category === categoryFilter);
-    }
+    const list = [...albums];
     if (query.trim()) {
       const q = query.toLowerCase();
       return list.filter(
         (a) =>
           a.title.toLowerCase().includes(q) ||
-          a.creator.toLowerCase().includes(q),
+          a.artist.toLowerCase().includes(q),
       );
     }
     switch (sortMode) {
@@ -660,8 +633,9 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
       case "change":
         return list.sort((a, b) => b.change_24h_pct - a.change_24h_pct);
     }
-  }, [sortMode, query, albums, categoryFilter]);
+  }, [sortMode, query, albums]);
 
+  // For infinite scroll — extend with duplicates for demo
   const extendedAlbums = useMemo(() => {
     const result = [...sortedAlbums];
     if (result.length < visibleCount) {
@@ -687,7 +661,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="relative mb-4"
+        className="relative mb-6"
       >
         <Search
           className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
@@ -697,7 +671,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search videos, creators..."
+          placeholder="Search albums, artists, tracks…"
           data-ocid="discover.search_input"
           className="w-full pl-10 pr-4 py-3 text-sm outline-none transition-all rounded-2xl"
           style={{
@@ -717,40 +691,6 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
         />
       </motion.div>
 
-      {/* ── Category filter tabs ── */}
-      {!query.trim() && (
-        <div
-          className="flex gap-2 overflow-x-auto pb-3 mb-4"
-          style={{ scrollbarWidth: "none" }}
-          data-ocid="discover.tab"
-        >
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategoryFilter(cat)}
-              className="px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
-              style={{
-                background:
-                  categoryFilter === cat
-                    ? "oklch(0.55 0.25 290 / 0.18)"
-                    : "transparent",
-                color:
-                  categoryFilter === cat
-                    ? "oklch(0.78 0.20 290)"
-                    : "var(--echo-text-muted)",
-                border:
-                  categoryFilter === cat
-                    ? "1px solid oklch(0.55 0.25 290 / 0.35)"
-                    : "1px solid var(--echo-border)",
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* ── Signal cards ── */}
       {!query.trim() && (
         <div className="grid grid-cols-2 gap-2.5 mb-8">
@@ -766,9 +706,9 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
             index={1}
             accent="cyan"
           />
-          <SignalCard label="Active Viewers" plainValue="14.2k" index={2} />
+          <SignalCard label="Active Listeners" plainValue="14.2k" index={2} />
           <SignalCard
-            label="Live Drops"
+            label="Live Releases"
             plainValue="3"
             index={3}
             accent="violet"
@@ -785,7 +725,8 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
         {/* Header */}
         {!query.trim() && (
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-1">
+            {/* Sort pills */}
+            <div className="flex items-center gap-1" data-ocid="discover.tab">
               {SORT_OPTIONS.map((opt) => {
                 const active = sortMode === opt.key;
                 return (
@@ -812,6 +753,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
               })}
             </div>
 
+            {/* Live indicator */}
             <div className="flex items-center gap-1.5">
               <span
                 className="w-1.5 h-1.5 rounded-full"
@@ -839,7 +781,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           <span className="w-6 shrink-0" />
           <span className="w-14 shrink-0" />
           <span className="flex-1 text-[9px] uppercase tracking-widest">
-            Video
+            Album
           </span>
           <span className="text-[9px] uppercase tracking-widest min-w-[68px] text-right">
             {sortMode === "marketcap"
@@ -860,7 +802,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
             className="text-sm py-12 text-center"
             style={{ color: "var(--echo-text-dark)" }}
           >
-            No videos found
+            No albums found
           </p>
         ) : (
           <div>
@@ -879,6 +821,7 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           </div>
         )}
 
+        {/* Infinite scroll sentinel */}
         <div ref={sentinelRef} className="h-4" />
         {isLoadingMore && (
           <div
@@ -902,7 +845,3 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
     </div>
   );
 }
-
-// Suppress unused import
-const _SolUsdValue = SolUsdValue;
-void _SolUsdValue;

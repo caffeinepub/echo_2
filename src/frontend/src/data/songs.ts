@@ -9,12 +9,12 @@ export interface Song {
   id: string;
   collectionName: string;
   title: string;
-  creator: string;
+  artist: string;
   artworkSrc: string;
   supply: number;
   userEdition: number;
-  video_preview_url: string;
-  video_full_url: string;
+  preview_url: string;
+  full_url: string;
   floorPrice: number;
   lastSoldPrice: number;
   owners: number;
@@ -28,9 +28,6 @@ export interface Song {
   signalStrength: number; // 0–1
   likes: number;
   comments: SongComment[];
-  category: string;
-  tags: string[];
-  maxPerWallet: number;
 }
 
 export const SONGS: Song[] = [
@@ -38,12 +35,12 @@ export const SONGS: Song[] = [
     id: "echo_003",
     collectionName: "ECHO_003",
     title: "Obsidian",
-    creator: "Nocturne",
+    artist: "Nocturne",
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     supply: 200,
     userEdition: 0,
-    video_preview_url: "",
-    video_full_url: "",
+    preview_url: "",
+    full_url: "",
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -57,20 +54,17 @@ export const SONGS: Song[] = [
     signalStrength: 0,
     likes: 0,
     comments: [],
-    category: "Experimental",
-    tags: ["glitch", "cyber"],
-    maxPerWallet: 3,
   },
   {
     id: "echo_001",
     collectionName: "ECHO_001",
     title: "Fragments",
-    creator: "Halo Drift",
+    artist: "Halo Drift",
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     supply: 150,
     userEdition: 42,
-    video_preview_url: "",
-    video_full_url: "",
+    preview_url: "",
+    full_url: "",
     floorPrice: 2.6,
     lastSoldPrice: 2.1,
     owners: 89,
@@ -87,7 +81,7 @@ export const SONGS: Song[] = [
       {
         id: "c1",
         walletAddress: "7f3k...92x",
-        text: "This clip hits different at 3am. The texture is insane.",
+        text: "This track hits different at 3am. The texture is insane.",
         timestamp: Date.now() - 7200000,
       },
       {
@@ -103,20 +97,17 @@ export const SONGS: Song[] = [
         timestamp: Date.now() - 1800000,
       },
     ],
-    category: "Visual",
-    tags: ["dreamy", "glitch"],
-    maxPerWallet: 3,
   },
   {
     id: "echo_002",
     collectionName: "ECHO_002",
     title: "Charcoal",
-    creator: "Vessel",
+    artist: "Vessel",
     artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
     supply: 120,
     userEdition: 7,
-    video_preview_url: "",
-    video_full_url: "",
+    preview_url: "",
+    full_url: "",
     floorPrice: 1.8,
     lastSoldPrice: 1.6,
     owners: 61,
@@ -133,19 +124,16 @@ export const SONGS: Song[] = [
       {
         id: "c4",
         walletAddress: "2bXn...44f",
-        text: "Sold out in 6 minutes. Legendary drop.",
+        text: "Sold out in 6 minutes. Legendary.",
         timestamp: Date.now() - 86400000,
       },
       {
         id: "c5",
         walletAddress: "8dYs...55r",
-        text: "The visuals on this are something else. Vessel is on another level.",
+        text: "The low end on this is something else. Vessel is on another level.",
         timestamp: Date.now() - 43200000,
       },
     ],
-    category: "Art",
-    tags: ["surreal", "VHS"],
-    maxPerWallet: 2,
   },
 ];
 

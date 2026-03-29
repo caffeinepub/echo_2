@@ -3,13 +3,13 @@ import { createContext, useContext, useRef, useState } from "react";
 export interface PlayerTrack {
   id: string;
   title: string;
-  creator: string;
+  artist: string;
   artworkSrc: string | null;
-  video_url: string;
+  preview_url: string;
   mode: "preview" | "library";
 }
 
-interface VideoPlayerContextValue {
+interface AudioPlayerContextValue {
   currentTrack: PlayerTrack | null;
   isPlaying: boolean;
   queue: PlayerTrack[];
@@ -29,9 +29,9 @@ interface VideoPlayerContextValue {
   seek: (seconds: number) => void;
 }
 
-const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);
+const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
-export function VideoPlayerProvider({
+export function AudioPlayerProvider({
   children,
 }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<PlayerTrack | null>(null);
@@ -41,7 +41,7 @@ export function VideoPlayerProvider({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loopModeRef = useRef<"off" | "loop">("off");
   const queueRef = useRef<PlayerTrack[]>([]);
@@ -59,15 +59,14 @@ export function VideoPlayerProvider({
     }
   }
 
-  function stopVideo() {
+  function stopAudio() {
     clearTimer();
-    const video = videoRef.current;
-    if (video) {
-      video.pause();
-      video.onended = null;
-      video.ontimeupdate = null;
-      video.onloadedmetadata = null;
-      video.src = "";
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
+      audioRef.current = null;
     }
     setCurrentTrack(null);
     currentTrackRef.current = null;
@@ -76,15 +75,15 @@ export function VideoPlayerProvider({
     setDuration(0);
   }
 
-  function startVideo(track: PlayerTrack, onEnd?: () => void) {
+  function startAudio(track: PlayerTrack, onEnd?: () => void) {
     clearTimer();
-    const video = videoRef.current;
-    if (!video) return;
-
-    video.pause();
-    video.onended = null;
-    video.ontimeupdate = null;
-    video.onloadedmetadata = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
+      audioRef.current = null;
+    }
 
     setCurrentTrack(track);
     currentTrackRef.current = track;
@@ -92,13 +91,13 @@ export function VideoPlayerProvider({
     setCurrentTime(0);
     setDuration(0);
 
-    if (track.video_url) {
-      video.src = track.video_url;
-      video.muted = false;
-      video.ontimeupdate = () => setCurrentTime(video.currentTime);
-      video.onloadedmetadata = () => setDuration(video.duration || 0);
-      if (onEnd) video.onended = onEnd;
-      video.play().catch(() => {});
+    if (track.preview_url) {
+      const audio = new Audio(track.preview_url);
+      audioRef.current = audio;
+      audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+      audio.onloadedmetadata = () => setDuration(audio.duration || 0);
+      if (onEnd) audio.onended = onEnd;
+      audio.play().catch(() => {});
     }
   }
 
@@ -108,7 +107,7 @@ export function VideoPlayerProvider({
     const track = currentTrackRef.current;
 
     if (mode === "loop" && track) {
-      startVideo(track, handleLibraryEnd);
+      startAudio(track, handleLibraryEnd);
       return;
     }
 
@@ -116,7 +115,7 @@ export function VideoPlayerProvider({
       const [next, ...rest] = q;
       queueRef.current = rest;
       setQueue(rest);
-      startVideo(next, handleLibraryEnd);
+      startAudio(next, handleLibraryEnd);
     } else {
       setCurrentTrack(null);
       currentTrackRef.current = null;
@@ -126,27 +125,25 @@ export function VideoPlayerProvider({
 
   function playPreview(track: Omit<PlayerTrack, "mode">) {
     const fullTrack: PlayerTrack = { ...track, mode: "preview" };
-    const video = videoRef.current;
 
     if (currentTrack?.id === track.id && currentTrack.mode === "preview") {
-      if (video) {
-        if (isPlaying) {
-          video.pause();
-          setIsPlaying(false);
-        } else {
-          video.play().catch(() => {});
-          setIsPlaying(true);
-        }
+      if (isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.play();
+        setIsPlaying(true);
       }
       return;
     }
 
     clearTimer();
-    if (video) {
-      video.pause();
-      video.onended = null;
-      video.ontimeupdate = null;
-      video.onloadedmetadata = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.ontimeupdate = null;
+      audioRef.current.onloadedmetadata = null;
+      audioRef.current = null;
     }
 
     setCurrentTrack(fullTrack);
@@ -154,14 +151,14 @@ export function VideoPlayerProvider({
     setCurrentTime(0);
     setDuration(0);
 
-    if (video && track.video_url) {
-      video.src = track.video_url;
-      video.muted = false;
-      video.ontimeupdate = () => setCurrentTime(video.currentTime);
-      video.onloadedmetadata = () => setDuration(video.duration || 0);
-      video.play().catch(() => {});
+    if (track.preview_url) {
+      const audio = new Audio(track.preview_url);
+      audioRef.current = audio;
+      audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
+      audio.onloadedmetadata = () => setDuration(audio.duration || 0);
+      audio.play().catch(() => {});
       timerRef.current = setTimeout(() => {
-        stopVideo();
+        stopAudio();
       }, 30000);
     }
 
@@ -170,17 +167,14 @@ export function VideoPlayerProvider({
 
   function playLibrary(track: Omit<PlayerTrack, "mode">) {
     const fullTrack: PlayerTrack = { ...track, mode: "library" };
-    const video = videoRef.current;
 
     if (currentTrack?.id === track.id && currentTrack.mode === "library") {
-      if (video) {
-        if (isPlaying) {
-          video.pause();
-          setIsPlaying(false);
-        } else {
-          video.play().catch(() => {});
-          setIsPlaying(true);
-        }
+      if (isPlaying) {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current?.play().catch(() => {});
+        setIsPlaying(true);
       }
       return;
     }
@@ -188,7 +182,7 @@ export function VideoPlayerProvider({
     queueRef.current = [];
     setQueue([]);
 
-    startVideo(fullTrack, handleLibraryEnd);
+    startAudio(fullTrack, handleLibraryEnd);
   }
 
   function addToQueue(track: Omit<PlayerTrack, "mode">) {
@@ -204,48 +198,46 @@ export function VideoPlayerProvider({
       const [next, ...rest] = q;
       queueRef.current = rest;
       setQueue(rest);
-      startVideo(next, handleLibraryEnd);
+      startAudio(next, handleLibraryEnd);
     } else {
-      stopVideo();
+      stopAudio();
     }
   }
 
   function skipPrevious() {
-    const video = videoRef.current;
-    if (!video) {
-      stopVideo();
+    if (!audioRef.current) {
+      stopAudio();
       return;
     }
-    if (video.currentTime > 3) {
-      video.currentTime = 0;
+    if (audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
       setCurrentTime(0);
-      video.play().catch(() => {});
+      audioRef.current.play().catch(() => {});
       setIsPlaying(true);
     } else {
-      stopVideo();
+      stopAudio();
     }
   }
 
   function seek(seconds: number) {
-    const video = videoRef.current;
-    if (video) {
-      video.currentTime = seconds;
+    if (audioRef.current) {
+      audioRef.current.currentTime = seconds;
       setCurrentTime(seconds);
     }
   }
 
   function pause() {
-    videoRef.current?.pause();
+    audioRef.current?.pause();
     setIsPlaying(false);
   }
 
   function resume() {
-    videoRef.current?.play().catch(() => {});
+    audioRef.current?.play().catch(() => {});
     setIsPlaying(true);
   }
 
   return (
-    <VideoPlayerContext.Provider
+    <AudioPlayerContext.Provider
       value={{
         currentTrack,
         isPlaying,
@@ -262,38 +254,18 @@ export function VideoPlayerProvider({
         setLoopMode: syncLoopMode,
         pause,
         resume,
-        stop: stopVideo,
+        stop: stopAudio,
         seek,
       }}
     >
-      <video
-        ref={videoRef}
-        playsInline
-        style={{
-          position: "fixed",
-          width: 1,
-          height: 1,
-          opacity: 0,
-          pointerEvents: "none",
-          zIndex: -1,
-        }}
-      >
-        <track kind="captions" />
-      </video>
       {children}
-    </VideoPlayerContext.Provider>
+    </AudioPlayerContext.Provider>
   );
 }
 
-// Keep AudioPlayerProvider as alias for backward compat
-export const AudioPlayerProvider = VideoPlayerProvider;
-
-export function useVideoPlayer() {
-  const ctx = useContext(VideoPlayerContext);
+export function useAudioPlayer() {
+  const ctx = useContext(AudioPlayerContext);
   if (!ctx)
-    throw new Error("useVideoPlayer must be used within VideoPlayerProvider");
+    throw new Error("useAudioPlayer must be used within AudioPlayerProvider");
   return ctx;
 }
-
-// Backward compat alias
-export const useAudioPlayer = useVideoPlayer;

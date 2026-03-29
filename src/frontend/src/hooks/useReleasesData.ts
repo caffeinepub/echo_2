@@ -6,7 +6,7 @@ import { useWalletContext } from "../context/WalletContext";
 import { SONGS, type Song } from "../data/songs";
 
 function adminReleaseToSong(r: AdminRelease): Song {
-  const videoUrl = r.videoDataUrl || r.videoExternalUrl || "";
+  const audioUrl = r.audioDataUrl || r.audioExternalUrl || "";
   const minted = r.mintedCount ?? 0;
   const isSoldOut = minted >= r.supply;
 
@@ -22,15 +22,13 @@ function adminReleaseToSong(r: AdminRelease): Song {
     id: r.id,
     collectionName: r.title.toUpperCase().replace(/\s+/g, "_"),
     title: r.title,
-    creator: r.creator,
+    artist: r.artist,
     artworkSrc:
-      r.thumbnailDataUrl ||
-      r.artworkDataUrl ||
-      "/assets/generated/album-fragments.dim_600x600.jpg",
+      r.artworkDataUrl || "/assets/generated/album-fragments.dim_600x600.jpg",
     supply: r.supply,
     userEdition: 0,
-    video_preview_url: videoUrl,
-    video_full_url: videoUrl,
+    preview_url: audioUrl,
+    full_url: audioUrl,
     floorPrice: r.priceSOL,
     lastSoldPrice: r.priceSOL,
     owners: minted,
@@ -44,9 +42,6 @@ function adminReleaseToSong(r: AdminRelease): Song {
     signalStrength: 0.3,
     likes: 0,
     comments: [],
-    category: r.category ?? "Visual",
-    tags: r.tags ?? [],
-    maxPerWallet: r.maxPerWallet ?? 3,
   };
 }
 

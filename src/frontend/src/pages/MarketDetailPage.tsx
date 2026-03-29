@@ -12,32 +12,32 @@ interface MarketDetailPageProps {
   onBack: () => void;
 }
 
-// ─── Local market data for all videos ──────────────────────────────────────────────────────────────────────
-interface MarketVideo {
+// ─── Local market data for all songs ────────────────────────────────────────────────────────────────
+interface MarketSong {
   id: string;
   title: string;
-  creator: string;
+  artist: string;
   artworkSrc: string | null;
   floor_price_sol: number;
   total_supply: number;
   circulating_supply: number;
   transaction_volume: number;
-  viewing_volume: number;
+  listening_volume: number;
   change_24h_pct: number;
   listings: { edition: number; seller: string; price: number }[];
 }
 
-const MARKET_VIDEOS: MarketVideo[] = [
+const MARKET_SONGS: MarketSong[] = [
   {
     id: "echo_001",
     title: "Fragments",
-    creator: "Halo Drift",
+    artist: "Halo Drift",
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     floor_price_sol: 2.6,
     total_supply: 150,
     circulating_supply: 89,
     transaction_volume: 18.4,
-    viewing_volume: 142000,
+    listening_volume: 142000,
     change_24h_pct: 12.2,
     listings: [
       { edition: 12, seller: "7f3k...92x", price: 2.9 },
@@ -49,13 +49,13 @@ const MARKET_VIDEOS: MarketVideo[] = [
   {
     id: "echo_002",
     title: "Charcoal",
-    creator: "Vessel",
+    artist: "Vessel",
     artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
     floor_price_sol: 1.8,
     total_supply: 120,
     circulating_supply: 61,
     transaction_volume: 7.8,
-    viewing_volume: 118000,
+    listening_volume: 118000,
     change_24h_pct: 4.7,
     listings: [
       { edition: 3, seller: "9pqr...44m", price: 2.0 },
@@ -65,19 +65,19 @@ const MARKET_VIDEOS: MarketVideo[] = [
   },
 ];
 
-function getMarketVideo(albumId: string): MarketVideo {
-  const found = MARKET_VIDEOS.find((s) => s.id === albumId);
+function getMarketSong(albumId: string): MarketSong {
+  const found = MARKET_SONGS.find((s) => s.id === albumId);
   if (found) return found;
   return {
     id: albumId,
     title: albumId,
-    creator: "Unknown Creator",
+    artist: "Unknown Artist",
     artworkSrc: null,
     floor_price_sol: 1.0,
     total_supply: 100,
     circulating_supply: 40,
     transaction_volume: 2.5,
-    viewing_volume: 50000,
+    listening_volume: 50000,
     change_24h_pct: 0,
     listings: [
       { edition: 5, seller: "4abc...11z", price: 1.1 },
@@ -86,7 +86,7 @@ function getMarketVideo(albumId: string): MarketVideo {
   };
 }
 
-// ─── Soundwave Visualizer ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Soundwave Visualizer ───────────────────────────────────────────────────────────────────────
 const WAVE_BARS = Array.from({ length: 40 }, (_, i) => ({
   id: `wb${i}`,
   duration: 1.8 + ((i * 17) % 7) * 0.09,
@@ -142,9 +142,12 @@ function SoundwaveVisualizer({ activityPct }: { activityPct: number }) {
   );
 }
 
-// ─── Echo Signal Card ──────────────────────────────────────────────────────────────────────────────────────
-function VolumeSignalCard({ video }: { video: MarketVideo }) {
-  const viewingPct = Math.min(100, (video.viewing_volume / 10000 / 14.2) * 100);
+// ─── Echo Signal Card ────────────────────────────────────────────────────────────────────────────
+function VolumeSignalCard({ song }: { song: MarketSong }) {
+  const listeningPct = Math.min(
+    100,
+    (song.listening_volume / 10000 / 14.2) * 100,
+  );
 
   return (
     <div
@@ -161,18 +164,18 @@ function VolumeSignalCard({ video }: { video: MarketVideo }) {
       >
         ECHO SIGNAL
       </p>
-      <SoundwaveVisualizer activityPct={viewingPct} />
+      <SoundwaveVisualizer activityPct={listeningPct} />
       <p
         className="text-[12px] font-mono font-semibold mt-2"
         style={{ color: "oklch(0.82 0.15 210)" }}
       >
-        {(video.viewing_volume / 1000).toFixed(0)}k views
+        {(song.listening_volume / 1000).toFixed(0)}k plays
       </p>
     </div>
   );
 }
 
-// ─── Sol Value Cell ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Market Cap Cell ────────────────────────────────────────────────────────────────────────────
 function SolValueCell({ sol }: { sol: number }) {
   const { solPrice } = useSolPriceContext();
   return (
@@ -194,28 +197,28 @@ function SolValueCell({ sol }: { sol: number }) {
   );
 }
 
-// ─── Main Page ──────────────────────────────────────────────────────────────────────────────────────
+// ─── Main Page ──────────────────────────────────────────────────────────────────────────────
 export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
-  const video = getMarketVideo(albumId);
+  const song = getMarketSong(albumId);
   const libSong = SONGS.find((s) => s.id === albumId);
   const { currentTrack, isPlaying, play, stop } = useAudioPlayer();
   const { solPrice } = useSolPriceContext();
   const [_unused] = useState(0);
-  const isPlayingVideo = currentTrack?.id === `${albumId}-art` && isPlaying;
+  const isPlayingSong = currentTrack?.id === `${albumId}-art` && isPlaying;
 
-  const mktCap = video.floor_price_sol * video.circulating_supply;
-  const positive = video.change_24h_pct >= 0;
+  const mktCap = song.floor_price_sol * song.circulating_supply;
+  const positive = song.change_24h_pct >= 0;
 
   function toggleArtPlay() {
-    if (isPlayingVideo) {
+    if (isPlayingSong) {
       stop();
     } else {
       play({
         id: `${albumId}-art`,
-        title: video.title,
-        creator: video.creator,
-        artworkSrc: video.artworkSrc,
-        video_url: "",
+        title: song.title,
+        artist: song.artist,
+        artworkSrc: song.artworkSrc,
+        preview_url: "",
       });
     }
   }
@@ -249,7 +252,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
         className="flex justify-center pt-6 pb-6 px-5"
       >
         <div className="relative" style={{ width: 160, height: 160 }}>
-          {isPlayingVideo && (
+          {isPlayingSong && (
             <div
               className="absolute inset-0 rounded-full animate-glow-pulse"
               style={{
@@ -259,13 +262,13 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             />
           )}
           <div
-            className={`w-full h-full rounded-full overflow-hidden ${isPlayingVideo ? "animate-spin-slow" : ""}`}
+            className={`w-full h-full rounded-full overflow-hidden ${isPlayingSong ? "animate-spin-slow" : ""}`}
             style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}
           >
-            {video.artworkSrc ? (
+            {song.artworkSrc ? (
               <img
-                src={video.artworkSrc}
-                alt={video.title}
+                src={song.artworkSrc}
+                alt={song.title}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -284,9 +287,9 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
             data-ocid="market_detail.primary_button"
             className="absolute inset-0 rounded-full flex items-center justify-center transition-opacity"
             style={{ background: "var(--echo-bg)" }}
-            aria-label={isPlayingVideo ? "Pause" : "Preview"}
+            aria-label={isPlayingSong ? "Pause" : "Preview"}
           >
-            {isPlayingVideo ? (
+            {isPlayingSong ? (
               <Pause className="w-8 h-8" style={{ color: "white" }} />
             ) : (
               <Play className="w-8 h-8 ml-1" style={{ color: "white" }} />
@@ -306,19 +309,19 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           className="text-[22px] font-bold leading-tight"
           style={{ color: "var(--echo-text)" }}
         >
-          {video.title}
+          {song.title}
         </h1>
         <p
           className="text-[14px] mt-1"
           style={{ color: "var(--echo-text-secondary)" }}
         >
-          {video.creator}
+          {song.artist}
         </p>
         <p
           className="text-[11px] mt-1.5 uppercase tracking-widest"
           style={{ color: "var(--echo-text-dark)" }}
         >
-          {video.total_supply} editions · {albumId.toUpperCase()}
+          {song.total_supply} editions · {albumId.toUpperCase()}
         </p>
       </motion.div>
 
@@ -347,7 +350,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           }}
         >
           {positive ? "+" : ""}
-          {video.change_24h_pct.toFixed(1)}% 24H
+          {song.change_24h_pct.toFixed(1)}% 24H
         </span>
       </motion.div>
 
@@ -368,7 +371,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               label: "Total Supply",
               value: (
                 <span style={{ color: "var(--echo-text-dim)" }}>
-                  {video.total_supply}
+                  {song.total_supply}
                 </span>
               ),
             },
@@ -376,7 +379,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               label: "Circulating",
               value: (
                 <span style={{ color: "var(--echo-text-dim)" }}>
-                  {video.circulating_supply} / {video.total_supply}
+                  {song.circulating_supply} / {song.total_supply}
                 </span>
               ),
             },
@@ -408,7 +411,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.28 }}
         >
-          <VolumeSignalCard video={video} />
+          <VolumeSignalCard song={song} />
         </motion.div>
 
         {/* ── Secondary market listings ── */}
@@ -430,7 +433,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               Listings
             </p>
           </div>
-          {video.listings.map((listing, idx) => (
+          {song.listings.map((listing, idx) => (
             <div
               key={`${listing.edition}-${listing.seller}`}
               data-ocid={`market_detail.row.${idx + 1}`}
@@ -445,6 +448,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
                   #{String(listing.edition).padStart(3, "0")} · {listing.seller}
                 </p>
               </div>
+              {/* Listing price: SOL primary, USD secondary */}
               <div className="shrink-0 text-right">
                 <p
                   className="text-[15px] font-mono font-semibold flex items-center gap-1 justify-end"
@@ -490,7 +494,7 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
               className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-3"
               style={{ color: "var(--echo-text-secondary)" }}
             >
-              Video Info
+              Song Info
             </p>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -555,6 +559,6 @@ export function MarketDetailPage({ albumId, onBack }: MarketDetailPageProps) {
   );
 }
 
-// Suppress unused import warning
+// Suppress unused import warning from original file
 const _Lock = Lock;
 void _Lock;

@@ -7,17 +7,17 @@ import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useWalletContext } from "../context/WalletContext";
 import { SONGS, formatEdition } from "../data/songs";
 
-interface VideoDetailPageProps {
+interface SongDetailPageProps {
   albumId: string;
   onBack: () => void;
 }
 
-// ─── Mock viewer data per video ─────────────────────────────────────────────────────────────────
-const VIDEO_COLLECTOR_DATA: Record<
+// ─── Mock collector data per song ────────────────────────────────────────────
+const SONG_COLLECTOR_DATA: Record<
   string,
   {
-    currentViewers: number;
-    viewsLabel: string;
+    currentListeners: number;
+    playsLabel: string;
     recentActivity: {
       type: "purchase" | "listing" | "sale";
       description: string;
@@ -27,12 +27,12 @@ const VIDEO_COLLECTOR_DATA: Record<
   }
 > = {
   echo_001: {
-    currentViewers: 47,
-    viewsLabel: "142k views",
+    currentListeners: 47,
+    playsLabel: "142k plays",
     recentActivity: [
       {
         type: "purchase",
-        description: "pale.moon collected #089 · ◎ 2.8",
+        description: "pale.moon bought #089 · ◎ 2.8",
         time: "5m ago",
       },
       {
@@ -43,7 +43,7 @@ const VIDEO_COLLECTOR_DATA: Record<
       { type: "sale", description: "#021 sold for ◎ 2.4", time: "44m ago" },
       {
         type: "purchase",
-        description: "null_tide collected #042 · ◎ 2.6",
+        description: "null_tide bought #042 · ◎ 2.6",
         time: "1h ago",
       },
     ],
@@ -55,8 +55,8 @@ const VIDEO_COLLECTOR_DATA: Record<
     ],
   },
   echo_002: {
-    currentViewers: 31,
-    viewsLabel: "118k views",
+    currentListeners: 31,
+    playsLabel: "118k plays",
     recentActivity: [
       {
         type: "listing",
@@ -66,7 +66,7 @@ const VIDEO_COLLECTOR_DATA: Record<
       { type: "sale", description: "#011 sold for ◎ 1.7", time: "22m ago" },
       {
         type: "purchase",
-        description: "drift.arc collected #055 · ◎ 1.9",
+        description: "drift.arc bought #055 · ◎ 1.9",
         time: "1h ago",
       },
     ],
@@ -84,7 +84,7 @@ const ACTIVITY_DOT = {
   sale: "bg-white/15",
 };
 
-// ─── ECHO SIGNAL Waveform ─────────────────────────────────────────────────────────────────────────────
+// ─── ECHO SIGNAL Waveform ─────────────────────────────────────────────────────
 const WAVE_BARS = Array.from({ length: 40 }, (_, i) => ({
   id: `wb${i}`,
   duration: 1.8 + ((i * 17) % 7) * 0.09,
@@ -100,7 +100,7 @@ function EchoSignalWaveform({ signalStrength }: { signalStrength: number }) {
   return (
     <>
       <style>{`
-        @keyframes echoWaveVideo {
+        @keyframes echoWaveSong {
           0%, 100% { transform: scaleY(var(--min-scale)); }
           50%       { transform: scaleY(var(--max-scale)); }
         }
@@ -125,7 +125,7 @@ function EchoSignalWaveform({ signalStrength }: { signalStrength: number }) {
                   : "none",
                 transformOrigin: "center",
                 animation: active
-                  ? `echoWaveVideo ${duration}s ease-in-out ${-phase}s infinite`
+                  ? `echoWaveSong ${duration}s ease-in-out ${-phase}s infinite`
                   : "none",
                 "--min-scale": minScale,
                 "--max-scale": maxScale,
@@ -140,8 +140,8 @@ function EchoSignalWaveform({ signalStrength }: { signalStrength: number }) {
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────────────────────────
-export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
+// ─── Main page ────────────────────────────────────────────────────────────────
+export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
   const song = SONGS.find((s) => s.id === albumId);
   const { playPreview } = useAudioPlayer();
   const { ownedAlbumIds, getCirculatingSupply } = useWalletContext();
@@ -150,17 +150,17 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
   if (!song) return null;
 
   const isOwned = ownedAlbumIds.includes(song.id);
-  const collectorData = VIDEO_COLLECTOR_DATA[song.id];
+  const collectorData = SONG_COLLECTOR_DATA[song.id];
   const circulatingSupply = getCirculatingSupply(song.id);
   const marketCap = (song.floorPrice * circulatingSupply).toFixed(1);
 
-  function handlePreview() {
+  function handleListen() {
     playPreview({
       id: song!.id,
       title: song!.title,
-      creator: song!.creator,
+      artist: song!.artist,
       artworkSrc: song!.artworkSrc,
-      video_url: song!.video_preview_url,
+      preview_url: song!.preview_url,
     });
   }
 
@@ -176,7 +176,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={onBack}
-          data-ocid="video_detail.back.button"
+          data-ocid="song_detail.back.button"
           className="flex items-center gap-1.5 text-sm transition-colors"
           style={{ color: "var(--echo-text-secondary)" }}
         >
@@ -185,7 +185,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
         </motion.button>
       </div>
 
-      {/* ── Thumbnail ── */}
+      {/* ── Cover Artwork ── */}
       <motion.div
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -207,7 +207,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
         </div>
       </motion.div>
 
-      {/* ── Video info ── */}
+      {/* ── Song info ── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -224,22 +224,11 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
           className="text-[15px] mt-1.5"
           style={{ color: "oklch(0.48 0.008 240)" }}
         >
-          {song.creator}
+          {song.artist}
         </p>
-        {/* Category badge */}
-        <span
-          className="inline-block mt-2 text-[10px] font-medium px-2.5 py-0.5 rounded-full"
-          style={{
-            background: "oklch(0.55 0.25 290 / 0.1)",
-            color: "oklch(0.72 0.18 290)",
-            border: "1px solid oklch(0.55 0.25 290 / 0.2)",
-          }}
-        >
-          {song.category}
-        </span>
         {isOwned && (
           <span
-            className="inline-block mt-2 ml-2 text-[11px] font-mono px-2.5 py-0.5 rounded-full border"
+            className="inline-block mt-2 text-[11px] font-mono px-2.5 py-0.5 rounded-full border"
             style={{
               borderColor: "oklch(0.55 0.22 280 / 0.35)",
               color: "oklch(0.72 0.15 280)",
@@ -328,7 +317,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
             className="text-[12px] font-mono font-semibold mt-2"
             style={{ color: "oklch(0.82 0.15 210)" }}
           >
-            {collectorData?.viewsLabel ?? "—"}
+            {collectorData?.playsLabel ?? "—"}
           </p>
         </motion.div>
 
@@ -341,8 +330,8 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
         >
           <button
             type="button"
-            onClick={handlePreview}
-            data-ocid="video_detail.secondary_button"
+            onClick={handleListen}
+            data-ocid="song_detail.secondary_button"
             className="flex-1 py-3 rounded-xl text-sm font-medium transition-all border"
             style={{
               borderColor: "var(--echo-text-dark)",
@@ -350,12 +339,12 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
               background: "transparent",
             }}
           >
-            Preview 30s
+            Listen 30s
           </button>
           {isOwned ? (
             <button
               type="button"
-              data-ocid="video_detail.primary_button"
+              data-ocid="song_detail.primary_button"
               className="flex-1 py-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
               style={{
                 background: "oklch(0.35 0.01 240)",
@@ -368,11 +357,11 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
             <button
               type="button"
               onClick={() => setShowMintModal(true)}
-              data-ocid="video_detail.primary_button"
+              data-ocid="song_detail.primary_button"
               className="flex-1 py-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#7C3AED" }}
             >
-              Collect $5
+              Collect ◎{song.mintPrice}
             </button>
           )}
         </motion.div>
@@ -400,7 +389,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
             {collectorData.listings.map((listing, idx) => (
               <div
                 key={listing.edition}
-                data-ocid={`video_detail.row.${idx + 1}`}
+                data-ocid={`song_detail.row.${idx + 1}`}
                 className="flex items-center gap-3 px-5 py-3.5 border-t group"
                 style={{ borderColor: "var(--echo-border-faint)" }}
               >
@@ -463,7 +452,7 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
             {collectorData.recentActivity.map((item, idx) => (
               <div
                 key={item.description}
-                data-ocid={`video_detail.item.${idx + 1}`}
+                data-ocid={`song_detail.item.${idx + 1}`}
                 className="flex items-center justify-between px-5 py-3 border-t"
                 style={{ borderColor: "var(--echo-border-faint)" }}
               >
@@ -491,16 +480,11 @@ export function VideoDetailPage({ albumId, onBack }: VideoDetailPageProps) {
       </div>
 
       {showMintModal && (
-        <MintModal
-          albumId={song.id}
-          onClose={() => setShowMintModal(false)}
-          maxPerWallet={song.maxPerWallet}
-        />
+        <MintModal albumId={song.id} onClose={() => setShowMintModal(false)} />
       )}
     </div>
   );
 }
 
-// Keep backward compat export names
-export { VideoDetailPage as AlbumPlayerPage };
-export { VideoDetailPage as SongDetailPage };
+// Keep backward compat export name used in App.tsx
+export { SongDetailPage as AlbumPlayerPage };

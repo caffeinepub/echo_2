@@ -1,16 +1,16 @@
-import { AlertCircle, Minus, Plus, X } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useWalletContext } from "../context/WalletContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
 import { SONGS, formatEdition } from "../data/songs";
+import { formatUSD } from "../utils/formatUSD";
 import { SolSymbol } from "./SolSymbol";
 
 interface MintModalProps {
   albumId: string;
   onClose: () => void;
   onSuccess?: (editionNumber: number) => void;
-  maxPerWallet?: number;
 }
 
 type MintState =
@@ -21,25 +21,19 @@ type MintState =
   | "confirmed"
   | "error";
 
-export function MintModal({
-  albumId,
-  onClose,
-  onSuccess,
-  maxPerWallet: maxPerWalletProp,
-}: MintModalProps) {
+export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
   const { isConnected, connect, mintAlbum } = useWalletContext();
   const [mintState, setMintState] = useState<MintState>(
     isConnected ? "idle" : "connect",
   );
   const [editionNumber, setEditionNumber] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [mintingText, setMintingText] = useState("Minting your video...");
-  const [quantity, setQuantity] = useState(1);
+  const [mintingText, setMintingText] = useState("Minting your song...");
 
   // Cycling minting status text — must be before early return
   useEffect(() => {
     if (mintState !== "minting") return;
-    setMintingText("Minting your video...");
+    setMintingText("Minting your song...");
     const t = setTimeout(() => {
       setMintingText("Recording ownership on Solana...");
     }, 1200);
@@ -49,13 +43,6 @@ export function MintModal({
   const { solPrice } = useSolPriceContext();
   const song = SONGS.find((s) => s.id === albumId);
   if (!song) return null;
-
-  const USD_PRICE = 5;
-  const solEquivalent =
-    solPrice > 0 ? (USD_PRICE / solPrice).toFixed(4) : "...";
-  const maxPerWallet = maxPerWalletProp ?? song.maxPerWallet ?? 3;
-  const remainingSupply = song.supply - song.minted;
-  const maxQty = Math.min(maxPerWallet, Math.max(1, remainingSupply));
 
   const isLocked = mintState === "awaiting_approval" || mintState === "minting";
 
@@ -169,7 +156,7 @@ export function MintModal({
                       Connect wallet to mint
                     </p>
                     <p className="text-xs text-muted-foreground/50">
-                      Connect your Phantom wallet to collect {song.title}.
+                      Connect your Phantom wallet to purchase {song.title}.
                     </p>
                   </div>
                   <button
@@ -192,9 +179,8 @@ export function MintModal({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.97 }}
                   transition={{ duration: 0.25 }}
-                  className="flex flex-col gap-4"
+                  className="flex flex-col gap-5"
                 >
-                  {/* Artwork + title */}
                   <div className="flex items-center gap-4">
                     <img
                       src={song.artworkSrc}
@@ -206,87 +192,30 @@ export function MintModal({
                         {song.title}
                       </p>
                       <p className="text-xs text-muted-foreground/60 mt-0.5">
-                        {song.creator}
+                        {song.artist}
                       </p>
                       <p className="text-[11px] text-muted-foreground/40 mt-1">
-                        {song.supply} Editions
+                        {song.supply} Editions · {song.editions_in_circulation}{" "}
+                        minted
                       </p>
                     </div>
                   </div>
-
                   <div className="border-t border-border/20" />
-
-                  {/* Price */}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground/50">
-                      Price
+                      Mint price
                     </span>
                     <div className="text-right">
-                      <span className="text-lg font-mono font-medium text-foreground/90">
-                        $5.00 each
-                      </span>
-                      <div className="flex items-center justify-end gap-1 mt-0.5">
+                      <span className="text-lg font-mono font-medium text-foreground/90 flex items-center justify-end gap-1">
                         <SolSymbol animated={true} />
-                        <span className="text-[11px] font-mono text-muted-foreground/50">
-                          ≈ {solEquivalent} SOL
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quantity selector */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground/50">
-                      Quantity
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                        disabled={quantity <= 1}
-                        data-ocid="mint.secondary_button"
-                        className="w-7 h-7 rounded-lg border border-border/30 flex items-center justify-center text-muted-foreground/60 hover:text-foreground/80 disabled:opacity-30 transition-colors"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="text-base font-mono font-medium text-foreground/90 min-w-[1.5rem] text-center">
-                        {quantity}
+                        {song.mintPrice}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setQuantity((q) => Math.min(maxQty, q + 1))
-                        }
-                        disabled={quantity >= maxQty}
-                        data-ocid="mint.secondary_button"
-                        className="w-7 h-7 rounded-lg border border-border/30 flex items-center justify-center text-muted-foreground/60 hover:text-foreground/80 disabled:opacity-30 transition-colors"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Remaining + max per wallet */}
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-muted-foreground/40">
-                        Remaining
-                      </span>
-                      <span className="text-[11px] font-mono text-muted-foreground/50">
-                        {remainingSupply} left
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-muted-foreground/40">
-                        Max per wallet
-                      </span>
-                      <span className="text-[11px] font-mono text-muted-foreground/50">
-                        {maxPerWallet}
+                      <span className="text-[11px] font-mono text-muted-foreground/40">
+                        {formatUSD(song.mintPrice * solPrice)}
                       </span>
                     </div>
                   </div>
-
-                  <p className="text-[11px] text-muted-foreground/35">
+                  <p className="text-[11px] text-muted-foreground/35 -mt-2">
                     Transaction will open in Phantom.
                   </p>
                   <button
@@ -296,7 +225,7 @@ export function MintModal({
                     className="w-full py-3 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80"
                     style={{ backgroundColor: "#7C3AED" }}
                   >
-                    Mint {quantity} Edition{quantity > 1 ? "s" : ""}
+                    Buy Edition
                   </button>
                 </motion.div>
               )}
@@ -449,6 +378,34 @@ export function MintModal({
                         transformOrigin: "0 0",
                       }}
                     />
+                    <div
+                      className="absolute rounded-full"
+                      style={{
+                        width: 3,
+                        height: 3,
+                        backgroundColor: "rgba(139, 92, 246, 0.35)",
+                        top: "50%",
+                        left: "50%",
+                        marginTop: -1.5,
+                        marginLeft: -1.5,
+                        animation: "orbit 14s linear infinite 5s",
+                        transformOrigin: "0 0",
+                      }}
+                    />
+                    <div
+                      className="absolute rounded-full"
+                      style={{
+                        width: 4,
+                        height: 4,
+                        backgroundColor: "rgba(167, 139, 250, 0.25)",
+                        top: "50%",
+                        left: "50%",
+                        marginTop: -2,
+                        marginLeft: -2,
+                        animation: "orbit 9s linear infinite 7s",
+                        transformOrigin: "0 0",
+                      }}
+                    />
                     <img
                       src={song.artworkSrc}
                       alt={song.title}
@@ -526,13 +483,13 @@ export function MintModal({
                   </div>
                   <div className="space-y-1.5">
                     <p className="text-base font-semibold text-foreground/90">
-                      Video minted successfully
+                      Song minted successfully
                     </p>
                     <p className="text-xs text-muted-foreground/60">
                       Now in your wallet
                     </p>
                     <p className="text-xs text-muted-foreground/60">
-                      Full video unlocked
+                      Full song unlocked
                     </p>
                   </div>
                   <span className="text-[11px] font-mono text-muted-foreground/50 border border-border/40 px-2 py-0.5 rounded-full">

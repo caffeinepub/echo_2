@@ -19,11 +19,11 @@ import {
   EyeOff,
   Globe,
   Lock,
+  Music,
   Plus,
   Search,
   Trash2,
   Upload,
-  Video,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -37,22 +37,8 @@ import {
   useAdminReleases,
 } from "../context/AdminReleasesContext";
 import { useWalletContext } from "../context/WalletContext";
-import { useSolPriceContext } from "../contexts/SolPriceContext";
 
 type FilterStatus = "all" | ReleaseStatus;
-
-const CATEGORY_OPTIONS = [
-  "Art",
-  "Animation",
-  "Fashion",
-  "Experimental",
-  "Meme",
-  "Short Film",
-  "Loop",
-  "Visual",
-  "Ambient",
-  "Performance",
-];
 
 const STATUS_LABELS: Record<ReleaseStatus, string> = {
   draft: "Draft",
@@ -166,20 +152,17 @@ function VisibilityBadge({ visibility }: { visibility: Visibility }) {
 
 interface ReleaseFormData {
   title: string;
-  creator: string;
-  videoFileName: string;
-  videoDataUrl: string;
-  videoExternalUrl: string;
-  thumbnailDataUrl: string;
+  artist: string;
+  audioFileName: string;
+  audioDataUrl: string;
+  audioExternalUrl: string;
   mintedCount: string;
   artworkDataUrl: string;
-  priceUSD: string;
+  priceSOL: string;
   supply: string;
-  maxPerWallet: string;
   releaseDate: string;
   description: string;
-  category: string;
-  tags: string[];
+  genre: string;
   rightsStatus: RightsStatus;
   visibility: Visibility;
   status: ReleaseStatus;
@@ -188,20 +171,17 @@ interface ReleaseFormData {
 
 const DEFAULT_FORM: ReleaseFormData = {
   title: "",
-  creator: "",
-  videoFileName: "",
-  videoDataUrl: "",
-  videoExternalUrl: "",
-  thumbnailDataUrl: "",
+  artist: "",
+  audioFileName: "",
+  audioDataUrl: "",
+  audioExternalUrl: "",
   mintedCount: "0",
   artworkDataUrl: "",
-  priceUSD: "5",
+  priceSOL: "",
   supply: "",
-  maxPerWallet: "3",
   releaseDate: "",
   description: "",
-  category: "Visual",
-  tags: [],
+  genre: "",
   rightsStatus: "original",
   visibility: "private",
   status: "draft",
@@ -211,281 +191,22 @@ const DEFAULT_FORM: ReleaseFormData = {
 function releaseToForm(r: AdminRelease): ReleaseFormData {
   return {
     title: r.title,
-    creator: r.creator,
-    videoFileName: r.videoFileName ?? "",
-    videoDataUrl: r.videoDataUrl ?? "",
-    videoExternalUrl: r.videoExternalUrl ?? "",
-    thumbnailDataUrl: r.thumbnailDataUrl ?? "",
+    artist: r.artist,
+    audioFileName: r.audioFileName ?? "",
+    audioDataUrl: r.audioDataUrl ?? "",
+    audioExternalUrl: r.audioExternalUrl ?? "",
     mintedCount: String(r.mintedCount ?? 0),
     artworkDataUrl: r.artworkDataUrl ?? "",
-    priceUSD: "5",
+    priceSOL: String(r.priceSOL),
     supply: String(r.supply),
-    maxPerWallet: String(r.maxPerWallet ?? 3),
     releaseDate: r.releaseDate ?? "",
     description: r.description ?? "",
-    category: r.category ?? "Visual",
-    tags: r.tags ?? [],
+    genre: r.genre ?? "",
     rightsStatus: r.rightsStatus,
     visibility: r.visibility,
     status: r.status,
     rightsConfirmed: false,
   };
-}
-
-// ─── Thumbnail Frame Picker ──────────────────────────────────────────────────
-function ThumbnailFramePicker({
-  videoSrc,
-  onCapture,
-  capturedFrame,
-  isLight,
-}: {
-  videoSrc: string;
-  onCapture: (dataUrl: string) => void;
-  capturedFrame: string;
-  isLight: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [scrubTime, setScrubTime] = useState(0);
-  const [videoDuration, setVideoDuration] = useState(0);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.src = videoSrc;
-    v.onloadedmetadata = () => setVideoDuration(v.duration || 0);
-  }, [videoSrc]);
-
-  function handleScrub(e: React.ChangeEvent<HTMLInputElement>) {
-    const t = Number(e.target.value);
-    setScrubTime(t);
-    if (videoRef.current) {
-      videoRef.current.currentTime = t;
-    }
-  }
-
-  function captureFrame() {
-    const v = videoRef.current;
-    if (!v) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = v.videoWidth || 320;
-    canvas.height = v.videoHeight || 180;
-    canvas.getContext("2d")?.drawImage(v, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    onCapture(dataUrl);
-  }
-
-  const borderColor = isLight ? "#E6EAF2" : "var(--echo-border)";
-  const textColor = isLight ? "#5b6475" : "var(--echo-text-secondary)";
-
-  return (
-    <div
-      style={{
-        border: `1px solid ${borderColor}`,
-        borderRadius: 8,
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      <p
-        style={{
-          fontSize: 11,
-          color: textColor,
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-        }}
-      >
-        Select Thumbnail Frame
-      </p>
-      {/* Preview video */}
-      <video
-        ref={videoRef}
-        muted
-        playsInline
-        preload="metadata"
-        style={{
-          width: "100%",
-          borderRadius: 6,
-          maxHeight: 180,
-          background: "#000",
-          objectFit: "contain",
-        }}
-      />
-      {/* Scrubber */}
-      {videoDuration > 0 && (
-        <input
-          type="range"
-          min={0}
-          max={videoDuration}
-          step={0.1}
-          value={scrubTime}
-          onChange={handleScrub}
-          data-ocid="release.thumbnail.drag_handle"
-          style={{ width: "100%", accentColor: "#7C3AED" }}
-        />
-      )}
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <button
-          type="button"
-          onClick={captureFrame}
-          data-ocid="release.thumbnail.upload_button"
-          style={{
-            padding: "6px 14px",
-            borderRadius: 6,
-            background: "oklch(0.45 0.20 290)",
-            color: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Capture Frame
-        </button>
-        {capturedFrame && (
-          <img
-            src={capturedFrame}
-            alt="Captured thumbnail"
-            style={{
-              width: 48,
-              height: 48,
-              objectFit: "cover",
-              borderRadius: 4,
-              border: `1px solid ${borderColor}`,
-            }}
-          />
-        )}
-        {capturedFrame && (
-          <span
-            style={{ fontSize: 11, color: isLight ? "#16A34A" : "#34d399" }}
-          >
-            Frame captured ✓
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Tags Input ──────────────────────────────────────────────────────────────
-function TagsInput({
-  tags,
-  onChange,
-  isLight,
-}: {
-  tags: string[];
-  onChange: (tags: string[]) => void;
-  isLight: boolean;
-}) {
-  const [input, setInput] = useState("");
-
-  function addTag() {
-    const trimmed = input.trim().toLowerCase();
-    if (!trimmed || tags.includes(trimmed)) return;
-    onChange([...tags, trimmed]);
-    setInput("");
-  }
-
-  function removeTag(tag: string) {
-    onChange(tags.filter((t) => t !== tag));
-  }
-
-  const borderColor = isLight ? "#E6EAF2" : "var(--echo-border)";
-  const textColor = isLight ? "#0f172a" : "var(--echo-text)";
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", gap: 6 }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addTag();
-            }
-          }}
-          placeholder="e.g. dreamy, glitch, neon"
-          data-ocid="release.tags.input"
-          style={{
-            flex: 1,
-            padding: "9px 12px",
-            borderRadius: 8,
-            background: isLight ? "#ffffff" : "var(--echo-input-bg)",
-            border: `1px solid ${borderColor}`,
-            color: textColor,
-            fontSize: 13,
-            outline: "none",
-          }}
-        />
-        <button
-          type="button"
-          onClick={addTag}
-          data-ocid="release.tags.primary_button"
-          style={{
-            padding: "9px 14px",
-            borderRadius: 8,
-            background: "oklch(0.45 0.20 290)",
-            color: "white",
-            fontSize: 12,
-            fontWeight: 600,
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Add
-        </button>
-      </div>
-      {tags.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "3px 9px",
-                borderRadius: 20,
-                fontSize: 11,
-                fontWeight: 500,
-                background: isLight
-                  ? "rgba(124,58,237,0.08)"
-                  : "rgba(124,58,237,0.15)",
-                color: isLight
-                  ? "rgba(109,40,217,0.8)"
-                  : "rgba(167,139,250,0.8)",
-                border: `1px solid ${isLight ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.25)"}`,
-              }}
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => removeTag(tag)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  lineHeight: 1,
-                }}
-              >
-                <X
-                  size={10}
-                  color={
-                    isLight ? "rgba(109,40,217,0.6)" : "rgba(167,139,250,0.6)"
-                  }
-                />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function ReleaseFormModal({
@@ -501,34 +222,32 @@ function ReleaseFormModal({
   onSave: (data: ReleaseFormData, id?: string) => void;
   isLight?: boolean;
 }) {
-  const { solPrice } = useSolPriceContext();
   const [form, setForm] = useState<ReleaseFormData>(
     editRelease ? releaseToForm(editRelease) : DEFAULT_FORM,
   );
   const [errors, setErrors] = useState<
     Partial<Record<keyof ReleaseFormData, string>>
   >({});
-  const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLInputElement>(null);
   const artworkRef = useRef<HTMLInputElement>(null);
-  const [videoPreviewSrc, setVideoPreviewSrc] = useState("");
 
-  function set(
-    field: keyof ReleaseFormData,
-    value: string | boolean | string[],
-  ) {
+  function set(field: keyof ReleaseFormData, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  function handleVideoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAudioChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    set("videoFileName", file.name);
+    set("audioFileName", file.name);
+    if (file.size > 8 * 1024 * 1024) {
+      console.warn(
+        "Audio file is large (>8MB). Consider using an external URL instead.",
+      );
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      set("videoDataUrl", dataUrl);
-      setVideoPreviewSrc(dataUrl);
+      set("audioDataUrl", ev.target?.result as string);
     };
     reader.readAsDataURL(file);
   }
@@ -545,10 +264,18 @@ function ReleaseFormModal({
 
   function validate(): boolean {
     const errs: Partial<Record<keyof ReleaseFormData, string>> = {};
-    if (!form.title.trim()) errs.title = "Video title is required";
-    if (!form.creator.trim()) errs.creator = "Creator name is required";
-    if (!form.videoFileName && !editRelease?.videoFileName)
-      errs.videoFileName = "Video file is required";
+    if (!form.title.trim()) errs.title = "Track title is required";
+    if (!form.artist.trim()) errs.artist = "Artist name is required";
+    if (!form.audioFileName && !editRelease?.audioFileName)
+      errs.audioFileName = "Audio file is required";
+    if (!form.artworkDataUrl && !editRelease?.artworkDataUrl)
+      errs.artworkDataUrl = "Artwork is required";
+    if (
+      !form.priceSOL ||
+      Number.isNaN(Number(form.priceSOL)) ||
+      Number(form.priceSOL) < 0
+    )
+      errs.priceSOL = "Valid price is required";
     if (
       !form.supply ||
       Number.isNaN(Number(form.supply)) ||
@@ -571,13 +298,12 @@ function ReleaseFormModal({
   }
 
   const needsRights = form.status === "live" || form.visibility === "public";
-  const solEquivalent = solPrice > 0 ? (5 / solPrice).toFixed(4) : "...";
 
+  // Sync form reset with open state via effect
   useEffect(() => {
     if (open) {
       setForm(editRelease ? releaseToForm(editRelease) : DEFAULT_FORM);
       setErrors({});
-      setVideoPreviewSrc(editRelease?.videoDataUrl ?? "");
     }
   }, [open, editRelease]);
 
@@ -635,7 +361,7 @@ function ReleaseFormModal({
             color: isLight ? "#0f172a" : "var(--echo-text)",
           }}
         >
-          {editRelease ? "Edit Release" : "New Video Release"}
+          {editRelease ? "Edit Release" : "New Release"}
         </span>
         <button
           type="button"
@@ -679,7 +405,7 @@ function ReleaseFormModal({
         }}
       >
         <div className="flex flex-col gap-4 mt-2">
-          {/* Video Title */}
+          {/* Track Title */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -689,13 +415,13 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Video Title <span style={{ color: "#f87171" }}>*</span>
+              Track Title <span style={{ color: "#f87171" }}>*</span>
             </Label>
             <Input
               data-ocid="release.title.input"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
-              placeholder="Enter video title"
+              placeholder="Enter track title"
               style={{
                 background: "var(--echo-input-bg)",
                 border: errors.title
@@ -715,7 +441,7 @@ function ReleaseFormModal({
             )}
           </div>
 
-          {/* Creator Name */}
+          {/* Artist Name */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -725,33 +451,33 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Creator Name <span style={{ color: "#f87171" }}>*</span>
+              Artist Name <span style={{ color: "#f87171" }}>*</span>
             </Label>
             <Input
-              data-ocid="release.creator.input"
-              value={form.creator}
-              onChange={(e) => set("creator", e.target.value)}
-              placeholder="Enter creator name"
+              data-ocid="release.artist.input"
+              value={form.artist}
+              onChange={(e) => set("artist", e.target.value)}
+              placeholder="Enter artist name"
               style={{
                 background: "var(--echo-input-bg)",
-                border: errors.creator
+                border: errors.artist
                   ? "1px solid #f87171"
                   : "1px solid var(--echo-border)",
                 color: "var(--echo-text)",
                 borderRadius: "8px",
               }}
             />
-            {errors.creator && (
+            {errors.artist && (
               <span
-                data-ocid="release.creator.error"
+                data-ocid="release.artist.error"
                 style={{ color: "#f87171", fontSize: "11px" }}
               >
-                {errors.creator}
+                {errors.artist}
               </span>
             )}
           </div>
 
-          {/* Video File */}
+          {/* Audio File */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -761,12 +487,12 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Video File <span style={{ color: "#f87171" }}>*</span>
+              Audio File <span style={{ color: "#f87171" }}>*</span>
             </Label>
             <button
               type="button"
-              onClick={() => videoInputRef.current?.click()}
-              data-ocid="release.video.upload_button"
+              onClick={() => audioRef.current?.click()}
+              data-ocid="release.audio.upload_button"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -774,20 +500,20 @@ function ReleaseFormModal({
                 padding: "10px 14px",
                 borderRadius: "8px",
                 background: "var(--echo-input-bg)",
-                border: errors.videoFileName
+                border: errors.audioFileName
                   ? "1px solid #f87171"
                   : "1px dashed var(--echo-border)",
                 cursor: "pointer",
                 transition: "border-color 0.15s",
               }}
             >
-              <Video
+              <Upload
                 size={15}
                 style={{ color: "var(--echo-text-secondary)", flexShrink: 0 }}
               />
               <span
                 style={{
-                  color: form.videoFileName
+                  color: form.audioFileName
                     ? "var(--echo-text)"
                     : "var(--echo-text-dark)",
                   fontSize: "13px",
@@ -796,51 +522,29 @@ function ReleaseFormModal({
                   whiteSpace: "nowrap",
                 }}
               >
-                {form.videoFileName ||
-                  editRelease?.videoFileName ||
-                  "Click to select video file (MP4, WebM, MOV)"}
+                {form.audioFileName ||
+                  editRelease?.audioFileName ||
+                  "Click to select audio file"}
               </span>
             </button>
             <input
-              ref={videoInputRef}
+              ref={audioRef}
               type="file"
-              accept="video/*"
-              onChange={handleVideoChange}
+              accept="audio/*"
+              onChange={handleAudioChange}
               style={{ display: "none" }}
             />
-            {errors.videoFileName && (
+            {errors.audioFileName && (
               <span
-                data-ocid="release.video.error"
+                data-ocid="release.audio.error"
                 style={{ color: "#f87171", fontSize: "11px" }}
               >
-                {errors.videoFileName}
+                {errors.audioFileName}
               </span>
             )}
           </div>
 
-          {/* Thumbnail Frame Picker — shows after video uploaded */}
-          {(videoPreviewSrc || editRelease?.videoDataUrl) && (
-            <div className="flex flex-col gap-1">
-              <Label
-                style={{
-                  color: "var(--echo-text-secondary)",
-                  fontSize: "12px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Thumbnail Frame
-              </Label>
-              <ThumbnailFramePicker
-                videoSrc={videoPreviewSrc || editRelease?.videoDataUrl || ""}
-                onCapture={(dataUrl) => set("thumbnailDataUrl", dataUrl)}
-                capturedFrame={form.thumbnailDataUrl}
-                isLight={isLight}
-              />
-            </div>
-          )}
-
-          {/* External Video URL */}
+          {/* External Audio URL */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -850,14 +554,14 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              External Video URL (optional)
+              External Audio URL (optional)
             </Label>
             <input
               type="url"
-              value={form.videoExternalUrl}
-              onChange={(e) => set("videoExternalUrl", e.target.value)}
+              value={form.audioExternalUrl}
+              onChange={(e) => set("audioExternalUrl", e.target.value)}
               placeholder="https://arweave.net/... or IPFS link"
-              data-ocid="release.video_url.input"
+              data-ocid="release.audio_url.input"
               style={{
                 background: "var(--echo-input-bg)",
                 border: "1px solid var(--echo-border)",
@@ -868,9 +572,13 @@ function ReleaseFormModal({
                 outline: "none",
               }}
             />
+            <span style={{ color: "var(--echo-text-dark)", fontSize: "11px" }}>
+              Use a hosted URL (Arweave/IPFS/CDN) instead of or in addition to
+              uploading a file.
+            </span>
           </div>
 
-          {/* Artwork / Fallback thumbnail */}
+          {/* Minted Count */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -880,7 +588,38 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Fallback Artwork (optional)
+              Minted Count
+            </Label>
+            <input
+              type="number"
+              min="0"
+              value={form.mintedCount}
+              onChange={(e) => set("mintedCount", e.target.value)}
+              data-ocid="release.minted_count.input"
+              style={{
+                background: "var(--echo-input-bg)",
+                border: "1px solid var(--echo-border)",
+                borderRadius: "8px",
+                padding: "10px 14px",
+                color: "var(--echo-text)",
+                fontSize: "13px",
+                outline: "none",
+                width: "160px",
+              }}
+            />
+          </div>
+
+          {/* Artwork */}
+          <div className="flex flex-col gap-1">
+            <Label
+              style={{
+                color: "var(--echo-text-secondary)",
+                fontSize: "12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Artwork <span style={{ color: "#f87171" }}>*</span>
             </Label>
             <button
               type="button"
@@ -893,7 +632,9 @@ function ReleaseFormModal({
                 padding: "10px 14px",
                 borderRadius: "8px",
                 background: "var(--echo-input-bg)",
-                border: "1px dashed var(--echo-border)",
+                border: errors.artworkDataUrl
+                  ? "1px solid #f87171"
+                  : "1px dashed var(--echo-border)",
                 cursor: "pointer",
               }}
             >
@@ -922,10 +663,7 @@ function ReleaseFormModal({
                     flexShrink: 0,
                   }}
                 >
-                  <Upload
-                    size={16}
-                    style={{ color: "var(--echo-text-dark)" }}
-                  />
+                  <Music size={16} style={{ color: "var(--echo-text-dark)" }} />
                 </div>
               )}
               <span
@@ -933,7 +671,7 @@ function ReleaseFormModal({
               >
                 {form.artworkDataUrl || editRelease?.artworkDataUrl
                   ? "Change artwork"
-                  : "Click to select fallback image"}
+                  : "Click to select image"}
               </span>
             </button>
             <input
@@ -943,71 +681,55 @@ function ReleaseFormModal({
               onChange={handleArtworkChange}
               style={{ display: "none" }}
             />
+            {errors.artworkDataUrl && (
+              <span
+                data-ocid="release.artwork.error"
+                style={{ color: "#f87171", fontSize: "11px" }}
+              >
+                {errors.artworkDataUrl}
+              </span>
+            )}
           </div>
 
-          {/* Category */}
-          <div className="flex flex-col gap-1">
-            <Label
-              style={{
-                color: "var(--echo-text-secondary)",
-                fontSize: "12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Category <span style={{ color: "#f87171" }}>*</span>
-            </Label>
-            <Select
-              value={form.category}
-              onValueChange={(v) => set("category", v)}
-            >
-              <SelectTrigger
-                data-ocid="release.category.select"
+          {/* Price + Supply */}
+          <div className="flex gap-3">
+            <div className="flex flex-col gap-1 flex-1">
+              <Label
+                style={{
+                  color: "var(--echo-text-secondary)",
+                  fontSize: "12px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Price (SOL) <span style={{ color: "#f87171" }}>*</span>
+              </Label>
+              <Input
+                data-ocid="release.price.input"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.priceSOL}
+                onChange={(e) => set("priceSOL", e.target.value)}
+                placeholder="0.00"
                 style={{
                   background: "var(--echo-input-bg)",
-                  border: "1px solid var(--echo-border)",
+                  border: errors.priceSOL
+                    ? "1px solid #f87171"
+                    : "1px solid var(--echo-border)",
                   color: "var(--echo-text)",
                   borderRadius: "8px",
                 }}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent
-                style={{
-                  background: "var(--echo-panel)",
-                  border: "1px solid var(--echo-border)",
-                }}
-              >
-                {CATEGORY_OPTIONS.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Tags */}
-          <div className="flex flex-col gap-1">
-            <Label
-              style={{
-                color: "var(--echo-text-secondary)",
-                fontSize: "12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Tags
-            </Label>
-            <TagsInput
-              tags={form.tags}
-              onChange={(tags) => set("tags", tags)}
-              isLight={isLight}
-            />
-          </div>
-
-          {/* Edition Supply + Max Per Wallet */}
-          <div className="flex gap-3">
+              />
+              {errors.priceSOL && (
+                <span
+                  data-ocid="release.price.error"
+                  style={{ color: "#f87171", fontSize: "11px" }}
+                >
+                  {errors.priceSOL}
+                </span>
+              )}
+            </div>
             <div className="flex flex-col gap-1 flex-1">
               <Label
                 style={{
@@ -1045,108 +767,6 @@ function ReleaseFormModal({
                 </span>
               )}
             </div>
-            <div className="flex flex-col gap-1 flex-1">
-              <Label
-                style={{
-                  color: "var(--echo-text-secondary)",
-                  fontSize: "12px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Max per wallet
-              </Label>
-              <Input
-                data-ocid="release.max_per_wallet.input"
-                type="number"
-                min="1"
-                step="1"
-                value={form.maxPerWallet}
-                onChange={(e) => set("maxPerWallet", e.target.value)}
-                placeholder="3"
-                style={{
-                  background: "var(--echo-input-bg)",
-                  border: "1px solid var(--echo-border)",
-                  color: "var(--echo-text)",
-                  borderRadius: "8px",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Price (default $5) */}
-          <div className="flex flex-col gap-1">
-            <Label
-              style={{
-                color: "var(--echo-text-secondary)",
-                fontSize: "12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Price (default $5)
-            </Label>
-            <div
-              style={{
-                padding: "10px 14px",
-                borderRadius: 8,
-                background: "var(--echo-input-bg)",
-                border: "1px solid var(--echo-border)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "var(--echo-text)",
-                }}
-              >
-                $5.00
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "var(--echo-text-dark)",
-                  fontFamily: "monospace",
-                }}
-              >
-                ≈ {solEquivalent} SOL at current rate
-              </span>
-            </div>
-          </div>
-
-          {/* Minted Count */}
-          <div className="flex flex-col gap-1">
-            <Label
-              style={{
-                color: "var(--echo-text-secondary)",
-                fontSize: "12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Minted Count
-            </Label>
-            <input
-              type="number"
-              min="0"
-              value={form.mintedCount}
-              onChange={(e) => set("mintedCount", e.target.value)}
-              data-ocid="release.minted_count.input"
-              style={{
-                background: "var(--echo-input-bg)",
-                border: "1px solid var(--echo-border)",
-                borderRadius: "8px",
-                padding: "10px 14px",
-                color: "var(--echo-text)",
-                fontSize: "13px",
-                outline: "none",
-                width: "160px",
-              }}
-            />
           </div>
 
           {/* Release Date */}
@@ -1159,7 +779,7 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Release Date (optional)
+              Release Date
             </Label>
             <Input
               data-ocid="release.date.input"
@@ -1185,7 +805,7 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Description (optional)
+              Description
             </Label>
             <Textarea
               data-ocid="release.description.textarea"
@@ -1203,7 +823,33 @@ function ReleaseFormModal({
             />
           </div>
 
-          {/* Rights Status */}
+          {/* Genre */}
+          <div className="flex flex-col gap-1">
+            <Label
+              style={{
+                color: "var(--echo-text-secondary)",
+                fontSize: "12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Genre / Tag
+            </Label>
+            <Input
+              data-ocid="release.genre.input"
+              value={form.genre}
+              onChange={(e) => set("genre", e.target.value)}
+              placeholder="e.g. Electronic, Ambient, Hip-Hop"
+              style={{
+                background: "var(--echo-input-bg)",
+                border: "1px solid var(--echo-border)",
+                color: "var(--echo-text)",
+                borderRadius: "8px",
+              }}
+            />
+          </div>
+
+          {/* Rights Status — admin only */}
           <div className="flex flex-col gap-1">
             <Label
               style={{
@@ -1382,7 +1028,7 @@ function ReleaseFormModal({
                   }}
                 >
                   I confirm I have the rights or permission to upload this
-                  video.
+                  track.
                 </label>
               </div>
               {errors.rightsConfirmed && (
@@ -1523,42 +1169,36 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
   const [editRelease, setEditRelease] = useState<AdminRelease | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Access control
   const isAdmin =
     ADMIN_WALLET_ADDRESS !== "" && walletAddress === ADMIN_WALLET_ADDRESS;
   const isConnected = !!walletAddress;
 
+  // Filtered list
   const filtered = releases.filter((r) => {
     const matchesStatus = filterStatus === "all" || r.status === filterStatus;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !q ||
       r.title.toLowerCase().includes(q) ||
-      r.creator.toLowerCase().includes(q);
+      r.artist.toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
 
   function handleSave(data: ReleaseFormData, id?: string) {
-    const solEquivalent =
-      typeof (window as any).__solPrice === "number" &&
-      (window as any).__solPrice > 0
-        ? 5 / (window as any).__solPrice
-        : 0.035; // fallback ~$5 at ~$142 SOL
     const releaseData = {
       title: data.title.trim(),
-      creator: data.creator.trim(),
-      videoFileName: data.videoFileName || undefined,
-      videoDataUrl: data.videoDataUrl || undefined,
-      videoExternalUrl: data.videoExternalUrl || undefined,
-      thumbnailDataUrl: data.thumbnailDataUrl || undefined,
+      artist: data.artist.trim(),
+      audioFileName: data.audioFileName || undefined,
+      audioDataUrl: data.audioDataUrl || undefined,
+      audioExternalUrl: data.audioExternalUrl || undefined,
       artworkDataUrl: data.artworkDataUrl || undefined,
-      priceSOL: solEquivalent,
+      priceSOL: Number(data.priceSOL),
       supply: Math.floor(Number(data.supply)),
       mintedCount: Math.floor(Number(data.mintedCount || 0)),
-      maxPerWallet: Math.floor(Number(data.maxPerWallet || 3)),
       releaseDate: data.releaseDate || undefined,
       description: data.description.trim() || undefined,
-      category: data.category,
-      tags: data.tags,
+      genre: data.genre.trim() || undefined,
       rightsStatus: data.rightsStatus,
       visibility: data.visibility,
       status: data.status,
@@ -1675,7 +1315,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
           >
             {!isConnected
               ? "Connect your Phantom wallet to access this page."
-              : "This page is restricted to the admin wallet."}
+              : "This page is restricted to the admin wallet. Your connected wallet does not have access."}
           </p>
         </div>
       </div>
@@ -1749,8 +1389,8 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                       marginTop: "3px",
                     }}
                   >
-                    {releases.length} video{releases.length !== 1 ? "s" : ""} ·
-                    Admin CMS
+                    {releases.length} release{releases.length !== 1 ? "s" : ""}{" "}
+                    · Admin CMS
                   </p>
                 </div>
               </div>
@@ -1798,7 +1438,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by title or creator..."
+                  placeholder="Search by title or artist..."
                   style={{
                     width: "100%",
                     padding: "9px 12px 9px 34px",
@@ -1894,7 +1534,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                   borderRadius: "12px",
                 }}
               >
-                <Video
+                <Music
                   size={32}
                   style={{
                     color: textSecondary,
@@ -1912,7 +1552,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                 >
                   {searchQuery || filterStatus !== "all"
                     ? "No releases match"
-                    : "No video releases yet"}
+                    : "No releases yet"}
                 </p>
                 <p
                   style={{
@@ -1923,7 +1563,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                 >
                   {searchQuery || filterStatus !== "all"
                     ? "Try a different search or filter."
-                    : "Create your first video drop to get started."}
+                    : "Create your first release to get started."}
                 </p>
                 {filterStatus === "all" && !searchQuery && (
                   <button
@@ -1968,7 +1608,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                       alignItems: "flex-start",
                     }}
                   >
-                    {/* Thumbnail / Artwork */}
+                    {/* Artwork */}
                     <div
                       style={{
                         width: "52px",
@@ -1985,11 +1625,9 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                         justifyContent: "center",
                       }}
                     >
-                      {release.thumbnailDataUrl || release.artworkDataUrl ? (
+                      {release.artworkDataUrl ? (
                         <img
-                          src={
-                            release.thumbnailDataUrl || release.artworkDataUrl
-                          }
+                          src={release.artworkDataUrl}
                           alt={release.title}
                           style={{
                             width: "100%",
@@ -1998,7 +1636,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                           }}
                         />
                       ) : (
-                        <Video
+                        <Music
                           size={20}
                           style={{ color: textSecondary, opacity: 0.5 }}
                         />
@@ -2024,36 +1662,17 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                         style={{
                           color: textSecondary,
                           fontSize: "12px",
-                          marginBottom: "4px",
+                          marginBottom: "6px",
                         }}
                       >
-                        {release.creator}
+                        {release.artist}
                       </p>
-                      {release.category && (
-                        <span
-                          style={{
-                            fontSize: "9px",
-                            padding: "1px 6px",
-                            borderRadius: 3,
-                            background: "rgba(124,58,237,0.12)",
-                            color: "rgba(167,139,250,0.8)",
-                            fontWeight: 500,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            marginBottom: "6px",
-                            display: "inline-block",
-                          }}
-                        >
-                          {release.category}
-                        </span>
-                      )}
                       <div
                         style={{
                           display: "flex",
                           flexWrap: "wrap",
                           gap: "5px",
                           alignItems: "center",
-                          marginTop: 4,
                         }}
                       >
                         <StatusBadge status={release.status} />
@@ -2070,7 +1689,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                           fontWeight: 600,
                         }}
                       >
-                        $5.00
+                        {release.priceSOL} SOL
                       </p>
                       <p style={{ color: textSecondary, fontSize: "11px" }}>
                         {release.supply} eds
@@ -2078,7 +1697,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                     </div>
                   </div>
 
-                  {/* Rights + Date row */}
+                  {/* Rights + Genre + Date row */}
                   <div
                     style={{
                       display: "flex",
@@ -2100,9 +1719,8 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                     >
                       {RIGHTS_LABELS[release.rightsStatus]}
                     </span>
-                    {release.tags?.slice(0, 3).map((tag) => (
+                    {release.genre && (
                       <span
-                        key={tag}
                         style={{
                           fontSize: "10px",
                           color: textSecondary,
@@ -2113,9 +1731,9 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                           padding: "2px 7px",
                         }}
                       >
-                        {tag}
+                        {release.genre}
                       </span>
-                    ))}
+                    )}
                     {release.releaseDate && (
                       <span
                         style={{
@@ -2282,7 +1900,3 @@ function ActionButton({
     </button>
   );
 }
-
-// Suppress unused import
-const _Badge = Badge;
-void _Badge;

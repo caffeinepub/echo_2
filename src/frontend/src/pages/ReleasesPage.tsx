@@ -3,25 +3,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { CommentsModal } from "../components/CommentsModal";
+import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
 import { useWalletContext } from "../context/WalletContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
-import type { Song, SongComment } from "../data/songs";
+import type { SONGS, SongComment } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
-
-const CATEGORIES = [
-  "All",
-  "Art",
-  "Animation",
-  "Fashion",
-  "Experimental",
-  "Meme",
-  "Short Film",
-  "Loop",
-  "Visual",
-  "Ambient",
-  "Performance",
-];
+import { formatUSD } from "../utils/formatUSD";
 
 function useCountdown(targetMs: number | null) {
   const [remaining, setRemaining] = useState<number>(() =>
@@ -47,7 +35,7 @@ function useCountdown(targetMs: number | null) {
 }
 
 interface LineupRowProps {
-  song: Song;
+  song: (typeof SONGS)[0];
   index: number;
   likes: number;
   isLiked: boolean;
@@ -64,26 +52,33 @@ interface LineupRowProps {
   onToggleExpand: () => void;
 }
 
-function MintPriceDisplay() {
+function MintPriceDisplay({ sol }: { sol: number }) {
   const { solPrice } = useSolPriceContext();
-  const solEquivalent = solPrice > 0 ? (5 / solPrice).toFixed(4) : "...";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <EchoSolIcon size={13} />
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 12,
+            color: "var(--echo-text-secondary)",
+            marginLeft: 2,
+          }}
+        >
+          {sol} SOL
+        </span>
+      </div>
       <span
         className="font-mono"
         style={{
-          fontSize: 12,
-          color: "var(--echo-text-secondary)",
-          fontWeight: 600,
+          fontSize: 10,
+          color: "var(--echo-text-dark)",
+          opacity: 0.65,
+          marginLeft: 19,
         }}
       >
-        $5.00
-      </span>
-      <span
-        className="font-mono"
-        style={{ fontSize: 10, color: "var(--echo-text-dark)", opacity: 0.65 }}
-      >
-        ≈ {solEquivalent} SOL
+        {formatUSD(sol * solPrice)}
       </span>
     </div>
   );
@@ -143,6 +138,7 @@ function LineupRow({
   const isSoldOut = song.isSoldOut;
   const isLive = !isUpcoming && !isSoldOut;
 
+  // Light/dark conditional values
   const rowBorderBottom = isLight
     ? "1px solid #E6EAF2"
     : "1px solid rgba(255,255,255,0.055)";
@@ -240,7 +236,7 @@ function LineupRow({
             )}
           </div>
 
-          {/* Title + Creator */}
+          {/* Title + Artist */}
           <div className="flex-1 min-w-0" style={{ paddingRight: 8 }}>
             <p
               className="leading-snug truncate"
@@ -253,37 +249,16 @@ function LineupRow({
             >
               {song.title}
             </p>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p
-                className="truncate"
-                style={{
-                  fontSize: 11,
-                  color: isLight ? "#5B6475" : "var(--echo-text-muted)",
-                  marginTop: 2,
-                }}
-              >
-                {song.creator}
-              </p>
-              <span
-                style={{
-                  fontSize: 8,
-                  padding: "1px 5px",
-                  borderRadius: 2,
-                  background: isLight
-                    ? "rgba(124,58,237,0.08)"
-                    : "rgba(124,58,237,0.12)",
-                  color: isLight
-                    ? "rgba(109,40,217,0.7)"
-                    : "rgba(167,139,250,0.6)",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {song.category}
-              </span>
-            </div>
+            <p
+              className="truncate"
+              style={{
+                fontSize: 11,
+                color: isLight ? "#5B6475" : "var(--echo-text-muted)",
+                marginTop: 2,
+              }}
+            >
+              {song.artist}
+            </p>
           </div>
 
           {/* Status */}
@@ -527,7 +502,7 @@ function LineupRow({
                     paddingTop: 2,
                   }}
                 >
-                  <MintPriceDisplay />
+                  <MintPriceDisplay sol={song.mintPrice} />
 
                   {isOwned ? (
                     <span
@@ -600,7 +575,6 @@ export function ReleasesPage({
   const { theme } = useTheme();
   const isLight = theme === "light";
 
-  const [categoryFilter, setCategoryFilter] = useState("All");
   const [likesMap, setLikesMap] = useState<Record<string, number>>(() => {
     const map: Record<string, number> = {};
     for (const s of allAlbums) map[s.id] = s.likes;
@@ -627,20 +601,20 @@ export function ReleasesPage({
   // Simulate live updates
   useEffect(() => {
     const likeTimer = setInterval(() => {
-      const liveVideos = allAlbums.filter(
+      const liveSongs = allAlbums.filter(
         (s) => !s.isSoldOut && s.mintOpensInMs === 0,
       );
-      if (liveVideos.length === 0) return;
-      const pick = liveVideos[Math.floor(Math.random() * liveVideos.length)];
+      if (liveSongs.length === 0) return;
+      const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
       setLikesMap((prev) => ({ ...prev, [pick.id]: (prev[pick.id] ?? 0) + 1 }));
     }, 8000);
 
     const mintTimer = setInterval(() => {
-      const liveVideos = allAlbums.filter(
+      const liveSongs = allAlbums.filter(
         (s) => !s.isSoldOut && s.mintOpensInMs === 0,
       );
-      if (liveVideos.length === 0) return;
-      const pick = liveVideos[Math.floor(Math.random() * liveVideos.length)];
+      if (liveSongs.length === 0) return;
+      const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
       setMintedMap((prev) => {
         const current = prev[pick.id] ?? pick.minted;
         if (current >= pick.supply) return prev;
@@ -680,7 +654,7 @@ export function ReleasesPage({
     });
   }
 
-  function handleAddComment(videoId: string, text: string) {
+  function handleAddComment(songId: string, text: string) {
     const newComment: SongComment = {
       id: `user_${Date.now()}`,
       walletAddress: walletAddress
@@ -691,7 +665,7 @@ export function ReleasesPage({
     };
     setCommentsMap((prev) => ({
       ...prev,
-      [videoId]: [...(prev[videoId] ?? []), newComment],
+      [songId]: [...(prev[songId] ?? []), newComment],
     }));
   }
 
@@ -707,13 +681,9 @@ export function ReleasesPage({
     ? allAlbums.find((s) => s.id === openCommentsId)
     : null;
 
-  // Filter by category
-  const filteredAlbums =
-    categoryFilter === "All"
-      ? allAlbums
-      : allAlbums.filter((s) => s.category === categoryFilter);
+  // Pad drop count to 2 digits
+  const dropCount = String(allAlbums.length).padStart(2, "0");
 
-  const dropCount = String(filteredAlbums.length).padStart(2, "0");
   const headerDividerColor = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
   const dropCountColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
 
@@ -735,7 +705,11 @@ export function ReleasesPage({
         }
       >
         {/* Editorial page header */}
-        <div style={{ padding: "20px 16px 0" }}>
+        <div
+          style={{
+            padding: "20px 16px 0",
+          }}
+        >
           <div
             style={{
               display: "flex",
@@ -766,46 +740,17 @@ export function ReleasesPage({
               {dropCount} DROPS
             </span>
           </div>
-          <div style={{ height: 1, backgroundColor: headerDividerColor }} />
-        </div>
-
-        {/* Category filter tabs */}
-        <div
-          className="flex gap-2 overflow-x-auto px-4 py-3"
-          style={{ scrollbarWidth: "none" }}
-          data-ocid="releases.tab"
-        >
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategoryFilter(cat)}
-              className="px-3 py-1 rounded-full text-[10px] font-semibold tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap"
-              style={{
-                background:
-                  categoryFilter === cat
-                    ? "oklch(0.55 0.25 290 / 0.18)"
-                    : "transparent",
-                color:
-                  categoryFilter === cat
-                    ? "oklch(0.78 0.20 290)"
-                    : isLight
-                      ? "#7C8596"
-                      : "var(--echo-text-muted)",
-                border:
-                  categoryFilter === cat
-                    ? "1px solid oklch(0.55 0.25 290 / 0.35)"
-                    : `1px solid ${isLight ? "#E6EAF2" : "rgba(255,255,255,0.08)"}`,
-              }}
-            >
-              {cat}
-            </button>
-          ))}
+          <div
+            style={{
+              height: 1,
+              backgroundColor: headerDividerColor,
+            }}
+          />
         </div>
 
         {/* Lineup rows */}
         <div>
-          {filteredAlbums.map((song, i) => (
+          {allAlbums.map((song, i) => (
             <LineupRow
               key={song.id}
               song={song}
@@ -825,18 +770,6 @@ export function ReleasesPage({
               onToggleExpand={() => handleToggleExpand(song.id)}
             />
           ))}
-          {filteredAlbums.length === 0 && (
-            <div
-              data-ocid="releases.empty_state"
-              className="py-16 text-center"
-              style={{
-                color: isLight ? "#7C8596" : "var(--echo-text-dark)",
-                fontSize: 14,
-              }}
-            >
-              No videos in this category yet.
-            </div>
-          )}
         </div>
       </div>
 
