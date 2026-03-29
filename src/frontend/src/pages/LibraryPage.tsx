@@ -3,7 +3,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { AnimatedCover } from "../components/AnimatedCover";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { useClipsContext } from "../context/ClipsContext";
 import { useWalletContext } from "../context/WalletContext";
+import type { Clip } from "../data/clips";
 import type { Song } from "../data/songs";
 import { formatEdition } from "../data/songs";
 import { useMockData } from "../hooks/useMockData";
@@ -81,7 +83,7 @@ function SongCard({
         )}
       </div>
 
-      {/* Artwork — tap to animate */}
+      {/* Artwork */}
       <button
         type="button"
         aria-label={isAnimating ? "Stop animation" : "Animate artwork"}
@@ -114,8 +116,6 @@ function SongCard({
             style={{ width: "100%", height: "100%" }}
           />
         </div>
-
-        {/* Animated indicator overlay */}
         <AnimatePresence>
           {isAnimating && (
             <motion.div
@@ -140,8 +140,6 @@ function SongCard({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Pulsing ring when animating */}
         {isAnimating && (
           <div
             className="absolute inset-0 rounded-xl pointer-events-none"
@@ -165,7 +163,7 @@ function SongCard({
         )}
       </div>
 
-      {/* Edition badge — shown when card is selected and user owns an edition */}
+      {/* Edition badge */}
       <AnimatePresence>
         {isSelected && song.userEdition > 0 && (
           <motion.div
@@ -205,7 +203,6 @@ function SongCard({
             <Play className="w-3.5 h-3.5 text-foreground/60" />
           )}
         </button>
-
         <button
           type="button"
           data-ocid={`library.secondary_button.${index + 1}`}
@@ -223,6 +220,48 @@ function SongCard({
   );
 }
 
+function ClipCard({
+  clip,
+  ownership,
+}: { clip: Clip; ownership: { editionNumber: number } }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="flex flex-col"
+      data-ocid="library.item.clip"
+    >
+      <div className="relative rounded-xl overflow-hidden aspect-square w-full bg-black">
+        <img
+          src={clip.thumbnailUrl}
+          alt={clip.caption}
+          className="w-full h-full object-cover opacity-90"
+        />
+        {/* Clip badge */}
+        <div className="absolute bottom-2 left-2">
+          <span className="text-[8px] font-medium uppercase tracking-widest text-white/60 bg-black/50 px-1.5 py-0.5 rounded">
+            CLIP
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 px-0.5">
+        <p className="text-[13px] font-semibold text-foreground/90 truncate leading-tight">
+          {clip.caption || "Untitled Clip"}
+        </p>
+        <p className="text-[11px] text-muted-foreground/40 mt-0.5 truncate">
+          {clip.creatorName}
+        </p>
+      </div>
+      <div className="mt-1.5 px-0.5">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] border text-[9px] font-medium uppercase tracking-[0.18em] select-none bg-[#F8F9FC] border-[#E7EAF1] text-[#1A1A2E] dark:bg-white/[0.05] dark:border-white/[0.12] dark:text-white/60">
+          ECHO CLIP · {ownership.editionNumber} / {clip.supply}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
 export function LibraryPage({
   onAlbumClick: _onAlbumClick,
   onBrowseReleases,
@@ -230,6 +269,7 @@ export function LibraryPage({
   const { ownedAlbums } = useMockData();
   const { isConnected } = useWalletContext();
   const audioPlayer = useAudioPlayer();
+  const { clips, ownerships } = useClipsContext();
 
   const [lastPlayedMap, setLastPlayedMap] = useState<Record<string, number>>(
     {},
@@ -241,12 +281,26 @@ export function LibraryPage({
   const isLibraryPlaying =
     audioPlayer.isPlaying && audioPlayer.currentTrack?.mode === "library";
 
-  // Sort by most recently played descending; unplayed go to bottom
   const sortedSongs = [...ownedAlbums].sort((a, b) => {
     const ta = lastPlayedMap[a.id] ?? 0;
     const tb = lastPlayedMap[b.id] ?? 0;
     return tb - ta;
   });
+
+  // Owned clips with clip data
+  const ownedClips = ownerships
+    .map((o) => {
+      const clip = clips.find((c) => c.id === o.clipId);
+      return clip ? { clip, ownership: o } : null;
+    })
+    .filter(
+      (
+        x,
+      ): x is {
+        clip: Clip;
+        ownership: { editionNumber: number; clipId: string; mintedAt: number };
+      } => x !== null,
+    );
 
   function handlePlay(song: Song) {
     audioPlayer.playLibrary({
@@ -289,12 +343,12 @@ export function LibraryPage({
             Connect your wallet to see your collection.
           </p>
         </div>
-      ) : ownedAlbums.length === 0 ? (
+      ) : ownedAlbums.length === 0 && ownedClips.length === 0 ? (
         <div
           data-ocid="library.empty_state"
           className="flex flex-col items-center justify-center py-24 text-center gap-3"
         >
-          <p className="text-sm text-muted-foreground/60">No songs yet.</p>
+          <p className="text-sm text-muted-foreground/60">No items yet.</p>
           {onBrowseReleases && (
             <button
               type="button"
@@ -307,39 +361,80 @@ export function LibraryPage({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
-          {sortedSongs.map((song, i) => {
-            const isCurrentlyPlaying =
-              audioPlayer.currentTrack?.id === song.id && isLibraryPlaying;
-            const status = getStatusLabel(
-              song,
-              audioPlayer.currentTrack?.id ?? null,
-              isLibraryPlaying,
-              queueIds,
-              lastPlayedMap,
-              i === 0,
-            );
-            return (
-              <SongCard
-                key={song.id}
-                song={song}
-                index={i}
-                onPlay={() => handlePlay(song)}
-                onQueue={() => handleQueue(song)}
-                status={status}
-                isCurrentlyPlaying={isCurrentlyPlaying}
-                isSelected={selectedId === song.id}
-                onSelect={() =>
-                  setSelectedId((prev) => (prev === song.id ? null : song.id))
-                }
-                isAnimating={animatingId === song.id}
-                onToggleAnimate={() =>
-                  setAnimatingId((prev) => (prev === song.id ? null : song.id))
-                }
-              />
-            );
-          })}
-        </div>
+        <>
+          {/* Owned Clips Section */}
+          {ownedClips.length > 0 && (
+            <div className="mb-10">
+              <p
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground/40 mb-4"
+                style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                CLIPS
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+                {ownedClips.map(({ clip, ownership }) => (
+                  <ClipCard
+                    key={`${clip.id}-${ownership.editionNumber}`}
+                    clip={clip}
+                    ownership={ownership}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Owned Songs Section */}
+          {sortedSongs.length > 0 && (
+            <div>
+              {ownedClips.length > 0 && (
+                <p
+                  className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground/40 mb-4"
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  DROPS
+                </p>
+              )}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+                {sortedSongs.map((song, i) => {
+                  const isCurrentlyPlaying =
+                    audioPlayer.currentTrack?.id === song.id &&
+                    isLibraryPlaying;
+                  const status = getStatusLabel(
+                    song,
+                    audioPlayer.currentTrack?.id ?? null,
+                    isLibraryPlaying,
+                    queueIds,
+                    lastPlayedMap,
+                    i === 0,
+                  );
+                  return (
+                    <SongCard
+                      key={song.id}
+                      song={song}
+                      index={i}
+                      onPlay={() => handlePlay(song)}
+                      onQueue={() => handleQueue(song)}
+                      status={status}
+                      isCurrentlyPlaying={isCurrentlyPlaying}
+                      isSelected={selectedId === song.id}
+                      onSelect={() =>
+                        setSelectedId((prev) =>
+                          prev === song.id ? null : song.id,
+                        )
+                      }
+                      isAnimating={animatingId === song.id}
+                      onToggleAnimate={() =>
+                        setAnimatingId((prev) =>
+                          prev === song.id ? null : song.id,
+                        )
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

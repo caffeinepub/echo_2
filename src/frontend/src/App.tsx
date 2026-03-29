@@ -9,6 +9,8 @@ import { ADMIN_WALLET_ADDRESS } from "./config/admin";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
 import { AudioReactiveProvider } from "./context/AudioReactiveContext";
+import { ClipsProvider } from "./context/ClipsContext";
+import { useClipsContext } from "./context/ClipsContext";
 import { WalletProvider } from "./context/WalletContext";
 import { SolPriceProvider } from "./contexts/SolPriceContext";
 import { useWallet } from "./hooks/useWallet";
@@ -18,6 +20,7 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { ManageReleasesPage } from "./pages/ManageReleasesPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
+import { RecordClipPage } from "./pages/RecordClipPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 
 type View =
@@ -25,12 +28,14 @@ type View =
   | { type: "album-player"; albumId: string; fromTab: Tab }
   | { type: "market-detail"; albumId: string }
   | { type: "admin" }
-  | { type: "creator-submit" };
+  | { type: "creator-submit" }
+  | { type: "record-clip" };
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
   const { isConnected, walletAddress } = useWallet();
+  const { addClip } = useClipsContext();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
@@ -69,6 +74,19 @@ function AppContent() {
     }
   }
 
+  // Full-screen views (no topbar / bottomnav)
+  if (view.type === "record-clip") {
+    return (
+      <RecordClipPage
+        onBack={() => setView({ type: "tab", tab: "releases" })}
+        onPublish={(clipData) => {
+          addClip(clipData);
+          setView({ type: "tab", tab: "releases" });
+        }}
+      />
+    );
+  }
+
   return (
     <AudioPlayerProvider>
       <AudioReactiveProvider>
@@ -90,7 +108,10 @@ function AppContent() {
               />
             )}
             {view.type === "tab" && view.tab === "releases" && (
-              <ReleasesPage onAlbumClick={handleAlbumClick} />
+              <ReleasesPage
+                onAlbumClick={handleAlbumClick}
+                onRecord={() => setView({ type: "record-clip" })}
+              />
             )}
             {view.type === "tab" && view.tab === "market" && (
               <MarketPage onAlbumClick={handleMarketAlbumClick} />
@@ -133,7 +154,9 @@ export default function App() {
       <SolPriceProvider>
         <WalletProvider>
           <AdminReleasesProvider>
-            <AppContent />
+            <ClipsProvider>
+              <AppContent />
+            </ClipsProvider>
           </AdminReleasesProvider>
         </WalletProvider>
       </SolPriceProvider>

@@ -1,901 +1,249 @@
-import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import { AnimatedCover } from "../components/AnimatedCover";
-import { CommentsModal } from "../components/CommentsModal";
-import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
-import { useAudioPlayer } from "../context/AudioPlayerContext";
-import { useWalletContext } from "../context/WalletContext";
+import { useClipsContext } from "../context/ClipsContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
-import type { SONGS, SongComment } from "../data/songs";
-import { useMockData } from "../hooks/useMockData";
-import { formatUSD } from "../utils/formatUSD";
+import type { Clip } from "../data/clips";
 
-function useCountdown(targetMs: number | null) {
-  const [remaining, setRemaining] = useState<number>(() =>
-    targetMs === null ? 0 : targetMs,
-  );
-
-  useEffect(() => {
-    if (targetMs === null) return;
-    const end = Date.now() + targetMs;
-    const interval = setInterval(() => {
-      const left = Math.max(0, end - Date.now());
-      setRemaining(left);
-      if (left === 0) clearInterval(interval);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [targetMs]);
-
-  const hours = Math.floor(remaining / 3600000);
-  const minutes = Math.floor((remaining % 3600000) / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+interface ReleasesPageProps {
+  onAlbumClick?: (albumId: string) => void;
+  onRecord: () => void;
 }
 
-interface LineupRowProps {
-  song: (typeof SONGS)[0];
-  index: number;
-  likes: number;
-  isLiked: boolean;
-  comments: SongComment[];
-  minted: number;
-  isOwned: boolean;
-  /** true when this track is the active track in the global player AND is playing */
-  isPlaying: boolean;
-  /** true when this track is the active track in the global player (playing or paused) */
-  isActive: boolean;
-  /** current playback time from global player (seconds) — only meaningful when isActive */
-  currentTime: number;
-  isExpanded: boolean;
-  isLight: boolean;
-  onToggleLike: () => void;
-  onOpenComments: () => void;
-  onBuy: () => void;
-  onTogglePlay: () => void;
-  onToggleExpand: () => void;
+function timeRemaining(clip: Clip): string {
+  const left = clip.postedAt + clip.mintWindowMs - Date.now();
+  if (left <= 0) return "CLOSED";
+  const days = Math.floor(left / 86400000);
+  const hours = Math.floor((left % 86400000) / 3600000);
+  if (days > 0) return `${days}d ${hours}h left`;
+  const mins = Math.floor((left % 3600000) / 60000);
+  return `${hours}h ${mins}m left`;
 }
 
-function MintPriceDisplay({ sol }: { sol: number }) {
-  const { solPrice } = useSolPriceContext();
+function MintProgress({ minted, supply }: { minted: number; supply: number }) {
+  const pct = Math.min(100, (minted / supply) * 100);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <EchoSolIcon size={13} />
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 12,
-            color: "var(--echo-text-secondary)",
-            marginLeft: 2,
-          }}
-        >
-          {sol} SOL
-        </span>
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-[2px] rounded-full bg-white/10 overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: "linear-gradient(90deg, #7c3aed, #a855f7)" }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
       </div>
-      <span
-        className="font-mono"
-        style={{
-          fontSize: 10,
-          color: "var(--echo-text-dark)",
-          opacity: 0.65,
-          marginLeft: 19,
-        }}
-      >
-        {formatUSD(sol * solPrice)}
+      <span className="text-[11px] font-mono text-white/70 whitespace-nowrap">
+        {minted} / {supply}
       </span>
     </div>
   );
 }
 
-function LineupRow({
-  song,
-  index,
-  likes,
-  isLiked,
-  comments,
-  minted,
-  isOwned,
-  isPlaying,
-  isActive,
-  currentTime,
-  isExpanded,
-  isLight,
-  onToggleLike,
-  onOpenComments,
-  onBuy,
-  onTogglePlay,
-  onToggleExpand,
-}: LineupRowProps) {
-  const countdown = useCountdown(
-    song.mintOpensInMs !== 0 && song.mintOpensInMs !== null
-      ? song.mintOpensInMs
-      : null,
-  );
+function ClipCard({
+  clip,
+  onMint,
+}: {
+  clip: Clip;
+  onMint: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { isOwned, isExpired } = useClipsContext();
+  const owned = isOwned(clip.id);
+  const expired = isExpired(clip);
+  const isSoldOut = clip.mintedCount >= clip.supply;
+  const mintClosed = expired || isSoldOut;
+  const remaining = timeRemaining(clip);
 
-  // Progress driven by global player currentTime (30s preview cap)
-  const progress = isActive ? Math.min(100, (currentTime / 30) * 100) : 0;
-
-  const isUpcoming =
-    song.mintOpensInMs !== null &&
-    song.mintOpensInMs !== 0 &&
-    song.mintOpensInMs > 0;
-  const isSoldOut = song.isSoldOut;
-  const isLive = !isUpcoming && !isSoldOut;
-
-  const rowBorderBottom = isLight
-    ? "1px solid #E6EAF2"
-    : "1px solid rgba(255,255,255,0.055)";
-  const rowHoverBg = isLight
-    ? "rgba(124,58,237,0.03)"
-    : "rgba(255,255,255,0.02)";
-  const titleColor = isLight ? "#0F172A" : "white";
-  const dropsInLabel = isLight ? "#B45309" : "rgba(251,191,36,0.6)";
-  const dropsInTimer = isLight ? "#D97706" : "rgba(251,191,36,0.4)";
-  const liveNowColor = isLight ? "#16A34A" : "rgba(74,222,128,0.7)";
-  const mintedColor = isLight
-    ? "var(--echo-text-secondary)"
-    : "var(--echo-text-muted)";
-  const soldOutColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
-  const progressTrackBg = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
-  const playBtnBorder = isLight ? "#E6EAF2" : "rgba(255,255,255,0.12)";
-  const playBtnBg = isActive
-    ? isLight
-      ? "rgba(124,58,237,0.15)"
-      : "rgba(124,58,237,0.2)"
-    : isLight
-      ? "rgba(0,0,0,0.04)"
-      : "rgba(255,255,255,0.04)";
-  const playIconColor = isLight ? "#5B6475" : "var(--echo-text-dim)";
-  const previewLabelColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
-  const socialIconColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
-  const socialCountColor = isLight ? "#7C8596" : "var(--echo-text-muted)";
-  const opensInColor = isLight ? "#B45309" : "rgba(251,191,36,0.4)";
-  const ownedBorder = isLight ? "rgba(124,58,237,0.3)" : "rgba(124,58,237,0.2)";
-  const ownedText = isLight ? "rgba(109,40,217,0.7)" : "rgba(167,139,250,0.5)";
-
-  const expandedCardBg = isLight
-    ? "rgba(124,58,237,0.03)"
-    : "rgba(124,58,237,0.04)";
-  const expandedBorderColor = isLight
-    ? "rgba(124,58,237,0.12)"
-    : "rgba(124,58,237,0.18)";
-
-  // Glow intensifies when active in the global player
-  const artworkGlow = isExpanded
-    ? isActive
-      ? "0 0 24px 6px rgba(124,58,237,0.5), 0 0 10px 3px rgba(124,58,237,0.3)"
-      : "0 0 18px 4px rgba(124,58,237,0.35), 0 0 8px 2px rgba(124,58,237,0.2)"
-    : "none";
-  const artworkSize = isExpanded ? 112 : 48;
-  const artworkRadius = isExpanded ? 7 : 2;
-
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        layout: { duration: 0.35, ease: [0.22, 1, 0.36, 1] },
-        opacity: { duration: 0.4, delay: index * 0.05 },
-        y: { duration: 0.4, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] },
-      }}
-      data-ocid={`releases.item.${index + 1}`}
-      style={{
-        borderBottom: isExpanded ? "none" : rowBorderBottom,
-        backgroundColor: isExpanded ? expandedCardBg : "transparent",
-        borderRadius: isExpanded ? 6 : 0,
-        margin: isExpanded ? "4px 8px" : 0,
-        border: isExpanded ? `1px solid ${expandedBorderColor}` : "none",
-        overflow: "hidden",
-        transition:
-          "background-color 0.3s ease, border-color 0.3s ease, margin 0.3s ease",
-      }}
-    >
-      {/* Main row — tap to expand/collapse */}
-      <button
-        type="button"
-        onClick={onToggleExpand}
-        className="w-full text-left"
-        style={{
-          display: "block",
-          transition: "background 0.15s",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-        }}
-        onMouseEnter={(e) => {
-          if (!isExpanded)
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-              rowHoverBg;
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-            "transparent";
-        }}
-      >
-        <div
-          className="flex items-start px-4"
-          style={{
-            paddingTop: isExpanded ? 14 : 12,
-            paddingBottom: isExpanded ? 14 : 12,
-            gap: 14,
-          }}
-        >
-          {/* Artwork */}
-          <motion.div
-            layout
-            className="flex-shrink-0 overflow-hidden relative"
-            style={{
-              width: artworkSize,
-              height: artworkSize,
-              borderRadius: artworkRadius,
-              opacity: isSoldOut ? 0.35 : 1,
-              boxShadow: artworkGlow,
-              transition: "box-shadow 0.35s ease, border-radius 0.35s ease",
-              flexShrink: 0,
-            }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <AnimatedCover
-              coverImage={song.artworkSrc}
-              coverMotion={song.coverMotion}
-              motionEnabled={song.motionEnabled}
-              animate={isExpanded}
-              alt={song.title}
-              style={{ width: "100%", height: "100%", display: "block" }}
-            />
-            {/* Lightweight playback indicator overlay on artwork */}
-            {isActive && (
-              <div
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.38)",
-                  borderRadius: artworkRadius,
-                }}
-              >
-                {isPlaying ? (
-                  <span
-                    className="block rounded-full"
-                    style={{
-                      width: 6,
-                      height: 6,
-                      backgroundColor: "#a78bfa",
-                      animation: "ping 1s cubic-bezier(0,0,0.2,1) infinite",
-                    }}
-                  />
-                ) : (
-                  // Paused indicator — static dot
-                  <span
-                    className="block rounded-full"
-                    style={{
-                      width: 6,
-                      height: 6,
-                      backgroundColor: "rgba(167,139,250,0.5)",
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </motion.div>
-
-          {/* Title + Artist + Status */}
-          <div
-            className="flex-1 min-w-0"
-            style={{
-              paddingRight: 4,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              minHeight: isExpanded ? 112 : undefined,
-            }}
-          >
-            <p
-              className="leading-snug"
-              style={{
-                fontSize: isExpanded ? 15 : 14,
-                fontWeight: 600,
-                letterSpacing: "0.01em",
-                color: titleColor,
-                marginBottom: 3,
-                transition: "font-size 0.25s ease",
-                wordBreak: "break-word",
-              }}
-            >
-              {song.title}
-            </p>
-            <p
-              style={{
-                fontSize: 11,
-                color: isLight ? "#5B6475" : "var(--echo-text-muted)",
-                marginBottom: isExpanded ? 10 : 0,
-              }}
-            >
-              {song.artist}
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {isUpcoming && (
-                <>
-                  <span
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: 8,
-                      letterSpacing: "0.18em",
-                      color: dropsInLabel,
-                    }}
-                  >
-                    DROPS IN
-                  </span>
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: isExpanded ? 13 : 11,
-                      color: dropsInTimer,
-                      letterSpacing: "0.06em",
-                      transition: "font-size 0.25s ease",
-                    }}
-                  >
-                    {countdown}
-                  </span>
-                </>
-              )}
-              {isLive && (
-                <>
-                  <span
-                    className="font-mono uppercase flex items-center"
-                    style={{
-                      fontSize: 8,
-                      letterSpacing: "0.18em",
-                      color: liveNowColor,
-                      gap: 3,
-                    }}
-                  >
-                    LIVE NOW
-                    <span
-                      style={{
-                        display: "inline-block",
-                        animation: "livePulse 1.4s ease-in-out infinite",
-                      }}
-                    >
-                      ●
-                    </span>
-                  </span>
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: 10,
-                      color: mintedColor,
-                      letterSpacing: "0.03em",
-                    }}
-                  >
-                    {minted} / {song.supply} minted
-                  </span>
-                </>
-              )}
-              {isSoldOut && (
-                <span
-                  className="font-mono uppercase"
-                  style={{
-                    fontSize: 8,
-                    letterSpacing: "0.18em",
-                    color: soldOutColor,
-                  }}
-                >
-                  SOLD OUT
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </button>
-
-      {/* Expanded details */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            key="expand"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              padding: "0 16px 16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-            }}
-          >
-            {/* Thin divider */}
-            <div
-              style={{
-                height: 1,
-                backgroundColor: isLight
-                  ? "rgba(124,58,237,0.1)"
-                  : "rgba(124,58,237,0.15)",
-                marginBottom: 2,
-              }}
-            />
-
-            {/*
-              Preview row — lightweight trigger + progress bar.
-              The bottom global player is the primary playback surface.
-              We only show a play/pause button and a read-only progress indicator here.
-            */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25, delay: 0.08 }}
-              style={{ display: "flex", alignItems: "center", gap: 12 }}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTogglePlay();
-                }}
-                data-ocid={`releases.item.${index + 1}.toggle`}
-                disabled={isSoldOut}
-                style={{
-                  flexShrink: 0,
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  border: `1px solid ${playBtnBorder}`,
-                  backgroundColor: playBtnBg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: isSoldOut ? "not-allowed" : "pointer",
-                  opacity: isSoldOut ? 0.3 : 1,
-                  transition: "background 0.15s, transform 0.15s",
-                  transform: isPlaying ? "scale(0.95)" : "scale(1)",
-                }}
-              >
-                {isPlaying ? (
-                  <Pause
-                    size={12}
-                    color={isLight ? "#0F172A" : "white"}
-                    fill={isLight ? "#0F172A" : "white"}
-                  />
-                ) : (
-                  <Play
-                    size={12}
-                    color={playIconColor}
-                    fill={playIconColor}
-                    style={{ marginLeft: 1 }}
-                  />
-                )}
-              </button>
-
-              <div
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 5,
-                }}
-              >
-                <span
-                  className="font-mono uppercase"
-                  style={{
-                    fontSize: 9,
-                    color: previewLabelColor,
-                    letterSpacing: "0.12em",
-                  }}
-                >
-                  30S PREVIEW
-                </span>
-                {/* Progress bar synced to global player currentTime */}
-                <div
-                  style={{
-                    height: 2,
-                    borderRadius: 1,
-                    backgroundColor: progressTrackBg,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${progress}%`,
-                      background: "linear-gradient(90deg,#7C3AED,#a78bfa)",
-                      boxShadow: "0 0 6px rgba(124,58,237,0.5)",
-                      transition: isActive
-                        ? "width 1s linear"
-                        : "width 0.2s ease",
-                    }}
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Social row */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.25, delay: 0.13 }}
-              style={{ display: "flex", alignItems: "center", gap: 20 }}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleLike();
-                }}
-                data-ocid={`releases.item.${index + 1}.toggle`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              >
-                <Heart
-                  size={14}
-                  color={isLiked ? "#f472b6" : socialIconColor}
-                  fill={isLiked ? "#f472b6" : "none"}
-                />
-                <span style={{ fontSize: 12, color: socialCountColor }}>
-                  {likes}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenComments();
-                }}
-                data-ocid={`releases.item.${index + 1}.button`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              >
-                <MessageCircle size={14} color={socialIconColor} />
-                <span style={{ fontSize: 12, color: socialCountColor }}>
-                  {comments.length}
-                </span>
-              </button>
-            </motion.div>
-
-            {/* Price + action row */}
-            {!isSoldOut && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25, delay: 0.18 }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <MintPriceDisplay sol={song.mintPrice} />
-
-                {isOwned ? (
-                  <span
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: 9,
-                      letterSpacing: "0.1em",
-                      color: ownedText,
-                      border: `1px solid ${ownedBorder}`,
-                      padding: "3px 10px",
-                      borderRadius: 2,
-                    }}
-                  >
-                    OWNED
-                  </span>
-                ) : isUpcoming ? (
-                  <span
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: 9,
-                      letterSpacing: "0.06em",
-                      color: opensInColor,
-                    }}
-                  >
-                    OPENS IN {countdown}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onBuy();
-                    }}
-                    data-ocid={`releases.item.${index + 1}.primary_button`}
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      letterSpacing: "0.1em",
-                      backgroundColor: "#7C3AED",
-                      color: "white",
-                      padding: "7px 20px",
-                      borderRadius: 2,
-                      border: "none",
-                      cursor: "pointer",
-                      boxShadow: "0 0 14px rgba(124,58,237,0.4)",
-                    }}
-                  >
-                    MINT
-                  </button>
-                )}
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-interface ReleasesPageProps {
-  onAlbumClick?: (albumId: string) => void;
-}
-
-export function ReleasesPage({
-  onAlbumClick: _onAlbumClick,
-}: ReleasesPageProps) {
-  const { allAlbums } = useMockData();
-  const { ownedAlbumIds, walletAddress } = useWalletContext();
-  const { theme } = useTheme();
-  const isLight = theme === "light";
-
-  // ── Global player ──────────────────────────────────────────────────────────
-  const {
-    currentTrack,
-    isPlaying: globalIsPlaying,
-    currentTime,
-    playPreview,
-    pause,
-    resume,
-  } = useAudioPlayer();
-
-  const [likesMap, setLikesMap] = useState<Record<string, number>>(() => {
-    const map: Record<string, number> = {};
-    for (const s of allAlbums) map[s.id] = s.likes;
-    return map;
-  });
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-  const [commentsMap, setCommentsMap] = useState<Record<string, SongComment[]>>(
-    () => {
-      const map: Record<string, SongComment[]> = {};
-      for (const s of allAlbums) map[s.id] = [...s.comments];
-      return map;
-    },
-  );
-  const [mintedMap, setMintedMap] = useState<Record<string, number>>(() => {
-    const map: Record<string, number> = {};
-    for (const s of allAlbums) map[s.id] = s.minted;
-    return map;
-  });
-  const [openCommentsId, setOpenCommentsId] = useState<string | null>(null);
-  const [mintModalAlbumId, setMintModalAlbumId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Simulate live updates
+  // IntersectionObserver — autoplay/pause as card enters/leaves viewport
   useEffect(() => {
-    const likeTimer = setInterval(() => {
-      const liveSongs = allAlbums.filter(
-        (s) => !s.isSoldOut && s.mintOpensInMs === 0,
-      );
-      if (liveSongs.length === 0) return;
-      const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
-      setLikesMap((prev) => ({ ...prev, [pick.id]: (prev[pick.id] ?? 0) + 1 }));
-    }, 8000);
+    const el = containerRef.current;
+    const vid = videoRef.current;
+    if (!el || !vid) return;
 
-    const mintTimer = setInterval(() => {
-      const liveSongs = allAlbums.filter(
-        (s) => !s.isSoldOut && s.mintOpensInMs === 0,
-      );
-      if (liveSongs.length === 0) return;
-      const pick = liveSongs[Math.floor(Math.random() * liveSongs.length)];
-      setMintedMap((prev) => {
-        const current = prev[pick.id] ?? pick.minted;
-        if (current >= pick.supply) return prev;
-        return { ...prev, [pick.id]: current + 1 };
-      });
-    }, 12000);
-
-    return () => {
-      clearInterval(likeTimer);
-      clearInterval(mintTimer);
-    };
-  }, [allAlbums]);
-
-  function handleToggleLike(id: string) {
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        setLikesMap((m) => ({ ...m, [id]: Math.max(0, (m[id] ?? 0) - 1) }));
-      } else {
-        next.add(id);
-        setLikesMap((m) => ({ ...m, [id]: (m[id] ?? 0) + 1 }));
-      }
-      return next;
-    });
-  }
-
-  function handleAddComment(songId: string, text: string) {
-    const newComment: SongComment = {
-      id: `user_${Date.now()}`,
-      walletAddress: walletAddress
-        ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-3)}`
-        : "Guest",
-      text,
-      timestamp: Date.now(),
-    };
-    setCommentsMap((prev) => ({
-      ...prev,
-      [songId]: [...(prev[songId] ?? []), newComment],
-    }));
-  }
-
-  /**
-   * Toggle play/pause for a release card.
-   * Routes through the shared AudioPlayerContext — no local audio state.
-   */
-  function handleTogglePlay(song: (typeof allAlbums)[0]) {
-    const isThisTrackActive =
-      currentTrack?.id === song.id && currentTrack.mode === "preview";
-
-    if (isThisTrackActive) {
-      // Same track: toggle pause/resume in the global player
-      if (globalIsPlaying) {
-        pause();
-      } else {
-        resume();
-      }
-    } else {
-      // Different track: load into global player as preview
-      playPreview({
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        artworkSrc: song.artworkSrc ?? null,
-        preview_url: song.preview_url ?? "",
-      });
-    }
-  }
-
-  function handleToggleExpand(id: string) {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }
-
-  const openCommentsSong = openCommentsId
-    ? allAlbums.find((s) => s.id === openCommentsId)
-    : null;
-
-  const dropCount = String(allAlbums.length).padStart(2, "0");
-
-  const headerDividerColor = isLight ? "#E6EAF2" : "rgba(255,255,255,0.07)";
-  const dropCountColor = isLight ? "#7C8596" : "var(--echo-text-dark)";
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          vid.play().catch(() => {});
+        } else {
+          vid.pause();
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <>
-      <style>{`
-        @keyframes livePulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
+    <div
+      ref={containerRef}
+      className="relative w-full flex-shrink-0 overflow-hidden bg-black"
+      style={{ height: "calc(100vh - 64px - 68px)", scrollSnapAlign: "start" }}
+      data-ocid={`releases.item.${clip.id}`}
+    >
+      {/* Background video */}
+      <video
+        ref={videoRef}
+        src={clip.videoUrl}
+        poster={clip.thumbnailUrl}
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ objectFit: "cover" }}
+      />
 
+      {/* Bottom gradient overlay */}
       <div
-        className="pb-24"
-        style={
-          isLight
-            ? { backgroundColor: "#F8F9FC", minHeight: "100%" }
-            : undefined
-        }
-      >
-        {/* Editorial page header */}
-        <div style={{ padding: "20px 16px 0" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              paddingBottom: 12,
-            }}
-          >
-            <span
-              className="font-mono uppercase"
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.22em",
-                color: "var(--echo-text-secondary)",
-              }}
-            >
-              LINEUP
-            </span>
-            <span
-              className="font-mono"
-              style={{
-                fontSize: 10,
-                color: dropCountColor,
-                letterSpacing: "0.08em",
-              }}
-            >
-              {dropCount} DROPS
-            </span>
-          </div>
-          <div
-            style={{
-              height: 1,
-              backgroundColor: headerDividerColor,
-            }}
-          />
+        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        style={{
+          height: "65%",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 40%, transparent 100%)",
+        }}
+      />
+
+      {/* Content overlay */}
+      <div className="absolute inset-x-0 bottom-0 px-5 pb-6 flex flex-col gap-3">
+        {/* Creator & caption */}
+        <div>
+          <p className="text-white font-semibold text-[15px] leading-tight drop-shadow">
+            {clip.creatorName}
+          </p>
+          {clip.caption && (
+            <p className="text-white/80 text-[13px] mt-0.5 leading-snug drop-shadow">
+              {clip.caption}
+            </p>
+          )}
         </div>
 
-        {/* Lineup rows */}
-        <div style={{ paddingTop: 4 }}>
-          {allAlbums.map((song, i) => {
-            const isThisActive =
-              currentTrack?.id === song.id && currentTrack.mode === "preview";
-            const isThisPlaying = isThisActive && globalIsPlaying;
+        {/* Mint progress */}
+        <MintProgress minted={clip.mintedCount} supply={clip.supply} />
 
-            return (
-              <LineupRow
-                key={song.id}
-                song={song}
-                index={i}
-                likes={likesMap[song.id] ?? song.likes}
-                isLiked={likedIds.has(song.id)}
-                comments={commentsMap[song.id] ?? song.comments}
-                minted={mintedMap[song.id] ?? song.minted}
-                isOwned={ownedAlbumIds.includes(song.id)}
-                isPlaying={isThisPlaying}
-                isActive={isThisActive}
-                currentTime={isThisActive ? currentTime : 0}
-                isExpanded={expandedId === song.id}
-                isLight={isLight}
-                onToggleLike={() => handleToggleLike(song.id)}
-                onOpenComments={() => setOpenCommentsId(song.id)}
-                onBuy={() => setMintModalAlbumId(song.id)}
-                onTogglePlay={() => handleTogglePlay(song)}
-                onToggleExpand={() => handleToggleExpand(song.id)}
-              />
-            );
-          })}
+        {/* Time remaining + mint button */}
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={`text-[12px] font-mono font-medium ${
+              mintClosed ? "text-red-400/80" : "text-white/60"
+            }`}
+          >
+            {remaining}
+          </span>
+
+          {owned ? (
+            <span
+              className="px-4 py-2 rounded-full text-[12px] font-medium text-violet-300 border border-violet-400/40"
+              style={{
+                backdropFilter: "blur(8px)",
+                backgroundColor: "rgba(124,58,237,0.15)",
+              }}
+            >
+              Owned
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={mintClosed}
+              onClick={onMint}
+              data-ocid="releases.primary_button"
+              className="px-5 py-2 rounded-full text-[13px] font-semibold text-white transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{
+                background: mintClosed
+                  ? "rgba(255,255,255,0.1)"
+                  : "linear-gradient(135deg, #7c3aed, #a855f7)",
+                boxShadow: mintClosed
+                  ? "none"
+                  : "0 0 20px rgba(124,58,237,0.5)",
+              }}
+            >
+              {isSoldOut ? "Sold Out" : expired ? "Closed" : "Mint for $5"}
+            </button>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {mintModalAlbumId && (
-        <MintModal
-          albumId={mintModalAlbumId}
-          onClose={() => setMintModalAlbumId(null)}
-        />
-      )}
+export function ReleasesPage({ onRecord }: ReleasesPageProps) {
+  const { clips } = useClipsContext();
+  const { solPrice } = useSolPriceContext();
+  const { theme } = useTheme();
+  const feedRef = useRef<HTMLDivElement>(null);
+  const [mintingClipId, setMintingClipId] = useState<string | null>(null);
 
+  const handleMintSuccess = useCallback(() => {
+    setMintingClipId(null);
+  }, []);
+
+  return (
+    <div
+      className="relative w-full"
+      style={{ background: theme === "light" ? "#111" : "#000" }}
+    >
+      {/* Feed header */}
+      <div
+        className="fixed top-16 left-0 right-0 z-30 flex items-center justify-between px-5 py-3 pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
+        }}
+      >
+        <span
+          className="text-white font-bold tracking-[0.2em] text-[13px] uppercase pointer-events-auto"
+          style={{ fontFamily: "'JetBrains Mono', monospace" }}
+        >
+          ECHO CLIPS
+        </span>
+        <button
+          type="button"
+          onClick={onRecord}
+          data-ocid="releases.open_modal_button"
+          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white transition-all active:scale-95"
+          style={{
+            background: "rgba(220,38,38,0.9)",
+            boxShadow: "0 0 12px rgba(220,38,38,0.5)",
+          }}
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+          REC
+        </button>
+      </div>
+
+      {/* Scrollable feed */}
+      <div
+        ref={feedRef}
+        className="overflow-y-scroll"
+        style={{
+          scrollSnapType: "y mandatory",
+          WebkitOverflowScrolling: "touch",
+          height: "calc(100vh - 64px - 68px)",
+        }}
+      >
+        {clips.map((clip) => (
+          <ClipCard
+            key={clip.id}
+            clip={clip}
+            onMint={() => setMintingClipId(clip.id)}
+          />
+        ))}
+      </div>
+
+      {/* Mint modal */}
       <AnimatePresence>
-        {openCommentsId && openCommentsSong && (
-          <CommentsModal
-            key={openCommentsId}
-            songId={openCommentsId}
-            comments={commentsMap[openCommentsId] ?? []}
-            onClose={() => setOpenCommentsId(null)}
-            onAddComment={handleAddComment}
+        {mintingClipId && (
+          <MintModal
+            albumId=""
+            clipId={mintingClipId}
+            onClose={() => setMintingClipId(null)}
+            onSuccess={handleMintSuccess}
+            solPrice={solPrice}
           />
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }

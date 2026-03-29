@@ -1,6 +1,7 @@
 import { AlertCircle, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
+import { useClipsContext } from "../context/ClipsContext";
 import { useWalletContext } from "../context/WalletContext";
 import { useSolPriceContext } from "../contexts/SolPriceContext";
 import { SONGS, formatEdition } from "../data/songs";
@@ -9,8 +10,10 @@ import { SolSymbol } from "./SolSymbol";
 
 interface MintModalProps {
   albumId: string;
+  clipId?: string;
   onClose: () => void;
   onSuccess?: (editionNumber: number) => void;
+  solPrice?: number;
 }
 
 type MintState =
@@ -21,7 +24,266 @@ type MintState =
   | "confirmed"
   | "error";
 
-export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
+function ClipMintContent({
+  clipId,
+  onClose,
+  onSuccess,
+}: {
+  clipId: string;
+  onClose: () => void;
+  onSuccess?: (editionNumber: number) => void;
+}) {
+  const { clips, mintClip, isOwned, getOwnership } = useClipsContext();
+  const { isConnected, connect, walletAddress } = useWalletContext();
+  const { solPrice } = useSolPriceContext();
+  const [mintState, setMintState] = useState<MintState>(
+    isConnected ? "idle" : "connect",
+  );
+  const [editionNumber, setEditionNumber] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const clip = clips.find((c) => c.id === clipId);
+  if (!clip) return null;
+
+  const alreadyOwned = isOwned(clipId);
+  const ownership = getOwnership(clipId);
+  const solEquiv =
+    solPrice > 0 ? (clip.mintPriceUSD / solPrice).toFixed(4) : "—";
+
+  async function handleMint() {
+    setMintState("awaiting_approval");
+    try {
+      setMintState("minting");
+      const result = await mintClip(clipId, walletAddress ?? "anon");
+      setEditionNumber(result.editionNumber);
+      setMintState("confirmed");
+      onSuccess?.(result.editionNumber);
+    } catch {
+      setErrorMsg("Mint failed. Please try again.");
+      setMintState("error");
+    }
+  }
+
+  if (alreadyOwned && ownership) {
+    return (
+      <div
+        className="flex flex-col items-center text-center gap-5 py-2"
+        data-ocid="mint.success_state"
+      >
+        <p className="text-sm font-semibold text-foreground/90">
+          You own this clip
+        </p>
+        <span className="text-[11px] font-mono text-muted-foreground/50 border border-border/40 px-2 py-0.5 rounded-full">
+          ECHO CLIP · {ownership.editionNumber} / {clip.supply}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          data-ocid="mint.close_button"
+          className="px-6 py-2.5 rounded-xl text-sm font-medium border border-border/30 text-foreground/60"
+        >
+          Done
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence mode="wait">
+      {mintState === "connect" && (
+        <motion.div
+          key="connect"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col items-center text-center gap-5"
+        >
+          <p className="text-sm font-medium text-foreground/90">
+            Connect wallet to mint
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              connect();
+              setMintState("idle");
+            }}
+            data-ocid="mint.primary_button"
+            className="w-full py-3 rounded-xl text-sm font-medium text-white"
+            style={{ backgroundColor: "#7C3AED" }}
+          >
+            Connect Phantom
+          </button>
+        </motion.div>
+      )}
+
+      {mintState === "idle" && (
+        <motion.div
+          key="idle"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col gap-5"
+        >
+          <div className="flex items-center gap-4">
+            <img
+              src={clip.thumbnailUrl}
+              alt={clip.caption}
+              className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">
+                {clip.caption || "Untitled Clip"}
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">
+                {clip.creatorName}
+              </p>
+              <p className="text-[11px] text-muted-foreground/40 mt-1">
+                {clip.mintedCount} / {clip.supply} minted
+              </p>
+            </div>
+          </div>
+          <div className="border-t border-border/20" />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground/50">Mint price</span>
+            <div className="text-right">
+              <span className="text-lg font-mono font-medium text-foreground/90">
+                {formatUSD(clip.mintPriceUSD)}
+              </span>
+              <p className="text-[11px] font-mono text-muted-foreground/40">
+                ≈ {solEquiv} SOL
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleMint}
+            data-ocid="mint.primary_button"
+            className="w-full py-3 rounded-xl text-sm font-medium text-white"
+            style={{ backgroundColor: "#7C3AED" }}
+          >
+            Mint for $5
+          </button>
+        </motion.div>
+      )}
+
+      {(mintState === "awaiting_approval" || mintState === "minting") && (
+        <motion.div
+          key="minting"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col items-center gap-5 py-6"
+          data-ocid="mint.loading_state"
+        >
+          <div className="w-10 h-10 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
+          <p className="text-sm text-foreground/70">
+            {mintState === "awaiting_approval"
+              ? "Preparing mint…"
+              : "Minting your clip…"}
+          </p>
+        </motion.div>
+      )}
+
+      {mintState === "confirmed" && editionNumber !== null && (
+        <motion.div
+          key="confirmed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col items-center text-center gap-5 py-2"
+          data-ocid="mint.success_state"
+        >
+          <svg
+            width="56"
+            height="56"
+            viewBox="0 0 56 56"
+            fill="none"
+            role="img"
+            aria-label="Mint successful"
+          >
+            <circle
+              cx="28"
+              cy="28"
+              r="25"
+              stroke="rgba(74,222,128,0.25)"
+              strokeWidth="1.5"
+            />
+            <motion.path
+              d="M18 28l8 8 14-14"
+              stroke="#4ade80"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+          </svg>
+          <div className="space-y-1.5">
+            <p className="text-base font-semibold text-foreground/90">
+              Clip minted
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Edition {editionNumber} / {clip.supply}
+            </p>
+          </div>
+          <span className="text-[11px] font-mono text-muted-foreground/50 border border-border/40 px-2 py-0.5 rounded-full">
+            ECHO CLIP · {editionNumber} / {clip.supply}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            data-ocid="mint.close_button"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium border border-border/30 text-foreground/60"
+          >
+            Done
+          </button>
+        </motion.div>
+      )}
+
+      {mintState === "error" && (
+        <motion.div
+          key="error"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex flex-col items-center text-center gap-4 py-2"
+          data-ocid="mint.error_state"
+        >
+          <AlertCircle size={36} className="text-red-400/70" />
+          <p className="text-sm font-medium text-foreground/80">{errorMsg}</p>
+          <div className="flex gap-3 w-full">
+            <button
+              type="button"
+              onClick={onClose}
+              data-ocid="mint.cancel_button"
+              className="flex-1 py-2.5 rounded-xl text-sm border border-border/30 text-muted-foreground/50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setMintState("idle")}
+              data-ocid="mint.primary_button"
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
+              style={{ backgroundColor: "#7C3AED" }}
+            >
+              Try again
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function MintModal({
+  albumId,
+  clipId,
+  onClose,
+  onSuccess,
+}: MintModalProps) {
   const { isConnected, connect, mintAlbum } = useWalletContext();
   const [mintState, setMintState] = useState<MintState>(
     isConnected ? "idle" : "connect",
@@ -41,6 +303,51 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
   }, [mintState]);
 
   const { solPrice } = useSolPriceContext();
+
+  // Render clip mint flow if clipId provided
+  if (clipId) {
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.80)" }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
+          data-ocid="mint.modal"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="relative w-full max-w-sm rounded-2xl border border-border/30 overflow-hidden"
+            style={{ backgroundColor: "oklch(0.12 0.005 265)" }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              data-ocid="mint.close_button"
+              className="absolute top-4 right-4 text-muted-foreground/50 hover:text-foreground/80 transition-colors z-10"
+            >
+              <X size={16} />
+            </button>
+            <div className="p-6 min-h-[260px] flex flex-col justify-center">
+              <ClipMintContent
+                clipId={clipId}
+                onClose={onClose}
+                onSuccess={onSuccess}
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
   const song = SONGS.find((s) => s.id === albumId);
   if (!song) return null;
 
@@ -350,62 +657,6 @@ export function MintModal({ albumId, onClose, onSuccess }: MintModalProps) {
                         strokeDashoffset="125"
                       />
                     </svg>
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        width: 4,
-                        height: 4,
-                        backgroundColor: "rgba(168, 85, 247, 0.4)",
-                        top: "50%",
-                        left: "50%",
-                        marginTop: -2,
-                        marginLeft: -2,
-                        animation: "orbit 8s linear infinite",
-                        transformOrigin: "0 0",
-                      }}
-                    />
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        width: 3,
-                        height: 3,
-                        backgroundColor: "rgba(192, 132, 252, 0.3)",
-                        top: "50%",
-                        left: "50%",
-                        marginTop: -1.5,
-                        marginLeft: -1.5,
-                        animation: "orbit 11s linear infinite 2s",
-                        transformOrigin: "0 0",
-                      }}
-                    />
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        width: 3,
-                        height: 3,
-                        backgroundColor: "rgba(139, 92, 246, 0.35)",
-                        top: "50%",
-                        left: "50%",
-                        marginTop: -1.5,
-                        marginLeft: -1.5,
-                        animation: "orbit 14s linear infinite 5s",
-                        transformOrigin: "0 0",
-                      }}
-                    />
-                    <div
-                      className="absolute rounded-full"
-                      style={{
-                        width: 4,
-                        height: 4,
-                        backgroundColor: "rgba(167, 139, 250, 0.25)",
-                        top: "50%",
-                        left: "50%",
-                        marginTop: -2,
-                        marginLeft: -2,
-                        animation: "orbit 9s linear infinite 7s",
-                        transformOrigin: "0 0",
-                      }}
-                    />
                     <img
                       src={song.artworkSrc}
                       alt={song.title}
