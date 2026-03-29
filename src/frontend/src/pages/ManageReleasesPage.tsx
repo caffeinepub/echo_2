@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Archive,
   ArrowLeft,
+  CheckCircle2 as CheckCircle2Icon,
   Edit2,
   Eye,
   EyeOff,
@@ -25,6 +26,7 @@ import {
   Trash2,
   Upload,
   X,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
@@ -45,6 +47,8 @@ const STATUS_LABELS: Record<ReleaseStatus, string> = {
   scheduled: "Scheduled",
   live: "Live",
   archived: "Archived",
+  submitted: "Submitted",
+  rejected: "Rejected",
 };
 
 const RIGHTS_LABELS: Record<RightsStatus, string> = {
@@ -80,6 +84,16 @@ function StatusBadge({ status }: { status: ReleaseStatus }) {
       background: "rgba(71,85,105,0.15)",
       color: "#64748b",
       border: "1px solid rgba(71,85,105,0.25)",
+    },
+    submitted: {
+      background: "rgba(245,158,11,0.15)",
+      color: "#f59e0b",
+      border: "1px solid rgba(245,158,11,0.3)",
+    },
+    rejected: {
+      background: "rgba(239,68,68,0.15)",
+      color: "#ef4444",
+      border: "1px solid rgba(239,68,68,0.3)",
     },
   };
   return (
@@ -1262,6 +1276,8 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
     publishRelease,
     unpublishRelease,
     archiveRelease,
+    approveRelease,
+    rejectRelease,
   } = useAdminReleases();
   const { theme } = useTheme();
   const isLight = theme === "light";
@@ -1278,15 +1294,34 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
   const isConnected = !!walletAddress;
 
   // Filtered list
-  const filtered = releases.filter((r) => {
-    const matchesStatus = filterStatus === "all" || r.status === filterStatus;
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      !q ||
-      r.title.toLowerCase().includes(q) ||
-      r.artist.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
-  });
+  // Note: "submitted" and "rejected" are never shown in public feeds (useReleasesData
+  // uses an allowlist: only live/scheduled statuses pass through)
+  const submissions = releases.filter((r) => r.status === "submitted");
+
+  const filtered = releases
+    .filter((r) => {
+      // Never show submitted/rejected in the main admin list unless specifically filtering for submitted
+      if (r.status === "submitted" || r.status === "rejected") {
+        return filterStatus === "submitted" || filterStatus === r.status;
+      }
+      const matchesStatus = filterStatus === "all" || r.status === filterStatus;
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        !q ||
+        r.title.toLowerCase().includes(q) ||
+        r.artist.toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    })
+    .filter((r) => {
+      // When showing "submitted" filter, only show submitted items (handled above)
+      if (filterStatus === "submitted") return r.status === "submitted";
+      // For "rejected" filter show rejected
+      if (filterStatus === "rejected") return r.status === "rejected";
+      return true;
+    });
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null);
 
   function handleSave(data: ReleaseFormData, id?: string) {
     const releaseData = {
@@ -1331,7 +1366,12 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
     { id: "scheduled", label: "Scheduled" },
     { id: "live", label: "Live" },
     { id: "archived", label: "Archived" },
+    { id: "submitted", label: "Submitted" },
   ];
+
+  const submittedCount = releases.filter(
+    (r) => r.status === "submitted",
+  ).length;
 
   const panelBg = isLight ? "#ffffff" : "var(--echo-panel)";
   const pageBg = isLight ? "#f8f9fc" : "var(--echo-bg)";
@@ -1613,325 +1653,763 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                     }}
                   >
                     {pill.label}
+                    {pill.id === "submitted" && submittedCount > 0 && (
+                      <span
+                        style={{
+                          marginLeft: "5px",
+                          background:
+                            filterStatus === "submitted"
+                              ? "rgba(255,255,255,0.25)"
+                              : "rgba(245,158,11,0.85)",
+                          color:
+                            filterStatus === "submitted" ? "white" : "#0a0a0f",
+                          borderRadius: "10px",
+                          fontSize: "9px",
+                          fontWeight: 700,
+                          padding: "1px 5px",
+                          lineHeight: "1.4",
+                          display: "inline-block",
+                        }}
+                      >
+                        {submittedCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Release list */}
-          <div
-            style={{
-              padding: "16px 20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-            }}
-          >
-            {filtered.length === 0 ? (
-              <div
-                data-ocid="admin.release.empty_state"
-                style={{
-                  padding: "48px 24px",
-                  textAlign: "center",
-                  background: panelBg,
-                  border: `1px dashed ${borderColor}`,
-                  borderRadius: "12px",
-                }}
-              >
-                <Music
-                  size={32}
-                  style={{
-                    color: textSecondary,
-                    margin: "0 auto 14px",
-                    opacity: 0.5,
-                  }}
-                />
-                <p
-                  style={{
-                    color: textPrimary,
-                    fontSize: "15px",
-                    fontWeight: 600,
-                    marginBottom: "6px",
-                  }}
-                >
-                  {searchQuery || filterStatus !== "all"
-                    ? "No releases match"
-                    : "No releases yet"}
-                </p>
-                <p
-                  style={{
-                    color: textSecondary,
-                    fontSize: "13px",
-                    marginBottom: "18px",
-                  }}
-                >
-                  {searchQuery || filterStatus !== "all"
-                    ? "Try a different search or filter."
-                    : "Create your first release to get started."}
-                </p>
-                {filterStatus === "all" && !searchQuery && (
-                  <button
-                    type="button"
-                    onClick={openNew}
-                    data-ocid="admin.release.empty_state.open_modal_button"
-                    style={{
-                      padding: "8px 20px",
-                      borderRadius: "10px",
-                      background: "oklch(0.45 0.20 290)",
-                      color: "white",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    + New Release
-                  </button>
-                )}
-              </div>
-            ) : (
-              filtered.map((release, idx) => (
+          {/* Incoming Submissions inbox — shown on "all" or "submitted" filter */}
+          {(filterStatus === "all" || filterStatus === "submitted") &&
+            submissions.length > 0 && (
+              <div style={{ padding: "16px 20px 0" }}>
+                {/* Inbox header */}
                 <div
-                  key={release.id}
-                  data-ocid={`admin.release.item.${idx + 1}`}
                   style={{
-                    background: panelBg,
-                    border: `1px solid ${borderColor}`,
-                    borderRadius: "12px",
-                    padding: "14px",
                     display: "flex",
-                    flexDirection: "column",
+                    alignItems: "center",
                     gap: "10px",
+                    marginBottom: "10px",
                   }}
                 >
-                  {/* Row: artwork + info + status */}
                   <div
                     style={{
-                      display: "flex",
-                      gap: "12px",
-                      alignItems: "flex-start",
+                      width: "3px",
+                      height: "20px",
+                      borderRadius: "2px",
+                      background: "#f59e0b",
+                      flexShrink: 0,
                     }}
-                  >
-                    {/* Artwork */}
-                    <div
+                  />
+                  <div>
+                    <h2
                       style={{
-                        width: "52px",
-                        height: "52px",
-                        borderRadius: "8px",
-                        flexShrink: 0,
-                        overflow: "hidden",
-                        background: isLight
-                          ? "#f0f1f5"
-                          : "rgba(255,255,255,0.06)",
-                        border: `1px solid ${borderColor}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        color: textPrimary,
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        lineHeight: 1,
                       }}
                     >
-                      {release.artworkDataUrl ? (
-                        <img
-                          src={release.artworkDataUrl}
-                          alt={release.title}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <Music
-                          size={20}
-                          style={{ color: textSecondary, opacity: 0.5 }}
-                        />
-                      )}
-                    </div>
+                      Incoming Submissions
+                    </h2>
+                    <p
+                      style={{
+                        color: "#f59e0b",
+                        fontSize: "11px",
+                        marginTop: "2px",
+                      }}
+                    >
+                      Submitted by community · {submissions.length} pending
+                    </p>
+                  </div>
+                </div>
 
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          color: textPrimary,
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          marginBottom: "2px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {release.title}
-                      </p>
-                      <p
-                        style={{
-                          color: textSecondary,
-                          fontSize: "12px",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        {release.artist}
-                      </p>
+                {/* Submission rows */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  {submissions.map((sub, idx) => (
+                    <div
+                      key={sub.id}
+                      data-ocid={`admin.submission.item.${idx + 1}`}
+                      style={{
+                        background: panelBg,
+                        border: "1px solid rgba(245,158,11,0.2)",
+                        borderLeft: "3px solid #f59e0b",
+                        borderRadius: "12px",
+                        padding: "14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
+                      {/* Row: artwork + info */}
                       <div
                         style={{
                           display: "flex",
-                          flexWrap: "wrap",
-                          gap: "5px",
-                          alignItems: "center",
+                          gap: "12px",
+                          alignItems: "flex-start",
                         }}
                       >
-                        <StatusBadge status={release.status} />
-                        <VisibilityBadge visibility={release.visibility} />
+                        {/* Artwork */}
+                        <div
+                          style={{
+                            width: "52px",
+                            height: "52px",
+                            borderRadius: "8px",
+                            flexShrink: 0,
+                            overflow: "hidden",
+                            background: isLight
+                              ? "#f0f1f5"
+                              : "rgba(255,255,255,0.06)",
+                            border: `1px solid ${borderColor}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {sub.artworkDataUrl ? (
+                            <img
+                              src={sub.artworkDataUrl}
+                              alt={sub.title}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            <Music
+                              size={20}
+                              style={{ color: textSecondary, opacity: 0.5 }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p
+                            style={{
+                              color: textPrimary,
+                              fontSize: "14px",
+                              fontWeight: 600,
+                              marginBottom: "2px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {sub.title}
+                          </p>
+                          <p
+                            style={{
+                              color: textSecondary,
+                              fontSize: "12px",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            {sub.artist}
+                            {sub.genre ? ` · ${sub.genre}` : ""}
+                          </p>
+                          <p
+                            style={{
+                              color: textSecondary,
+                              fontSize: "11px",
+                              fontFamily: "monospace",
+                              opacity: 0.7,
+                              marginBottom: "4px",
+                            }}
+                          >
+                            {sub.submittedBy
+                              ? `${sub.submittedBy.slice(0, 6)}...${sub.submittedBy.slice(-4)}`
+                              : "Unknown"}
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              flexWrap: "wrap",
+                              alignItems: "center",
+                            }}
+                          >
+                            <StatusBadge status="submitted" />
+                            {sub.submittedAt && (
+                              <span
+                                style={{
+                                  fontSize: "10px",
+                                  color: textSecondary,
+                                }}
+                              >
+                                {new Date(sub.submittedAt).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  },
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Price / Supply */}
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <p
+                            style={{
+                              color: textPrimary,
+                              fontSize: "13px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {sub.priceSOL} SOL
+                          </p>
+                          <p style={{ color: textSecondary, fontSize: "11px" }}>
+                            {sub.supply} eds
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Approve popover state */}
+                      {approvingId === sub.id && (
+                        <div
+                          data-ocid="admin.submission.approve.dialog"
+                          style={{
+                            background: isLight
+                              ? "#f8f9fc"
+                              : "rgba(255,255,255,0.05)",
+                            border: `1px solid ${borderColor}`,
+                            borderRadius: "8px",
+                            padding: "10px 14px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
+                          <p
+                            style={{
+                              color: textPrimary,
+                              fontSize: "12px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Approve as:
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "6px",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              data-ocid="admin.submission.approve_live.button"
+                              onClick={() => {
+                                approveRelease(sub.id, "live");
+                                setApprovingId(null);
+                              }}
+                              style={{
+                                padding: "5px 12px",
+                                borderRadius: "6px",
+                                background: "rgba(16,185,129,0.15)",
+                                color: "#10b981",
+                                border: "1px solid rgba(16,185,129,0.3)",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ● Publish Now
+                            </button>
+                            <button
+                              type="button"
+                              data-ocid="admin.submission.approve_draft.button"
+                              onClick={() => {
+                                approveRelease(sub.id, "draft");
+                                setApprovingId(null);
+                              }}
+                              style={{
+                                padding: "5px 12px",
+                                borderRadius: "6px",
+                                background: "rgba(100,116,139,0.15)",
+                                color: "#94a3b8",
+                                border: "1px solid rgba(100,116,139,0.3)",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Save as Draft
+                            </button>
+                            <button
+                              type="button"
+                              data-ocid="admin.submission.cancel.button"
+                              onClick={() => setApprovingId(null)}
+                              style={{
+                                padding: "5px 12px",
+                                borderRadius: "6px",
+                                background: "transparent",
+                                color: textSecondary,
+                                border: `1px solid ${borderColor}`,
+                                fontSize: "12px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reject confirm */}
+                      {rejectConfirmId === sub.id && (
+                        <div
+                          data-ocid="admin.submission.reject.dialog"
+                          style={{
+                            padding: "10px 14px",
+                            background: "rgba(239,68,68,0.08)",
+                            border: "1px solid rgba(239,68,68,0.3)",
+                            borderRadius: "8px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                          }}
+                        >
+                          <span
+                            style={{ color: textPrimary, fontSize: "12px" }}
+                          >
+                            Reject <strong>{sub.title}</strong>? It will be
+                            hidden from all feeds.
+                          </span>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              type="button"
+                              data-ocid="admin.submission.reject.confirm_button"
+                              onClick={() => {
+                                rejectRelease(sub.id);
+                                setRejectConfirmId(null);
+                              }}
+                              style={{
+                                padding: "4px 12px",
+                                borderRadius: "6px",
+                                background: "rgba(239,68,68,0.85)",
+                                color: "white",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                border: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              data-ocid="admin.submission.reject.cancel_button"
+                              onClick={() => setRejectConfirmId(null)}
+                              style={{
+                                padding: "4px 12px",
+                                borderRadius: "6px",
+                                background: "transparent",
+                                color: textSecondary,
+                                fontSize: "12px",
+                                border: `1px solid ${borderColor}`,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <ActionButton
+                          icon={<CheckCircle2Icon size={12} />}
+                          label="Approve"
+                          ocid={`admin.submission.approve.button.${idx + 1}`}
+                          onClick={() =>
+                            setApprovingId(
+                              approvingId === sub.id ? null : sub.id,
+                            )
+                          }
+                          variant="publish"
+                          isLight={isLight}
+                        />
+                        <ActionButton
+                          icon={<Edit2 size={12} />}
+                          label="Edit"
+                          ocid={`admin.submission.edit_button.${idx + 1}`}
+                          onClick={() => openEdit(sub)}
+                          variant="neutral"
+                          isLight={isLight}
+                        />
+                        <ActionButton
+                          icon={<XCircle size={12} />}
+                          label="Reject"
+                          ocid={`admin.submission.reject_button.${idx + 1}`}
+                          onClick={() =>
+                            setRejectConfirmId(
+                              rejectConfirmId === sub.id ? null : sub.id,
+                            )
+                          }
+                          variant="danger"
+                          isLight={isLight}
+                        />
+                        <ActionButton
+                          icon={<Trash2 size={12} />}
+                          label="Delete"
+                          ocid={`admin.submission.delete_button.${idx + 1}`}
+                          onClick={() => setConfirmDeleteId(sub.id)}
+                          variant="danger"
+                          isLight={isLight}
+                        />
+                      </div>
+
+                      {/* Delete confirm for submission */}
+                      {confirmDeleteId === sub.id && (
+                        <DeleteConfirm
+                          releaseName={sub.title}
+                          onConfirm={() => {
+                            deleteRelease(sub.id);
+                            setConfirmDeleteId(null);
+                          }}
+                          onCancel={() => setConfirmDeleteId(null)}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          {/* Release list (admin's own releases, excluding submissions) */}
+          {filterStatus !== "submitted" && (
+            <div
+              style={{
+                padding: "16px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              {filtered.length === 0 ? (
+                <div
+                  data-ocid="admin.release.empty_state"
+                  style={{
+                    padding: "48px 24px",
+                    textAlign: "center",
+                    background: panelBg,
+                    border: `1px dashed ${borderColor}`,
+                    borderRadius: "12px",
+                  }}
+                >
+                  <Music
+                    size={32}
+                    style={{
+                      color: textSecondary,
+                      margin: "0 auto 14px",
+                      opacity: 0.5,
+                    }}
+                  />
+                  <p
+                    style={{
+                      color: textPrimary,
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      marginBottom: "6px",
+                    }}
+                  >
+                    {searchQuery || filterStatus !== "all"
+                      ? "No releases match"
+                      : "No releases yet"}
+                  </p>
+                  <p
+                    style={{
+                      color: textSecondary,
+                      fontSize: "13px",
+                      marginBottom: "18px",
+                    }}
+                  >
+                    {searchQuery || filterStatus !== "all"
+                      ? "Try a different search or filter."
+                      : "Create your first release to get started."}
+                  </p>
+                  {filterStatus === "all" && !searchQuery && (
+                    <button
+                      type="button"
+                      onClick={openNew}
+                      data-ocid="admin.release.empty_state.open_modal_button"
+                      style={{
+                        padding: "8px 20px",
+                        borderRadius: "10px",
+                        background: "oklch(0.45 0.20 290)",
+                        color: "white",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      + New Release
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filtered.map((release, idx) => (
+                  <div
+                    key={release.id}
+                    data-ocid={`admin.release.item.${idx + 1}`}
+                    style={{
+                      background: panelBg,
+                      border: `1px solid ${borderColor}`,
+                      borderRadius: "12px",
+                      padding: "14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
+                  >
+                    {/* Row: artwork + info + status */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      {/* Artwork */}
+                      <div
+                        style={{
+                          width: "52px",
+                          height: "52px",
+                          borderRadius: "8px",
+                          flexShrink: 0,
+                          overflow: "hidden",
+                          background: isLight
+                            ? "#f0f1f5"
+                            : "rgba(255,255,255,0.06)",
+                          border: `1px solid ${borderColor}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {release.artworkDataUrl ? (
+                          <img
+                            src={release.artworkDataUrl}
+                            alt={release.title}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        ) : (
+                          <Music
+                            size={20}
+                            style={{ color: textSecondary, opacity: 0.5 }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            color: textPrimary,
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            marginBottom: "2px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {release.title}
+                        </p>
+                        <p
+                          style={{
+                            color: textSecondary,
+                            fontSize: "12px",
+                            marginBottom: "6px",
+                          }}
+                        >
+                          {release.artist}
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "5px",
+                            alignItems: "center",
+                          }}
+                        >
+                          <StatusBadge status={release.status} />
+                          <VisibilityBadge visibility={release.visibility} />
+                        </div>
+                      </div>
+
+                      {/* Price / Supply */}
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <p
+                          style={{
+                            color: textPrimary,
+                            fontSize: "13px",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {release.priceSOL} SOL
+                        </p>
+                        <p style={{ color: textSecondary, fontSize: "11px" }}>
+                          {release.supply} eds
+                        </p>
                       </div>
                     </div>
 
-                    {/* Price / Supply */}
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <p
-                        style={{
-                          color: textPrimary,
-                          fontSize: "13px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {release.priceSOL} SOL
-                      </p>
-                      <p style={{ color: textSecondary, fontSize: "11px" }}>
-                        {release.supply} eds
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Rights + Genre + Date row */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                    }}
-                  >
-                    <span
+                    {/* Rights + Genre + Date row */}
+                    <div
                       style={{
-                        fontSize: "10px",
-                        color: "oklch(0.65 0.20 290)",
-                        background: "rgba(120,80,255,0.12)",
-                        border: "1px solid rgba(120,80,255,0.2)",
-                        borderRadius: "4px",
-                        padding: "2px 7px",
-                        fontWeight: 500,
+                        display: "flex",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                        alignItems: "center",
                       }}
                     >
-                      {RIGHTS_LABELS[release.rightsStatus]}
-                    </span>
-                    {release.genre && (
                       <span
                         style={{
                           fontSize: "10px",
-                          color: textSecondary,
-                          background: isLight
-                            ? "#f4f5f8"
-                            : "rgba(255,255,255,0.06)",
+                          color: "oklch(0.65 0.20 290)",
+                          background: "rgba(120,80,255,0.12)",
+                          border: "1px solid rgba(120,80,255,0.2)",
                           borderRadius: "4px",
                           padding: "2px 7px",
+                          fontWeight: 500,
                         }}
                       >
-                        {release.genre}
+                        {RIGHTS_LABELS[release.rightsStatus]}
                       </span>
-                    )}
-                    {release.releaseDate && (
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          color: textSecondary,
-                          marginLeft: "auto",
+                      {release.genre && (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            color: textSecondary,
+                            background: isLight
+                              ? "#f4f5f8"
+                              : "rgba(255,255,255,0.06)",
+                            borderRadius: "4px",
+                            padding: "2px 7px",
+                          }}
+                        >
+                          {release.genre}
+                        </span>
+                      )}
+                      {release.releaseDate && (
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            color: textSecondary,
+                            marginLeft: "auto",
+                          }}
+                        >
+                          {new Date(release.releaseDate).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Confirm delete */}
+                    {confirmDeleteId === release.id && (
+                      <DeleteConfirm
+                        releaseName={release.title}
+                        onConfirm={() => {
+                          deleteRelease(release.id);
+                          setConfirmDeleteId(null);
                         }}
-                      >
-                        {new Date(release.releaseDate).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Confirm delete */}
-                  {confirmDeleteId === release.id && (
-                    <DeleteConfirm
-                      releaseName={release.title}
-                      onConfirm={() => {
-                        deleteRelease(release.id);
-                        setConfirmDeleteId(null);
-                      }}
-                      onCancel={() => setConfirmDeleteId(null)}
-                    />
-                  )}
-
-                  {/* Actions */}
-                  <div
-                    style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}
-                  >
-                    <ActionButton
-                      icon={<Edit2 size={12} />}
-                      label="Edit"
-                      ocid={`admin.release.edit_button.${idx + 1}`}
-                      onClick={() => openEdit(release)}
-                      variant="neutral"
-                      isLight={isLight}
-                    />
-
-                    {(release.status === "draft" ||
-                      release.status === "scheduled") && (
-                      <ActionButton
-                        icon={<Globe size={12} />}
-                        label="Publish"
-                        ocid={`admin.release.publish.button.${idx + 1}`}
-                        onClick={() => publishRelease(release.id)}
-                        variant="publish"
-                        isLight={isLight}
+                        onCancel={() => setConfirmDeleteId(null)}
                       />
                     )}
 
-                    {release.status === "live" && (
+                    {/* Actions */}
+                    <div
+                      style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}
+                    >
                       <ActionButton
-                        icon={<EyeOff size={12} />}
-                        label="Unpublish"
-                        ocid={`admin.release.unpublish.button.${idx + 1}`}
-                        onClick={() => unpublishRelease(release.id)}
+                        icon={<Edit2 size={12} />}
+                        label="Edit"
+                        ocid={`admin.release.edit_button.${idx + 1}`}
+                        onClick={() => openEdit(release)}
                         variant="neutral"
                         isLight={isLight}
                       />
-                    )}
 
-                    {(release.status === "live" ||
-                      release.status === "scheduled") && (
+                      {(release.status === "draft" ||
+                        release.status === "scheduled") && (
+                        <ActionButton
+                          icon={<Globe size={12} />}
+                          label="Publish"
+                          ocid={`admin.release.publish.button.${idx + 1}`}
+                          onClick={() => publishRelease(release.id)}
+                          variant="publish"
+                          isLight={isLight}
+                        />
+                      )}
+
+                      {release.status === "live" && (
+                        <ActionButton
+                          icon={<EyeOff size={12} />}
+                          label="Unpublish"
+                          ocid={`admin.release.unpublish.button.${idx + 1}`}
+                          onClick={() => unpublishRelease(release.id)}
+                          variant="neutral"
+                          isLight={isLight}
+                        />
+                      )}
+
+                      {(release.status === "live" ||
+                        release.status === "scheduled") && (
+                        <ActionButton
+                          icon={<Archive size={12} />}
+                          label="Archive"
+                          ocid={`admin.release.archive.button.${idx + 1}`}
+                          onClick={() => archiveRelease(release.id)}
+                          variant="neutral"
+                          isLight={isLight}
+                        />
+                      )}
+
                       <ActionButton
-                        icon={<Archive size={12} />}
-                        label="Archive"
-                        ocid={`admin.release.archive.button.${idx + 1}`}
-                        onClick={() => archiveRelease(release.id)}
-                        variant="neutral"
+                        icon={<Trash2 size={12} />}
+                        label="Delete"
+                        ocid={`admin.release.delete_button.${idx + 1}`}
+                        onClick={() => setConfirmDeleteId(release.id)}
+                        variant="danger"
                         isLight={isLight}
                       />
-                    )}
-
-                    <ActionButton
-                      icon={<Trash2 size={12} />}
-                      label="Delete"
-                      ocid={`admin.release.delete_button.${idx + 1}`}
-                      onClick={() => setConfirmDeleteId(release.id)}
-                      variant="danger"
-                      isLight={isLight}
-                    />
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </>
       )}
       {/* Upload/Edit Modal */}

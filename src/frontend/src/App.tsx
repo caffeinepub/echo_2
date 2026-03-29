@@ -5,11 +5,14 @@ import { BottomNav, type Tab } from "./components/BottomNav";
 import { MiniPlayer } from "./components/MiniPlayer";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
+import { ADMIN_WALLET_ADDRESS } from "./config/admin";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
 import { WalletProvider } from "./context/WalletContext";
 import { SolPriceProvider } from "./contexts/SolPriceContext";
+import { useWallet } from "./hooks/useWallet";
 import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
+import { CreatorSubmitPage } from "./pages/CreatorSubmitPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ManageReleasesPage } from "./pages/ManageReleasesPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
@@ -20,16 +23,23 @@ type View =
   | { type: "tab"; tab: Tab }
   | { type: "album-player"; albumId: string; fromTab: Tab }
   | { type: "market-detail"; albumId: string }
-  | { type: "admin" };
+  | { type: "admin" }
+  | { type: "creator-submit" };
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
+  const { isConnected, walletAddress } = useWallet();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(timer);
   }, []);
+
+  const isAdmin =
+    ADMIN_WALLET_ADDRESS !== "" &&
+    isConnected &&
+    walletAddress === ADMIN_WALLET_ADDRESS;
 
   const activeTab: Tab =
     view.type === "tab"
@@ -50,13 +60,24 @@ function AppContent() {
     setView({ type: "market-detail", albumId });
   }
 
+  function handleUploadClick() {
+    if (isAdmin) {
+      setView({ type: "admin" });
+    } else {
+      setView({ type: "creator-submit" });
+    }
+  }
+
   return (
     <WalletProvider>
       <AudioPlayerProvider>
         <div className="min-h-screen bg-background">
           {showSplash && <SplashScreen />}
 
-          <TopBar onAdminClick={() => setView({ type: "admin" })} />
+          <TopBar
+            onAdminClick={() => setView({ type: "admin" })}
+            onUploadClick={handleUploadClick}
+          />
 
           <main className="pt-16 pb-[68px] min-h-screen">
             {view.type === "tab" && view.tab === "library" && (
@@ -87,6 +108,11 @@ function AppContent() {
             )}
             {view.type === "admin" && (
               <ManageReleasesPage
+                onBack={() => setView({ type: "tab", tab: "library" })}
+              />
+            )}
+            {view.type === "creator-submit" && (
+              <CreatorSubmitPage
                 onBack={() => setView({ type: "tab", tab: "library" })}
               />
             )}

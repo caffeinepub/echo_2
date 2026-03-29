@@ -6,7 +6,13 @@ import {
   useState,
 } from "react";
 
-export type ReleaseStatus = "draft" | "scheduled" | "live" | "archived";
+export type ReleaseStatus =
+  | "draft"
+  | "scheduled"
+  | "live"
+  | "archived"
+  | "submitted"
+  | "rejected";
 export type RightsStatus = "original" | "licensed" | "private_test";
 export type Visibility = "private" | "scheduled" | "public";
 
@@ -31,6 +37,8 @@ export interface AdminRelease {
   updatedAt: string;
   coverMotion?: string;
   motionEnabled?: boolean;
+  submittedBy?: string;
+  submittedAt?: string;
 }
 
 interface AdminReleasesContextValue {
@@ -43,6 +51,15 @@ interface AdminReleasesContextValue {
   publishRelease: (id: string) => void;
   unpublishRelease: (id: string) => void;
   archiveRelease: (id: string) => void;
+  submitRelease: (
+    data: Omit<AdminRelease, "id" | "createdAt" | "updatedAt">,
+  ) => void;
+  rejectRelease: (id: string) => void;
+  approveRelease: (
+    id: string,
+    targetStatus: "draft" | "live" | "scheduled",
+    releaseDate?: string,
+  ) => void;
 }
 
 const LS_KEY = "echo_admin_releases";
@@ -153,6 +170,62 @@ export function AdminReleasesProvider({
     );
   }, []);
 
+  const submitRelease = useCallback(
+    (data: Omit<AdminRelease, "id" | "createdAt" | "updatedAt">) => {
+      const now = new Date().toISOString();
+      const release: AdminRelease = {
+        ...data,
+        status: "submitted",
+        visibility: "private",
+        submittedAt: now,
+        id: `submission_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setReleases((prev) => [release, ...prev]);
+    },
+    [],
+  );
+
+  const rejectRelease = useCallback((id: string) => {
+    setReleases((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: "rejected" as ReleaseStatus,
+              updatedAt: new Date().toISOString(),
+            }
+          : r,
+      ),
+    );
+  }, []);
+
+  const approveRelease = useCallback(
+    (
+      id: string,
+      targetStatus: "draft" | "live" | "scheduled",
+      releaseDate?: string,
+    ) => {
+      setReleases((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: targetStatus as ReleaseStatus,
+                visibility: (targetStatus === "live"
+                  ? "public"
+                  : "private") as Visibility,
+                releaseDate: releaseDate ?? r.releaseDate,
+                updatedAt: new Date().toISOString(),
+              }
+            : r,
+        ),
+      );
+    },
+    [],
+  );
+
   return (
     <AdminReleasesContext.Provider
       value={{
@@ -163,6 +236,9 @@ export function AdminReleasesProvider({
         publishRelease,
         unpublishRelease,
         archiveRelease,
+        submitRelease,
+        rejectRelease,
+        approveRelease,
       }}
     >
       {children}

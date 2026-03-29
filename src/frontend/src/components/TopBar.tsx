@@ -1,4 +1,4 @@
-import { Moon, Settings2, Sun } from "lucide-react";
+import { Moon, Settings2, Sun, Upload } from "lucide-react";
 import { useTheme } from "../ThemeContext";
 import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useWallet } from "../hooks/useWallet";
@@ -95,9 +95,10 @@ function OwnershipLine({ count }: { count: number }) {
 
 interface TopBarProps {
   onAdminClick?: () => void;
+  onUploadClick?: () => void;
 }
 
-export function TopBar({ onAdminClick }: TopBarProps) {
+export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
   const { isConnected, walletAddress, ownedAlbumIds, connect, disconnect } =
     useWallet();
   const { theme, toggleTheme } = useTheme();
@@ -174,6 +175,40 @@ export function TopBar({ onAdminClick }: TopBarProps) {
           >
             <Settings2 size={12} />
             Manage
+          </button>
+        )}
+
+        {/* Upload button — only visible to non-admin connected wallets */}
+        {isConnected && !isAdmin && onUploadClick && (
+          <button
+            type="button"
+            onClick={onUploadClick}
+            data-ocid="topbar.upload.button"
+            aria-label="Submit a Release"
+            title="Submit a Release"
+            className="flex items-center gap-1.5 rounded-lg transition-all duration-150"
+            style={{
+              padding: "5px 10px",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              color: "oklch(0.65 0.18 200)",
+              background: "oklch(0.45 0.18 200 / 0.12)",
+              border: "1px solid oklch(0.55 0.22 200 / 0.25)",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "oklch(0.45 0.18 200 / 0.22)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background =
+                "oklch(0.45 0.18 200 / 0.12)";
+            }}
+          >
+            <Upload size={12} />
+            Upload
           </button>
         )}
 
