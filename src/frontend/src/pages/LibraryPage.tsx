@@ -42,6 +42,8 @@ function SongCard({
   isCurrentlyPlaying,
   isSelected,
   onSelect,
+  isAnimating,
+  onToggleAnimate,
 }: {
   song: Song;
   index: number;
@@ -51,7 +53,14 @@ function SongCard({
   isCurrentlyPlaying: boolean;
   isSelected: boolean;
   onSelect: () => void;
+  isAnimating: boolean;
+  onToggleAnimate: () => void;
 }) {
+  function handleArtworkActivate(e: React.SyntheticEvent) {
+    e.stopPropagation();
+    onToggleAnimate();
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -72,26 +81,79 @@ function SongCard({
         )}
       </div>
 
-      {/* Artwork */}
-      <div className="relative rounded-xl overflow-hidden aspect-square">
-        <AnimatedCover
-          coverImage={song.artworkSrc}
-          coverMotion={song.coverMotion}
-          motionEnabled={song.motionEnabled}
-          animate={true}
-          alt={song.title}
-          style={{ width: "100%", height: "100%" }}
-        />
-        {isCurrentlyPlaying && (
+      {/* Artwork — tap to animate */}
+      <button
+        type="button"
+        aria-label={isAnimating ? "Stop animation" : "Animate artwork"}
+        className="relative rounded-xl overflow-hidden aspect-square w-full p-0 border-0 bg-transparent"
+        onClick={handleArtworkActivate}
+        style={{
+          transition: "box-shadow 0.4s ease, transform 0.3s ease",
+          boxShadow: isAnimating
+            ? "0 0 0 2px rgba(139,92,246,0.7), 0 0 24px rgba(139,92,246,0.5), 0 0 48px rgba(6,182,212,0.25)"
+            : isCurrentlyPlaying
+              ? "inset 0 0 0 1.5px oklch(0.55 0.22 265 / 0.5), 0 0 30px 6px oklch(0.55 0.22 265 / 0.25)"
+              : "none",
+          transform: isAnimating ? "scale(1.03)" : "scale(1)",
+          cursor: "pointer",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            animation: isAnimating
+              ? "artReveal 0.4s ease-out forwards"
+              : "none",
+          }}
+        >
+          <AnimatedCover
+            coverImage={song.artworkSrc}
+            coverMotion={song.coverMotion}
+            motionEnabled={song.motionEnabled}
+            animate={isAnimating}
+            alt={song.title}
+            style={{ width: "100%", height: "100%" }}
+          />
+        </div>
+
+        {/* Animated indicator overlay */}
+        <AnimatePresence>
+          {isAnimating && (
+            <motion.div
+              key="anim-indicator"
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ duration: 0.2 }}
+              className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 rounded-full"
+              style={{
+                background: "rgba(139,92,246,0.7)",
+                boxShadow: "0 0 10px rgba(139,92,246,0.6)",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <span
+                className="text-white text-[10px] font-bold"
+                style={{ animation: "glow-pulse 1.6s ease-in-out infinite" }}
+              >
+                ◈
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Pulsing ring when animating */}
+        {isAnimating && (
           <div
             className="absolute inset-0 rounded-xl pointer-events-none"
             style={{
-              boxShadow:
-                "inset 0 0 0 1.5px oklch(0.55 0.22 265 / 0.5), 0 0 30px 6px oklch(0.55 0.22 265 / 0.25)",
+              border: "1.5px solid rgba(139,92,246,0.4)",
+              animation: "artRingPulse 2s ease-in-out infinite",
             }}
           />
         )}
-      </div>
+      </button>
 
       {/* Info */}
       <div className="mt-2 px-0.5">
@@ -175,6 +237,7 @@ export function LibraryPage({
     {},
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [animatingId, setAnimatingId] = useState<string | null>(null);
 
   const queueIds = audioPlayer.queue.map((t) => t.id);
   const isLibraryPlaying =
@@ -270,6 +333,10 @@ export function LibraryPage({
                 isSelected={selectedId === song.id}
                 onSelect={() =>
                   setSelectedId((prev) => (prev === song.id ? null : song.id))
+                }
+                isAnimating={animatingId === song.id}
+                onToggleAnimate={() =>
+                  setAnimatingId((prev) => (prev === song.id ? null : song.id))
                 }
               />
             );

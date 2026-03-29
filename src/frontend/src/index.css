@@ -444,3 +444,27 @@
     transform: scale(0.7);
   }
 }
+
+/* ── Library artwork tap-to-animate entrance ── */
+@keyframes artReveal {
+  from {
+    transform: scale(0.92);
+    filter: brightness(0.6) blur(2px);
+  }
+  to {
+    transform: scale(1);
+    filter: brightness(1) blur(0);
+  }
+}
+
+@keyframes artRingPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.015);
+  }
+}
