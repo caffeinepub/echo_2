@@ -28,6 +28,8 @@ export interface Song {
   signalStrength: number; // 0–1
   likes: number;
   comments: SongComment[];
+  coverMotion?: string;
+  motionEnabled?: boolean;
 }
 
 export const SONGS: Song[] = [

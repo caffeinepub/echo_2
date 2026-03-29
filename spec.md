@@ -1,32 +1,42 @@
-# ECHO
+# ECHO — Animated Album Art (Motion Covers)
 
 ## Current State
-The Manage Releases page (`ManageReleasesPage.tsx`) opens the New Release / Edit Release form as a shadcn `Dialog` modal. On mobile, this Dialog renders over the fixed app header and bottom navigation, causing fields to be hidden or overlapping the UI chrome. The modal uses `max-h-[90vh]` but does not account for the fixed header height (~64–72px), bottom nav/player height (~80–100px), or iOS safe-area insets. The page header is sticky at `top: 72px`, but the Dialog is a portal overlay that ignores that offset.
+Each release/drop has a single `coverImage` (static image URL). The data models (`Song` in `data/songs.ts`, `AdminRelease` in `AdminReleasesContext`) have no motion cover fields. Cover art is rendered as plain `<img>` tags across all pages.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new inline `NewReleasePanel` component inside ManageReleasesPage that renders as a dedicated full-screen mobile page (not a Dialog portal)
-- Proper top/bottom padding: top = app header height + safe-area-inset-top, bottom = nav/player height + safe-area-inset-bottom
-- CSS env() safe area variables on the form container
-- A sticky inner header for the form ("New Release" title + back/close button + optional save button) that sits at the top of this panel
-- Scrollable form body below the sticky header
-- `scroll-padding-top` or `scrollIntoView` so focused inputs scroll into view when keyboard opens
+- `coverMotion?: string` — optional URL/dataURL to a looping MP4/WebM file
+- `motionEnabled?: boolean` — flag to enable animated cover for this release
+- `AnimatedCover` reusable component (`components/AnimatedCover.tsx`):
+  - Props: `coverImage`, `coverMotion?`, `motionEnabled?`, `animate: boolean`, `className?`
+  - When `animate=true` AND `motionEnabled` AND `coverMotion` present AND not `prefers-reduced-motion`: render `<video autoPlay muted loop playsInline>` with `poster=coverImage`
+  - Lazy-loads video src (only sets src when `animate=true`)
+  - IntersectionObserver: pause video when off-screen
+  - `document.visibilitychange`: pause when app is backgrounded
+  - On video error: fall back to static `<img>`
+  - Never shows browser controls (`controls` attribute absent)
+  - Otherwise renders `<img src={coverImage}>`
+- Admin upload form: "Animated Cover (MP4/WebM)" file input, stores as data URL in `coverMotion`; `motionEnabled` checkbox
 
 ### Modify
-- Replace the `<Dialog>` / `<DialogContent>` wrapper in `ReleaseFormModal` with the new full-screen panel approach
-- When `modalOpen === true`, hide the Manage Releases toolbar/search bar/list so only the New Release panel is visible (no layered UI)
-- The manage releases page sticky header `top` value already uses `72px` — keep that but also add it to the form panel top offset
-- Remove `z-index` stacking conflicts so only one surface is active at a time
+- `Song` type: add `coverMotion?`, `motionEnabled?`
+- `AdminRelease` type: add `coverMotion?`, `motionEnabled?`
+- `useReleasesData`: map new fields when converting AdminRelease → Song
+- **MarketPage**: `animate=false` in leaderboard list rows; `animate=true` in expanded drop detail
+- **ReleasesPage**: `animate=false` in scroll list; `animate=true` for active/expanded card
+- **LibraryPage**: `animate=true` for now-playing item, `animate=false` for others
+- **AlbumPlayerPage**: `animate=true` always on detail page
+- **MiniPlayer**: `animate=true` when playing
+- **ManageReleasesPage**: add animated cover upload + motionEnabled toggle in the new release form
 
 ### Remove
-- The `Dialog`, `DialogContent`, `DialogHeader`, `DialogTitle` imports and wrappers from the form component (replace with plain div-based full-screen panel)
-- `onOpenChange` / `handleOpen` dialog lifecycle that caused reset issues
+- Nothing
 
 ## Implementation Plan
-1. Convert `ReleaseFormModal` from a `Dialog`-based component to a `NewReleasePanel` full-screen component that is conditionally rendered in place (not a portal overlay)
-2. The panel uses: `position: fixed; inset: 0; z-index: 50; overflow-y: auto; padding-top: calc(72px + env(safe-area-inset-top)); padding-bottom: calc(100px + env(safe-area-inset-bottom));`
-3. Inside the panel: a sticky inner header (z-index 51) with back button, title, save button; then scrollable form body
-4. In the main page return, when `modalOpen === true`, render ONLY the `NewReleasePanel` (skip the Manage Releases list/toolbar), else render the Manage Releases list as usual
-5. Keep all form logic (validation, file handling, state) exactly as-is — only change the wrapper/layout
-6. Remove Dialog import if no longer used
+1. Extend `Song` and `AdminRelease` types
+2. Update `useReleasesData` mapping
+3. Build `AnimatedCover` component
+4. Replace cover img usage in all 5 locations with appropriate `animate` prop
+5. Update admin form
+6. Validate and build

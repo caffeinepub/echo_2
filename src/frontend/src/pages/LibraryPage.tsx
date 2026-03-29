@@ -1,6 +1,7 @@
 import { ListPlus, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { AnimatedCover } from "../components/AnimatedCover";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
 import { useWalletContext } from "../context/WalletContext";
 import type { Song } from "../data/songs";
@@ -73,10 +74,13 @@ function SongCard({
 
       {/* Artwork */}
       <div className="relative rounded-xl overflow-hidden aspect-square">
-        <img
-          src={song.artworkSrc}
+        <AnimatedCover
+          coverImage={song.artworkSrc}
+          coverMotion={song.coverMotion}
+          motionEnabled={song.motionEnabled}
+          animate={isCurrentlyPlaying}
           alt={song.title}
-          className="w-full h-full object-cover"
+          style={{ width: "100%", height: "100%" }}
         />
         {isCurrentlyPlaying && (
           <div

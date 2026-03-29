@@ -29,6 +29,8 @@ export interface AdminRelease {
   status: ReleaseStatus;
   createdAt: string;
   updatedAt: string;
+  coverMotion?: string;
+  motionEnabled?: boolean;
 }
 
 interface AdminReleasesContextValue {

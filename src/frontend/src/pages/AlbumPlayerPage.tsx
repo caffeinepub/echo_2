@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { AnimatedCover } from "../components/AnimatedCover";
 import { MintModal } from "../components/MintModal";
 import { SolSymbol } from "../components/SolSymbol";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
@@ -199,10 +200,13 @@ export function SongDetailPage({ albumId, onBack }: SongDetailPageProps) {
               "0 0 60px oklch(0.55 0.22 280 / 0.22), 0 16px 48px rgba(0,0,0,0.7)",
           }}
         >
-          <img
-            src={song.artworkSrc}
+          <AnimatedCover
+            coverImage={song.artworkSrc}
+            coverMotion={song.coverMotion}
+            motionEnabled={song.motionEnabled}
+            animate={true}
             alt={song.title}
-            className="w-full h-full object-cover"
+            style={{ width: "100%", height: "100%" }}
           />
         </div>
       </motion.div>

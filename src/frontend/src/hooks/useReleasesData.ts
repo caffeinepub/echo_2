@@ -40,6 +40,8 @@ function adminReleaseToSong(r: AdminRelease): Song {
     mintPrice: r.priceSOL,
     nft_mint_address: r.id,
     signalStrength: 0.3,
+    coverMotion: r.coverMotion,
+    motionEnabled: r.motionEnabled,
     likes: 0,
     comments: [],
   };

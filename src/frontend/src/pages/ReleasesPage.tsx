@@ -2,6 +2,7 @@ import { Heart, MessageCircle, Pause, Play } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import { AnimatedCover } from "../components/AnimatedCover";
 import { CommentsModal } from "../components/CommentsModal";
 import { EchoSolIcon } from "../components/EchoSolIcon";
 import { MintModal } from "../components/MintModal";
@@ -213,10 +214,13 @@ function LineupRow({
               opacity: isSoldOut ? 0.35 : 1,
             }}
           >
-            <img
-              src={song.artworkSrc}
+            <AnimatedCover
+              coverImage={song.artworkSrc}
+              coverMotion={song.coverMotion}
+              motionEnabled={song.motionEnabled}
+              animate={isExpanded}
               alt={song.title}
-              className="w-full h-full object-cover"
+              style={{ width: "100%", height: "100%" }}
             />
             {isPlaying && (
               <div

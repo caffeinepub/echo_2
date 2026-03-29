@@ -167,6 +167,8 @@ interface ReleaseFormData {
   visibility: Visibility;
   status: ReleaseStatus;
   rightsConfirmed: boolean;
+  coverMotionDataUrl: string;
+  motionEnabled: boolean;
 }
 
 const DEFAULT_FORM: ReleaseFormData = {
@@ -186,6 +188,8 @@ const DEFAULT_FORM: ReleaseFormData = {
   visibility: "private",
   status: "draft",
   rightsConfirmed: false,
+  coverMotionDataUrl: "",
+  motionEnabled: false,
 };
 
 function releaseToForm(r: AdminRelease): ReleaseFormData {
@@ -206,6 +210,8 @@ function releaseToForm(r: AdminRelease): ReleaseFormData {
     visibility: r.visibility,
     status: r.status,
     rightsConfirmed: false,
+    coverMotionDataUrl: r.coverMotion ?? "",
+    motionEnabled: r.motionEnabled ?? false,
   };
 }
 
@@ -230,6 +236,7 @@ function ReleaseFormModal({
   >({});
   const audioRef = useRef<HTMLInputElement>(null);
   const artworkRef = useRef<HTMLInputElement>(null);
+  const motionRef = useRef<HTMLInputElement>(null);
 
   function set(field: keyof ReleaseFormData, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -258,6 +265,16 @@ function ReleaseFormModal({
     const reader = new FileReader();
     reader.onload = (ev) => {
       set("artworkDataUrl", ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleMotionChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      set("coverMotionDataUrl", ev.target?.result as string);
     };
     reader.readAsDataURL(file);
   }
@@ -689,6 +706,92 @@ function ReleaseFormModal({
                 {errors.artworkDataUrl}
               </span>
             )}
+          </div>
+
+          {/* Animated Cover */}
+          <div className="flex flex-col gap-1.5">
+            <Label
+              style={{
+                color: "var(--echo-text-secondary)",
+                fontSize: "12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Animated Cover (MP4 / WebM)
+            </Label>
+            <button
+              type="button"
+              onClick={() => motionRef.current?.click()}
+              data-ocid="release.motion_cover.upload_button"
+              style={{
+                background: "var(--echo-input-bg)",
+                border: "1px solid var(--echo-border)",
+                borderRadius: 10,
+                padding: "12px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{ color: "var(--echo-text-dark)", fontSize: "13px" }}
+              >
+                {form.coverMotionDataUrl || editRelease?.coverMotion
+                  ? "Change animated cover"
+                  : "Click to select video"}
+              </span>
+            </button>
+            <input
+              ref={motionRef}
+              type="file"
+              accept="video/mp4,video/webm"
+              onChange={handleMotionChange}
+              style={{ display: "none" }}
+            />
+            {(form.coverMotionDataUrl || editRelease?.coverMotion) && (
+              <video
+                src={form.coverMotionDataUrl || editRelease?.coverMotion}
+                autoPlay
+                muted
+                loop
+                playsInline
+                style={{
+                  width: "100%",
+                  maxHeight: 160,
+                  borderRadius: 8,
+                  objectFit: "cover",
+                  marginTop: 4,
+                }}
+              />
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                id="motion-enabled"
+                type="checkbox"
+                checked={form.motionEnabled}
+                onChange={(e) => set("motionEnabled", e.target.checked)}
+                data-ocid="release.motion_enabled.checkbox"
+                style={{
+                  accentColor: "oklch(0.55 0.25 290)",
+                  width: 14,
+                  height: 14,
+                }}
+              />
+              <label
+                htmlFor="motion-enabled"
+                style={{
+                  color: "var(--echo-text-secondary)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                Enable animated cover
+              </label>
+            </div>
           </div>
 
           {/* Price + Supply */}
@@ -1202,6 +1305,8 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
       rightsStatus: data.rightsStatus,
       visibility: data.visibility,
       status: data.status,
+      coverMotion: data.coverMotionDataUrl || undefined,
+      motionEnabled: data.motionEnabled || undefined,
     };
     if (id) {
       updateRelease(id, releaseData);

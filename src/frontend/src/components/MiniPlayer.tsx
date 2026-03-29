@@ -10,6 +10,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAudioPlayer } from "../context/AudioPlayerContext";
+import { AnimatedCover } from "./AnimatedCover";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -371,10 +372,13 @@ export function MiniPlayer() {
                   }}
                 >
                   {currentTrack.artworkSrc ? (
-                    <img
-                      src={currentTrack.artworkSrc}
+                    <AnimatedCover
+                      coverImage={currentTrack.artworkSrc}
+                      coverMotion={(currentTrack as any).coverMotion}
+                      motionEnabled={(currentTrack as any).motionEnabled}
+                      animate={isPlaying}
                       alt={currentTrack.title}
-                      className="w-full h-full object-cover"
+                      style={{ width: "100%", height: "100%" }}
                     />
                   ) : (
                     <div className="w-full h-full" />
