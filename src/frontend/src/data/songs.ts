@@ -41,8 +41,9 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     supply: 200,
     userEdition: 0,
-    preview_url: "",
-    full_url: "",
+    preview_url:
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -56,6 +57,9 @@ export const SONGS: Song[] = [
     signalStrength: 0,
     likes: 0,
     comments: [],
+    coverMotion:
+      "https://videos.pexels.com/video-files/3045163/3045163-sd_640_360_25fps.mp4",
+    motionEnabled: true,
   },
   {
     id: "echo_001",
@@ -65,8 +69,9 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
     supply: 150,
     userEdition: 42,
-    preview_url: "",
-    full_url: "",
+    preview_url:
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
     floorPrice: 2.6,
     lastSoldPrice: 2.1,
     owners: 89,
@@ -99,6 +104,9 @@ export const SONGS: Song[] = [
         timestamp: Date.now() - 1800000,
       },
     ],
+    coverMotion:
+      "https://videos.pexels.com/video-files/1572846/1572846-sd_960_506_30fps.mp4",
+    motionEnabled: true,
   },
   {
     id: "echo_002",
@@ -108,8 +116,9 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
     supply: 120,
     userEdition: 7,
-    preview_url: "",
-    full_url: "",
+    preview_url:
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
     floorPrice: 1.8,
     lastSoldPrice: 1.6,
     owners: 61,
@@ -136,6 +145,9 @@ export const SONGS: Song[] = [
         timestamp: Date.now() - 43200000,
       },
     ],
+    coverMotion:
+      "https://videos.pexels.com/video-files/2278095/2278095-sd_640_360_24fps.mp4",
+    motionEnabled: true,
   },
 ];
 

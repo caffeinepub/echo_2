@@ -28,32 +28,42 @@ export function AnimatedCover({
       ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
       : false;
 
-  const shouldAnimate =
-    animate &&
-    motionEnabled &&
-    coverMotion &&
-    !prefersReducedMotion &&
-    !videoError;
+  // Show video whenever coverMotion is available, not just when animate=true
+  const shouldShowVideo =
+    motionEnabled && !!coverMotion && !prefersReducedMotion && !videoError;
 
-  // Assign src lazily when animation first starts
+  // Only play when both visible and animate prop is true
+  const shouldPlay = animate && shouldShowVideo;
+
+  // Assign src lazily on first render when video is shown
   useEffect(() => {
-    if (!shouldAnimate || !videoRef.current) return;
+    if (!shouldShowVideo || !videoRef.current) return;
     if (!srcAssigned.current) {
       videoRef.current.src = coverMotion!;
       srcAssigned.current = true;
     }
-  }, [shouldAnimate, coverMotion]);
+  }, [shouldShowVideo, coverMotion]);
+
+  // Control play/pause based on shouldPlay
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !shouldShowVideo) return;
+    if (shouldPlay) {
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }, [shouldPlay, shouldShowVideo]);
 
   // IntersectionObserver — pause when off-screen
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !shouldAnimate) return;
+    if (!el || !shouldShowVideo) return;
     const obs = new IntersectionObserver(
       (entries) => {
-        if (!animate) return;
         if (entries[0].intersectionRatio < 0.1) {
           el.pause();
-        } else {
+        } else if (shouldPlay) {
           el.play().catch(() => {});
         }
       },
@@ -61,24 +71,24 @@ export function AnimatedCover({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [shouldAnimate, animate]);
+  }, [shouldShowVideo, shouldPlay]);
 
   // Visibility API — pause when tab hidden
   useEffect(() => {
     const el = videoRef.current;
-    if (!el || !shouldAnimate) return;
+    if (!el || !shouldShowVideo) return;
     function onVisibilityChange() {
       if (!el) return;
       if (document.hidden) {
         el.pause();
-      } else if (animate) {
+      } else if (shouldPlay) {
         el.play().catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [shouldAnimate, animate]);
+  }, [shouldShowVideo, shouldPlay]);
 
   const mediaStyle: React.CSSProperties = {
     width: "100%",
@@ -96,7 +106,7 @@ export function AnimatedCover({
         ...style,
       }}
     >
-      {shouldAnimate ? (
+      {shouldShowVideo ? (
         <video
           ref={videoRef}
           autoPlay
