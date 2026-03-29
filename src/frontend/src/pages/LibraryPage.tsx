@@ -78,7 +78,7 @@ function SongCard({
           coverImage={song.artworkSrc}
           coverMotion={song.coverMotion}
           motionEnabled={song.motionEnabled}
-          animate={isCurrentlyPlaying}
+          animate={true}
           alt={song.title}
           style={{ width: "100%", height: "100%" }}
         />
