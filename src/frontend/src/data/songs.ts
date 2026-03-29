@@ -32,6 +32,39 @@ export interface Song {
   motionEnabled?: boolean;
 }
 
+// Reliable, CORS-enabled audio from archive.org (Kevin MacLeod royalty-free music)
+// and Free Music Archive — all public domain / CC licensed
+const AUDIO = {
+  colorlessAura:
+    "https://archive.org/download/Kevin-MacLeod_Sadness_2014_FullAlbum/Sadness%2FKevin%20MacLeod%20-%2003%20-%20Colorless%20Aura.mp3",
+  deathOfKings:
+    "https://archive.org/download/Kevin-MacLeod_Sadness_2014_FullAlbum/Sadness%2FKevin%20MacLeod%20-%2004%20-%20Death%20of%20Kings.mp3",
+  serene:
+    "https://archive.org/download/Kevin-MacLeod_Sadness_2014_FullAlbum/Sadness%2FKevin%20MacLeod%20-%2019%20-%20Serene.mp3",
+  lamentation:
+    "https://archive.org/download/Kevin-MacLeod_Sadness_2014_FullAlbum/Sadness%2FKevin%20MacLeod%20-%2011%20-%20Lamentation.mp3",
+  endOfEra:
+    "https://archive.org/download/Kevin-MacLeod_Sadness_2014_FullAlbum/Sadness%2FKevin%20MacLeod%20-%2007%20-%20End%20of%20the%20Era.mp3",
+  werq: "https://archive.org/download/Kevin-MacLeod_Sheep-Reliability_2018_FullAlbum/Sheep%20Reliability%2FKevin%20MacLeod%20-%2006%20-%20Werq.mp3",
+  gettingItDone:
+    "https://archive.org/download/Kevin-MacLeod_Sheep-Reliability_2018_FullAlbum/Sheep%20Reliability%2FKevin%20MacLeod%20-%2005%20-%20Getting%20It%20Done.mp3",
+  townieLoop:
+    "https://archive.org/download/Kevin-MacLeod_Sheep-Reliability_2018_FullAlbum/Sheep%20Reliability%2FKevin%20MacLeod%20-%2004%20-%20Townie%20Loop.mp3",
+  loopster:
+    "https://archive.org/download/Kevin-MacLeod_Sheep-Reliability_2018_FullAlbum/Sheep%20Reliability%2FKevin%20MacLeod%20-%2008%20-%20Loopster.mp3",
+  twisting:
+    "https://archive.org/download/Kevin-MacLeod_Sheep-Reliability_2018_FullAlbum/Sheep%20Reliability%2FKevin%20MacLeod%20-%2010%20-%20Twisting.mp3",
+  cottages:
+    "https://archive.org/download/Kevin-MacLeod_Magic-Scout-A-Calm-Experience_2018_FullAlbum/Magic%20Scout-%20A%20Calm%20Experience%2FKevin%20MacLeod%20-%2001%20-%20Cottages.mp3",
+  farm: "https://archive.org/download/Kevin-MacLeod_Magic-Scout-A-Calm-Experience_2018_FullAlbum/Magic%20Scout-%20A%20Calm%20Experience%2FKevin%20MacLeod%20-%2002%20-%20Farm.mp3",
+  manor:
+    "https://archive.org/download/Kevin-MacLeod_Magic-Scout-A-Calm-Experience_2018_FullAlbum/Magic%20Scout-%20A%20Calm%20Experience%2FKevin%20MacLeod%20-%2003%20-%20Manor.mp3",
+  northernGlade:
+    "https://archive.org/download/Kevin-MacLeod_Magic-Scout-A-Calm-Experience_2018_FullAlbum/Magic%20Scout-%20A%20Calm%20Experience%2FKevin%20MacLeod%20-%2004%20-%20Northern%20Glade.mp3",
+  enthusiast:
+    "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Tours/Enthusiast/Tours_-_01_-_Enthusiast.mp3",
+};
+
 export const SONGS: Song[] = [
   {
     id: "echo_001",
@@ -41,10 +74,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-fragments.dim_600x600.jpg",
     supply: 150,
     userEdition: 42,
-    preview_url:
-      "https://storage.googleapis.com/media-session/elephants-dream/the-wires.mp3",
-    full_url:
-      "https://storage.googleapis.com/media-session/elephants-dream/the-wires.mp3",
+    preview_url: AUDIO.colorlessAura,
+    full_url: AUDIO.colorlessAura,
     floorPrice: 2.6,
     lastSoldPrice: 2.1,
     owners: 89,
@@ -89,10 +120,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-charcoal.dim_600x600.jpg",
     supply: 120,
     userEdition: 7,
-    preview_url:
-      "https://storage.googleapis.com/media-session/big-buck-bunny/preload.mp3",
-    full_url:
-      "https://storage.googleapis.com/media-session/big-buck-bunny/preload.mp3",
+    preview_url: AUDIO.deathOfKings,
+    full_url: AUDIO.deathOfKings,
     floorPrice: 1.8,
     lastSoldPrice: 1.6,
     owners: 61,
@@ -131,10 +160,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-obsidian.dim_600x600.jpg",
     supply: 200,
     userEdition: 0,
-    preview_url:
-      "https://storage.googleapis.com/media-session/sintel/snow-fight.mp3",
-    full_url:
-      "https://storage.googleapis.com/media-session/sintel/snow-fight.mp3",
+    preview_url: AUDIO.serene,
+    full_url: AUDIO.serene,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -160,9 +187,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-grid.dim_600x600.jpg",
     supply: 100,
     userEdition: 12,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    preview_url: AUDIO.lamentation,
+    full_url: AUDIO.lamentation,
     floorPrice: 3.1,
     lastSoldPrice: 2.9,
     owners: 45,
@@ -195,9 +221,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-aurora.dim_600x600.jpg",
     supply: 175,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    preview_url: AUDIO.endOfEra,
+    full_url: AUDIO.endOfEra,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -223,9 +248,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-prism.dim_600x600.jpg",
     supply: 80,
     userEdition: 3,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    preview_url: AUDIO.werq,
+    full_url: AUDIO.werq,
     floorPrice: 4.5,
     lastSoldPrice: 4.2,
     owners: 72,
@@ -264,9 +288,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-void.dim_600x600.jpg",
     supply: 250,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    preview_url: AUDIO.gettingItDone,
+    full_url: AUDIO.gettingItDone,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -299,9 +322,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-cascade.dim_600x600.jpg",
     supply: 90,
     userEdition: 19,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    preview_url: AUDIO.townieLoop,
+    full_url: AUDIO.townieLoop,
     floorPrice: 2.3,
     lastSoldPrice: 2.1,
     owners: 54,
@@ -334,9 +356,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-static.dim_600x600.jpg",
     supply: 60,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    preview_url: AUDIO.loopster,
+    full_url: AUDIO.loopster,
     floorPrice: 5.2,
     lastSoldPrice: 5.0,
     owners: 58,
@@ -375,9 +396,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-bloom.dim_600x600.jpg",
     supply: 140,
     userEdition: 5,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    preview_url: AUDIO.twisting,
+    full_url: AUDIO.twisting,
     floorPrice: 1.4,
     lastSoldPrice: 1.3,
     owners: 38,
@@ -410,9 +430,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-depth.dim_600x600.jpg",
     supply: 110,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    preview_url: AUDIO.cottages,
+    full_url: AUDIO.cottages,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -438,9 +457,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-pulse.dim_600x600.jpg",
     supply: 75,
     userEdition: 31,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    preview_url: AUDIO.farm,
+    full_url: AUDIO.farm,
     floorPrice: 3.8,
     lastSoldPrice: 3.5,
     owners: 67,
@@ -479,9 +497,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-drift.dim_600x600.jpg",
     supply: 160,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    preview_url: AUDIO.manor,
+    full_url: AUDIO.manor,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -514,9 +531,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-fracture.dim_600x600.jpg",
     supply: 50,
     userEdition: 8,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    preview_url: AUDIO.northernGlade,
+    full_url: AUDIO.northernGlade,
     floorPrice: 6.1,
     lastSoldPrice: 5.8,
     owners: 49,
@@ -555,9 +571,8 @@ export const SONGS: Song[] = [
     artworkSrc: "/assets/generated/cover-glow.dim_600x600.jpg",
     supply: 130,
     userEdition: 0,
-    preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    preview_url: AUDIO.enthusiast,
+    full_url: AUDIO.enthusiast,
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,

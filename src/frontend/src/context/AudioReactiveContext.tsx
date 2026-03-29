@@ -27,7 +27,7 @@ export function AudioReactiveProvider({
   const rafRef = useRef<number>(0);
   const frameCountRef = useRef(0);
   const smoothedRef = useRef<AudioReactiveValues>({ ...ZERO });
-  const corsFailedRef = useRef(false);
+  const useSimulationRef = useRef(false);
   const prefersReducedMotion = useRef(
     typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -43,18 +43,41 @@ export function AudioReactiveProvider({
 
   function attachAnalyser(audio: HTMLAudioElement) {
     if (hookedElementRef.current === audio) return;
-    if (corsFailedRef.current) {
+
+    // If we've already decided to use simulation, mark as hooked but skip capture
+    if (useSimulationRef.current) {
       hookedElementRef.current = audio;
       return;
     }
+
     try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AC) {
+        useSimulationRef.current = true;
+        hookedElementRef.current = audio;
+        return;
+      }
+
       if (!audioCtxRef.current) {
-        const AC = window.AudioContext || (window as any).webkitAudioContext;
         audioCtxRef.current = new AC();
       }
       const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") ctx.resume();
 
+      // CRITICAL: On iOS/mobile, AudioContext starts suspended and can only be
+      // resumed from a direct user gesture. useEffect runs asynchronously after
+      // the gesture, so ctx.resume() will fail silently. If we call
+      // createMediaElementSource() on a suspended context, the audio element's
+      // output is captured but silent — audio plays with no sound.
+      // Fall back to simulation so the audio element plays freely.
+      if (ctx.state === "suspended") {
+        // Try to resume but don't capture the audio element yet
+        ctx.resume().catch(() => {});
+        useSimulationRef.current = true;
+        hookedElementRef.current = audio;
+        return;
+      }
+
+      // AudioContext is running — safe to capture the audio element
       if (sourceRef.current) {
         try {
           sourceRef.current.disconnect();
@@ -78,7 +101,7 @@ export function AudioReactiveProvider({
       ) as Uint8Array<ArrayBuffer>;
       hookedElementRef.current = audio;
     } catch {
-      corsFailedRef.current = true;
+      useSimulationRef.current = true;
       hookedElementRef.current = audio;
     }
   }
@@ -126,7 +149,7 @@ export function AudioReactiveProvider({
       const analyser = analyserRef.current;
       const data = freqDataRef.current;
 
-      if (analyser && !corsFailedRef.current) {
+      if (analyser && !useSimulationRef.current) {
         analyser.getByteFrequencyData(data);
         const len = data.length;
         let bassSum = 0;

@@ -32,6 +32,19 @@ interface AudioPlayerContextValue {
 
 const AudioPlayerContext = createContext<AudioPlayerContextValue | null>(null);
 
+function createAudio(url: string): HTMLAudioElement {
+  const audio = new Audio();
+  // playsInline helps with iOS inline playback
+  audio.setAttribute("playsinline", "");
+  audio.setAttribute("webkit-playsinline", "");
+  audio.preload = "auto";
+  audio.volume = 1;
+  audio.src = url;
+  audio.onerror = () =>
+    console.error("[Echo Player] audio load error:", audio.error?.message, url);
+  return audio;
+}
+
 export function AudioPlayerProvider({
   children,
 }: { children: React.ReactNode }) {
@@ -67,6 +80,7 @@ export function AudioPlayerProvider({
       audioRef.current.onended = null;
       audioRef.current.ontimeupdate = null;
       audioRef.current.onloadedmetadata = null;
+      audioRef.current.onerror = null;
       audioRef.current = null;
     }
     setCurrentTrack(null);
@@ -83,6 +97,7 @@ export function AudioPlayerProvider({
       audioRef.current.onended = null;
       audioRef.current.ontimeupdate = null;
       audioRef.current.onloadedmetadata = null;
+      audioRef.current.onerror = null;
       audioRef.current = null;
     }
 
@@ -93,11 +108,8 @@ export function AudioPlayerProvider({
     setDuration(0);
 
     if (track.preview_url) {
-      const audio = new Audio();
-      audio.crossOrigin = "anonymous";
-      audio.src = track.preview_url;
+      const audio = createAudio(track.preview_url);
       audioRef.current = audio;
-      audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
       audio.onloadedmetadata = () => setDuration(audio.duration || 0);
       if (onEnd) audio.onended = onEnd;
@@ -154,6 +166,7 @@ export function AudioPlayerProvider({
       audioRef.current.onended = null;
       audioRef.current.ontimeupdate = null;
       audioRef.current.onloadedmetadata = null;
+      audioRef.current.onerror = null;
       audioRef.current = null;
     }
 
@@ -161,13 +174,11 @@ export function AudioPlayerProvider({
     currentTrackRef.current = fullTrack;
     setCurrentTime(0);
     setDuration(0);
+    setIsPlaying(true);
 
     if (track.preview_url) {
-      const audio = new Audio();
-      audio.crossOrigin = "anonymous";
-      audio.src = track.preview_url;
+      const audio = createAudio(track.preview_url);
       audioRef.current = audio;
-      audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
       audio.onloadedmetadata = () => setDuration(audio.duration || 0);
       audio
@@ -177,8 +188,6 @@ export function AudioPlayerProvider({
         stopAudio();
       }, 30000);
     }
-
-    setIsPlaying(true);
   }
 
   function playLibrary(track: Omit<PlayerTrack, "mode">) {
