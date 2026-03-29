@@ -94,10 +94,13 @@ export function AudioPlayerProvider({
     if (track.preview_url) {
       const audio = new Audio(track.preview_url);
       audioRef.current = audio;
+      audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
       audio.onloadedmetadata = () => setDuration(audio.duration || 0);
       if (onEnd) audio.onended = onEnd;
-      audio.play().catch(() => {});
+      audio
+        .play()
+        .catch((err) => console.error("[Echo Player] play failed:", err));
     }
   }
 
@@ -131,7 +134,12 @@ export function AudioPlayerProvider({
         audioRef.current?.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current?.play();
+        if (audioRef.current) {
+          audioRef.current.volume = 1;
+          audioRef.current
+            .play()
+            .catch((err) => console.error("[Echo Player] play failed:", err));
+        }
         setIsPlaying(true);
       }
       return;
@@ -154,9 +162,12 @@ export function AudioPlayerProvider({
     if (track.preview_url) {
       const audio = new Audio(track.preview_url);
       audioRef.current = audio;
+      audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
       audio.onloadedmetadata = () => setDuration(audio.duration || 0);
-      audio.play().catch(() => {});
+      audio
+        .play()
+        .catch((err) => console.error("[Echo Player] play failed:", err));
       timerRef.current = setTimeout(() => {
         stopAudio();
       }, 30000);
@@ -173,7 +184,12 @@ export function AudioPlayerProvider({
         audioRef.current?.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current?.play().catch(() => {});
+        if (audioRef.current) {
+          audioRef.current.volume = 1;
+          audioRef.current
+            .play()
+            .catch((err) => console.error("[Echo Player] play failed:", err));
+        }
         setIsPlaying(true);
       }
       return;
@@ -212,7 +228,10 @@ export function AudioPlayerProvider({
     if (audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
       setCurrentTime(0);
-      audioRef.current.play().catch(() => {});
+      audioRef.current.volume = 1;
+      audioRef.current
+        .play()
+        .catch((err) => console.error("[Echo Player] play failed:", err));
       setIsPlaying(true);
     } else {
       stopAudio();
@@ -232,7 +251,12 @@ export function AudioPlayerProvider({
   }
 
   function resume() {
-    audioRef.current?.play().catch(() => {});
+    if (audioRef.current) {
+      audioRef.current.volume = 1;
+      audioRef.current
+        .play()
+        .catch((err) => console.error("[Echo Player] play failed:", err));
+    }
     setIsPlaying(true);
   }
 

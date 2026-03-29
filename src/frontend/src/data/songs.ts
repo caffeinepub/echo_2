@@ -42,8 +42,9 @@ export const SONGS: Song[] = [
     supply: 200,
     userEdition: 0,
     preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      "https://storage.googleapis.com/media-session/sintel/snow-fight.mp3",
+    full_url:
+      "https://storage.googleapis.com/media-session/sintel/snow-fight.mp3",
     floorPrice: 0,
     lastSoldPrice: 0,
     owners: 0,
@@ -70,8 +71,9 @@ export const SONGS: Song[] = [
     supply: 150,
     userEdition: 42,
     preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      "https://storage.googleapis.com/media-session/elephants-dream/the-wires.mp3",
+    full_url:
+      "https://storage.googleapis.com/media-session/elephants-dream/the-wires.mp3",
     floorPrice: 2.6,
     lastSoldPrice: 2.1,
     owners: 89,
@@ -117,8 +119,9 @@ export const SONGS: Song[] = [
     supply: 120,
     userEdition: 7,
     preview_url:
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    full_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      "https://storage.googleapis.com/media-session/big-buck-bunny/preload.mp3",
+    full_url:
+      "https://storage.googleapis.com/media-session/big-buck-bunny/preload.mp3",
     floorPrice: 1.8,
     lastSoldPrice: 1.6,
     owners: 61,
