@@ -40,6 +40,18 @@ const BAR_DATA = [
   { id: "b8", dur: 0.85, delay: 0.64 },
 ];
 
+const BAR_CLASSES = [
+  "echo-ra-bar echo-ra-bar-bass",
+  "echo-ra-bar echo-ra-bar-bass",
+  "echo-ra-bar echo-ra-bar-mid",
+  "echo-ra-bar echo-ra-bar-mid",
+  "echo-ra-bar echo-ra-bar-mid",
+  "echo-ra-bar echo-ra-bar-treble",
+  "echo-ra-bar echo-ra-bar-treble",
+  "echo-ra-bar echo-ra-bar-treble",
+  "echo-ra-bar echo-ra-bar-mid",
+];
+
 function WaveformBars({ isPlaying }: { isPlaying: boolean }) {
   return (
     <div
@@ -47,25 +59,18 @@ function WaveformBars({ isPlaying }: { isPlaying: boolean }) {
       className="flex items-end gap-[2px] shrink-0 mr-1.5"
       style={{ height: 14, width: BAR_DATA.length * 4 - 2 }}
     >
-      {BAR_DATA.map((bar) => (
+      {BAR_DATA.map((bar, i) => (
         <div
           key={bar.id}
+          className={isPlaying ? BAR_CLASSES[i] : "echo-ra-bar"}
           style={{
             width: 2,
             borderRadius: 1,
             background: "linear-gradient(to top, #7c3aed, #a78bfa)",
             opacity: 0.55,
             height: "100%",
-            transformOrigin: "bottom",
-            animationName: "echoBar",
-            animationDuration: `${bar.dur}s`,
-            animationTimingFunction: "ease-in-out",
-            animationIterationCount: "infinite",
-            animationDirection: "alternate",
-            animationDelay: `${bar.delay}s`,
-            animationPlayState: isPlaying ? "running" : "paused",
+            transition: "transform 0.08s ease",
             transform: isPlaying ? undefined : "scaleY(0.28)",
-            transition: "transform 0.4s ease",
           }}
         />
       ))}
@@ -239,14 +244,10 @@ function SeekBar({
     >
       {/* Filled track */}
       <div
-        className="absolute inset-y-0 left-0 rounded-full"
+        className={`absolute inset-y-0 left-0 rounded-full${isPlaying ? " echo-ra-progress" : ""}`}
         style={{
           width: `${pct}%`,
           background: "linear-gradient(to right, #7c3aed, #8b5cf6)",
-          boxShadow: isPlaying
-            ? "0 0 6px 1px rgba(139,92,246,0.55), 0 0 14px 2px rgba(139,92,246,0.2)"
-            : "none",
-          transition: "box-shadow 0.6s ease",
         }}
       >
         {/* Shimmer */}
@@ -354,21 +355,21 @@ export function MiniPlayer() {
               boxShadow: "0 -4px 24px oklch(0 0 0 / 0.08)",
             }}
           >
+            {/* Ambient reactive background wash */}
+            <div
+              className="absolute inset-0 echo-ra-ambient"
+              aria-hidden="true"
+              style={{ zIndex: 0, pointerEvents: "none" }}
+            />
             {/* Main row */}
-            <div className="flex items-center gap-2 px-4 pt-3 pb-1.5 max-w-3xl mx-auto">
+            <div className="relative z-10 flex items-center gap-2 px-4 pt-3 pb-1.5 max-w-3xl mx-auto">
               {/* Artwork with glow + particles */}
               <div className="relative shrink-0">
                 <FloatingParticles isPlaying={isPlaying} />
                 <div
-                  className="w-9 h-9 rounded-md overflow-hidden relative z-10"
+                  className="w-9 h-9 rounded-md overflow-hidden relative z-10 echo-ra-glow echo-ra-scale"
                   style={{
                     background: "var(--echo-elevated)",
-                    animationName: isPlaying ? "echoGlowPulse" : undefined,
-                    animationDuration: "3.5s",
-                    animationTimingFunction: "ease-in-out",
-                    animationIterationCount: "infinite",
-                    boxShadow: isPlaying ? undefined : "0 0 0 0 transparent",
-                    transition: "box-shadow 0.8s ease",
                   }}
                 >
                   {currentTrack.artworkSrc ? (
@@ -512,7 +513,7 @@ export function MiniPlayer() {
             </div>
 
             {/* Progress section */}
-            <div className="px-4 pb-2.5 max-w-3xl mx-auto w-full">
+            <div className="relative z-10 px-4 pb-2.5 max-w-3xl mx-auto w-full">
               {isLibrary ? (
                 <>
                   <div className="flex justify-between mb-1.5">
@@ -545,14 +546,11 @@ export function MiniPlayer() {
                   }}
                 >
                   <div
-                    className="h-full rounded-full"
+                    className={`h-full rounded-full${isPlaying ? " echo-ra-progress" : ""}`}
                     style={{
                       width: `${previewProgress}%`,
                       background: "rgba(34,211,238,0.35)",
-                      boxShadow: isPlaying
-                        ? "0 0 6px 1px rgba(34,211,238,0.4)"
-                        : "none",
-                      transition: "box-shadow 0.6s ease, width 0.3s linear",
+                      transition: "width 0.3s linear",
                     }}
                   />
                 </div>

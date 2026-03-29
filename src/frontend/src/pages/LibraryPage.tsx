@@ -85,15 +85,13 @@ function SongCard({
       <button
         type="button"
         aria-label={isAnimating ? "Stop animation" : "Animate artwork"}
-        className="relative rounded-xl overflow-hidden aspect-square w-full p-0 border-0 bg-transparent"
+        className={`relative rounded-xl overflow-hidden aspect-square w-full p-0 border-0 bg-transparent${isCurrentlyPlaying ? " echo-ra-glow" : ""}`}
         onClick={handleArtworkActivate}
         style={{
           transition: "box-shadow 0.4s ease, transform 0.3s ease",
           boxShadow: isAnimating
             ? "0 0 0 2px rgba(139,92,246,0.7), 0 0 24px rgba(139,92,246,0.5), 0 0 48px rgba(6,182,212,0.25)"
-            : isCurrentlyPlaying
-              ? "inset 0 0 0 1.5px oklch(0.55 0.22 265 / 0.5), 0 0 30px 6px oklch(0.55 0.22 265 / 0.25)"
-              : "none",
+            : undefined,
           transform: isAnimating ? "scale(1.03)" : "scale(1)",
           cursor: "pointer",
         }}

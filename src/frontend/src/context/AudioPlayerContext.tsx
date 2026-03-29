@@ -16,6 +16,7 @@ interface AudioPlayerContextValue {
   loopMode: "off" | "loop";
   currentTime: number;
   duration: number;
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
   play: (track: Omit<PlayerTrack, "mode">) => void;
   playPreview: (track: Omit<PlayerTrack, "mode">) => void;
   playLibrary: (track: Omit<PlayerTrack, "mode">) => void;
@@ -92,7 +93,9 @@ export function AudioPlayerProvider({
     setDuration(0);
 
     if (track.preview_url) {
-      const audio = new Audio(track.preview_url);
+      const audio = new Audio();
+      audio.crossOrigin = "anonymous";
+      audio.src = track.preview_url;
       audioRef.current = audio;
       audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
@@ -160,7 +163,9 @@ export function AudioPlayerProvider({
     setDuration(0);
 
     if (track.preview_url) {
-      const audio = new Audio(track.preview_url);
+      const audio = new Audio();
+      audio.crossOrigin = "anonymous";
+      audio.src = track.preview_url;
       audioRef.current = audio;
       audio.volume = 1;
       audio.ontimeupdate = () => setCurrentTime(audio.currentTime);
@@ -269,6 +274,7 @@ export function AudioPlayerProvider({
         loopMode,
         currentTime,
         duration,
+        audioRef,
         play: playPreview,
         playPreview,
         playLibrary,

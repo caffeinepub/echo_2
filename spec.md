@@ -1,32 +1,31 @@
-# ECHO
+# ECHO — Audio-Reactive Lighting
 
 ## Current State
-- 3 mock tracks (Obsidian, Fragments, Charcoal) in songs.ts
-- AnimatedCover component supports coverMotion (MP4 URL) and motionEnabled
-- Library always loops MP4 artwork
-- Releases expands selected track with animated cover
-- Discover shows still artwork tiles
+Echo has a global AudioPlayerContext with an HTMLAudioElement ref and plays/pauses tracks. MiniPlayer has static glow and waveform bars. No real-time audio analysis exists. Songs.ts has 15 mock tracks cycling through 3 audio URLs.
 
 ## Requested Changes (Diff)
 
 ### Add
-- 15 mock tracks (replacing the 3 existing ones), each with unique still artwork and a Pexels/public MP4 animation loop URL
-- Each track: still artworkSrc image + coverMotion video URL that visually matches (video = "album art coming alive")
-- Library: still art by default; on tap → animate the MP4 loop with a smooth entrance animation (scale + fade)
-- Releases: animated art loops for all tracks (existing AnimatedCover, animate=true for selected, false for others)
-- Discover: still image in circle with rotation animation when that track is playing in the audio player (same as current behavior)
+- `AudioReactiveContext` — Web Audio API AnalyserNode attached to the playing audio element; exposes `{ amplitude, bass, treble, peak }` as smoothed 0–1 values via RAF loop (~20fps). Falls back to time-based simulation when CORS blocks `createMediaElementSource`. Pauses loop when `isPlaying === false`. Respects `prefers-reduced-motion` (returns zeros when reduced motion).
+- 15 distinct audio URLs in `songs.ts` — use SoundHelix-Song-1 through 12 plus 3 Google media-session URLs for variety.
+- CSS custom properties `--era-amp`, `--era-bass`, `--era-treble`, `--era-peak` set on `:root` from the RAF loop so CSS `calc()` rules drive effects without extra React renders.
 
 ### Modify
-- songs.ts: expand from 3 to 15 mock tracks with generated artwork images and varied Pexels video loop URLs
-- LibraryPage: tapping a track card should toggle its animated state — show still by default, switch to MP4 loop on tap with a cool scale-up/glow animation entrance
-- Mix of owned (userEdition > 0) and unowned (userEdition: 0) tracks across the 15
+- `AudioPlayerContext` — expose `audioRef` as a readonly ref so `AudioReactiveContext` can attach the AnalyserNode when a new audio element is created.
+- `MiniPlayer` — artwork glow reacts to `--era-bass`; waveform bars react to per-frequency-bin values; progress bar glow reacts to `--era-amp`; floating particle opacity reacts to `--era-amp`.
+- `ReleasesPage` — active expanded card border and artwork glow pulse with `--era-bass`.
+- `LibraryPage` — currently-playing card glow reacts to `--era-amp`.
+- `index.css` — add `.echo-ra-glow`, `.echo-ra-border` utility classes using `calc(var(--era-bass) * ...)` for dark mode; add reduced-motion overrides.
 
 ### Remove
-- Nothing structural removed
+- Nothing removed; all existing animations preserved as fallback.
 
 ## Implementation Plan
-1. Generate 15 unique album art images (abstract/visual art style)
-2. Update songs.ts with 15 tracks, each with artworkSrc, coverMotion (different Pexels video URLs), varied metadata
-3. Update LibraryPage: track a `tappedId` state; when a track is tapped, show AnimatedCover with animate=true + CSS entrance animation (scale 0.95→1, glow ring fade-in); tapping again or tapping another track collapses
-4. Releases: already uses AnimatedCover — ensure all 15 tracks render correctly with animate=true for selected
-5. Discover: no change needed — already shows still image with rotation when playing
+1. Update `songs.ts` with 15 distinct audio URLs.
+2. Add `audioRef` to `AudioPlayerContext` context value.
+3. Create `context/AudioReactiveContext.tsx` — AnalyserNode setup, RAF loop, CSS property updates, simulation fallback.
+4. Wrap `AudioReactiveContext.Provider` inside `AudioPlayerProvider` in `main.tsx` or `App.tsx`.
+5. Update `MiniPlayer` — consume reactive CSS vars for glow and reactive waveform bars.
+6. Update `ReleasesPage` — reactive active card halo.
+7. Update `LibraryPage` — reactive playing card glow.
+8. Update `index.css` — CSS utility classes and keyframes for reactive glow.

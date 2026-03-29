@@ -468,3 +468,109 @@
     transform: scale(1.015);
   }
 }
+
+/* ── Audio Reactive CSS variables (set by JS) ── */
+:root {
+  --era-amp: 0;
+  --era-bass: 0;
+  --era-treble: 0;
+  --era-peak: 0;
+}
+
+/* ── Reactive glow: artwork, player aura ── */
+.dark .echo-ra-glow,
+:not([data-theme="light"]) .echo-ra-glow {
+  box-shadow: 0 0 calc(8px + var(--era-bass) * 22px)
+    calc(2px + var(--era-bass) * 5px)
+    rgba(124, 58, 237, calc(0.18 + var(--era-bass) * 0.45)), 0 0
+    calc(16px + var(--era-amp) * 36px) calc(4px + var(--era-amp) * 8px)
+    rgba(99, 60, 220, calc(0.08 + var(--era-amp) * 0.22)), 0 0
+    calc(24px + var(--era-treble) * 20px)
+    rgba(34, 211, 238, calc(0.04 + var(--era-treble) * 0.14));
+  transition: box-shadow 0.18s ease;
+}
+
+[data-theme="light"] .echo-ra-glow {
+  box-shadow: 0 0 calc(4px + var(--era-bass) * 8px)
+    calc(1px + var(--era-bass) * 2px)
+    rgba(124, 58, 237, calc(0.06 + var(--era-bass) * 0.1));
+  transition: box-shadow 0.18s ease;
+}
+
+/* ── Reactive border: active card halo ── */
+.dark .echo-ra-border,
+:not([data-theme="light"]) .echo-ra-border {
+  border-color: rgba(124, 58, 237, calc(0.15 + var(--era-amp) * 0.45)) !important;
+  box-shadow: 0 0 calc(6px + var(--era-bass) * 18px)
+    rgba(124, 58, 237, calc(0.12 + var(--era-bass) * 0.32));
+}
+
+[data-theme="light"] .echo-ra-border {
+  border-color: rgba(124, 58, 237, calc(0.08 + var(--era-amp) * 0.18)) !important;
+  box-shadow: 0 0 calc(4px + var(--era-bass) * 8px)
+    rgba(124, 58, 237, calc(0.04 + var(--era-bass) * 0.1));
+}
+
+/* ── Reactive progress bar glow ── */
+.dark .echo-ra-progress,
+:not([data-theme="light"]) .echo-ra-progress {
+  box-shadow: 0 0 calc(4px + var(--era-amp) * 14px)
+    rgba(139, 92, 246, calc(0.35 + var(--era-amp) * 0.45)), 0 0
+    calc(8px + var(--era-amp) * 22px)
+    rgba(139, 92, 246, calc(0.1 + var(--era-amp) * 0.2));
+}
+
+[data-theme="light"] .echo-ra-progress {
+  box-shadow: 0 0 calc(2px + var(--era-amp) * 6px)
+    rgba(124, 58, 237, calc(0.15 + var(--era-amp) * 0.2));
+}
+
+/* ── Reactive waveform bars ── */
+.echo-ra-bar {
+  transform-origin: bottom;
+}
+.echo-ra-bar-bass {
+  transform: scaleY(calc(0.12 + var(--era-bass) * 0.88));
+}
+.echo-ra-bar-mid {
+  transform: scaleY(calc(0.18 + var(--era-amp) * 0.82));
+}
+.echo-ra-bar-treble {
+  transform: scaleY(calc(0.12 + var(--era-treble) * 0.88));
+}
+
+/* ── Reactive artwork scale pulse on bass ── */
+.dark .echo-ra-scale,
+:not([data-theme="light"]) .echo-ra-scale {
+  transform: scale(calc(1 + var(--era-bass) * 0.025));
+  transition: transform 0.15s ease;
+}
+
+/* ── Ambient background wash (very subtle, dark mode only) ── */
+.dark .echo-ra-ambient,
+:not([data-theme="light"]) .echo-ra-ambient {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 100%,
+    rgba(124, 58, 237, calc(var(--era-amp) * 0.08)) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Disable all reactive effects when reduced motion is preferred */
+@media (prefers-reduced-motion: reduce) {
+  .echo-ra-glow,
+  .echo-ra-border,
+  .echo-ra-progress,
+  .echo-ra-scale {
+    animation: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .echo-ra-bar-bass,
+  .echo-ra-bar-mid,
+  .echo-ra-bar-treble {
+    transform: scaleY(0.5) !important;
+  }
+}

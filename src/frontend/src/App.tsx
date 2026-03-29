@@ -8,6 +8,7 @@ import { TopBar } from "./components/TopBar";
 import { ADMIN_WALLET_ADDRESS } from "./config/admin";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { AudioPlayerProvider } from "./context/AudioPlayerContext";
+import { AudioReactiveProvider } from "./context/AudioReactiveContext";
 import { WalletProvider } from "./context/WalletContext";
 import { SolPriceProvider } from "./contexts/SolPriceContext";
 import { useWallet } from "./hooks/useWallet";
@@ -70,54 +71,58 @@ function AppContent() {
 
   return (
     <AudioPlayerProvider>
-      <div className="min-h-screen bg-background">
-        {showSplash && <SplashScreen />}
+      <AudioReactiveProvider>
+        <div className="min-h-screen bg-background">
+          {showSplash && <SplashScreen />}
 
-        <TopBar
-          onAdminClick={() => setView({ type: "admin" })}
-          onUploadClick={handleUploadClick}
-        />
+          <TopBar
+            onAdminClick={() => setView({ type: "admin" })}
+            onUploadClick={handleUploadClick}
+          />
 
-        <main className="pt-16 pb-[68px] min-h-screen">
-          {view.type === "tab" && view.tab === "library" && (
-            <LibraryPage
-              onAlbumClick={handleAlbumClick}
-              onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
-            />
-          )}
-          {view.type === "tab" && view.tab === "releases" && (
-            <ReleasesPage onAlbumClick={handleAlbumClick} />
-          )}
-          {view.type === "tab" && view.tab === "market" && (
-            <MarketPage onAlbumClick={handleMarketAlbumClick} />
-          )}
-          {view.type === "album-player" && (
-            <AlbumPlayerPage
-              albumId={view.albumId}
-              onBack={() => setView({ type: "tab", tab: view.fromTab })}
-            />
-          )}
-          {view.type === "market-detail" && (
-            <MarketDetailPage
-              albumId={view.albumId}
-              onBack={() => setView({ type: "tab", tab: "market" })}
-            />
-          )}
-          {view.type === "admin" && (
-            <ManageReleasesPage
-              onBack={() => setView({ type: "tab", tab: "library" })}
-            />
-          )}
-          {view.type === "creator-submit" && (
-            <CreatorSubmitPage
-              onBack={() => setView({ type: "tab", tab: "library" })}
-            />
-          )}
-        </main>
+          <main className="pt-16 pb-[68px] min-h-screen">
+            {view.type === "tab" && view.tab === "library" && (
+              <LibraryPage
+                onAlbumClick={handleAlbumClick}
+                onBrowseReleases={() =>
+                  setView({ type: "tab", tab: "releases" })
+                }
+              />
+            )}
+            {view.type === "tab" && view.tab === "releases" && (
+              <ReleasesPage onAlbumClick={handleAlbumClick} />
+            )}
+            {view.type === "tab" && view.tab === "market" && (
+              <MarketPage onAlbumClick={handleMarketAlbumClick} />
+            )}
+            {view.type === "album-player" && (
+              <AlbumPlayerPage
+                albumId={view.albumId}
+                onBack={() => setView({ type: "tab", tab: view.fromTab })}
+              />
+            )}
+            {view.type === "market-detail" && (
+              <MarketDetailPage
+                albumId={view.albumId}
+                onBack={() => setView({ type: "tab", tab: "market" })}
+              />
+            )}
+            {view.type === "admin" && (
+              <ManageReleasesPage
+                onBack={() => setView({ type: "tab", tab: "library" })}
+              />
+            )}
+            {view.type === "creator-submit" && (
+              <CreatorSubmitPage
+                onBack={() => setView({ type: "tab", tab: "library" })}
+              />
+            )}
+          </main>
 
-        <MiniPlayer />
-        <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-      </div>
+          <MiniPlayer />
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+      </AudioReactiveProvider>
     </AudioPlayerProvider>
   );
 }
