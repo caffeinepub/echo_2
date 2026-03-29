@@ -518,7 +518,7 @@ function ReleaseFormModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Audio File <span style={{ color: "#f87171" }}>*</span>
+              Audio File (WAV) <span style={{ color: "#f87171" }}>*</span>
             </Label>
             <button
               type="button"
@@ -555,13 +555,13 @@ function ReleaseFormModal({
               >
                 {form.audioFileName ||
                   editRelease?.audioFileName ||
-                  "Click to select audio file"}
+                  "Click to select WAV file"}
               </span>
             </button>
             <input
               ref={audioRef}
               type="file"
-              accept="audio/*"
+              accept="audio/wav,audio/x-wav,.wav"
               onChange={handleAudioChange}
               style={{ display: "none" }}
             />
