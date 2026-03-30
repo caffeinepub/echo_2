@@ -3,7 +3,8 @@ import { useTheme } from "../ThemeContext";
 import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useWallet } from "../hooks/useWallet";
 
-const MINTY_LOGO = "/assets/generated/minty-logo-transparent.dim_600x200.png";
+const MINTY_LOGO =
+  "/assets/uploads/da0a37bf-f0f7-4b3e-8435-d339d757ced0-019d3c90-0de4-771f-8b28-c86522af61d6-1.png";
 
 // Mint teal glow — subtle, premium, cursive-logo-friendly
 const NEON_STYLES = `
