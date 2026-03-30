@@ -66,7 +66,7 @@ function WaveformBars({ isPlaying }: { isPlaying: boolean }) {
           style={{
             width: 2,
             borderRadius: 1,
-            background: "linear-gradient(to top, #7c3aed, #a78bfa)",
+            background: "linear-gradient(to top, #10b981, #6ee7b7)",
             opacity: 0.55,
             height: "100%",
             transition: "transform 0.08s ease",
@@ -145,7 +145,7 @@ function FloatingParticles({ isPlaying }: { isPlaying: boolean }) {
                 width: p.size,
                 height: p.size,
                 borderRadius: "50%",
-                background: p.warm ? "#c4b5fd" : "#e0d7ff",
+                background: p.warm ? "#a7f3d0" : "#d1fae5",
                 opacity: p.opacity,
                 transform: `translateX(${p.x}px)`,
                 animationName: "echoFloat",
@@ -247,7 +247,7 @@ function SeekBar({
         className={`absolute inset-y-0 left-0 rounded-full${isPlaying ? " echo-ra-progress" : ""}`}
         style={{
           width: `${pct}%`,
-          background: "linear-gradient(to right, #7c3aed, #8b5cf6)",
+          background: "linear-gradient(to right, #10b981, #34d399)",
         }}
       >
         {/* Shimmer */}
@@ -270,7 +270,7 @@ function SeekBar({
         className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white shadow-sm"
         style={{
           left: `calc(${pct}% - 5px)`,
-          boxShadow: "0 0 4px rgba(139,92,246,0.5)",
+          boxShadow: "0 0 4px rgba(52,211,153,0.5)",
         }}
       />
     </div>
@@ -334,8 +334,8 @@ export function MiniPlayer() {
           100% { transform: translateX(320%); }
         }
         @keyframes echoGlowPulse {
-          0%, 100% { box-shadow: 0 0 14px 4px rgba(139,92,246,0.35), 0 0 28px 6px rgba(99,60,220,0.18); }
-          50%       { box-shadow: 0 0 22px 8px rgba(139,92,246,0.55), 0 0 44px 12px rgba(99,60,220,0.28); }
+          0%, 100% { box-shadow: 0 0 14px 4px rgba(52,211,153,0.35), 0 0 28px 6px rgba(16,185,129,0.18); }
+          50%       { box-shadow: 0 0 22px 8px rgba(52,211,153,0.55), 0 0 44px 12px rgba(16,185,129,0.28); }
         }
       `}</style>
 
@@ -414,7 +414,10 @@ export function MiniPlayer() {
                   {currentTrack.artist}
                 </p>
                 {isLibrary && queue.length > 0 && (
-                  <p className="text-[9px] uppercase tracking-widest text-cyan-400/40 mt-0.5">
+                  <p
+                    className="text-[9px] uppercase tracking-widest mt-0.5"
+                    style={{ color: "oklch(0.55 0.12 160 / 0.5)" }}
+                  >
                     +{queue.length} in queue
                   </p>
                 )}
@@ -486,14 +489,13 @@ export function MiniPlayer() {
                     aria-label={loopMode === "loop" ? "Loop on" : "Loop off"}
                   >
                     <Repeat
-                      className={`w-3.5 h-3.5 transition-colors ${
-                        loopMode === "loop" ? "text-violet-400" : ""
-                      }`}
-                      style={
-                        loopMode !== "loop"
-                          ? { color: "var(--echo-text-dark)" }
-                          : undefined
-                      }
+                      className="w-3.5 h-3.5 transition-colors"
+                      style={{
+                        color:
+                          loopMode === "loop"
+                            ? "oklch(0.70 0.18 160)"
+                            : "var(--echo-text-dark)",
+                      }}
                     />
                   </button>
                 </>
@@ -549,7 +551,7 @@ export function MiniPlayer() {
                     className={`h-full rounded-full${isPlaying ? " echo-ra-progress" : ""}`}
                     style={{
                       width: `${previewProgress}%`,
-                      background: "rgba(34,211,238,0.35)",
+                      background: "rgba(52,211,153,0.35)",
                       transition: "width 0.3s linear",
                     }}
                   />

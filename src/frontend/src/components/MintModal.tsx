@@ -41,14 +41,13 @@ function ClipMintContent({
   );
   const [editionNumber, setEditionNumber] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [quantity, setQuantity] = useState(1);
 
   const clip = clips.find((c) => c.id === clipId);
   if (!clip) return null;
 
   const alreadyOwned = isOwned(clipId);
   const ownership = getOwnership(clipId);
-  const solEquiv =
-    solPrice > 0 ? (clip.mintPriceUSD / solPrice).toFixed(4) : "—";
 
   async function handleMint() {
     setMintState("awaiting_approval");
@@ -144,13 +143,39 @@ function ClipMintContent({
           </div>
           <div className="border-t border-border/20" />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground/50">Mint price</span>
+            <span className="text-xs text-muted-foreground/50">Quantity</span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                className="w-7 h-7 rounded-full border border-border/30 text-foreground/60 flex items-center justify-center text-sm"
+              >
+                −
+              </button>
+              <span className="text-sm font-mono w-4 text-center text-foreground/90">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                className="w-7 h-7 rounded-full border border-border/30 text-foreground/60 flex items-center justify-center text-sm"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground/50">Total</span>
             <div className="text-right">
               <span className="text-lg font-mono font-medium text-foreground/90">
-                {formatUSD(clip.mintPriceUSD)}
+                {(
+                  (clip.mintPriceUSD / (solPrice > 0 ? solPrice : 150)) *
+                  quantity
+                ).toFixed(4)}{" "}
+                SOL
               </span>
               <p className="text-[11px] font-mono text-muted-foreground/40">
-                ≈ {solEquiv} SOL
+                {formatUSD(clip.mintPriceUSD * quantity)}
               </p>
             </div>
           </div>
@@ -161,7 +186,7 @@ function ClipMintContent({
             className="w-full py-3 rounded-xl text-sm font-medium text-white"
             style={{ backgroundColor: "#7C3AED" }}
           >
-            Mint for $5
+            Confirm Mint
           </button>
         </motion.div>
       )}

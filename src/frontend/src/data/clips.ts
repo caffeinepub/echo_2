@@ -14,7 +14,7 @@ export interface Clip {
 
 export const MINT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 export const MINT_PRICE_USD = 5;
-export const TOTAL_SUPPLY = 50;
+export const TOTAL_SUPPLY = 100;
 
 const NOW = Date.now();
 const DAY = 86400000;
@@ -30,7 +30,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-fragments.dim_600x600.jpg",
     postedAt: NOW - 1 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 12,
+    mintedCount: 24,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -44,7 +44,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-charcoal.dim_600x600.jpg",
     postedAt: NOW - 2 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 38,
+    mintedCount: 76,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -58,7 +58,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-obsidian.dim_600x600.jpg",
     postedAt: NOW - 3 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 45,
+    mintedCount: 90,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -72,7 +72,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-grid.dim_600x600.jpg",
     postedAt: NOW - 1.5 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 7,
+    mintedCount: 14,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -86,7 +86,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-aurora.dim_600x600.jpg",
     postedAt: NOW - 5 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 29,
+    mintedCount: 58,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -100,7 +100,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-prism.dim_600x600.jpg",
     postedAt: NOW - 6 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 50,
+    mintedCount: 100,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -114,7 +114,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-void.dim_600x600.jpg",
     postedAt: NOW - 0.5 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 3,
+    mintedCount: 6,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },
@@ -128,7 +128,7 @@ export const MOCK_CLIPS: Clip[] = [
     thumbnailUrl: "/assets/generated/cover-bloom.dim_600x600.jpg",
     postedAt: NOW - 4 * DAY,
     mintWindowMs: MINT_WINDOW_MS,
-    mintedCount: 21,
+    mintedCount: 42,
     supply: TOTAL_SUPPLY,
     mintPriceUSD: MINT_PRICE_USD,
   },

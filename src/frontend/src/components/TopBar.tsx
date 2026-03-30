@@ -3,32 +3,19 @@ import { useTheme } from "../ThemeContext";
 import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useWallet } from "../hooks/useWallet";
 
-const ECHO_NEON_LOGO =
-  "/assets/uploads/c81a43c7-e2ef-4dd2-a448-b114380c0703-019d30f2-572d-719b-99c5-08653714f110-1.png";
+const MINTY_LOGO = "/assets/generated/minty-logo-transparent.dim_600x200.png";
 
-// Crisp neon feel: tighter glow radii, sharper tube edges, controlled purple aura
+// Mint teal glow — subtle, premium, cursive-logo-friendly
 const NEON_STYLES = `
-@keyframes echo-neon-flicker {
-  0%   { opacity: 1;    filter: brightness(1.0) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
-  5%   { opacity: 0.88; filter: brightness(0.92); }
-  9%   { opacity: 1;    filter: brightness(1.03) drop-shadow(0 0 2px rgba(255,240,210,0.95)) drop-shadow(0 0 5px rgba(170,120,255,0.46)); }
-  12%  { opacity: 0.84; filter: brightness(0.90); }
-  15%  { opacity: 1;    filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)); }
-  18%  { opacity: 0.93; filter: brightness(0.96); }
-  22%  { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
-  100% { opacity: 1;    filter: brightness(1.01) drop-shadow(0 0 1.5px rgba(255,240,210,0.90)) drop-shadow(0 0 4.5px rgba(170,120,255,0.42)) drop-shadow(0 0 13px rgba(130,60,255,0.22)); }
-}
-
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.88)) drop-shadow(0 0 4px rgba(160,100,255,0.34)) drop-shadow(0 0 13px rgba(130,60,255,0.18)); }
-  50%  { filter: brightness(1.04) drop-shadow(0 0 2px rgba(255,240,210,0.95)) drop-shadow(0 0 6.5px rgba(170,110,255,0.46)) drop-shadow(0 0 17px rgba(140,70,255,0.25)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 1.5px rgba(255,240,210,0.88)) drop-shadow(0 0 4px rgba(160,100,255,0.34)) drop-shadow(0 0 13px rgba(130,60,255,0.18)); }
+  0%   { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
+  50%  { filter: brightness(1.05) drop-shadow(0 0 3px rgba(52,211,153,0.75)) drop-shadow(0 0 12px rgba(52,211,153,0.35)) drop-shadow(0 0 24px rgba(52,211,153,0.18)); }
+  100% { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
 }
 
 .echo-logo-neon {
-  animation:
-    echo-neon-flicker 0.75s ease-out forwards,
-    echo-neon-breathe 3.8s ease-in-out 0.75s infinite;
+  filter: drop-shadow(0 0 2px rgba(52,211,153,0.55)) drop-shadow(0 0 8px rgba(52,211,153,0.22)) drop-shadow(0 0 16px rgba(52,211,153,0.12));
+  animation: echo-neon-breathe 4s ease-in-out infinite;
   will-change: filter;
 }
 `;
@@ -124,11 +111,11 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
         paddingRight: "20px",
       }}
     >
-      {/* Neon Logo */}
+      {/* Minty Logo */}
       <div className="relative flex items-center" style={{ paddingTop: "6px" }}>
         <img
-          src={ECHO_NEON_LOGO}
-          alt="ECHO"
+          src={MINTY_LOGO}
+          alt="Minty"
           className="echo-logo-neon select-none"
           style={{
             width: "180px",
@@ -159,18 +146,18 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
               fontWeight: 600,
               letterSpacing: "0.04em",
               textTransform: "uppercase",
-              color: "oklch(0.65 0.20 290)",
-              background: "oklch(0.45 0.20 290 / 0.12)",
-              border: "1px solid oklch(0.55 0.25 290 / 0.25)",
+              color: "oklch(0.70 0.16 160)",
+              background: "oklch(0.45 0.16 160 / 0.12)",
+              border: "1px solid oklch(0.60 0.18 160 / 0.25)",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background =
-                "oklch(0.45 0.20 290 / 0.22)";
+                "oklch(0.45 0.16 160 / 0.22)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background =
-                "oklch(0.45 0.20 290 / 0.12)";
+                "oklch(0.45 0.16 160 / 0.12)";
             }}
           >
             <Settings2 size={12} />
@@ -193,18 +180,18 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
               fontWeight: 600,
               letterSpacing: "0.04em",
               textTransform: "uppercase",
-              color: "oklch(0.65 0.18 200)",
-              background: "oklch(0.45 0.18 200 / 0.12)",
-              border: "1px solid oklch(0.55 0.22 200 / 0.25)",
+              color: "oklch(0.70 0.16 160)",
+              background: "oklch(0.45 0.16 160 / 0.12)",
+              border: "1px solid oklch(0.60 0.18 160 / 0.25)",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background =
-                "oklch(0.45 0.18 200 / 0.22)";
+                "oklch(0.45 0.16 160 / 0.22)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background =
-                "oklch(0.45 0.18 200 / 0.12)";
+                "oklch(0.45 0.16 160 / 0.12)";
             }}
           >
             <Upload size={12} />
@@ -220,9 +207,9 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
           aria-label={isLight ? "Switch to dark mode" : "Switch to light mode"}
           className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
           style={{
-            color: isLight ? "#0F172A" : "oklch(0.55 0.008 240)",
+            color: isLight ? "#0a1f1a" : "oklch(0.55 0.008 160)",
             background: "transparent",
-            border: isLight ? "1px solid #E6EAF2" : "1px solid transparent",
+            border: isLight ? "1px solid #d4ede6" : "1px solid transparent",
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.background = isLight
@@ -244,34 +231,34 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
           data-ocid="wallet.button"
           className="group flex items-center gap-2 rounded-xl font-medium text-sm transition-all duration-150 select-none"
           style={{
-            backgroundColor: "oklch(0.22 0.12 290)",
+            backgroundColor: "oklch(0.16 0.06 165)",
             color: "white",
             paddingLeft: "10px",
             paddingRight: "12px",
             paddingTop: "7px",
             paddingBottom: "7px",
-            border: "1px solid oklch(0.55 0.25 290 / 0.4)",
-            boxShadow: "0 0 14px oklch(0.55 0.25 290 / 0.12)",
+            border: "1px solid oklch(0.50 0.18 160 / 0.4)",
+            boxShadow: "0 0 14px oklch(0.65 0.18 160 / 0.12)",
           }}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
-            el.style.backgroundColor = "oklch(0.27 0.15 290)";
-            el.style.borderColor = "oklch(0.55 0.25 290 / 0.65)";
-            el.style.boxShadow = "0 0 20px oklch(0.55 0.25 290 / 0.22)";
+            el.style.backgroundColor = "oklch(0.20 0.08 165)";
+            el.style.borderColor = "oklch(0.65 0.18 160 / 0.65)";
+            el.style.boxShadow = "0 0 20px oklch(0.65 0.18 160 / 0.22)";
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
-            el.style.backgroundColor = "oklch(0.22 0.12 290)";
-            el.style.borderColor = "oklch(0.55 0.25 290 / 0.4)";
-            el.style.boxShadow = "0 0 14px oklch(0.55 0.25 290 / 0.12)";
+            el.style.backgroundColor = "oklch(0.16 0.06 165)";
+            el.style.borderColor = "oklch(0.50 0.18 160 / 0.4)";
+            el.style.boxShadow = "0 0 14px oklch(0.65 0.18 160 / 0.12)";
           }}
           onMouseDown={(e) => {
             (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-              "oklch(0.18 0.10 290)";
+              "oklch(0.12 0.04 165)";
           }}
           onMouseUp={(e) => {
             (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-              "oklch(0.27 0.15 290)";
+              "oklch(0.20 0.08 165)";
           }}
         >
           <PhantomLogo size={18} />

@@ -1,5 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
+import { AnimatePresence } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { MintModal } from "../components/MintModal";
 import { useClipsContext } from "../context/ClipsContext";
@@ -16,29 +17,9 @@ function timeRemaining(clip: Clip): string {
   if (left <= 0) return "CLOSED";
   const days = Math.floor(left / 86400000);
   const hours = Math.floor((left % 86400000) / 3600000);
-  if (days > 0) return `${days}d ${hours}h left`;
+  if (days > 0) return `${days}d ${hours}h`;
   const mins = Math.floor((left % 3600000) / 60000);
-  return `${hours}h ${mins}m left`;
-}
-
-function MintProgress({ minted, supply }: { minted: number; supply: number }) {
-  const pct = Math.min(100, (minted / supply) * 100);
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-[2px] rounded-full bg-white/10 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full"
-          style={{ background: "linear-gradient(90deg, #7c3aed, #a855f7)" }}
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        />
-      </div>
-      <span className="text-[11px] font-mono text-white/70 whitespace-nowrap">
-        {minted} / {supply}
-      </span>
-    </div>
-  );
+  return `${hours}h ${mins}m`;
 }
 
 function ClipCard({
@@ -57,7 +38,6 @@ function ClipCard({
   const mintClosed = expired || isSoldOut;
   const remaining = timeRemaining(clip);
 
-  // IntersectionObserver — autoplay/pause as card enters/leaves viewport
   useEffect(() => {
     const el = containerRef.current;
     const vid = videoRef.current;
@@ -81,7 +61,10 @@ function ClipCard({
     <div
       ref={containerRef}
       className="relative w-full flex-shrink-0 overflow-hidden bg-black"
-      style={{ height: "calc(100vh - 64px - 68px)", scrollSnapAlign: "start" }}
+      style={{
+        height: "calc(100vh - 64px - 44px - 68px)",
+        scrollSnapAlign: "start",
+      }}
       data-ocid={`releases.item.${clip.id}`}
     >
       {/* Background video */}
@@ -120,18 +103,31 @@ function ClipCard({
           )}
         </div>
 
-        {/* Mint progress */}
-        <MintProgress minted={clip.mintedCount} supply={clip.supply} />
+        {/* Mint count text */}
+        <span className="text-[12px] font-mono text-white/50">
+          {clip.mintedCount} / {clip.supply} minted
+        </span>
 
         {/* Time remaining + mint button */}
         <div className="flex items-center justify-between gap-3">
-          <span
-            className={`text-[12px] font-mono font-medium ${
-              mintClosed ? "text-red-400/80" : "text-white/60"
-            }`}
-          >
-            {remaining}
-          </span>
+          {remaining === "CLOSED" ? (
+            <span className="text-[12px] font-mono font-medium text-red-400/80">
+              CLOSED
+            </span>
+          ) : (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">
+                Mint ending in
+              </span>
+              <span
+                className={`text-[12px] font-mono font-medium ${
+                  mintClosed ? "text-red-400/80" : "text-white/70"
+                }`}
+              >
+                {remaining}
+              </span>
+            </div>
+          )}
 
           {owned ? (
             <span
@@ -159,7 +155,7 @@ function ClipCard({
                   : "0 0 20px rgba(124,58,237,0.5)",
               }}
             >
-              {isSoldOut ? "Sold Out" : expired ? "Closed" : "Mint for $5"}
+              {isSoldOut ? "Sold Out" : expired ? "Closed" : "Mint"}
             </button>
           )}
         </div>
@@ -174,43 +170,95 @@ export function ReleasesPage({ onRecord }: ReleasesPageProps) {
   const { theme } = useTheme();
   const feedRef = useRef<HTMLDivElement>(null);
   const [mintingClipId, setMintingClipId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<"trending" | "new" | "minted">(
+    "trending",
+  );
+
+  const sortedClips = useMemo(() => {
+    const arr = [...clips];
+    if (sortMode === "minted") {
+      arr.sort((a, b) => b.mintedCount - a.mintedCount);
+    } else {
+      // trending and new both sort by newest
+      arr.sort((a, b) => b.postedAt - a.postedAt);
+    }
+    return arr;
+  }, [clips, sortMode]);
 
   const handleMintSuccess = useCallback(() => {
     setMintingClipId(null);
   }, []);
+
+  // Suppress unused warning
+  void solPrice;
 
   return (
     <div
       className="relative w-full"
       style={{ background: theme === "light" ? "#111" : "#000" }}
     >
-      {/* Feed header */}
+      {/* Feed header row */}
       <div
-        className="fixed top-16 left-0 right-0 z-30 flex items-center justify-between px-5 py-3 pointer-events-none"
+        className="fixed top-16 left-0 right-0 z-30 flex items-center justify-end px-5 py-3 pointer-events-none"
         style={{
           background:
             "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
         }}
       >
-        <span
-          className="text-white font-bold tracking-[0.2em] text-[13px] uppercase pointer-events-auto"
-          style={{ fontFamily: "'JetBrains Mono', monospace" }}
-        >
-          ECHO CLIPS
-        </span>
         <button
           type="button"
           onClick={onRecord}
           data-ocid="releases.open_modal_button"
-          className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white transition-all active:scale-95"
+          className="pointer-events-auto w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-95"
           style={{
-            background: "rgba(220,38,38,0.9)",
-            boxShadow: "0 0 12px rgba(220,38,38,0.5)",
+            background: "rgba(255,255,255,0.1)",
+            backdropFilter: "blur(8px)",
           }}
         >
-          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          REC
+          <Plus size={16} className="text-white/80" />
         </button>
+      </div>
+
+      {/* Sort filter bar */}
+      <div
+        className="fixed left-0 right-0 z-20 flex items-center justify-center px-5 py-2"
+        style={{
+          top: "64px",
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%)",
+        }}
+      >
+        <div
+          className="flex rounded-full p-0.5"
+          style={{
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          {(["trending", "new", "minted"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSortMode(mode)}
+              data-ocid={`releases.${mode}.tab`}
+              className="px-4 py-1.5 rounded-full text-[12px] font-medium capitalize transition-all"
+              style={
+                sortMode === mode
+                  ? {
+                      background: "rgba(124,58,237,0.85)",
+                      color: "white",
+                      boxShadow: "0 0 12px rgba(124,58,237,0.4)",
+                    }
+                  : {
+                      color: "rgba(255,255,255,0.5)",
+                      background: "transparent",
+                    }
+              }
+            >
+              {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Scrollable feed */}
@@ -220,10 +268,11 @@ export function ReleasesPage({ onRecord }: ReleasesPageProps) {
         style={{
           scrollSnapType: "y mandatory",
           WebkitOverflowScrolling: "touch",
-          height: "calc(100vh - 64px - 68px)",
+          height: "calc(100vh - 64px - 44px - 68px)",
+          marginTop: "calc(64px + 44px)",
         }}
       >
-        {clips.map((clip) => (
+        {sortedClips.map((clip) => (
           <ClipCard
             key={clip.id}
             clip={clip}
