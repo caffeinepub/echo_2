@@ -35,6 +35,36 @@ function getStatusLabel(
   return null;
 }
 
+function MintyHeroDisplay() {
+  return (
+    <div className="flex justify-center items-center py-6 pb-2">
+      <div className="relative flex items-center justify-center">
+        {/* Soft radial mint glow behind the collectible */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse 70% 50% at 50% 80%, rgba(45,212,191,0.15) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Floating collectible image */}
+        <img
+          src="/images/minty_ice.png"
+          alt="Featured Collectible"
+          className="minty-hero relative max-h-[240px] w-auto object-contain"
+          style={{
+            filter:
+              "drop-shadow(0 0 18px rgba(45,212,191,0.35)) drop-shadow(0 0 6px rgba(45,212,191,0.2))",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function SongCard({
   song,
   index,
@@ -333,6 +363,9 @@ export function LibraryPage({
       >
         Library
       </motion.h1>
+
+      {/* Featured collectible hero — always visible */}
+      <MintyHeroDisplay />
 
       {!isConnected ? (
         <div

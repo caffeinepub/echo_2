@@ -463,6 +463,30 @@
   }
 }
 
+/* ── Minty Hero Collectible — floating 3D rotation ── */
+@keyframes mintyFloatRotate {
+  0% {
+    transform: perspective(900px) rotateY(0deg) translateY(0px);
+  }
+  50% {
+    transform: perspective(900px) rotateY(180deg) translateY(-8px);
+  }
+  100% {
+    transform: perspective(900px) rotateY(360deg) translateY(0px);
+  }
+}
+
+.minty-hero {
+  animation: mintyFloatRotate 18s ease-in-out infinite;
+  transform-style: preserve-3d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minty-hero {
+    animation: none;
+  }
+}
+
 /* ── Audio Reactive CSS variables (set by JS) ── */
 :root {
   --era-amp: 0;

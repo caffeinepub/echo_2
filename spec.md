@@ -1,40 +1,36 @@
-# Minty — Logo & Releases Page Overhaul
+# Minty — Featured Collectible Hero Display in Library
 
 ## Current State
-- TopBar uses a generated Minty logo PNG at `/assets/generated/minty-logo-transparent.dim_600x200.png`
-- ReleasesPage is a TikTok/Vine-style vertical video feed with video players, play buttons, clip cards, REC button, and media playback controls
-- Mint modal, sort filter, and scroll-snap feed are all video-centric
+LibraryPage (`src/frontend/src/pages/LibraryPage.tsx`) renders:
+1. `<motion.h1>Library</motion.h1>` title at the top
+2. Empty state if disconnected or no items
+3. Content sections: "CLIPS" grid and "DROPS" (songs/collectibles) grid
+
+There is no featured hero element between the title and the content sections.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New Releases page: marketplace activity feed for graded card slabs / collectibles
-- Each feed item is a clean card panel showing: card artwork (2D image), slab grade, set name, population data, market price, price change %, volume indicator, small sparkline chart, mint glow accent highlight, tap to open detail view
-- Detail view (slide-up sheet or modal): larger artwork, price chart, population data, grade breakdown, recent sales, supply distribution, ownership verification status
-- Mock data: newly verified slabs, trending slabs, high volume cards, notable sales, newly supported sets
-- Logo: use uploaded Minty script PNG at `/assets/uploads/da0a37bf-f0f7-4b3e-8435-d339d757ced0-019d3c90-0de4-771f-8b28-c86522af61d6-1.png` as primary logo in TopBar with soft mint glow on dark bg
+- `MintyHeroDisplay` component: a standalone inline component rendered in `LibraryPage` directly beneath the `<motion.h1>Library</motion.h1>` title and before the content sections (CLIPS/DROPS grids)
+- The component displays `/images/minty_ice.png` (an ice crystal collectible image) centered horizontally
+- CSS keyframe animation `mintyFloatRotate`: 3D Y-axis rotation (0→180→360 deg) combined with vertical float (-8px at 50%) over 18 seconds, ease-in-out infinite
+- Slight mint teal drop-shadow / radial glow behind the image (no borders, no container box)
+- The animation uses `perspective(900px)` and `transform-style: preserve-3d`
+- Image max-height 240px on mobile, maintains aspect ratio, responsive
 
 ### Modify
-- TopBar: swap logo src to the newly uploaded file path, keep same placement/sizing/glow animation
-- ReleasesPage: fully replace video feed with collectibles activity feed; keep layout spacing system, bottom nav offsets, sort filter bar (Trending / New / Notable), no video/audio elements whatsoever
-- Sort filter: rename options to match collectibles context (Trending / New / Notable)
+- `LibraryPage`: insert the `MintyHeroDisplay` between the `<motion.h1>` and the empty-state/content sections
+- Should appear regardless of connected/disconnected state (it's a decorative hero element for the Library screen)
 
 ### Remove
-- All video `<video>` elements from ReleasesPage
-- Play buttons, progress bars for media, REC button, media timelines, audio players
-- ClipCard component and clip-based logic from ReleasesPage
-- `useClipsContext` dependency from ReleasesPage (replace with local mock slab data)
+- Nothing removed
 
 ## Implementation Plan
-1. Update TopBar logo src to the uploaded file path
-2. Create mock slab/collectible data (15 items) with: id, name, setName, grade, grader (PSA/BGS/SGC), population, marketPrice, priceChange, volume, sparklineData, imageUrl, verifiedAt
-3. Rewrite ReleasesPage as a collectibles activity feed:
-   - Keep fixed header with sort filter (Trending / New / Notable) and mint glow active state
-   - Scrollable list of SlabCard panels below
-   - Each SlabCard: card image thumbnail (square, ~72px), grade badge, set name, price, price change %, population, volume, sparkline
-   - Tap card → open SlabDetailSheet (full modal with larger art, price chart, population breakdown, recent sales)
-   - No video, no audio, no play buttons, no progress bars
-   - Mint glow accent on card left border or active highlight
-   - Near-black green-tinted background, thin illuminated borders, layered panel depth
-4. Keep existing sort filter bar UI pattern but with collectibles-relevant labels
-5. Validate and build
+1. Add the `@keyframes mintyFloatRotate` CSS into `index.css` (or as a `<style>` tag / inline via a style object using the given keyframes)
+2. Create `MintyHeroDisplay` inline in `LibraryPage.tsx`:
+   - Centered wrapper div: `flex justify-center`, `py-6 md:py-8`
+   - `<img src="/images/minty_ice.png" ...>` with classes: `max-h-[240px] w-auto object-contain` + `.minty-hero` animation class
+   - Soft radial mint glow behind it: a pseudo/sibling div with `bg-[radial-gradient(ellipse_60%_40%_at_50%_80%,rgba(45,212,191,0.18),transparent)]` underneath the image
+   - `transform-style: preserve-3d` on the image element
+   - `prefers-reduced-motion` media query: disable animation for accessibility
+3. Insert `<MintyHeroDisplay />` into `LibraryPage` render right after `<motion.h1>` and before the empty-state check
