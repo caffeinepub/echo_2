@@ -307,10 +307,10 @@ const C = {
   accent: "oklch(0.70 0.18 160)",
   accentGlow: "oklch(0.70 0.18 160 / 0.22)",
   bg: "oklch(0.08 0.02 160)",
-  panel: "oklch(0.12 0.03 160)",
-  panelHover: "oklch(0.14 0.035 160)",
-  border: "oklch(0.35 0.12 160 / 0.20)",
-  borderActive: "oklch(0.50 0.15 160 / 0.45)",
+  panel: "oklch(0.18 0.06 160 / 0.42)",
+  panelHover: "oklch(0.22 0.07 160 / 0.54)",
+  border: "oklch(0.55 0.12 160 / 0.18)",
+  borderActive: "oklch(0.65 0.16 160 / 0.42)",
   text: "oklch(0.95 0.01 160)",
   textSec: "oklch(0.60 0.08 160)",
   pos: "oklch(0.72 0.17 145)",
@@ -483,7 +483,9 @@ function SlabDetailSheet({
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         style={{
-          background: "oklch(0.10 0.025 160)",
+          background: "oklch(0.12 0.04 160 / 0.88)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
           border: `1px solid ${C.border}`,
           borderRadius: "20px 20px 0 0",
           maxHeight: "90dvh",
@@ -815,7 +817,11 @@ function SlabCard({
         cursor: "pointer",
         textAlign: "left",
         transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
-        boxShadow: hovered ? "0 0 24px oklch(0.70 0.18 160 / 0.12)" : "none",
+        backdropFilter: "blur(10px) saturate(160%)",
+        WebkitBackdropFilter: "blur(10px) saturate(160%)",
+        boxShadow: hovered
+          ? "0 0 0 1px oklch(0.65 0.16 160 / 0.36), 0 4px 28px oklch(0.50 0.14 160 / 0.18), inset 0 1px 0 oklch(0.75 0.18 160 / 0.10)"
+          : "0 0 0 1px oklch(0.55 0.12 160 / 0.14), 0 2px 16px oklch(0.20 0.06 160 / 0.30), inset 0 1px 0 oklch(0.70 0.18 160 / 0.06)",
         position: "relative",
       }}
     >

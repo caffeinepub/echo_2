@@ -1,40 +1,37 @@
-# Minty — Logo & Releases Page Overhaul
+# Minty – Frosted Glass Card Styling
 
 ## Current State
-- TopBar uses a generated Minty logo PNG at `/assets/generated/minty-logo-transparent.dim_600x200.png`
-- ReleasesPage is a TikTok/Vine-style vertical video feed with video players, play buttons, clip cards, REC button, and media playback controls
-- Mint modal, sort filter, and scroll-snap feed are all video-centric
+Listing cards in ReleasesPage.tsx use solid dark panel backgrounds (`oklch(0.12 0.03 160)`) with thin borders and no backdrop blur. The color constants `C.panel` and `C.panelHover` are solid opaque values. MarketPage uses CSS variables `--echo-surface` / `--echo-elevated` which are also solid opaque dark colors.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New Releases page: marketplace activity feed for graded card slabs / collectibles
-- Each feed item is a clean card panel showing: card artwork (2D image), slab grade, set name, population data, market price, price change %, volume indicator, small sparkline chart, mint glow accent highlight, tap to open detail view
-- Detail view (slide-up sheet or modal): larger artwork, price chart, population data, grade breakdown, recent sales, supply distribution, ownership verification status
-- Mock data: newly verified slabs, trending slabs, high volume cards, notable sales, newly supported sets
-- Logo: use uploaded Minty script PNG at `/assets/uploads/da0a37bf-f0f7-4b3e-8435-d339d757ced0-019d3c90-0de4-771f-8b28-c86522af61d6-1.png` as primary logo in TopBar with soft mint glow on dark bg
+- Frosted glass / translucent effect on SlabCard in ReleasesPage: semi-transparent dark teal background + `backdrop-filter: blur(12px)` (or `saturate(180%) blur(12px)` for depth)
+- Subtle mint glow on card edges (box-shadow with low-opacity mint/teal)
+- Layered illumination: a faint top-edge highlight (inset top border lighter than bottom)
+- `--echo-surface-glass` CSS variable for frosted glass surface used across MarketPage album row cards too
 
 ### Modify
-- TopBar: swap logo src to the newly uploaded file path, keep same placement/sizing/glow animation
-- ReleasesPage: fully replace video feed with collectibles activity feed; keep layout spacing system, bottom nav offsets, sort filter bar (Trending / New / Notable), no video/audio elements whatsoever
-- Sort filter: rename options to match collectibles context (Trending / New / Notable)
+- `C.panel` → `oklch(0.18 0.06 160 / 0.40)` (semi-transparent dark teal)
+- `C.panelHover` → `oklch(0.22 0.07 160 / 0.50)`
+- `C.border` → `oklch(0.55 0.12 160 / 0.18)` (lighter, icy)
+- `C.borderActive` → `oklch(0.65 0.16 160 / 0.40)`
+- SlabCard `boxShadow` on hover → soft mint edge glow: `0 0 0 1px oklch(0.65 0.16 160 / 0.30), 0 4px 24px oklch(0.65 0.16 160 / 0.10)`
+- SlabCard resting state also gets a very subtle box-shadow for the icy layered feel
+- Thumbnail border updated to match icy border tone
+- MarketPage album-row-card gets same frosted glass treatment via CSS variable update
+- `--echo-surface` in dark mode CSS updated to translucent glass value
+- `--echo-elevated` updated to slightly lighter glass value
+- `--echo-border` updated to icy mint tint
 
 ### Remove
-- All video `<video>` elements from ReleasesPage
-- Play buttons, progress bars for media, REC button, media timelines, audio players
-- ClipCard component and clip-based logic from ReleasesPage
-- `useClipsContext` dependency from ReleasesPage (replace with local mock slab data)
+- Nothing removed — layout structure, typography, hierarchy, spacing all unchanged
 
 ## Implementation Plan
-1. Update TopBar logo src to the uploaded file path
-2. Create mock slab/collectible data (15 items) with: id, name, setName, grade, grader (PSA/BGS/SGC), population, marketPrice, priceChange, volume, sparklineData, imageUrl, verifiedAt
-3. Rewrite ReleasesPage as a collectibles activity feed:
-   - Keep fixed header with sort filter (Trending / New / Notable) and mint glow active state
-   - Scrollable list of SlabCard panels below
-   - Each SlabCard: card image thumbnail (square, ~72px), grade badge, set name, price, price change %, population, volume, sparkline
-   - Tap card → open SlabDetailSheet (full modal with larger art, price chart, population breakdown, recent sales)
-   - No video, no audio, no play buttons, no progress bars
-   - Mint glow accent on card left border or active highlight
-   - Near-black green-tinted background, thin illuminated borders, layered panel depth
-4. Keep existing sort filter bar UI pattern but with collectibles-relevant labels
-5. Validate and build
+1. Update `C` color constants in ReleasesPage.tsx for frosted glass look
+2. Add `backdropFilter: 'blur(12px) saturate(160%)'` to SlabCard outer `<button>` style
+3. Update resting and hover `boxShadow` for subtle mint edge glow
+4. Update thumbnail border color for icy aesthetic
+5. Update detail sheet panel backgrounds similarly (same glass style)
+6. In `index.css` dark mode, update `--echo-surface` and `--echo-elevated` to translucent values with backdrop-filter applied via `.album-row-card` class
+7. Validate and build
