@@ -39,27 +39,105 @@ function MintyHeroDisplay() {
   return (
     <div className="flex justify-center items-center py-6 pb-2">
       <div className="relative flex items-center justify-center">
-        {/* Soft radial mint glow behind the collectible */}
+        {/* Soft cool blue ambient glow backdrop */}
         <div
           aria-hidden="true"
           style={{
             position: "absolute",
-            inset: 0,
+            inset: "-20px",
             background:
-              "radial-gradient(ellipse 70% 50% at 50% 80%, rgba(45,212,191,0.15) 0%, transparent 70%)",
+              "radial-gradient(ellipse 70% 55% at 50% 62%, rgba(59,130,246,0.18) 0%, rgba(96,165,250,0.07) 48%, transparent 72%)",
             pointerEvents: "none",
+            filter: "blur(10px)",
           }}
         />
-        {/* Floating collectible image */}
-        <img
-          src="/images/minty_ice.png"
-          alt="Featured Collectible"
-          className="minty-hero relative max-h-[240px] w-auto object-contain"
+
+        {/* Composite: ice crystal contains slab */}
+        <div
           style={{
-            filter:
-              "drop-shadow(0 0 18px rgba(45,212,191,0.35)) drop-shadow(0 0 6px rgba(45,212,191,0.2))",
+            position: "relative",
+            display: "inline-block",
           }}
-        />
+        >
+          {/* Ice crystal — static container, cool blue glow */}
+          <img
+            src="/images/minty_ice.png"
+            alt="Ice Crystal"
+            style={{
+              display: "block",
+              maxHeight: "240px",
+              width: "auto",
+              position: "relative",
+              zIndex: 2,
+              filter:
+                "drop-shadow(0 0 22px rgba(59,130,246,0.45)) drop-shadow(0 0 8px rgba(96,165,250,0.28))",
+            }}
+          />
+
+          {/* Slab layer: sits behind the ice crystal glass */}
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "54%",
+              zIndex: 1,
+            }}
+          >
+            {/* Diffused inner glow behind the slab */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: "-12px",
+                background:
+                  "radial-gradient(ellipse at center, rgba(147,197,253,0.22) 0%, rgba(96,165,250,0.08) 55%, transparent 82%)",
+                filter: "blur(14px)",
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
+
+            {/* Slab image — feathered edges + swing animation */}
+            <div
+              className="slab-in-ice"
+              style={{ position: "relative", zIndex: 1 }}
+            >
+              <img
+                src="/assets/841871bc-ce43-42a4-908a-b77a54504e3f-019d41b0-dfee-7736-8719-329d133599d2.png"
+                alt="Graded Card Slab"
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                  // Crisp center, soft feather toward edges
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse 84% 88% at 50% 50%, black 46%, rgba(0,0,0,0.72) 63%, rgba(0,0,0,0.22) 80%, transparent 100%)",
+                  maskImage:
+                    "radial-gradient(ellipse 84% 88% at 50% 50%, black 46%, rgba(0,0,0,0.72) 63%, rgba(0,0,0,0.22) 80%, transparent 100%)",
+                  // Depth-anchoring shadow
+                  filter: "drop-shadow(0 8px 20px rgba(0,8,40,0.72))",
+                }}
+              />
+
+              {/* Faint cool blue tint overlay — very low opacity */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(59,130,246,0.07)",
+                  pointerEvents: "none",
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse 84% 88% at 50% 50%, black 46%, rgba(0,0,0,0.72) 63%, rgba(0,0,0,0.22) 80%, transparent 100%)",
+                  maskImage:
+                    "radial-gradient(ellipse 84% 88% at 50% 50%, black 46%, rgba(0,0,0,0.72) 63%, rgba(0,0,0,0.22) 80%, transparent 100%)",
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

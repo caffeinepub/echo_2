@@ -463,26 +463,26 @@
   }
 }
 
-/* ── Minty Hero Collectible — floating 3D rotation ── */
-@keyframes mintyFloatRotate {
+/* ── Slab-in-ice: gentle pendulum swing ── */
+@keyframes slabSwing {
   0% {
-    transform: perspective(900px) rotateY(0deg) translateY(0px);
+    transform: rotateZ(-7deg);
   }
   50% {
-    transform: perspective(900px) rotateY(180deg) translateY(-8px);
+    transform: rotateZ(7deg);
   }
   100% {
-    transform: perspective(900px) rotateY(360deg) translateY(0px);
+    transform: rotateZ(-7deg);
   }
 }
 
-.minty-hero {
-  animation: mintyFloatRotate 18s ease-in-out infinite;
-  transform-style: preserve-3d;
+.slab-in-ice {
+  animation: slabSwing 3.8s ease-in-out infinite;
+  transform-origin: center center;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .minty-hero {
+  .slab-in-ice {
     animation: none;
   }
 }
