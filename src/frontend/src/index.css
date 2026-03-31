@@ -463,30 +463,6 @@
   }
 }
 
-/* ── Slab-in-ice: gentle pendulum swing ── */
-@keyframes slabSwing {
-  0% {
-    transform: rotateZ(-7deg);
-  }
-  50% {
-    transform: rotateZ(7deg);
-  }
-  100% {
-    transform: rotateZ(-7deg);
-  }
-}
-
-.slab-in-ice {
-  animation: slabSwing 3.8s ease-in-out infinite;
-  transform-origin: center center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .slab-in-ice {
-    animation: none;
-  }
-}
-
 /* ── Audio Reactive CSS variables (set by JS) ── */
 :root {
   --era-amp: 0;
