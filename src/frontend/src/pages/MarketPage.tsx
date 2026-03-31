@@ -693,27 +693,85 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
 
       {/* ── Signal cards ── */}
       {!query.trim() && (
-        <div className="grid grid-cols-2 gap-2.5 mb-8">
+        <div className="grid grid-cols-2 gap-2.5 mb-5">
           <SignalCard
-            label="Total Market Cap"
-            solValue={1847}
+            label="Total Volume (All Time)"
+            plainValue="$2,847,320"
             index={0}
             accent="cyan"
           />
           <SignalCard
             label="24H Volume"
-            solValue={312.4}
+            plainValue="$48,210"
             index={1}
             accent="cyan"
           />
-          <SignalCard label="Active Listeners" plainValue="14.2k" index={2} />
           <SignalCard
-            label="Live Releases"
-            plainValue="3"
+            label="Total Transactions"
+            plainValue="14,203"
+            index={2}
+          />
+          <SignalCard
+            label="Frozen Assets"
+            plainValue="312"
             index={3}
             accent="violet"
           />
         </div>
+      )}
+
+      {/* ── Browse Sets ── */}
+      {!query.trim() && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.2 }}
+          className="mb-8"
+        >
+          <p
+            className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
+            style={{ color: "var(--echo-text-secondary)" }}
+          >
+            Browse Sets
+          </p>
+          <div
+            className="rounded-2xl px-4 py-4 flex items-center justify-between gap-3"
+            style={{
+              background: "oklch(0.18 0.03 185 / 0.55)",
+              border: "1px solid oklch(0.65 0.15 185 / 0.2)",
+              backdropFilter: "blur(12px)",
+              boxShadow:
+                "0 0 24px oklch(0.65 0.15 185 / 0.06), inset 0 1px 0 oklch(0.65 0.15 185 / 0.08)",
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <p
+                className="text-[14px] font-semibold leading-tight"
+                style={{ color: "var(--echo-text-dim)" }}
+              >
+                Scarlet &amp; Violet Base Set
+              </p>
+              <p
+                className="text-[11px] mt-0.5"
+                style={{ color: "var(--echo-text-secondary)" }}
+              >
+                SV Base · EN / JP
+              </p>
+            </div>
+            <button
+              type="button"
+              data-ocid="discover.button"
+              className="shrink-0 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide transition-all"
+              style={{
+                background: "oklch(0.65 0.15 185 / 0.18)",
+                border: "1px solid oklch(0.65 0.15 185 / 0.35)",
+                color: "oklch(0.82 0.15 185)",
+              }}
+            >
+              Browse Set
+            </button>
+          </div>
+        </motion.div>
       )}
 
       {/* ── Leaderboard panel ── */}
