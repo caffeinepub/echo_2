@@ -13,6 +13,7 @@ import { ClipsProvider } from "./context/ClipsContext";
 import { useClipsContext } from "./context/ClipsContext";
 import { WalletProvider } from "./context/WalletContext";
 import { SolPriceProvider } from "./contexts/SolPriceContext";
+import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { useWallet } from "./hooks/useWallet";
 import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
 import { CreatorSubmitPage } from "./pages/CreatorSubmitPage";
@@ -151,15 +152,17 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <SolPriceProvider>
-        <WalletProvider>
-          <AdminReleasesProvider>
-            <ClipsProvider>
-              <AppContent />
-            </ClipsProvider>
-          </AdminReleasesProvider>
-        </WalletProvider>
-      </SolPriceProvider>
+      <InternetIdentityProvider>
+        <SolPriceProvider>
+          <WalletProvider>
+            <AdminReleasesProvider>
+              <ClipsProvider>
+                <AppContent />
+              </ClipsProvider>
+            </AdminReleasesProvider>
+          </WalletProvider>
+        </SolPriceProvider>
+      </InternetIdentityProvider>
     </ThemeProvider>
   );
 }
