@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type { TcgCategory as BackendCategory, TcgSet } from "../backend.d";
-import { useActor } from "../hooks/useActor";
+import type { MockCategory, MockSet } from "../store/mockCatalog";
+import { getCategories, getSets } from "../store/mockCatalog";
 
 // ─── Signal Card ───────────────────────────────────────────────────────────────
 
@@ -129,29 +129,32 @@ interface MarketPageProps {
 export function MarketPage({ onSetClick }: MarketPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const { actor, isFetching } = useActor();
-  const [sets, setSets] = useState<TcgSet[]>([]);
-  const [categories, setCategories] = useState<BackendCategory[]>([]);
+  const [sets, setSets] = useState<MockSet[]>([]);
+  const [categories, setCategories] = useState<MockCategory[]>([]);
   const [loadingSets, setLoadingSets] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("All");
 
   useEffect(() => {
-    if (!actor || isFetching) return;
-    Promise.all([actor.getSets(), (actor as any).getCategories()])
-      .then(([s, c]) => {
-        setSets(s);
-        setCategories(
-          c
-            .filter((cat: BackendCategory) => cat.isActive)
-            .sort(
-              (a: BackendCategory, b: BackendCategory) =>
-                Number(a.sortOrder) - Number(b.sortOrder),
-            ),
-        );
-      })
-      .catch(() => {})
-      .finally(() => setLoadingSets(false));
-  }, [actor, isFetching]);
+    try {
+      const cats = getCategories()
+        .filter((c) => c.active)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      const s = getSets()
+        .filter((s) => s.active)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
+      console.log(
+        "[Discover] Loaded sets:",
+        s.length,
+        "categories:",
+        cats.length,
+      );
+      setCategories(cats);
+      setSets(s);
+    } catch (err) {
+      console.error("[Discover] Failed to load discover data:", err);
+    }
+    setLoadingSets(false);
+  }, []);
 
   // Build the filter pill list: All + each active category
   const categoryPills = ["All", ...categories.map((c) => c.name)];
@@ -160,11 +163,8 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
     activeCategory === "All"
       ? sets
       : sets.filter((s) => {
-          // Match by category name or slug
           const cat = categories.find((c) => c.name === activeCategory);
-          return cat
-            ? s.tcgCategory === cat.slug || s.tcgCategory === cat.name
-            : false;
+          return cat ? s.categoryId === cat.id : false;
         });
 
   const setCardStyle = isDark
@@ -323,79 +323,82 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {filteredSets.map((set, i) => (
-              <motion.div
-                key={set.slug}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
-              >
-                <button
-                  type="button"
-                  data-ocid={`discover.item.${i + 1}`}
-                  onClick={() => onSetClick(set.slug)}
-                  className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
-                  style={setCardStyle}
+            {filteredSets
+              .filter((set) => set?.slug && set?.name)
+              .map((set, i) => (
+                <motion.div
+                  key={set.slug}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
                 >
-                  {/* Artwork area */}
-                  <div
-                    className="w-full flex items-center justify-center p-4"
-                    style={{
-                      background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
-                      minHeight: "120px",
-                    }}
+                  <button
+                    type="button"
+                    data-ocid={`discover.item.${i + 1}`}
+                    onClick={() => onSetClick(set.slug)}
+                    className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
+                    style={setCardStyle}
                   >
-                    {set.coverImageUrl ? (
-                      <img
-                        src={set.coverImageUrl}
-                        alt={set.setName}
-                        className="object-contain max-h-full max-w-full"
-                        style={{ maxHeight: "96px", maxWidth: "100%" }}
-                      />
-                    ) : (
-                      <div
-                        className="flex items-center justify-center w-full h-full rounded-lg"
-                        style={{
-                          background: placeholderBg,
-                          minHeight: "80px",
-                        }}
-                      >
-                        <span
-                          className="text-[11px] font-mono font-semibold"
-                          style={{ color: placeholderText }}
+                    {/* Artwork area */}
+                    <div
+                      className="w-full flex items-center justify-center p-4"
+                      style={{
+                        background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
+                        minHeight: "120px",
+                      }}
+                    >
+                      {set?.imageUrl ? (
+                        <img
+                          src={set.imageUrl}
+                          alt={set?.name ?? ""}
+                          className="object-contain max-h-full max-w-full"
+                          style={{ maxHeight: "96px", maxWidth: "100%" }}
+                        />
+                      ) : (
+                        <div
+                          className="flex items-center justify-center w-full h-full rounded-lg"
+                          style={{
+                            background: placeholderBg,
+                            minHeight: "80px",
+                          }}
                         >
-                          {set.setCode}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                          <span
+                            className="text-[11px] font-mono font-semibold"
+                            style={{ color: placeholderText }}
+                          >
+                            {set?.setCode ?? ""}
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Set info */}
-                  <div className="px-3 py-2.5">
-                    <p
-                      className="text-[9px] font-mono font-medium mb-0.5"
-                      style={{ color: textSecondary }}
-                    >
-                      {set.setCode}
-                    </p>
-                    <p
-                      className="text-[12px] font-semibold leading-tight"
-                      style={{ color: textPrimary }}
-                    >
-                      {set.setName}
-                    </p>
-                    {set.cardCount !== undefined && set.cardCount !== null && (
+                    {/* Set info */}
+                    <div className="px-3 py-2.5">
                       <p
-                        className="text-[10px] mt-0.5"
+                        className="text-[9px] font-mono font-medium mb-0.5"
                         style={{ color: textSecondary }}
                       >
-                        {Number(set.cardCount)} cards
+                        {set?.setCode ?? ""}
                       </p>
-                    )}
-                  </div>
-                </button>
-              </motion.div>
-            ))}
+                      <p
+                        className="text-[12px] font-semibold leading-tight"
+                        style={{ color: textPrimary }}
+                      >
+                        {set?.name ?? ""}
+                      </p>
+                      {set?.cardCount !== undefined &&
+                        set?.cardCount !== null && (
+                          <p
+                            className="text-[10px] mt-0.5"
+                            style={{ color: textSecondary }}
+                          >
+                            {set.cardCount} cards
+                          </p>
+                        )}
+                    </div>
+                  </button>
+                </motion.div>
+              ))}
           </div>
         )}
       </motion.div>

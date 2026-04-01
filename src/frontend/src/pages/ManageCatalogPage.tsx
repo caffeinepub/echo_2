@@ -8,22 +8,30 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type {
-  CreateTcgCardInput,
-  CreateTcgCategoryInput,
-  CreateTcgSetInput,
-  TcgCard,
-  TcgCategory,
-  TcgSet,
-  UpdateTcgCardInput,
-  UpdateTcgCategoryInput,
-  UpdateTcgSetInput,
-} from "../backend.d";
 import { isAdminPrincipal } from "../config/admin";
-import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
+import {
+  addCard,
+  addCategory,
+  addSet,
+  deleteCard,
+  deleteCategory,
+  deleteSet,
+  getCards,
+  getCategories,
+  getSets,
+  slugify,
+  toggleCardActive,
+  toggleCardSupported,
+  toggleCategoryActive,
+  toggleSetActive,
+  updateCard,
+  updateCategory,
+  updateSet,
+} from "../store/mockCatalog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -362,18 +370,11 @@ function FormPanel({
 
 // ─── Categories Tab ──────────────────────────────────────────────────────────
 
-function slugify(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
 type CategoryFormState = {
   name: string;
   slug: string;
   imageUrl: string;
-  isActive: boolean;
+  active: boolean;
   sortOrder: string;
 };
 
@@ -381,36 +382,23 @@ const emptyCategoryForm = (): CategoryFormState => ({
   name: "",
   slug: "",
   imageUrl: "",
-  isActive: true,
+  active: true,
   sortOrder: "0",
 });
 
-function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
+function CategoriesTab({ isDark }: { isDark: boolean }) {
   const cardStyle = useCardStyle(isDark);
-  const [categories, setCategories] = useState<TcgCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<MockCategory[]>(() =>
+    getCategories().sort((a, b) => a.sortOrder - b.sortOrder),
+  );
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<bigint | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<CategoryFormState>(emptyCategoryForm());
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    try {
-      const cats = await actor.getAllCategoriesAdmin();
-      setCategories(
-        cats.sort(
-          (a: TcgCategory, b: TcgCategory) =>
-            Number(a.sortOrder) - Number(b.sortOrder),
-        ),
-      );
-    } catch {}
-    setLoading(false);
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load is stable within component
-  useEffect(() => {
-    if (actor) load();
-  }, [actor]);
+  function reload() {
+    setCategories(getCategories().sort((a, b) => a.sortOrder - b.sortOrder));
+  }
 
   function setField<K extends keyof CategoryFormState>(
     k: K,
@@ -429,62 +417,55 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
     setShowForm(true);
   }
 
-  function openEdit(cat: TcgCategory) {
+  function openEdit(cat: MockCategory) {
     setEditId(cat.id);
     setForm({
       name: cat.name,
       slug: cat.slug,
       imageUrl: cat.imageUrl,
-      isActive: cat.isActive,
-      sortOrder: String(Number(cat.sortOrder)),
+      active: cat.active,
+      sortOrder: String(cat.sortOrder),
     });
     setShowForm(true);
   }
 
-  async function save() {
+  function save() {
     setSaving(true);
     try {
       if (editId !== null) {
-        const input: UpdateTcgCategoryInput = {
-          id: editId,
+        updateCategory(editId, {
           name: form.name,
           slug: form.slug,
           imageUrl: form.imageUrl,
-          isActive: form.isActive,
-          sortOrder: BigInt(Number(form.sortOrder) || 0),
-        };
-        await actor.updateCategory(input);
+          active: form.active,
+          sortOrder: Number(form.sortOrder) || 0,
+        });
       } else {
-        const input: CreateTcgCategoryInput = {
+        addCategory({
           name: form.name,
           slug: form.slug,
           imageUrl: form.imageUrl,
-          isActive: form.isActive,
-          sortOrder: BigInt(Number(form.sortOrder) || 0),
-        };
-        await actor.createCategory(input);
+          active: form.active,
+          sortOrder: Number(form.sortOrder) || 0,
+        });
       }
       setShowForm(false);
-      await load();
+      reload();
     } catch (e) {
       console.error(e);
     }
     setSaving(false);
   }
 
-  async function toggleActive(cat: TcgCategory) {
-    try {
-      await actor.toggleCategoryActive(cat.id);
-      await load();
-    } catch {}
+  function handleToggleActive(cat: MockCategory) {
+    toggleCategoryActive(cat.id);
+    reload();
   }
 
-  async function deleteCategory(cat: TcgCategory) {
+  function handleDelete(cat: MockCategory) {
     if (!confirm(`Delete "${cat.name}"?`)) return;
-    try {
-      await actor.deleteCategory(cat.id);
-      await load();
-    } catch {}
+    deleteCategory(cat.id);
+    reload();
   }
 
   const textPrimary = isDark ? "rgba(220,248,235,0.92)" : "#111";
@@ -504,7 +485,7 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           onClick={openCreate}
         >
           <Plus size={13} />
-          New Category
+          Add Category
         </button>
       </div>
 
@@ -546,27 +527,20 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           />
           <ToggleField
             label="Active"
-            value={form.isActive}
-            onChange={(v) => setField("isActive", v)}
+            value={form.active}
+            onChange={(v) => setField("active", v)}
             isDark={isDark}
           />
         </FormPanel>
       )}
 
-      {loading ? (
-        <div
-          data-ocid="catalog.categories.loading_state"
-          className="flex justify-center py-12"
-        >
-          <Loader2 size={20} className="animate-spin" color="#1f9d84" />
-        </div>
-      ) : categories.length === 0 ? (
+      {categories.length === 0 ? (
         <div
           data-ocid="catalog.categories.empty_state"
           className="py-12 text-center"
           style={{ color: textSecondary, fontSize: "13px" }}
         >
-          No categories yet. Create your first one.
+          Create your first category
         </div>
       ) : (
         <div
@@ -575,7 +549,7 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
         >
           {categories.map((cat, i) => (
             <motion.div
-              key={String(cat.id)}
+              key={cat.id}
               data-ocid={`catalog.categories.item.${i + 1}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -604,7 +578,7 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                       /{cat.slug}
                     </p>
                   </div>
-                  <ActiveBadge active={cat.isActive} />
+                  <ActiveBadge active={cat.active} />
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -619,20 +593,20 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                     type="button"
                     data-ocid={`catalog.categories.toggle.${i + 1}`}
                     style={OUTLINE_BTN(isDark)}
-                    onClick={() => toggleActive(cat)}
+                    onClick={() => handleToggleActive(cat)}
                   >
-                    {cat.isActive ? (
+                    {cat.active ? (
                       <ToggleRight size={13} />
                     ) : (
                       <ToggleLeft size={13} />
                     )}
-                    {cat.isActive ? "Deactivate" : "Activate"}
+                    {cat.active ? "Deactivate" : "Activate"}
                   </button>
                   <button
                     type="button"
                     data-ocid={`catalog.categories.delete_button.${i + 1}`}
                     style={DELETE_BTN}
-                    onClick={() => deleteCategory(cat)}
+                    onClick={() => handleDelete(cat)}
                   >
                     <Trash2 size={11} /> Delete
                   </button>
@@ -649,66 +623,53 @@ function CategoriesTab({ isDark, actor }: { isDark: boolean; actor: any }) {
 // ─── Sets Tab ────────────────────────────────────────────────────────────────
 
 type SetFormState = {
-  tcgCategory: string;
-  setName: string;
+  categoryId: string;
+  name: string;
   slug: string;
   setCode: string;
   releaseYear: string;
-  coverImageUrl: string;
-  isActive: boolean;
+  imageUrl: string;
+  active: boolean;
   sortOrder: string;
   cardCount: string;
   featured: boolean;
 };
 
 const emptySetForm = (): SetFormState => ({
-  tcgCategory: "",
-  setName: "",
+  categoryId: "",
+  name: "",
   slug: "",
   setCode: "",
   releaseYear: "2024",
-  coverImageUrl: "",
-  isActive: true,
+  imageUrl: "",
+  active: true,
   sortOrder: "0",
   cardCount: "",
   featured: false,
 });
 
-function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
+function SetsTab({ isDark }: { isDark: boolean }) {
   const cardStyle = useCardStyle(isDark);
-  const [sets, setSets] = useState<TcgSet[]>([]);
-  const [categories, setCategories] = useState<TcgCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sets, setSets] = useState<MockSet[]>(() =>
+    getSets().sort((a, b) => a.sortOrder - b.sortOrder),
+  );
+  const [categories, setCategories] = useState<MockCategory[]>(() =>
+    getCategories(),
+  );
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<bigint | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<SetFormState>(emptySetForm());
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    try {
-      const [s, c] = await Promise.all([
-        actor.getAllSetsAdmin(),
-        actor.getAllCategoriesAdmin(),
-      ]);
-      setSets(
-        s.sort(
-          (a: TcgSet, b: TcgSet) => Number(a.sortOrder) - Number(b.sortOrder),
-        ),
-      );
-      setCategories(c);
-    } catch {}
-    setLoading(false);
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load is stable within component
-  useEffect(() => {
-    if (actor) load();
-  }, [actor]);
+  function reload() {
+    setSets(getSets().sort((a, b) => a.sortOrder - b.sortOrder));
+    setCategories(getCategories());
+  }
 
   function setField<K extends keyof SetFormState>(k: K, v: SetFormState[K]) {
     setForm((prev) => {
       const next = { ...prev, [k]: v };
-      if (k === "setName" && !editId) next.slug = slugify(v as string);
+      if (k === "name" && !editId) next.slug = slugify(v as string);
       return next;
     });
   }
@@ -719,84 +680,67 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
     setShowForm(true);
   }
 
-  function openEdit(set: TcgSet) {
+  function openEdit(set: MockSet) {
     setEditId(set.id);
     setForm({
-      tcgCategory: set.tcgCategory,
-      setName: set.setName,
+      categoryId: set.categoryId,
+      name: set.name,
       slug: set.slug,
       setCode: set.setCode,
-      releaseYear: String(Number(set.releaseYear)),
-      coverImageUrl: set.coverImageUrl,
-      isActive: set.isActive,
-      sortOrder: String(Number(set.sortOrder)),
-      cardCount:
-        set.cardCount !== undefined && set.cardCount !== null
-          ? String(Number(set.cardCount))
-          : "",
+      releaseYear: String(set.releaseYear),
+      imageUrl: set.imageUrl,
+      active: set.active,
+      sortOrder: String(set.sortOrder),
+      cardCount: set.cardCount !== null ? String(set.cardCount) : "",
       featured: set.featured,
     });
     setShowForm(true);
   }
 
-  async function save() {
+  function save() {
     setSaving(true);
     try {
       const base = {
-        tcgCategory: form.tcgCategory,
-        setName: form.setName,
+        categoryId: form.categoryId,
+        name: form.name,
         slug: form.slug,
         setCode: form.setCode,
-        releaseYear: BigInt(Number(form.releaseYear) || 2024),
-        coverImageUrl: form.coverImageUrl,
-        isActive: form.isActive,
-        sortOrder: BigInt(Number(form.sortOrder) || 0),
-        cardCount: form.cardCount ? BigInt(Number(form.cardCount)) : undefined,
+        releaseYear: Number(form.releaseYear) || 2024,
+        imageUrl: form.imageUrl,
+        active: form.active,
+        sortOrder: Number(form.sortOrder) || 0,
+        cardCount: form.cardCount ? Number(form.cardCount) : null,
         featured: form.featured,
       };
       if (editId !== null) {
-        await actor.updateSet({ ...base, id: editId } as UpdateTcgSetInput);
+        updateSet(editId, base);
       } else {
-        await actor.createSet(base as CreateTcgSetInput);
+        addSet(base);
       }
       setShowForm(false);
-      await load();
+      reload();
     } catch (e) {
       console.error(e);
     }
     setSaving(false);
   }
 
-  async function toggleActive(set: TcgSet) {
-    try {
-      await actor.toggleSetActive(set.id);
-      await load();
-    } catch {}
+  function handleToggleActive(set: MockSet) {
+    toggleSetActive(set.id);
+    reload();
   }
 
-  async function deleteSet(set: TcgSet) {
-    if (!confirm(`Delete "${set.setName}"?`)) return;
-    try {
-      await actor.deleteSet(set.id);
-      await load();
-    } catch {}
+  function handleDelete(set: MockSet) {
+    if (!confirm(`Delete "${set.name}"?`)) return;
+    deleteSet(set.id);
+    reload();
   }
 
   const textPrimary = isDark ? "rgba(220,248,235,0.92)" : "#111";
   const textSecondary = isDark ? "rgba(150,210,185,0.55)" : "#9ca3af";
 
-  const categoryOptions = categories.map((c) => ({
-    value: c.slug,
-    label: c.name,
-  }));
-  const staticOptions = [
-    { value: "Pokemon", label: "Pokemon" },
-    { value: "One Piece", label: "One Piece" },
-    { value: "Yu-Gi-Oh", label: "Yu-Gi-Oh" },
-    { value: "Sports", label: "Sports" },
-  ];
-  const catOptions =
-    categoryOptions.length > 0 ? categoryOptions : staticOptions;
+  const catOptions = categories.map((c) => ({ value: c.id, label: c.name }));
+  const catNameById = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
     <div>
@@ -811,7 +755,7 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           onClick={openCreate}
         >
           <Plus size={13} />
-          New Set
+          Add Set
         </button>
       </div>
 
@@ -825,15 +769,15 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
         >
           <SelectField
             label="Category"
-            value={form.tcgCategory}
-            onChange={(v) => setField("tcgCategory", v)}
+            value={form.categoryId}
+            onChange={(v) => setField("categoryId", v)}
             options={catOptions}
             isDark={isDark}
           />
           <InputField
             label="Set Name"
-            value={form.setName}
-            onChange={(v) => setField("setName", v)}
+            value={form.name}
+            onChange={(v) => setField("name", v)}
             placeholder="Scarlet & Violet Base"
             isDark={isDark}
           />
@@ -860,8 +804,8 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           />
           <InputField
             label="Cover Image URL (optional)"
-            value={form.coverImageUrl}
-            onChange={(v) => setField("coverImageUrl", v)}
+            value={form.imageUrl}
+            onChange={(v) => setField("imageUrl", v)}
             placeholder="https://..."
             isDark={isDark}
           />
@@ -884,8 +828,8 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           <div className="flex gap-6">
             <ToggleField
               label="Active"
-              value={form.isActive}
-              onChange={(v) => setField("isActive", v)}
+              value={form.active}
+              onChange={(v) => setField("active", v)}
               isDark={isDark}
             />
             <ToggleField
@@ -898,26 +842,19 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
         </FormPanel>
       )}
 
-      {loading ? (
-        <div
-          data-ocid="catalog.sets.loading_state"
-          className="flex justify-center py-12"
-        >
-          <Loader2 size={20} className="animate-spin" color="#1f9d84" />
-        </div>
-      ) : sets.length === 0 ? (
+      {sets.length === 0 ? (
         <div
           data-ocid="catalog.sets.empty_state"
           className="py-12 text-center"
           style={{ color: textSecondary, fontSize: "13px" }}
         >
-          No sets yet. Create your first one.
+          Create your first set
         </div>
       ) : (
         <div className="flex flex-col gap-2" data-ocid="catalog.sets.list">
           {sets.map((set, i) => (
             <motion.div
-              key={String(set.id)}
+              key={set.id}
               data-ocid={`catalog.sets.item.${i + 1}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -934,7 +871,7 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                         color: textPrimary,
                       }}
                     >
-                      {set.setName}
+                      {set.name}
                     </p>
                     <p
                       style={{
@@ -943,7 +880,7 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                         fontFamily: "monospace",
                       }}
                     >
-                      {set.setCode} · {String(Number(set.releaseYear))}
+                      {set.setCode} · {String(set.releaseYear)}
                     </p>
                   </div>
                   <div className="flex gap-1.5 flex-wrap justify-end">
@@ -959,9 +896,9 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {set.tcgCategory}
+                      {catNameById[set.categoryId] ?? set.categoryId}
                     </span>
-                    <ActiveBadge active={set.isActive} />
+                    <ActiveBadge active={set.active} />
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -977,20 +914,20 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                     type="button"
                     data-ocid={`catalog.sets.toggle.${i + 1}`}
                     style={OUTLINE_BTN(isDark)}
-                    onClick={() => toggleActive(set)}
+                    onClick={() => handleToggleActive(set)}
                   >
-                    {set.isActive ? (
+                    {set.active ? (
                       <ToggleRight size={13} />
                     ) : (
                       <ToggleLeft size={13} />
                     )}
-                    {set.isActive ? "Deactivate" : "Activate"}
+                    {set.active ? "Deactivate" : "Activate"}
                   </button>
                   <button
                     type="button"
                     data-ocid={`catalog.sets.delete_button.${i + 1}`}
                     style={DELETE_BTN}
-                    onClick={() => deleteSet(set)}
+                    onClick={() => handleDelete(set)}
                   >
                     <Trash2 size={11} /> Delete
                   </button>
@@ -1008,57 +945,42 @@ function SetsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
 
 type CardFormState = {
   setId: string;
-  cardName: string;
-  cardNumber: string;
+  name: string;
+  number: string;
   rarity: string;
   imageUrl: string;
-  isActive: boolean;
+  active: boolean;
   isSupported: boolean;
   sortOrder: string;
 };
 
 const emptyCardForm = (): CardFormState => ({
   setId: "",
-  cardName: "",
-  cardNumber: "",
+  name: "",
+  number: "",
   rarity: "",
   imageUrl: "",
-  isActive: true,
+  active: true,
   isSupported: false,
   sortOrder: "0",
 });
 
-function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
+function CardsTab({ isDark }: { isDark: boolean }) {
   const cardStyle = useCardStyle(isDark);
-  const [cards, setCards] = useState<TcgCard[]>([]);
-  const [sets, setSets] = useState<TcgSet[]>([]);
+  const [cards, setCards] = useState<MockCard[]>(() =>
+    getCards().sort((a, b) => a.sortOrder - b.sortOrder),
+  );
+  const [sets, setSets] = useState<MockSet[]>(() => getSets());
   const [filterSetId, setFilterSetId] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<bigint | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<CardFormState>(emptyCardForm());
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    try {
-      const [c, s] = await Promise.all([
-        actor.getAllCardsAdmin(),
-        actor.getAllSetsAdmin(),
-      ]);
-      setCards(
-        c.sort(
-          (a: TcgCard, b: TcgCard) => Number(a.sortOrder) - Number(b.sortOrder),
-        ),
-      );
-      setSets(s);
-    } catch {}
-    setLoading(false);
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: load is stable within component
-  useEffect(() => {
-    if (actor) load();
-  }, [actor]);
+  function reload() {
+    setCards(getCards().sort((a, b) => a.sortOrder - b.sortOrder));
+    setSets(getSets());
+  }
 
   function setField<K extends keyof CardFormState>(k: K, v: CardFormState[K]) {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -1070,83 +992,71 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
     setShowForm(true);
   }
 
-  function openEdit(card: TcgCard) {
+  function openEdit(card: MockCard) {
     setEditId(card.id);
     setForm({
-      setId: String(Number(card.setId)),
-      cardName: card.cardName,
-      cardNumber: card.cardNumber,
+      setId: card.setId,
+      name: card.name,
+      number: card.number,
       rarity: card.rarity,
       imageUrl: card.imageUrl,
-      isActive: card.isActive,
+      active: card.active,
       isSupported: card.isSupported,
-      sortOrder: String(Number(card.sortOrder)),
+      sortOrder: String(card.sortOrder),
     });
     setShowForm(true);
   }
 
-  async function save() {
+  function save() {
     setSaving(true);
     try {
       const base = {
-        setId: BigInt(Number(form.setId) || 0),
-        cardName: form.cardName,
-        cardNumber: form.cardNumber,
+        setId: form.setId,
+        name: form.name,
+        number: form.number,
         rarity: form.rarity,
         imageUrl: form.imageUrl,
-        isActive: form.isActive,
+        active: form.active,
         isSupported: form.isSupported,
-        sortOrder: BigInt(Number(form.sortOrder) || 0),
+        sortOrder: Number(form.sortOrder) || 0,
       };
       if (editId !== null) {
-        await actor.updateCard({ ...base, id: editId } as UpdateTcgCardInput);
+        updateCard(editId, base);
       } else {
-        await actor.createCard(base as CreateTcgCardInput);
+        addCard(base);
       }
       setShowForm(false);
-      await load();
+      reload();
     } catch (e) {
       console.error(e);
     }
     setSaving(false);
   }
 
-  async function toggleActive(card: TcgCard) {
-    try {
-      await actor.toggleCardActive(card.id);
-      await load();
-    } catch {}
+  function handleToggleActive(card: MockCard) {
+    toggleCardActive(card.id);
+    reload();
   }
 
-  async function toggleSupported(card: TcgCard) {
-    try {
-      await actor.toggleCardSupported(card.id);
-      await load();
-    } catch {}
+  function handleToggleSupported(card: MockCard) {
+    toggleCardSupported(card.id);
+    reload();
   }
 
-  async function deleteCard(card: TcgCard) {
-    if (!confirm(`Delete "${card.cardName}"?`)) return;
-    try {
-      await actor.deleteCard(card.id);
-      await load();
-    } catch {}
+  function handleDelete(card: MockCard) {
+    if (!confirm(`Delete "${card.name}"?`)) return;
+    deleteCard(card.id);
+    reload();
   }
 
   const textPrimary = isDark ? "rgba(220,248,235,0.92)" : "#111";
   const textSecondary = isDark ? "rgba(150,210,185,0.55)" : "#9ca3af";
 
-  const setOptions = sets.map((s) => ({
-    value: String(Number(s.id)),
-    label: s.setName,
-  }));
-
-  const setNameMap = Object.fromEntries(
-    sets.map((s) => [String(Number(s.id)), s.setName]),
-  );
+  const setOptions = sets.map((s) => ({ value: s.id, label: s.name }));
+  const setNameMap = Object.fromEntries(sets.map((s) => [s.id, s.name]));
 
   const filteredCards = filterSetId
-    ? cards.filter((c) => String(Number(c.setId)) === filterSetId)
+    ? cards.filter((c) => c.setId === filterSetId)
     : cards;
 
   return (
@@ -1162,7 +1072,7 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           onClick={openCreate}
         >
           <Plus size={13} />
-          New Card
+          Add Card
         </button>
       </div>
 
@@ -1194,16 +1104,16 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           />
           <InputField
             label="Card Name"
-            value={form.cardName}
-            onChange={(v) => setField("cardName", v)}
+            value={form.name}
+            onChange={(v) => setField("name", v)}
             placeholder="Charizard ex"
             isDark={isDark}
           />
           <div className="grid grid-cols-2 gap-3">
             <InputField
               label="Card Number (optional)"
-              value={form.cardNumber}
-              onChange={(v) => setField("cardNumber", v)}
+              value={form.number}
+              onChange={(v) => setField("number", v)}
               placeholder="004/198"
               isDark={isDark}
             />
@@ -1232,8 +1142,8 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
           <div className="flex gap-6">
             <ToggleField
               label="Active"
-              value={form.isActive}
-              onChange={(v) => setField("isActive", v)}
+              value={form.active}
+              onChange={(v) => setField("active", v)}
               isDark={isDark}
             />
             <ToggleField
@@ -1246,26 +1156,19 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
         </FormPanel>
       )}
 
-      {loading ? (
-        <div
-          data-ocid="catalog.cards.loading_state"
-          className="flex justify-center py-12"
-        >
-          <Loader2 size={20} className="animate-spin" color="#1f9d84" />
-        </div>
-      ) : filteredCards.length === 0 ? (
+      {filteredCards.length === 0 ? (
         <div
           data-ocid="catalog.cards.empty_state"
           className="py-12 text-center"
           style={{ color: textSecondary, fontSize: "13px" }}
         >
-          No cards yet. Create your first one.
+          Create your first card
         </div>
       ) : (
         <div className="flex flex-col gap-2" data-ocid="catalog.cards.list">
           {filteredCards.map((card, i) => (
             <motion.div
-              key={String(card.id)}
+              key={card.id}
               data-ocid={`catalog.cards.item.${i + 1}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1282,7 +1185,7 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                         color: textPrimary,
                       }}
                     >
-                      {card.cardName}
+                      {card.name}
                     </p>
                     <p
                       style={{
@@ -1291,13 +1194,13 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                         fontFamily: "monospace",
                       }}
                     >
-                      {card.cardNumber && `#${card.cardNumber} · `}
+                      {card.number && `#${card.number} · `}
                       {card.rarity && `${card.rarity} · `}
-                      {setNameMap[String(Number(card.setId))] ?? "Unknown Set"}
+                      {setNameMap[card.setId] ?? "Unknown Set"}
                     </p>
                   </div>
                   <div className="flex gap-1.5 flex-wrap justify-end">
-                    <ActiveBadge active={card.isActive} />
+                    <ActiveBadge active={card.active} />
                     {card.isSupported && <SupportedBadge />}
                   </div>
                 </div>
@@ -1314,20 +1217,20 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                     type="button"
                     data-ocid={`catalog.cards.toggle.${i + 1}`}
                     style={OUTLINE_BTN(isDark)}
-                    onClick={() => toggleActive(card)}
+                    onClick={() => handleToggleActive(card)}
                   >
-                    {card.isActive ? (
+                    {card.active ? (
                       <ToggleRight size={13} />
                     ) : (
                       <ToggleLeft size={13} />
                     )}
-                    {card.isActive ? "Deactivate" : "Activate"}
+                    {card.active ? "Deactivate" : "Activate"}
                   </button>
                   <button
                     type="button"
                     data-ocid={`catalog.cards.secondary_button.${i + 1}`}
                     style={OUTLINE_BTN(isDark)}
-                    onClick={() => toggleSupported(card)}
+                    onClick={() => handleToggleSupported(card)}
                   >
                     {card.isSupported ? "Unsupport" : "Mark Supported"}
                   </button>
@@ -1335,7 +1238,7 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
                     type="button"
                     data-ocid={`catalog.cards.delete_button.${i + 1}`}
                     style={DELETE_BTN}
-                    onClick={() => deleteCard(card)}
+                    onClick={() => handleDelete(card)}
                   >
                     <Trash2 size={11} /> Delete
                   </button>
@@ -1354,7 +1257,6 @@ function CardsTab({ isDark, actor }: { isDark: boolean; actor: any }) {
 export function ManageCatalogPage({ onBack }: { onBack: () => void }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const { actor, isFetching } = useActor();
   const { identity } = useInternetIdentity();
   const [activeTab, setActiveTab] = useState<CatalogTab>("categories");
 
@@ -1494,25 +1396,11 @@ export function ManageCatalogPage({ onBack }: { onBack: () => void }) {
           })}
         </div>
 
-        {/* Tab content */}
-        {isFetching || !actor ? (
-          <div
-            data-ocid="catalog.loading_state"
-            className="flex justify-center py-16"
-          >
-            <Loader2 size={24} className="animate-spin" color="#1f9d84" />
-          </div>
-        ) : (
-          <>
-            {activeTab === "categories" && (
-              <CategoriesTab isDark={isDark} actor={actor} />
-            )}
-            {activeTab === "sets" && <SetsTab isDark={isDark} actor={actor} />}
-            {activeTab === "cards" && (
-              <CardsTab isDark={isDark} actor={actor} />
-            )}
-          </>
-        )}
+        <>
+          {activeTab === "categories" && <CategoriesTab isDark={isDark} />}
+          {activeTab === "sets" && <SetsTab isDark={isDark} />}
+          {activeTab === "cards" && <CardsTab isDark={isDark} />}
+        </>
       </div>
     </div>
   );

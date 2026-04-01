@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
@@ -62,10 +63,30 @@ function AppContent() {
         )}
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
         {view.type === "tab" && view.tab === "market" && (
-          <MarketPage
-            onAlbumClick={handleMarketItemClick}
-            onSetClick={handleSetClick}
-          />
+          <ErrorBoundary
+            fallback={
+              <div style={{ padding: "32px 16px", textAlign: "center" }}>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#111",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Unable to load Discover items
+                </p>
+                <p style={{ fontSize: "12px", color: "#6b7280" }}>
+                  Please refresh and try again.
+                </p>
+              </div>
+            }
+          >
+            <MarketPage
+              onAlbumClick={handleMarketItemClick}
+              onSetClick={handleSetClick}
+            />
+          </ErrorBoundary>
         )}
         {view.type === "set-detail" && (
           <SetDetailPage

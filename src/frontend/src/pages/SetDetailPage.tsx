@@ -2,8 +2,8 @@ import { ArrowLeft, Calendar, Hash, Layers, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type { TcgSet } from "../backend.d";
-import { useActor } from "../hooks/useActor";
+import type { MockCard, MockSet } from "../store/mockCatalog";
+import { getCards, getCategories, getSets } from "../store/mockCatalog";
 
 interface SetDetailPageProps {
   slug: string;
@@ -13,28 +13,26 @@ interface SetDetailPageProps {
 export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
-  const [set, setSet] = useState<TcgSet | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [set, setSet] = useState<MockSet | null>(null);
   const [notFound, setNotFound] = useState(false);
-
-  const { actor, isFetching } = useActor();
+  const [cards, setCards] = useState<MockCard[]>([]);
+  const [categoryName, setCategoryName] = useState<string>("");
 
   useEffect(() => {
-    if (!actor || isFetching) return;
-    setLoading(true);
-    setNotFound(false);
-    actor
-      .getSetBySlug(slug)
-      .then((result) => {
-        if (result) {
-          setSet(result);
-        } else {
-          setNotFound(true);
-        }
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [actor, isFetching, slug]);
+    const found = getSets().find((s) => s.slug === slug && s.active) ?? null;
+    if (!found) {
+      setNotFound(true);
+      return;
+    }
+    setSet(found);
+    const cat = getCategories().find((c) => c.id === found.categoryId);
+    setCategoryName(cat?.name ?? found.categoryId);
+    const activeCards = getCards()
+      .filter((c) => c.setId === found.id && c.active)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    console.log("[SetDetail] Loaded cards:", activeCards.length);
+    setCards(activeCards);
+  }, [slug]);
 
   const panelStyle = isDark
     ? {
@@ -82,39 +80,7 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
         <span>Back</span>
       </button>
 
-      {loading && (
-        <div
-          data-ocid="set_detail.loading_state"
-          className="flex flex-col gap-4"
-        >
-          <div
-            className="w-full rounded-2xl"
-            style={{
-              height: "240px",
-              background: isDark ? "rgba(20,50,35,0.4)" : "#e9ecef",
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          />
-          <div
-            style={{
-              height: "24px",
-              width: "60%",
-              borderRadius: "8px",
-              background: isDark ? "rgba(20,50,35,0.4)" : "#e9ecef",
-            }}
-          />
-          <div
-            style={{
-              height: "16px",
-              width: "40%",
-              borderRadius: "8px",
-              background: isDark ? "rgba(20,50,35,0.4)" : "#e9ecef",
-            }}
-          />
-        </div>
-      )}
-
-      {!loading && notFound && (
+      {notFound && (
         <div
           data-ocid="set_detail.error_state"
           className="flex flex-col items-center justify-center py-20 text-center"
@@ -135,7 +101,7 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
         </div>
       )}
 
-      {!loading && set && (
+      {set && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -154,10 +120,10 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
                 minHeight: "220px",
               }}
             >
-              {set.coverImageUrl ? (
+              {set.imageUrl ? (
                 <img
-                  src={set.coverImageUrl}
-                  alt={set.setName}
+                  src={set.imageUrl}
+                  alt={set.name}
                   className="object-contain"
                   style={{
                     maxHeight: "200px",
@@ -212,7 +178,7 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
                     marginBottom: "4px",
                   }}
                 >
-                  {set.setName}
+                  {set.name}
                 </h1>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
@@ -244,7 +210,7 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
                         : "1px solid #e5e7eb",
                     }}
                   >
-                    {set.tcgCategory}
+                    {categoryName}
                   </span>
                   {set.featured && (
                     <span
@@ -273,14 +239,14 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
               <div className="flex items-center gap-1.5">
                 <Calendar size={12} style={{ color: "#10b981" }} />
                 <span style={{ color: textSecondary, fontSize: "12px" }}>
-                  {Number(set.releaseYear)}
+                  {set.releaseYear}
                 </span>
               </div>
               {set.cardCount !== undefined && set.cardCount !== null && (
                 <div className="flex items-center gap-1.5">
                   <Layers size={12} style={{ color: "#10b981" }} />
                   <span style={{ color: textSecondary, fontSize: "12px" }}>
-                    {Number(set.cardCount)} cards
+                    {set.cardCount} cards
                   </span>
                 </div>
               )}
@@ -293,40 +259,128 @@ export function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
             </div>
           </div>
 
-          {/* Listings placeholder */}
-          <div
-            className="rounded-2xl p-8 flex flex-col items-center justify-center text-center"
-            style={panelStyle}
-          >
-            <div
+          {/* Cards section */}
+          <div className="rounded-2xl p-4" style={panelStyle}>
+            <p
               style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "12px",
-                background: isDark
-                  ? "rgba(16,185,129,0.12)"
-                  : "rgba(16,185,129,0.08)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                color: textSecondary,
+                fontSize: "9px",
+                textTransform: "uppercase",
+                letterSpacing: "0.16em",
+                fontWeight: 500,
                 marginBottom: "12px",
               }}
             >
-              <Layers size={18} color="#10b981" />
-            </div>
-            <p
-              style={{
-                color: textPrimary,
-                fontSize: "14px",
-                fontWeight: 600,
-                marginBottom: "4px",
-              }}
-            >
-              Listings for this set coming soon
+              Cards in this Set
             </p>
-            <p style={{ color: textSecondary, fontSize: "12px" }}>
-              Be the first to list cards from {set.setName}.
-            </p>
+
+            {cards.length === 0 ? (
+              <div
+                data-ocid="set_detail.cards.empty_state"
+                style={{ textAlign: "center", padding: "24px 0" }}
+              >
+                <p style={{ color: textSecondary, fontSize: "13px" }}>
+                  No cards from this set yet.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {cards
+                  .filter((c) => c?.name)
+                  .map((card, i) => (
+                    <div
+                      key={card.id}
+                      data-ocid={`set_detail.card.item.${i + 1}`}
+                      className="rounded-2xl overflow-hidden"
+                      style={panelStyle}
+                    >
+                      <div
+                        style={{
+                          background: isDark ? "rgba(8,22,15,0.5)" : "#f8f9fa",
+                          minHeight: "100px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "12px",
+                        }}
+                      >
+                        {card.imageUrl ? (
+                          <img
+                            src={card.imageUrl}
+                            alt={card.name}
+                            style={{
+                              maxHeight: "90px",
+                              maxWidth: "100%",
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              background: placeholderBg,
+                              width: "100%",
+                              minHeight: "80px",
+                              borderRadius: "8px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontFamily: "monospace",
+                                fontSize: "11px",
+                                color: placeholderText,
+                              }}
+                            >
+                              {card.number || "—"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: "10px 12px" }}>
+                        <p
+                          style={{
+                            color: textPrimary,
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            marginBottom: "2px",
+                          }}
+                        >
+                          {card.name}
+                        </p>
+                        {card.number && (
+                          <p
+                            style={{
+                              color: textSecondary,
+                              fontSize: "10px",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            #{card.number}
+                          </p>
+                        )}
+                        {card.rarity && (
+                          <span
+                            style={{
+                              fontSize: "9px",
+                              padding: "1px 6px",
+                              borderRadius: "4px",
+                              background: isDark
+                                ? "rgba(16,185,129,0.12)"
+                                : "rgba(16,185,129,0.08)",
+                              color: "#10b981",
+                              border: "1px solid rgba(16,185,129,0.25)",
+                            }}
+                          >
+                            {card.rarity}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         </motion.div>
       )}
