@@ -411,7 +411,7 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
   );
   const allCards = getCards();
   const cards = useMemo(
-    () => (set ? allCards.filter((c) => c.setId === set.id && c.active) : []),
+    () => (set ? allCards.filter((c) => c.setId === set.id) : []),
     [set, allCards],
   );
 
@@ -423,7 +423,14 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
 
   // Sort cards by volume descending
   const sortedCards = useMemo(
-    () => [...cards].sort((a, b) => cardVolume(b) - cardVolume(a)),
+    () =>
+      [...cards].sort((a, b) => {
+        const volDiff = cardVolume(b) - cardVolume(a);
+        if (volDiff !== 0) return volDiff;
+        const aNum = Number.parseFloat(a.number ?? "") || 0;
+        const bNum = Number.parseFloat(b.number ?? "") || 0;
+        return aNum - bNum;
+      }),
     [cards],
   );
 
