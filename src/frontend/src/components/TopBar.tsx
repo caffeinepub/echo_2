@@ -1006,16 +1006,8 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
           <img
             src={MINTY_LOGO}
             alt="Minty"
-            className="select-none"
-            style={{
-              height: "clamp(48px, 6vw, 52px)",
-              maxHeight: "none",
-              width: "auto",
-              objectFit: "contain",
-              display: "block",
-              background: "transparent",
-              imageRendering: "auto",
-            }}
+            className="minty-logo-brand"
+            style={{ background: "transparent", imageRendering: "auto" }}
             draggable={false}
           />
         </div>

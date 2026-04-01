@@ -575,3 +575,24 @@
     transform: scaleY(0.5) !important;
   }
 }
+
+/* Minty brand logo — treat as primary brand image, not icon */
+.minty-logo-brand {
+  height: 48px !important;
+  width: auto !important;
+  max-height: none !important;
+  min-height: 48px !important;
+  min-width: unset !important;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@media (min-width: 768px) {
+  .minty-logo-brand {
+    height: 52px !important;
+    min-height: 52px !important;
+  }
+}
