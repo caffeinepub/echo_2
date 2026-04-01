@@ -301,21 +301,40 @@ const MOCK_SLABS: SlabItem[] = [
   },
 ];
 
-// ─── Colour constants ────────────────────────────────────────────────────────
+// ─── Colour constants (detail sheet — unchanged dark palette) ────────────────
 
 const C = {
   accent: "oklch(0.70 0.18 160)",
   accentGlow: "oklch(0.70 0.18 160 / 0.22)",
   bg: "oklch(0.08 0.02 160)",
   panel: "oklch(0.18 0.06 160 / 0.42)",
-  panelHover: "oklch(0.22 0.07 160 / 0.54)",
   border: "oklch(0.55 0.12 160 / 0.18)",
-  borderActive: "oklch(0.65 0.16 160 / 0.42)",
   text: "oklch(0.95 0.01 160)",
   textSec: "oklch(0.60 0.08 160)",
   pos: "oklch(0.72 0.17 145)",
   neg: "oklch(0.60 0.18 25)",
-  accentBar: "oklch(0.70 0.18 160)",
+};
+
+// ─── Card surface tokens (white marketplace style) ───────────────────────────
+
+const CARD = {
+  bg: "#ffffff",
+  bgHover: "#fafffe",
+  border: "rgba(0,0,0,0.06)",
+  borderHover: "rgba(0,0,0,0.10)",
+  shadow: "0 6px 18px rgba(0,0,0,0.06)",
+  shadowHover: "0 8px 24px rgba(0,0,0,0.10)",
+  radius: 16,
+  // text
+  title: "#1a1a1a",
+  secondary: "#6b7280",
+  price: "#1a1a1a",
+  pos: "#10b981",
+  neg: "#ef4444",
+  // accent bar
+  accentBar: "#10b981",
+  // thumbnail border
+  imgBorder: "rgba(0,0,0,0.08)",
 };
 
 // ─── Sparkline SVG ───────────────────────────────────────────────────────────
@@ -332,7 +351,8 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
     const y = h - ((v - min) / range) * (h - 4) - 2;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
-  const color = positive ? C.pos : C.neg;
+  // Use card-level mint/red, not the dark-theme C constants
+  const color = positive ? CARD.pos : CARD.neg;
   return (
     <svg
       width={w}
@@ -380,9 +400,9 @@ function GradeBadge({ grader, grade }: { grader: string; grade: number }) {
         letterSpacing: "0.04em",
         padding: "2px 6px",
         borderRadius: "4px",
-        background: "oklch(0.18 0.05 160)",
-        border: `1px solid ${C.borderActive}`,
-        color: C.accent,
+        background: "rgba(16,185,129,0.08)",
+        border: "1px solid rgba(16,185,129,0.20)",
+        color: "#059669",
         whiteSpace: "nowrap" as const,
       }}
     >
@@ -415,9 +435,9 @@ function TypeBadge({ label, type }: { label: string; type: SlabItem["type"] }) {
         letterSpacing: "0.06em",
         padding: "2px 6px",
         borderRadius: "99px",
-        background: "oklch(0.70 0.18 160 / 0.12)",
-        border: "1px solid oklch(0.70 0.18 160 / 0.28)",
-        color: C.accent,
+        background: "rgba(16,185,129,0.12)",
+        border: "1px solid rgba(16,185,129,0.20)",
+        color: "#059669",
         textTransform: "uppercase" as const,
         whiteSpace: "nowrap" as const,
       }}
@@ -428,7 +448,7 @@ function TypeBadge({ label, type }: { label: string; type: SlabItem["type"] }) {
   );
 }
 
-// ─── Detail sheet ─────────────────────────────────────────────────────────────
+// ─── Detail sheet (dark/frosted — unchanged) ─────────────────────────────────
 
 const MOCK_GRADE_DIST: Record<string, { grade: string; count: number }[]> = {
   PSA: [
@@ -810,18 +830,16 @@ function SlabCard({
         display: "flex",
         width: "100%",
         alignItems: "stretch",
-        background: hovered ? C.panelHover : C.panel,
-        border: `1px solid ${hovered ? C.borderActive : C.border}`,
-        borderRadius: 14,
+        background: hovered ? CARD.bgHover : CARD.bg,
+        border: `1px solid ${hovered ? CARD.borderHover : CARD.border}`,
+        borderRadius: CARD.radius,
         overflow: "hidden",
         cursor: "pointer",
         textAlign: "left",
-        transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
-        backdropFilter: "blur(10px) saturate(160%)",
-        WebkitBackdropFilter: "blur(10px) saturate(160%)",
-        boxShadow: hovered
-          ? "0 0 0 1px oklch(0.65 0.16 160 / 0.36), 0 4px 28px oklch(0.50 0.14 160 / 0.18), inset 0 1px 0 oklch(0.75 0.18 160 / 0.10)"
-          : "0 0 0 1px oklch(0.55 0.12 160 / 0.14), 0 2px 16px oklch(0.20 0.06 160 / 0.30), inset 0 1px 0 oklch(0.70 0.18 160 / 0.06)",
+        transition:
+          "background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s",
+        boxShadow: hovered ? CARD.shadowHover : CARD.shadow,
+        transform: hovered ? "translateY(-1px)" : "translateY(0)",
         position: "relative",
       }}
     >
@@ -830,9 +848,8 @@ function SlabCard({
         <div
           style={{
             width: 2,
-            background: C.accentBar,
+            background: CARD.accentBar,
             flexShrink: 0,
-            boxShadow: `0 0 8px ${C.accentGlow}`,
           }}
         />
       )}
@@ -848,7 +865,7 @@ function SlabCard({
           flexShrink: 0,
           margin: "12px 0 12px 12px",
           borderRadius: 8,
-          border: `1px solid ${C.border}`,
+          border: `1px solid ${CARD.imgBorder}`,
         }}
         loading="lazy"
       />
@@ -870,7 +887,7 @@ function SlabCard({
             style={{
               fontSize: 14,
               fontWeight: 700,
-              color: C.text,
+              color: CARD.title,
               lineHeight: 1.25,
               flex: 1,
               minWidth: 0,
@@ -882,14 +899,14 @@ function SlabCard({
         </div>
 
         {/* Set + year */}
-        <p style={{ fontSize: 11, color: C.textSec }}>
+        <p style={{ fontSize: 11, color: CARD.secondary }}>
           {slab.setName} · {slab.year}
         </p>
 
         {/* Grade + population */}
         <div className="flex items-center gap-2 flex-wrap">
           <GradeBadge grader={slab.grader} grade={slab.grade} />
-          <span style={{ fontSize: 10, color: C.textSec }}>
+          <span style={{ fontSize: 10, color: CARD.secondary }}>
             Pop {slab.population.toLocaleString()}
           </span>
         </div>
@@ -904,7 +921,7 @@ function SlabCard({
               style={{
                 fontSize: 15,
                 fontWeight: 700,
-                color: C.text,
+                color: CARD.price,
                 letterSpacing: "-0.01em",
               }}
             >
@@ -914,7 +931,7 @@ function SlabCard({
               style={{
                 fontSize: 11,
                 fontWeight: 500,
-                color: slab.priceChange >= 0 ? C.pos : C.neg,
+                color: slab.priceChange >= 0 ? CARD.pos : CARD.neg,
               }}
             >
               {slab.priceChange >= 0 ? "+" : ""}
@@ -922,7 +939,7 @@ function SlabCard({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span style={{ fontSize: 10, color: C.textSec }}>
+            <span style={{ fontSize: 10, color: CARD.secondary }}>
               Vol {fmtVol(slab.volume24h)}
             </span>
             <Sparkline data={slab.sparkline} positive={slab.priceChange >= 0} />
@@ -995,7 +1012,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
             ? "rgba(240,247,244,0.92)"
             : "oklch(0.08 0.02 160 / 0.92)",
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${isLight ? "#c8e8dc" : C.border}`,
+          borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : C.border}`,
           padding: "10px 16px",
           display: "flex",
           alignItems: "center",
@@ -1005,8 +1022,8 @@ export function ReleasesPage(_props: ReleasesPageProps) {
         <div
           style={{
             display: "flex",
-            background: isLight ? "rgba(0,0,0,0.04)" : "oklch(0.15 0.03 160)",
-            border: `1px solid ${isLight ? "#c8e8dc" : C.border}`,
+            background: "rgba(0,0,0,0.04)",
+            border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 99,
             padding: "3px",
             gap: 2,
@@ -1027,17 +1044,9 @@ export function ReleasesPage(_props: ReleasesPageProps) {
                 border: "none",
                 cursor: "pointer",
                 transition: "all 0.15s",
-                background: sortMode === key ? C.accent : "transparent",
-                color:
-                  sortMode === key
-                    ? "oklch(0.08 0.02 160)"
-                    : isLight
-                      ? "#2d6b55"
-                      : C.textSec,
-                boxShadow:
-                  sortMode === key
-                    ? "0 0 12px oklch(0.70 0.18 160 / 0.35)"
-                    : "none",
+                background: sortMode === key ? "#10b981" : "transparent",
+                color: sortMode === key ? "#ffffff" : "#6b7280",
+                boxShadow: "none",
               }}
             >
               {label}
@@ -1049,7 +1058,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
           style={{
             marginLeft: "auto",
             fontSize: 11,
-            color: C.textSec,
+            color: isLight ? "#6b7280" : C.textSec,
             fontWeight: 500,
           }}
         >
