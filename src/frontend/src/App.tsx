@@ -14,7 +14,7 @@ import { ManageCatalogPage } from "./pages/ManageCatalogPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
-import { SetDetailPage } from "./pages/SetDetailPage";
+import SetDetailPage from "./pages/SetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 
 type View =
@@ -46,10 +46,6 @@ function AppContent() {
 
   function handleMarketItemClick(id: string) {
     setView({ type: "market-detail", id });
-  }
-
-  function handleCardClick(id: string) {
-    setView({ type: "card-detail", id });
   }
 
   return (
@@ -98,7 +94,6 @@ function AppContent() {
           <SetDetailPage
             slug={view.slug}
             onBack={() => setView({ type: "tab", tab: "market" })}
-            onCardClick={handleCardClick}
           />
         )}
         {view.type === "card-detail" && (
