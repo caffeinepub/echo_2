@@ -1,4 +1,4 @@
-import { ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTheme } from "../ThemeContext";
 
@@ -600,6 +600,320 @@ function mockSales(price: number) {
   ];
 }
 
+// ─── Buy / Offer Modal ────────────────────────────────────────────────────────
+
+type PaymentOption = "USDC" | "BTC" | "ETH" | "SOL";
+const PAYMENT_OPTIONS: PaymentOption[] = ["USDC", "BTC", "ETH", "SOL"];
+
+function PaymentChip({
+  payment,
+  selected,
+  isDark,
+  onClick,
+}: {
+  payment: PaymentOption;
+  selected: boolean;
+  isDark: boolean;
+  onClick: () => void;
+}) {
+  const icon =
+    payment === "USDC" ? (
+      <USDCIcon />
+    ) : payment === "BTC" ? (
+      <BTCIcon />
+    ) : payment === "ETH" ? (
+      <ETHIcon />
+    ) : (
+      <SOLIcon />
+    );
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-ocid={`buy_offer.${payment.toLowerCase()}.toggle`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "6px 12px 6px 8px",
+        borderRadius: 99,
+        border: selected
+          ? "1.5px solid rgba(125,223,194,0.60)"
+          : isDark
+            ? "1px solid oklch(0.70 0.18 160 / 0.18)"
+            : "1px solid rgba(0,0,0,0.08)",
+        background: selected
+          ? "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)"
+          : isDark
+            ? "oklch(0.70 0.18 160 / 0.08)"
+            : "rgba(0,0,0,0.04)",
+        color: selected
+          ? "#0f2a25"
+          : isDark
+            ? "oklch(0.85 0.06 160)"
+            : "#374151",
+        cursor: "pointer",
+        fontWeight: 600,
+        fontSize: 12,
+        letterSpacing: "0.03em",
+        transition: "all 0.15s",
+        whiteSpace: "nowrap" as const,
+      }}
+    >
+      {icon}
+      {payment}
+    </button>
+  );
+}
+
+function BuyOfferModal({
+  slab,
+  isDark,
+  onClose,
+}: {
+  slab: SlabItem;
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const [stage, setStage] = useState<"choose" | "payment">("choose");
+  const [chosenAction, setChosenAction] = useState<
+    "Buy now" | "Make offer" | null
+  >(null);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(
+    null,
+  );
+
+  const panelBg = isDark ? "oklch(0.12 0.04 160 / 0.92)" : "#ffffff";
+  const panelBorder = isDark
+    ? "1px solid oklch(0.55 0.12 160 / 0.22)"
+    : "1px solid rgba(0,0,0,0.08)";
+  const titleColor = isDark ? "oklch(0.92 0.04 160)" : "#1a1a1a";
+  const secColor = isDark ? "oklch(0.58 0.08 160)" : "#6b7280";
+  const optionBg = isDark ? "oklch(0.18 0.06 160 / 0.50)" : "#f9fafb";
+  const optionBorder = isDark
+    ? "1px solid oklch(0.55 0.12 160 / 0.20)"
+    : "1px solid rgba(0,0,0,0.06)";
+  const optionColor = isDark ? "oklch(0.88 0.04 160)" : "#1a1a1a";
+
+  function handleChoose(action: "Buy now" | "Make offer") {
+    setChosenAction(action);
+    setSelectedPayment(null);
+    setStage("payment");
+  }
+
+  function handleConfirm() {
+    // Placeholder confirm action
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.65)", padding: "0 16px" }}
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      data-ocid="buy_offer.modal"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 340,
+          background: panelBg,
+          backdropFilter: isDark ? "blur(20px)" : undefined,
+          WebkitBackdropFilter: isDark ? "blur(20px)" : undefined,
+          border: panelBorder,
+          borderRadius: 20,
+          boxShadow: isDark
+            ? "0 20px 60px oklch(0.70 0.18 160 / 0.14)"
+            : "0 20px 60px rgba(0,0,0,0.12)",
+          overflow: "hidden",
+        }}
+      >
+        {stage === "choose" ? (
+          <div style={{ padding: "22px 20px 24px" }}>
+            {/* Header */}
+            <div
+              className="flex items-center justify-between"
+              style={{ marginBottom: 18 }}
+            >
+              <p style={{ fontSize: 16, fontWeight: 700, color: titleColor }}>
+                Choose action
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                data-ocid="buy_offer.close_button"
+                aria-label="Close"
+                style={{
+                  background: isDark
+                    ? "oklch(0.18 0.04 160)"
+                    : "rgba(0,0,0,0.05)",
+                  border: panelBorder,
+                  borderRadius: 99,
+                  padding: 6,
+                  color: secColor,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Slab hint */}
+            <p style={{ fontSize: 11, color: secColor, marginBottom: 14 }}>
+              {slab.cardName} · {fmtPrice(slab.marketPrice)}
+            </p>
+
+            {/* Options */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(["Buy now", "Make offer"] as const).map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => handleChoose(action)}
+                  data-ocid={`buy_offer.${action === "Buy now" ? "buy_now" : "make_offer"}.button`}
+                  style={{
+                    width: "100%",
+                    padding: "13px 18px",
+                    borderRadius: 12,
+                    background: optionBg,
+                    border: optionBorder,
+                    color: optionColor,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "background 0.12s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {action}
+                  <span style={{ fontSize: 16, opacity: 0.4 }}>›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: "22px 20px 24px" }}>
+            {/* Header */}
+            <div
+              className="flex items-center justify-between"
+              style={{ marginBottom: 6 }}
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStage("choose")}
+                  data-ocid="buy_offer.back_button"
+                  aria-label="Back"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    color: secColor,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <ArrowLeft size={16} />
+                </button>
+                <p style={{ fontSize: 16, fontWeight: 700, color: titleColor }}>
+                  {chosenAction}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                data-ocid="buy_offer.close_button"
+                aria-label="Close"
+                style={{
+                  background: isDark
+                    ? "oklch(0.18 0.04 160)"
+                    : "rgba(0,0,0,0.05)",
+                  border: panelBorder,
+                  borderRadius: 99,
+                  padding: 6,
+                  color: secColor,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: 11, color: secColor, marginBottom: 18 }}>
+              Select payment method
+            </p>
+
+            {/* Payment chips */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 20,
+              }}
+            >
+              {PAYMENT_OPTIONS.map((p) => (
+                <PaymentChip
+                  key={p}
+                  payment={p}
+                  selected={selectedPayment === p}
+                  isDark={isDark}
+                  onClick={() =>
+                    setSelectedPayment(selectedPayment === p ? null : p)
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Confirm button */}
+            {selectedPayment && (
+              <button
+                type="button"
+                onClick={handleConfirm}
+                data-ocid="buy_offer.confirm_button"
+                style={{
+                  width: "100%",
+                  padding: "12px 18px",
+                  borderRadius: 16,
+                  background:
+                    "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
+                  color: "#0f2a25",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow:
+                    "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+                  transition: "opacity 0.15s",
+                  letterSpacing: "0.01em",
+                }}
+              >
+                Confirm — {selectedPayment}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Slab detail sheet ────────────────────────────────────────────────────────
+
 function SlabDetailSheet({
   slab,
   onClose,
@@ -902,20 +1216,30 @@ function SlabCard({
   slab,
   index,
   onTap,
+  onBuyOffer,
   isDark,
 }: {
   slab: SlabItem;
   index: number;
   onTap: () => void;
+  onBuyOffer: (slab: SlabItem) => void;
   isDark: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const T = isDark ? DARK_CARD : CARD;
 
   return (
-    <button
-      type="button"
+    // biome-ignore lint/a11y/useSemanticElements: outer div needed to allow nested button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onTap}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onTap();
+        }
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       data-ocid={`releases.item.${index + 1}`}
@@ -998,7 +1322,7 @@ function SlabCard({
           </span>
         </div>
 
-        {/* Bottom: price + listing count */}
+        {/* Bottom: price + Buy/Offer button */}
         <div
           className="flex items-end justify-between"
           style={{ marginTop: 4 }}
@@ -1026,9 +1350,36 @@ function SlabCard({
               {slab.listingCount} listed
             </span>
           </div>
+
+          {/* Buy / Offer button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuyOffer(slab);
+            }}
+            data-ocid={`releases.item.${index + 1}.button`}
+            style={{
+              borderRadius: 16,
+              padding: "6px 14px",
+              fontWeight: 600,
+              fontSize: 12,
+              background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
+              color: "#0f2a25",
+              boxShadow:
+                "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+              border: "none",
+              cursor: "pointer",
+              whiteSpace: "nowrap" as const,
+              letterSpacing: "0.01em",
+              flexShrink: 0,
+            }}
+          >
+            Buy / Offer
+          </button>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1053,6 +1404,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
   const { theme } = useTheme();
   const [sortMode, setSortMode] = useState<SortMode>("most_viewed");
   const [selectedSlab, setSelectedSlab] = useState<SlabItem | null>(null);
+  const [buyOfferSlab, setBuyOfferSlab] = useState<SlabItem | null>(null);
 
   const isLight = theme === "light";
   const isDark = !isLight;
@@ -1180,6 +1532,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
             slab={slab}
             index={i}
             onTap={() => setSelectedSlab(slab)}
+            onBuyOffer={(s) => setBuyOfferSlab(s)}
             isDark={isDark}
           />
         ))}
@@ -1190,6 +1543,15 @@ export function ReleasesPage(_props: ReleasesPageProps) {
         <SlabDetailSheet
           slab={selectedSlab}
           onClose={() => setSelectedSlab(null)}
+        />
+      )}
+
+      {/* Buy / Offer modal */}
+      {buyOfferSlab && (
+        <BuyOfferModal
+          slab={buyOfferSlab}
+          isDark={isDark}
+          onClose={() => setBuyOfferSlab(null)}
         />
       )}
     </div>
