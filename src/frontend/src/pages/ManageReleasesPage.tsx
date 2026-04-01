@@ -35,7 +35,7 @@ import type {
   TcgSet,
   UpdateTcgSetInput,
 } from "../backend.d";
-import { ADMIN_WALLET_ADDRESS } from "../config/admin";
+import { ADMIN_PRINCIPAL } from "../config/admin";
 import {
   type AdminRelease,
   type ReleaseStatus,
@@ -43,8 +43,8 @@ import {
   type Visibility,
   useAdminReleases,
 } from "../context/AdminReleasesContext";
-import { useWalletContext } from "../context/WalletContext";
 import { useActor } from "../hooks/useActor";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 type FilterStatus = "all" | ReleaseStatus;
 
@@ -1273,7 +1273,8 @@ interface ManageReleasesPageProps {
 }
 
 export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
-  const { walletAddress } = useWalletContext();
+  const { identity } = useInternetIdentity();
+  const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const {
     releases,
     addRelease,
@@ -1299,8 +1300,9 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
 
   // Access control
   const isAdmin =
-    ADMIN_WALLET_ADDRESS !== "" && walletAddress === ADMIN_WALLET_ADDRESS;
-  const isConnected = !!walletAddress;
+    isSignedIn &&
+    ADMIN_PRINCIPAL !== "" &&
+    identity?.getPrincipal().toText() === ADMIN_PRINCIPAL;
 
   // Filtered list
   // Note: "submitted" and "rejected" are never shown in public feeds (useReleasesData
@@ -1458,7 +1460,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
               marginBottom: "10px",
             }}
           >
-            {!isConnected ? "Wallet Required" : "Access Denied"}
+            "Access Denied"
           </h2>
           <p
             style={{
@@ -1467,9 +1469,8 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
               lineHeight: "1.6",
             }}
           >
-            {!isConnected
-              ? "Connect your Phantom wallet to access this page."
-              : "This page is restricted to the admin wallet. Your connected wallet does not have access."}
+            "This page is restricted to admin users. Sign in with the admin
+            Internet Identity to continue."
           </p>
         </div>
       </div>

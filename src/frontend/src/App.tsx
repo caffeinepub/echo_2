@@ -13,11 +13,13 @@ import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import { SetDetailPage } from "./pages/SetDetailPage";
+import { UploadPage } from "./pages/UploadPage";
 
 type View =
   | { type: "tab"; tab: Tab }
   | { type: "set-detail"; slug: string }
   | { type: "market-detail"; id: string }
+  | { type: "upload" }
   | { type: "admin" };
 
 function AppContent() {
@@ -49,7 +51,7 @@ function AppContent() {
 
       <TopBar
         onAdminClick={() => setView({ type: "admin" })}
-        onUploadClick={() => setView({ type: "admin" })}
+        onUploadClick={() => setView({ type: "upload" })}
       />
 
       <main className="pt-16 pb-[68px] min-h-screen">
@@ -75,6 +77,11 @@ function AppContent() {
           <MarketDetailPage
             id={view.id}
             onBack={() => setView({ type: "tab", tab: "market" })}
+          />
+        )}
+        {view.type === "upload" && (
+          <UploadPage
+            onBack={() => setView({ type: "tab", tab: "releases" })}
           />
         )}
         {view.type === "admin" && (

@@ -13,9 +13,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import { ADMIN_WALLET_ADDRESS } from "../config/admin";
+import { ADMIN_PRINCIPAL } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useWallet } from "../hooks/useWallet";
 
 const MINTY_LOGO = "/assets/minty-logo.png";
 
@@ -979,7 +978,6 @@ interface TopBarProps {
 
 export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
-  const { isConnected, walletAddress } = useWallet();
   const { theme, toggleTheme } = useTheme();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
@@ -990,10 +988,9 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
   const isAdmin =
-    (ADMIN_WALLET_ADDRESS !== "" &&
-      isConnected &&
-      walletAddress === ADMIN_WALLET_ADDRESS) ||
-    false;
+    isSignedIn &&
+    ADMIN_PRINCIPAL !== "" &&
+    identity?.getPrincipal().toText() === ADMIN_PRINCIPAL;
 
   // ── Shared style helpers ────────────────────────────────────────────────────
   const uploadBg = isLight
@@ -1094,7 +1091,7 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
           )}
 
           {/* Upload button */}
-          {isSignedIn && !isAdmin && onUploadClick && (
+          {onUploadClick && (
             <button
               type="button"
               onClick={onUploadClick}
@@ -1259,6 +1256,36 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
         onSignOut={clear}
         isLight={isLight}
       />
+      {/* DEBUG: Principal/Admin label — remove after testing */}
+      <div
+        data-ocid="debug.principal.label"
+        style={{
+          position: "fixed",
+          bottom: "76px",
+          left: "8px",
+          zIndex: 999,
+          background: isLight ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.85)",
+          color: "#ffffff",
+          fontSize: "10px",
+          fontFamily: "monospace",
+          padding: "5px 8px",
+          borderRadius: "6px",
+          lineHeight: "1.6",
+          pointerEvents: "none",
+          maxWidth: "260px",
+          wordBreak: "break-all",
+        }}
+      >
+        <div>
+          Principal: {identity ? identity.getPrincipal().toText() : "anonymous"}
+        </div>
+        <div>
+          Admin:{" "}
+          <span style={{ color: isAdmin ? "#4ade80" : "#f87171" }}>
+            {isAdmin ? "Yes ✓" : "No"}
+          </span>
+        </div>
+      </div>
     </>
   );
 }
