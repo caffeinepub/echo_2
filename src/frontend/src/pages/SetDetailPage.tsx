@@ -14,6 +14,20 @@ function formatUSD(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+function formatDate(iso: string): string {
+  try {
+    const [year, month, day] = iso.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 function cardVolume(card: MockCard): number {
   if (card.mintyTransactions && card.averageSalePriceUsd) {
     return card.mintyTransactions * card.averageSalePriceUsd;
@@ -153,10 +167,47 @@ function CardRow({
           className="text-xs mt-0.5"
           style={{ color: isDark ? "rgba(255,255,255,0.35)" : "#9ca3af" }}
         >
-          0 listings
+          {card.activeListings ?? 0} listings
         </p>
       </div>
     </button>
+  );
+}
+
+// ─── Compact Stat Box (2×2 grid) ─────────────────────────────────────────────
+
+function StatBox({
+  label,
+  value,
+  isDark,
+}: {
+  label: string;
+  value: string;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      className="rounded-xl px-3 py-3"
+      style={{
+        background: isDark ? "rgba(255,255,255,0.04)" : "#f9fafb",
+        border: isDark
+          ? "1px solid rgba(255,255,255,0.07)"
+          : "1px solid #f3f4f6",
+      }}
+    >
+      <p
+        className="text-xs font-medium mb-1"
+        style={{ color: isDark ? "rgba(255,255,255,0.45)" : "#6b7280" }}
+      >
+        {label}
+      </p>
+      <p
+        className="text-base font-bold"
+        style={{ color: isDark ? "#d1fae5" : "#111827" }}
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -173,6 +224,17 @@ function CardDetailModal({
   isDark: boolean;
   onClose: () => void;
 }) {
+  // Sort recent sales newest-first
+  const sortedSales = useMemo(
+    () =>
+      [...(card.recentSales ?? [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+    [card.recentSales],
+  );
+
+  const totalVolume = cardVolume(card);
+
   return (
     <AnimatePresence>
       <motion.div
@@ -334,24 +396,126 @@ function CardDetailModal({
               ))}
             </div>
 
+            {/* Market Data */}
+            <SectionHeader label="Market Data" isDark={isDark} />
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              <StatBox
+                label="Total Volume"
+                value={formatUSD(totalVolume)}
+                isDark={isDark}
+              />
+              <StatBox
+                label="Avg Price"
+                value={
+                  card.averageSalePriceUsd
+                    ? formatUSD(card.averageSalePriceUsd)
+                    : "—"
+                }
+                isDark={isDark}
+              />
+              <StatBox
+                label="Highest Sale"
+                value={
+                  card.highestSalePriceUsd
+                    ? formatUSD(card.highestSalePriceUsd)
+                    : "—"
+                }
+                isDark={isDark}
+              />
+              <StatBox
+                label="Last Sale"
+                value={
+                  card.lastSalePriceUsd ? formatUSD(card.lastSalePriceUsd) : "—"
+                }
+                isDark={isDark}
+              />
+            </div>
+
             {/* Recent Sales */}
             <SectionHeader label="Recent Sales" isDark={isDark} />
-            <div
-              className="rounded-xl px-4 py-4 mb-6 text-center"
-              style={{
-                background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
-                border: isDark
-                  ? "1px solid rgba(255,255,255,0.06)"
-                  : "1px solid #f3f4f6",
-              }}
-            >
-              <p
-                className="text-sm"
-                style={{ color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af" }}
+            {sortedSales.length === 0 ? (
+              <div
+                className="rounded-xl px-4 py-4 mb-6 text-center"
+                style={{
+                  background: isDark ? "rgba(255,255,255,0.03)" : "#f9fafb",
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.06)"
+                    : "1px solid #f3f4f6",
+                }}
               >
-                No sales data yet
-              </p>
-            </div>
+                <p
+                  className="text-sm"
+                  style={{
+                    color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
+                  }}
+                >
+                  No sales data yet
+                </p>
+              </div>
+            ) : (
+              <div
+                className="rounded-xl overflow-hidden mb-6"
+                style={{
+                  border: isDark
+                    ? "1px solid rgba(255,255,255,0.07)"
+                    : "1px solid #f3f4f6",
+                }}
+              >
+                {sortedSales.map((sale, i) => (
+                  <div
+                    key={`${sale.date}-${sale.priceUsd}`}
+                    className="flex items-center justify-between px-4 py-3"
+                    style={{
+                      background: isDark
+                        ? i % 2 === 0
+                          ? "rgba(255,255,255,0.025)"
+                          : "transparent"
+                        : i % 2 === 0
+                          ? "#fafafa"
+                          : "#ffffff",
+                      borderBottom:
+                        i < sortedSales.length - 1
+                          ? isDark
+                            ? "1px solid rgba(255,255,255,0.05)"
+                            : "1px solid #f3f4f6"
+                          : "none",
+                    }}
+                  >
+                    {/* Date */}
+                    <p
+                      className="text-xs"
+                      style={{
+                        color: isDark ? "rgba(255,255,255,0.4)" : "#9ca3af",
+                        minWidth: "90px",
+                      }}
+                    >
+                      {formatDate(sale.date)}
+                    </p>
+
+                    {/* Price */}
+                    <p
+                      className="text-sm font-bold"
+                      style={{ color: isDark ? "#6ee7b7" : "#059669" }}
+                    >
+                      ${sale.priceUsd.toLocaleString()}
+                    </p>
+
+                    {/* Grade badge */}
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        background: isDark
+                          ? "rgba(110,230,180,0.12)"
+                          : "#ecfdf5",
+                        color: isDark ? "#6ee7b7" : "#059669",
+                      }}
+                    >
+                      {sale.grade}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Doppler Analytics placeholder */}
             <SectionHeader label="Doppler Analytics" isDark={isDark} />
@@ -439,7 +603,10 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
     () => sortedCards.reduce((acc, c) => acc + cardVolume(c), 0),
     [sortedCards],
   );
-  const activeListings = 0; // placeholder until real listing data exists
+  const activeListings = useMemo(
+    () => sortedCards.reduce((acc, c) => acc + (c.activeListings ?? 0), 0),
+    [sortedCards],
+  );
 
   if (!set) {
     return (

@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -16,6 +15,7 @@ import { MarketPage } from "./pages/MarketPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import SetDetailPage from "./pages/SetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
+import { seedMockData } from "./store/seedMockData";
 
 type View =
   | { type: "tab"; tab: Tab }
@@ -28,6 +28,11 @@ type View =
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
+
+  // Seed mock data once on mount (idempotent)
+  useEffect(() => {
+    seedMockData();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);

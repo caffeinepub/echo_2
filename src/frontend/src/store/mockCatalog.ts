@@ -32,6 +32,12 @@ export interface MockSet {
   featured: boolean;
 }
 
+export interface MockSale {
+  priceUsd: number;
+  grade: string;
+  date: string; // ISO date string YYYY-MM-DD
+}
+
 export interface MockCard {
   id: string;
   setId: string;
@@ -54,6 +60,9 @@ export interface MockCard {
   highestSalePriceUsd: number;
   lowestSalePriceUsd: number;
   preferredCurrency: "USD";
+  // Listings & Sales History
+  activeListings: number;
+  recentSales: MockSale[];
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -185,6 +194,8 @@ function withCardDefaults(card: MockCard): MockCard {
     highestSalePriceUsd: card.highestSalePriceUsd ?? 0,
     lowestSalePriceUsd: card.lowestSalePriceUsd ?? 0,
     preferredCurrency: card.preferredCurrency ?? "USD",
+    activeListings: card.activeListings ?? 0,
+    recentSales: card.recentSales ?? [],
   };
 }
 

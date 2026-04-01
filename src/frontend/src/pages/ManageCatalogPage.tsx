@@ -1057,6 +1057,8 @@ function CardsTab({ isDark }: { isDark: boolean }) {
         highestSalePriceUsd: Number(form.highestSalePriceUsd) || 0,
         lowestSalePriceUsd: Number(form.lowestSalePriceUsd) || 0,
         preferredCurrency: "USD" as const,
+        activeListings: 0,
+        recentSales: [],
       };
       if (editId !== null) {
         updateCard(editId, base);
