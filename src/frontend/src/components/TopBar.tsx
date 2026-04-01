@@ -995,13 +995,21 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
         }}
       >
         {/* Minty Logo */}
-        <div style={{ marginRight: "12px" }} className="flex items-center">
+        <div
+          style={{
+            marginRight: "14px",
+            display: "flex",
+            alignItems: "center",
+            minHeight: "64px",
+          }}
+        >
           <img
             src={MINTY_LOGO}
             alt="Minty"
             className="select-none"
             style={{
-              height: "clamp(44px, 6vw, 48px)",
+              height: "clamp(48px, 6vw, 52px)",
+              maxHeight: "none",
               width: "auto",
               objectFit: "contain",
               display: "block",
