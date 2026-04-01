@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useTheme } from "../ThemeContext";
 
 // ─── Signal Card ───────────────────────────────────────────────────────────────
 function SignalCard({
@@ -6,18 +7,42 @@ function SignalCard({
   plainValue,
   index,
   accent,
+  isDark,
 }: {
   label: string;
   plainValue?: string;
   index: number;
   accent?: "violet" | "cyan";
+  isDark: boolean;
 }) {
-  const borderColor =
+  const lightBorderColor =
     accent === "violet"
       ? "oklch(0.55 0.25 290 / 0.3)"
       : accent === "cyan"
         ? "oklch(0.82 0.15 210 / 0.25)"
         : "var(--echo-border)";
+
+  const lightBoxShadow =
+    accent === "cyan"
+      ? "0 0 24px oklch(0.82 0.15 210 / 0.08), inset 0 1px 0 oklch(0.82 0.15 210 / 0.05)"
+      : accent === "violet"
+        ? "0 0 24px oklch(0.55 0.25 290 / 0.08), inset 0 1px 0 oklch(0.55 0.25 290 / 0.05)"
+        : "0 6px 18px rgba(0,0,0,0.06)";
+
+  const cardStyle = isDark
+    ? {
+        background: "rgba(10, 28, 20, 0.72)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(110, 230, 185, 0.15)",
+        boxShadow:
+          "0 0 20px rgba(80, 200, 150, 0.08), inset 0 1px 0 rgba(110, 230, 185, 0.07)",
+      }
+    : {
+        background: "white",
+        border: `1px solid ${lightBorderColor}`,
+        boxShadow: lightBoxShadow,
+      };
 
   return (
     <motion.div
@@ -25,26 +50,25 @@ function SignalCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.08 + index * 0.07 }}
       className="rounded-2xl px-4 py-3.5 flex flex-col gap-1"
-      style={{
-        background: "var(--echo-surface)",
-        border: `1px solid ${borderColor}`,
-        boxShadow:
-          accent === "cyan"
-            ? "0 0 24px oklch(0.82 0.15 210 / 0.08), inset 0 1px 0 oklch(0.82 0.15 210 / 0.05)"
-            : accent === "violet"
-              ? "0 0 24px oklch(0.55 0.25 290 / 0.08), inset 0 1px 0 oklch(0.55 0.25 290 / 0.05)"
-              : "0 1px 4px oklch(0 0 0 / 0.05), 0 4px 12px oklch(0 0 0 / 0.04)",
-      }}
+      style={cardStyle}
     >
       <p
         className="text-[9px] uppercase tracking-[0.16em] font-medium"
-        style={{ color: "var(--echo-text-secondary)" }}
+        style={
+          isDark
+            ? { color: "rgba(150, 210, 185, 0.65)" }
+            : { color: "var(--echo-text-secondary)" }
+        }
       >
         {label}
       </p>
       <p
         className="text-base font-mono font-semibold tabular-nums leading-tight"
-        style={{ color: "var(--echo-text-dim)" }}
+        style={
+          isDark
+            ? { color: "rgba(220, 248, 235, 0.92)" }
+            : { color: "var(--echo-text-dim)" }
+        }
       >
         {plainValue}
       </p>
@@ -84,6 +108,27 @@ interface MarketPageProps {
 }
 
 export function MarketPage({ onAlbumClick }: MarketPageProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const setCardStyle = isDark
+    ? {
+        background: "rgba(10, 28, 20, 0.72)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        border: "1px solid rgba(110, 230, 185, 0.15)",
+        boxShadow:
+          "0 0 20px rgba(80, 200, 150, 0.08), inset 0 1px 0 rgba(110, 230, 185, 0.07)",
+        borderRadius: "16px",
+      }
+    : {
+        background: "white",
+        border: "1px solid oklch(0.9 0.005 185)",
+        boxShadow:
+          "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04)",
+        borderRadius: "16px",
+      };
+
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
       {/* ── Signal cards ── */}
@@ -93,19 +138,27 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           plainValue="$2,847,320"
           index={0}
           accent="cyan"
+          isDark={isDark}
         />
         <SignalCard
           label="24H Volume"
           plainValue="$48,210"
           index={1}
           accent="cyan"
+          isDark={isDark}
         />
-        <SignalCard label="Total Transactions" plainValue="14,203" index={2} />
+        <SignalCard
+          label="Total Transactions"
+          plainValue="14,203"
+          index={2}
+          isDark={isDark}
+        />
         <SignalCard
           label="Frozen Assets"
           plainValue="312"
           index={3}
           accent="violet"
+          isDark={isDark}
         />
       </div>
 
@@ -135,19 +188,13 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
                 data-ocid={`discover.item.${i + 1}`}
                 onClick={() => onAlbumClick(set.slug)}
                 className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
-                style={{
-                  background: "white",
-                  border: "1px solid oklch(0.9 0.005 185)",
-                  boxShadow:
-                    "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04)",
-                  borderRadius: "16px",
-                }}
+                style={setCardStyle}
               >
                 {/* Artwork area */}
                 <div
                   className="w-full flex items-center justify-center p-4"
                   style={{
-                    background: "#f8f9fa",
+                    background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
                     minHeight: "120px",
                   }}
                 >
@@ -162,12 +209,24 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
                     <div
                       className="flex items-center justify-center w-full h-full rounded-lg"
                       style={{
-                        background: "#eef0f2",
+                        background: isDark
+                          ? "rgba(20, 50, 35, 0.6)"
+                          : "#eef0f2",
                         minHeight: "80px",
                       }}
                     >
-                      <span className="text-[11px] font-mono text-gray-400">
-                        {set.code}
+                      <span
+                        className="text-[11px] font-mono"
+                        style={{
+                          color: isDark
+                            ? "rgba(130, 190, 160, 0.5)"
+                            : undefined,
+                        }}
+                      >
+                        {!isDark && (
+                          <span className="text-gray-400">{set.code}</span>
+                        )}
+                        {isDark && set.code}
                       </span>
                     </div>
                   )}
@@ -177,7 +236,9 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
                 <div className="px-3 py-2.5 text-center">
                   <p
                     className="text-[12px] font-semibold leading-tight"
-                    style={{ color: "#1a1a1a" }}
+                    style={{
+                      color: isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a",
+                    }}
                   >
                     {set.name}
                   </p>
