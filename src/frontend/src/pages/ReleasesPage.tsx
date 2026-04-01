@@ -998,12 +998,12 @@ function SlabCard({
 
 // ─── Sort filter bar ──────────────────────────────────────────────────────────
 
-type SortMode = "trending" | "new" | "notable";
+type SortMode = "most_viewed" | "new" | "minted";
 
 const SORT_LABELS: { key: SortMode; label: string }[] = [
-  { key: "trending", label: "Trending" },
+  { key: "most_viewed", label: "Most Viewed" },
   { key: "new", label: "New" },
-  { key: "notable", label: "Notable" },
+  { key: "minted", label: "Minted" },
 ];
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -1015,7 +1015,7 @@ interface ReleasesPageProps {
 
 export function ReleasesPage(_props: ReleasesPageProps) {
   const { theme } = useTheme();
-  const [sortMode, setSortMode] = useState<SortMode>("trending");
+  const [sortMode, setSortMode] = useState<SortMode>("most_viewed");
   const [selectedSlab, setSelectedSlab] = useState<SlabItem | null>(null);
 
   const isLight = theme === "light";
@@ -1023,11 +1023,12 @@ export function ReleasesPage(_props: ReleasesPageProps) {
 
   const sorted = useMemo(() => {
     const arr = [...MOCK_SLABS];
-    if (sortMode === "trending") {
+    if (sortMode === "most_viewed") {
       arr.sort((a, b) => b.volume24h - a.volume24h);
     } else if (sortMode === "new") {
       arr.sort((a, b) => b.verifiedAt - a.verifiedAt);
     } else {
+      // minted: sort by notable_sale type first, then by priceChange
       arr.sort((a, b) => {
         const aIsNotable = a.type === "notable_sale" ? 0 : 1;
         const bIsNotable = b.type === "notable_sale" ? 0 : 1;
@@ -1136,7 +1137,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
       {/* Feed */}
       <main
         style={{
-          padding: "12px 16px",
+          padding: "6px 16px 12px 16px",
           display: "flex",
           flexDirection: "column",
           gap: 10,
