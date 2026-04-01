@@ -116,7 +116,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "84792341",
     preferredPayment: "SOL",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s2",
@@ -135,7 +135,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "10245678",
     preferredPayment: "BTC",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s3",
@@ -154,7 +154,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Notable Sale",
     certNumber: "0013847219",
     preferredPayment: "ETH",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s4",
@@ -173,7 +173,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "New Set Added",
     certNumber: "27654321",
     preferredPayment: "USDC",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s5",
@@ -192,7 +192,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "High Volume",
     certNumber: "00493821",
     preferredPayment: "BTC",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s6",
@@ -211,7 +211,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "84103928",
     preferredPayment: "SOL",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s7",
@@ -230,7 +230,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Notable Sale",
     certNumber: "61209384",
     preferredPayment: "USDC",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s8",
@@ -249,7 +249,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "74839201",
     preferredPayment: "ETH",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s9",
@@ -268,7 +268,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "09812374",
     preferredPayment: "BTC",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s10",
@@ -287,7 +287,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "New Set Added",
     certNumber: "55023847",
     preferredPayment: "SOL",
-    nftEligible: true,
+    nftEligible: false,
   },
   {
     id: "s11",
@@ -446,6 +446,7 @@ function fmtPrice(usd: number): string {
 
 // ─── NFT Vault Ice Icon & Modal ──────────────────────────────────────────────
 
+// biome-ignore lint/correctness/noUnusedVariables: reserved for buyer checkout
 function IceNftIcon({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return (
     <button
@@ -510,6 +511,7 @@ function IceNftIcon({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   );
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: reserved for buyer checkout
 function NftVaultModal({
   isDark,
   onClose,
@@ -1911,7 +1913,6 @@ function SlabCard({
   isDark: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const [showNftModal, setShowNftModal] = useState(false);
   const T = isDark ? DARK_CARD : CARD;
 
   return (
@@ -1997,22 +1998,12 @@ function SlabCard({
               flexShrink: 0,
             }}
           >
-            {slab.nftEligible && (
-              <IceNftIcon onClick={() => setShowNftModal(true)} />
-            )}
             <PreferredPaymentBadge
               payment={slab.preferredPayment}
               isDark={isDark}
             />
           </div>
         </div>
-        {showNftModal && (
-          <NftVaultModal
-            isDark={isDark}
-            onClose={() => setShowNftModal(false)}
-          />
-        )}
-
         {/* Set + year */}
         <p style={{ fontSize: 11, color: T.secondary }}>
           {slab.setName} · {slab.year}
