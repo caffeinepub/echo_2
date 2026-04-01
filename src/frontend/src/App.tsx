@@ -2,165 +2,90 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
-import { MiniPlayer } from "./components/MiniPlayer";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
-import { ADMIN_WALLET_ADDRESS } from "./config/admin";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
-import { AudioPlayerProvider } from "./context/AudioPlayerContext";
-import { AudioReactiveProvider } from "./context/AudioReactiveContext";
-import { ClipsProvider } from "./context/ClipsContext";
-import { useClipsContext } from "./context/ClipsContext";
 import { WalletProvider } from "./context/WalletContext";
-import { SolPriceProvider } from "./contexts/SolPriceContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
-import { useWallet } from "./hooks/useWallet";
-import { AlbumPlayerPage } from "./pages/AlbumPlayerPage";
-import { CreatorSubmitPage } from "./pages/CreatorSubmitPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ManageReleasesPage } from "./pages/ManageReleasesPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
-import { RecordClipPage } from "./pages/RecordClipPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import { SetDetailPage } from "./pages/SetDetailPage";
 
 type View =
   | { type: "tab"; tab: Tab }
-  | { type: "album-player"; albumId: string; fromTab: Tab }
-  | { type: "market-detail"; albumId: string }
   | { type: "set-detail"; slug: string }
-  | { type: "admin" }
-  | { type: "creator-submit" }
-  | { type: "record-clip" };
+  | { type: "market-detail"; id: string }
+  | { type: "admin" };
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
-  const { isConnected, walletAddress } = useWallet();
-  const { addClip } = useClipsContext();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(timer);
   }, []);
 
-  const isAdmin =
-    ADMIN_WALLET_ADDRESS !== "" &&
-    isConnected &&
-    walletAddress === ADMIN_WALLET_ADDRESS;
-
-  const activeTab: Tab =
-    view.type === "tab"
-      ? view.tab
-      : view.type === "album-player"
-        ? view.fromTab
-        : "market";
+  const activeTab: Tab = view.type === "tab" ? view.tab : "market";
 
   function handleTabChange(tab: Tab) {
     setView({ type: "tab", tab });
-  }
-
-  function handleAlbumClick(albumId: string) {
-    setView({ type: "album-player", albumId, fromTab: activeTab });
-  }
-
-  function handleMarketAlbumClick(albumId: string) {
-    setView({ type: "market-detail", albumId });
   }
 
   function handleSetClick(slug: string) {
     setView({ type: "set-detail", slug });
   }
 
-  function handleUploadClick() {
-    if (isAdmin) {
-      setView({ type: "admin" });
-    } else {
-      setView({ type: "creator-submit" });
-    }
-  }
-
-  // Full-screen views (no topbar / bottomnav)
-  if (view.type === "record-clip") {
-    return (
-      <RecordClipPage
-        onBack={() => setView({ type: "tab", tab: "releases" })}
-        onPublish={(clipData) => {
-          addClip(clipData);
-          setView({ type: "tab", tab: "releases" });
-        }}
-      />
-    );
+  function handleMarketItemClick(id: string) {
+    setView({ type: "market-detail", id });
   }
 
   return (
-    <AudioPlayerProvider>
-      <AudioReactiveProvider>
-        <div className="min-h-screen bg-background">
-          {showSplash && <SplashScreen />}
+    <div className="min-h-screen bg-background">
+      {showSplash && <SplashScreen />}
 
-          <TopBar
-            onAdminClick={() => setView({ type: "admin" })}
-            onUploadClick={handleUploadClick}
+      <TopBar
+        onAdminClick={() => setView({ type: "admin" })}
+        onUploadClick={() => setView({ type: "admin" })}
+      />
+
+      <main className="pt-16 pb-[68px] min-h-screen">
+        {view.type === "tab" && view.tab === "library" && (
+          <LibraryPage
+            onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
           />
+        )}
+        {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
+        {view.type === "tab" && view.tab === "market" && (
+          <MarketPage
+            onAlbumClick={handleMarketItemClick}
+            onSetClick={handleSetClick}
+          />
+        )}
+        {view.type === "set-detail" && (
+          <SetDetailPage
+            slug={view.slug}
+            onBack={() => setView({ type: "tab", tab: "market" })}
+          />
+        )}
+        {view.type === "market-detail" && (
+          <MarketDetailPage
+            id={view.id}
+            onBack={() => setView({ type: "tab", tab: "market" })}
+          />
+        )}
+        {view.type === "admin" && (
+          <ManageReleasesPage
+            onBack={() => setView({ type: "tab", tab: "library" })}
+          />
+        )}
+      </main>
 
-          <main className="pt-16 pb-[68px] min-h-screen">
-            {view.type === "tab" && view.tab === "library" && (
-              <LibraryPage
-                onAlbumClick={handleAlbumClick}
-                onBrowseReleases={() =>
-                  setView({ type: "tab", tab: "releases" })
-                }
-              />
-            )}
-            {view.type === "tab" && view.tab === "releases" && (
-              <ReleasesPage
-                onAlbumClick={handleAlbumClick}
-                onRecord={() => setView({ type: "record-clip" })}
-              />
-            )}
-            {view.type === "tab" && view.tab === "market" && (
-              <MarketPage
-                onAlbumClick={handleMarketAlbumClick}
-                onSetClick={handleSetClick}
-              />
-            )}
-            {view.type === "album-player" && (
-              <AlbumPlayerPage
-                albumId={view.albumId}
-                onBack={() => setView({ type: "tab", tab: view.fromTab })}
-              />
-            )}
-            {view.type === "market-detail" && (
-              <MarketDetailPage
-                albumId={view.albumId}
-                onBack={() => setView({ type: "tab", tab: "market" })}
-              />
-            )}
-            {view.type === "set-detail" && (
-              <SetDetailPage
-                slug={view.slug}
-                onBack={() => setView({ type: "tab", tab: "market" })}
-              />
-            )}
-            {view.type === "admin" && (
-              <ManageReleasesPage
-                onBack={() => setView({ type: "tab", tab: "library" })}
-              />
-            )}
-            {view.type === "creator-submit" && (
-              <CreatorSubmitPage
-                onBack={() => setView({ type: "tab", tab: "library" })}
-              />
-            )}
-          </main>
-
-          <MiniPlayer />
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
-        </div>
-      </AudioReactiveProvider>
-    </AudioPlayerProvider>
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+    </div>
   );
 }
 
@@ -168,15 +93,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <InternetIdentityProvider>
-        <SolPriceProvider>
-          <WalletProvider>
-            <AdminReleasesProvider>
-              <ClipsProvider>
-                <AppContent />
-              </ClipsProvider>
-            </AdminReleasesProvider>
-          </WalletProvider>
-        </SolPriceProvider>
+        <WalletProvider>
+          <AdminReleasesProvider>
+            <AppContent />
+          </AdminReleasesProvider>
+        </WalletProvider>
       </InternetIdentityProvider>
     </ThemeProvider>
   );

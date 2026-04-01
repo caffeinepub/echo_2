@@ -17,7 +17,7 @@ import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useWallet } from "../hooks/useWallet";
 
-const MINTY_LOGO = "/assets/minty-logo-og-final.png";
+const MINTY_LOGO = "/assets/minty-logo.png";
 
 // Mint teal glow — subtle, premium, cursive-logo-friendly
 const NEON_STYLES = `
@@ -995,6 +995,21 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
       walletAddress === ADMIN_WALLET_ADDRESS) ||
     false;
 
+  // ── Shared style helpers ────────────────────────────────────────────────────
+  const uploadBg = isLight
+    ? "rgba(52,211,153,0.07)"
+    : "oklch(0.55 0.18 160 / 0.08)";
+  const uploadBgHover = isLight
+    ? "rgba(52,211,153,0.12)"
+    : "oklch(0.55 0.18 160 / 0.14)";
+  const uploadBorder = isLight
+    ? "1px solid rgba(52,211,153,0.22)"
+    : "1px solid oklch(0.55 0.18 160 / 0.18)";
+  const uploadColor = isLight ? "oklch(0.52 0.18 160)" : "oklch(0.72 0.18 160)";
+  const uploadShadow = isLight
+    ? "0 1px 3px rgba(0,0,0,0.06)"
+    : "0 1px 4px rgba(0,0,0,0.18)";
+
   function handleAuthButtonClick() {
     if (isSignedIn) {
       setWalletOpen(true);
@@ -1051,28 +1066,29 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
               data-ocid="topbar.admin.button"
               aria-label="Manage Releases"
               title="Manage Releases"
-              className="flex items-center gap-1.5 rounded-lg transition-all duration-150"
+              className="flex items-center gap-1.5 transition-all duration-150"
               style={{
-                padding: "5px 10px",
-                fontSize: "11px",
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: "oklch(0.70 0.16 160)",
-                background: "oklch(0.45 0.16 160 / 0.12)",
-                border: "1px solid oklch(0.60 0.18 160 / 0.25)",
+                padding: "5px 12px",
+                fontSize: "12px",
+                fontWeight: 500,
+                letterSpacing: "0.01em",
+                color: uploadColor,
+                background: uploadBg,
+                border: uploadBorder,
+                borderRadius: "20px",
+                boxShadow: uploadShadow,
                 cursor: "pointer",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.45 0.16 160 / 0.22)";
+                  uploadBgHover;
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.45 0.16 160 / 0.12)";
+                  uploadBg;
               }}
             >
-              <Settings2 size={12} />
+              <Settings2 size={13} />
               Manage
             </button>
           )}
@@ -1085,33 +1101,34 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
               data-ocid="topbar.upload.button"
               aria-label="Submit a Release"
               title="Submit a Release"
-              className="flex items-center gap-1.5 rounded-lg transition-all duration-150"
+              className="flex items-center gap-1.5 transition-all duration-150"
               style={{
-                padding: "5px 10px",
-                fontSize: "11px",
-                fontWeight: 600,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
-                color: "oklch(0.70 0.16 160)",
-                background: "oklch(0.45 0.16 160 / 0.12)",
-                border: "1px solid oklch(0.60 0.18 160 / 0.25)",
+                padding: "5px 12px",
+                fontSize: "12px",
+                fontWeight: 500,
+                letterSpacing: "0.01em",
+                color: uploadColor,
+                background: uploadBg,
+                border: uploadBorder,
+                borderRadius: "20px",
+                boxShadow: uploadShadow,
                 cursor: "pointer",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.45 0.16 160 / 0.22)";
+                  uploadBgHover;
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.45 0.16 160 / 0.12)";
+                  uploadBg;
               }}
             >
-              <Upload size={12} />
+              <Upload size={13} />
               Upload
             </button>
           )}
 
-          {/* Theme toggle */}
+          {/* Theme toggle — circular, tactile */}
           <button
             type="button"
             onClick={toggleTheme}
@@ -1119,23 +1136,36 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
             aria-label={
               isLight ? "Switch to dark mode" : "Switch to light mode"
             }
-            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-150"
+            className="flex items-center justify-center transition-all duration-150"
             style={{
-              color: isLight ? "#0a1f1a" : "oklch(0.55 0.008 160)",
-              background: "transparent",
-              border: isLight ? "1px solid #d4ede6" : "1px solid transparent",
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              flexShrink: 0,
+              color: isLight ? "#2a3d37" : "rgba(255,255,255,0.70)",
+              background: isLight
+                ? "rgba(0,0,0,0.04)"
+                : "rgba(255,255,255,0.06)",
+              border: isLight
+                ? "1px solid rgba(0,0,0,0.08)"
+                : "1px solid rgba(255,255,255,0.10)",
+              boxShadow: isLight
+                ? "0 1px 3px rgba(0,0,0,0.06)"
+                : "0 1px 3px rgba(0,0,0,0.20)",
+              cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.background = isLight
-                ? "oklch(0 0 0 / 0.05)"
-                : "oklch(1 0 0 / 0.07)";
+                ? "rgba(0,0,0,0.07)"
+                : "rgba(255,255,255,0.10)";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "transparent";
+              (e.currentTarget as HTMLButtonElement).style.background = isLight
+                ? "rgba(0,0,0,0.04)"
+                : "rgba(255,255,255,0.06)";
             }}
           >
-            {isLight ? <Moon size={16} /> : <Sun size={16} />}
+            {isLight ? <Moon size={15} /> : <Sun size={15} />}
           </button>
 
           {/* Auth / Wallet button */}
@@ -1144,50 +1174,46 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
             onClick={handleAuthButtonClick}
             data-ocid="auth.button"
             aria-label={isSignedIn ? "Open wallet" : "Sign in"}
-            className="group flex items-center gap-2 rounded-xl font-medium text-sm transition-all duration-150 select-none"
-            style={
-              isLight
+            className="group flex items-center gap-2 font-medium text-sm transition-all duration-150 select-none"
+            style={{
+              borderRadius: "20px",
+              paddingLeft: "10px",
+              paddingRight: "12px",
+              paddingTop: "7px",
+              paddingBottom: "7px",
+              ...(isLight
                 ? {
-                    backgroundColor: "#ffffff",
-                    color: "oklch(0.55 0.18 160)",
-                    paddingLeft: "10px",
-                    paddingRight: "12px",
-                    paddingTop: "7px",
-                    paddingBottom: "7px",
-                    border: "1px solid rgba(52,211,153,0.40)",
-                    boxShadow: "0 2px 8px rgba(52,211,153,0.06)",
+                    backgroundColor: "rgba(245,247,246,1)",
+                    color: "#1a2e28",
+                    border: "1px solid rgba(0,0,0,0.10)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
                   }
                 : {
-                    backgroundColor: "oklch(0.16 0.06 165)",
-                    color: "oklch(0.72 0.18 160)",
-                    paddingLeft: "10px",
-                    paddingRight: "12px",
-                    paddingTop: "7px",
-                    paddingBottom: "7px",
-                    border: "1px solid oklch(0.50 0.18 160 / 0.4)",
-                    boxShadow: "0 0 14px oklch(0.65 0.18 160 / 0.12)",
-                  }
-            }
+                    backgroundColor: "oklch(0.20 0.03 160 / 0.90)",
+                    color: "rgba(255,255,255,0.82)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                  }),
+              cursor: "pointer",
+            }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
               if (isLight) {
-                el.style.borderColor = "rgba(52,211,153,0.65)";
-                el.style.boxShadow = "0 0 14px rgba(52,211,153,0.14)";
+                el.style.backgroundColor = "rgba(240,243,241,1)";
+                el.style.borderColor = "rgba(0,0,0,0.14)";
               } else {
-                el.style.backgroundColor = "oklch(0.20 0.08 165)";
-                el.style.borderColor = "oklch(0.65 0.18 160 / 0.65)";
-                el.style.boxShadow = "0 0 20px oklch(0.65 0.18 160 / 0.22)";
+                el.style.backgroundColor = "oklch(0.23 0.04 160 / 0.90)";
+                el.style.borderColor = "rgba(255,255,255,0.15)";
               }
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
               if (isLight) {
-                el.style.borderColor = "rgba(52,211,153,0.40)";
-                el.style.boxShadow = "0 2px 8px rgba(52,211,153,0.06)";
+                el.style.backgroundColor = "rgba(245,247,246,1)";
+                el.style.borderColor = "rgba(0,0,0,0.10)";
               } else {
-                el.style.backgroundColor = "oklch(0.16 0.06 165)";
-                el.style.borderColor = "oklch(0.50 0.18 160 / 0.4)";
-                el.style.boxShadow = "0 0 14px oklch(0.65 0.18 160 / 0.12)";
+                el.style.backgroundColor = "oklch(0.20 0.03 160 / 0.90)";
+                el.style.borderColor = "rgba(255,255,255,0.10)";
               }
             }}
           >

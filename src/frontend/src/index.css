@@ -575,3 +575,27 @@
     transform: scaleY(0.5) !important;
   }
 }
+
+/* ── Minty Primary Button — premium mint gradient ── */
+.minty-primary-btn {
+  background: linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%);
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(62, 207, 160, 0.25), inset 0 1px 0
+    rgba(255, 255, 255, 0.25);
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transform: scale(1);
+}
+.minty-primary-btn:hover {
+  background: linear-gradient(180deg, #5cd4b0 0%, #2dbe8f 100%);
+  box-shadow: 0 6px 18px rgba(62, 207, 160, 0.3), inset 0 1px 0
+    rgba(255, 255, 255, 0.2);
+  transform: scale(0.98);
+}
+.minty-primary-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 2px 8px rgba(62, 207, 160, 0.2), inset 0 1px 0
+    rgba(255, 255, 255, 0.2);
+}

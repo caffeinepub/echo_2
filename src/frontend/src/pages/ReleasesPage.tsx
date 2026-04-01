@@ -1040,14 +1040,17 @@ function BuyOfferModal({
     width: "100%",
     padding: "12px 18px",
     borderRadius: 16,
-    background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
-    color: "#0f2a25",
+    background: "linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%)",
+    color: "#ffffff",
     fontSize: 14,
-    fontWeight: 700,
+    fontWeight: 600,
     border: "none",
     cursor: "pointer",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+    boxShadow:
+      "0 4px 14px rgba(62,207,160,0.25), inset 0 1px 0 rgba(255,255,255,0.25)",
     letterSpacing: "0.01em",
+    transition: "all 0.18s ease",
+    transform: "scale(1)",
   } as const;
 
   function goBack() {
@@ -1306,6 +1309,7 @@ function BuyOfferModal({
               onClick={handleConfirmBuy}
               disabled={!selectedPayment}
               data-ocid="buy_offer.confirm_button"
+              className="minty-primary-btn"
               style={{
                 ...mintBtn,
                 opacity: selectedPayment ? 1 : 0.45,
@@ -1483,6 +1487,7 @@ function BuyOfferModal({
               onClick={handleSubmitOffer}
               disabled={!(offerAmt > 0 && selectedPayment)}
               data-ocid="buy_offer.submit_button"
+              className="minty-primary-btn"
               style={{
                 ...mintBtn,
                 opacity: offerAmt > 0 && selectedPayment ? 1 : 0.45,
@@ -2044,14 +2049,16 @@ function SlabCard({
                 onBuyOffer(slab);
               }}
               data-ocid={`releases.item.${index + 1}.buy_button`}
+              className="minty-primary-btn"
               style={{
                 borderRadius: 99,
                 padding: "5px 12px",
                 fontWeight: 600,
                 fontSize: 11,
-                background: "#10b981",
+                background: "linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%)",
                 color: "#ffffff",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+                boxShadow:
+                  "0 4px 14px rgba(62,207,160,0.25), inset 0 1px 0 rgba(255,255,255,0.25)",
                 border: "none",
                 cursor: "pointer",
                 whiteSpace: "nowrap" as const,
@@ -2311,6 +2318,7 @@ function LiveOffersModal({
             type="button"
             onClick={onMakeOffer}
             data-ocid="live_offers.primary_button"
+            className="minty-primary-btn"
             style={{
               width: "100%",
               padding: "14px 0",
@@ -2319,9 +2327,11 @@ function LiveOffersModal({
               cursor: "pointer",
               fontWeight: 700,
               fontSize: 15,
-              background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
-              color: "#0f2a25",
-              boxShadow: "0 2px 8px rgba(125,223,194,0.30)",
+              background: "linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%)",
+              color: "#ffffff",
+              boxShadow:
+                "0 4px 14px rgba(62,207,160,0.25), inset 0 1px 0 rgba(255,255,255,0.25)",
+              transition: "all 0.18s ease",
             }}
           >
             Make Offer
