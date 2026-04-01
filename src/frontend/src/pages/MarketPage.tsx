@@ -53,119 +53,29 @@ function SignalCard({
 }
 
 // ─── Set data ──────────────────────────────────────────────────────────────────
-const SETS = [
+const SETS: { name: string; slug: string; code: string; image?: string }[] = [
   {
     name: "Scarlet & Violet Base",
     slug: "scarlet-violet-base",
     code: "SV1",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.15 185), oklch(0.45 0.12 210))",
+    image:
+      "/assets/254078cc-95d3-4430-a38a-0383ef456c6f-019d465f-1466-74bb-910e-cac4ea4b6c71.png",
   },
-  {
-    name: "Paldea Evolved",
-    slug: "paldea-evolved",
-    code: "SV2",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.18 160), oklch(0.45 0.15 185))",
-  },
-  {
-    name: "Obsidian Flames",
-    slug: "obsidian-flames",
-    code: "SV3",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.18 30), oklch(0.45 0.15 10))",
-  },
-  {
-    name: "Pokémon 151",
-    slug: "pokemon-151",
-    code: "MEW",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.20 290), oklch(0.45 0.18 270))",
-  },
-  {
-    name: "Paradox Rift",
-    slug: "paradox-rift",
-    code: "SV4",
-    gradient:
-      "linear-gradient(135deg, oklch(0.50 0.15 220), oklch(0.40 0.12 240))",
-  },
-  {
-    name: "Paldean Fates",
-    slug: "paldean-fates",
-    code: "SV4.5",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.22 340), oklch(0.45 0.18 320))",
-  },
-  {
-    name: "Temporal Forces",
-    slug: "temporal-forces",
-    code: "SV5",
-    gradient:
-      "linear-gradient(135deg, oklch(0.50 0.12 200), oklch(0.40 0.10 220))",
-  },
-  {
-    name: "Twilight Masquerade",
-    slug: "twilight-masquerade",
-    code: "SV6",
-    gradient:
-      "linear-gradient(135deg, oklch(0.50 0.20 280), oklch(0.40 0.18 300))",
-  },
-  {
-    name: "Shrouded Fable",
-    slug: "shrouded-fable",
-    code: "SV6.5",
-    gradient:
-      "linear-gradient(135deg, oklch(0.40 0.08 250), oklch(0.30 0.06 270))",
-  },
-  {
-    name: "Stellar Crown",
-    slug: "stellar-crown",
-    code: "SV7",
-    gradient:
-      "linear-gradient(135deg, oklch(0.60 0.18 50), oklch(0.50 0.15 40))",
-  },
-  {
-    name: "Surging Sparks",
-    slug: "surging-sparks",
-    code: "SV8",
-    gradient:
-      "linear-gradient(135deg, oklch(0.60 0.20 60), oklch(0.50 0.18 80))",
-  },
-  {
-    name: "Prismatic Evolutions",
-    slug: "prismatic-evolutions",
-    code: "SV8.5",
-    gradient:
-      "linear-gradient(135deg, oklch(0.60 0.25 290), oklch(0.50 0.22 330))",
-  },
-  {
-    name: "Journey Together",
-    slug: "journey-together",
-    code: "SV9",
-    gradient:
-      "linear-gradient(135deg, oklch(0.55 0.15 175), oklch(0.45 0.12 195))",
-  },
-  {
-    name: "Destined Rivals",
-    slug: "destined-rivals",
-    code: "SV9.5",
-    gradient:
-      "linear-gradient(135deg, oklch(0.50 0.20 15), oklch(0.40 0.18 350))",
-  },
-  {
-    name: "Black Bolt",
-    slug: "black-bolt",
-    code: "SV10",
-    gradient:
-      "linear-gradient(135deg, oklch(0.25 0.05 250), oklch(0.15 0.03 270))",
-  },
-  {
-    name: "White Flare",
-    slug: "white-flare",
-    code: "SV10",
-    gradient:
-      "linear-gradient(135deg, oklch(0.85 0.08 185), oklch(0.75 0.06 200))",
-  },
+  { name: "Paldea Evolved", slug: "paldea-evolved", code: "SV2" },
+  { name: "Obsidian Flames", slug: "obsidian-flames", code: "SV3" },
+  { name: "Pokémon 151", slug: "pokemon-151", code: "MEW" },
+  { name: "Paradox Rift", slug: "paradox-rift", code: "SV4" },
+  { name: "Paldean Fates", slug: "paldean-fates", code: "SV4.5" },
+  { name: "Temporal Forces", slug: "temporal-forces", code: "SV5" },
+  { name: "Twilight Masquerade", slug: "twilight-masquerade", code: "SV6" },
+  { name: "Shrouded Fable", slug: "shrouded-fable", code: "SV6.5" },
+  { name: "Stellar Crown", slug: "stellar-crown", code: "SV7" },
+  { name: "Surging Sparks", slug: "surging-sparks", code: "SV8" },
+  { name: "Prismatic Evolutions", slug: "prismatic-evolutions", code: "SV8.5" },
+  { name: "Journey Together", slug: "journey-together", code: "SV9" },
+  { name: "Destined Rivals", slug: "destined-rivals", code: "SV9.5" },
+  { name: "Black Bolt", slug: "black-bolt", code: "SV10" },
+  { name: "White Flare", slug: "white-flare", code: "SV10" },
 ];
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
@@ -226,30 +136,48 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
                 onClick={() => onAlbumClick(set.slug)}
                 className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
                 style={{
-                  background: "var(--echo-surface, white)",
-                  border: "1px solid oklch(0.88 0.01 185 / 0.25)",
+                  background: "white",
+                  border: "1px solid oklch(0.9 0.005 185)",
                   boxShadow:
-                    "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.05)",
+                    "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04)",
+                  borderRadius: "16px",
                 }}
               >
                 {/* Artwork area */}
                 <div
-                  className="aspect-square w-full flex items-center justify-center"
-                  style={{ background: set.gradient }}
+                  className="w-full flex items-center justify-center p-4"
+                  style={{
+                    background: "#f8f9fa",
+                    minHeight: "120px",
+                  }}
                 >
-                  <span
-                    className="text-[11px] font-mono font-semibold tracking-wider"
-                    style={{ color: "white", opacity: 0.7 }}
-                  >
-                    {set.code}
-                  </span>
+                  {set.image ? (
+                    <img
+                      src={set.image}
+                      alt={set.name}
+                      className="object-contain max-h-full max-w-full"
+                      style={{ maxHeight: "96px", maxWidth: "100%" }}
+                    />
+                  ) : (
+                    <div
+                      className="flex items-center justify-center w-full h-full rounded-lg"
+                      style={{
+                        background: "#eef0f2",
+                        minHeight: "80px",
+                      }}
+                    >
+                      <span className="text-[11px] font-mono text-gray-400">
+                        {set.code}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Set name */}
-                <div className="px-2 py-2.5 text-center">
+                <div className="px-3 py-2.5 text-center">
                   <p
-                    className="text-[13px] font-semibold leading-tight"
-                    style={{ color: "var(--echo-text-dim)" }}
+                    className="text-[12px] font-semibold leading-tight"
+                    style={{ color: "#1a1a1a" }}
                   >
                     {set.name}
                   </p>
