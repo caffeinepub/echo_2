@@ -17,7 +17,8 @@ import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useWallet } from "../hooks/useWallet";
 
-const MINTY_LOGO = "/assets/minty-logo-transparent.png";
+const MINTY_LOGO =
+  "/assets/echo_primary_logo_transparent-019d2c1a-ab89-7669-bf3e-9906cbb6a311.png";
 
 // ─── Asset Data ────────────────────────────────────────────────────────────────
 const ASSETS = [
