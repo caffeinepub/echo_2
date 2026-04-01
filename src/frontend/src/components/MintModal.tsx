@@ -596,7 +596,7 @@ export function MintModal({
                       }}
                     />
                     <img
-                      src="/assets/uploads/img_3646-019d2cf5-e619-74bd-8ead-a4765433f691-1.png"
+                      src="/assets/uploads/slab-featured.png"
                       alt="Phantom"
                       className="rounded-full object-cover z-10"
                       style={{ width: 56, height: 56 }}

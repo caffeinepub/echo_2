@@ -82,8 +82,7 @@ const SETS: { name: string; slug: string; code: string; image?: string }[] = [
     name: "Scarlet & Violet Base",
     slug: "scarlet-violet-base",
     code: "SV1",
-    image:
-      "/assets/254078cc-95d3-4430-a38a-0383ef456c6f-019d465f-1466-74bb-910e-cac4ea4b6c71.png",
+    image: "/assets/uploads/sv-base-booster.png",
   },
   { name: "Paldea Evolved", slug: "paldea-evolved", code: "SV2" },
   { name: "Obsidian Flames", slug: "obsidian-flames", code: "SV3" },

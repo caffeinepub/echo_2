@@ -1,5 +1,4 @@
-const ECHO_LOGO =
-  "/assets/uploads/echo_primary_logo_transparent-019d2c1a-ab89-7669-bf3e-9906cbb6a311-1.png";
+const ECHO_LOGO = "/assets/uploads/echo-logo-primary.png";
 
 export function SplashScreen() {
   return (

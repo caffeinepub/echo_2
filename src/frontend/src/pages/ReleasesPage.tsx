@@ -116,7 +116,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "84792341",
     preferredPayment: "SOL",
-    nftEligible: false,
+    nftEligible: true,
   },
   {
     id: "s2",
@@ -154,7 +154,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Notable Sale",
     certNumber: "0013847219",
     preferredPayment: "ETH",
-    nftEligible: false,
+    nftEligible: true,
   },
   {
     id: "s4",
@@ -192,7 +192,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "High Volume",
     certNumber: "00493821",
     preferredPayment: "BTC",
-    nftEligible: false,
+    nftEligible: true,
   },
   {
     id: "s6",
@@ -249,7 +249,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "74839201",
     preferredPayment: "ETH",
-    nftEligible: false,
+    nftEligible: true,
   },
   {
     id: "s9",
@@ -268,7 +268,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "09812374",
     preferredPayment: "BTC",
-    nftEligible: false,
+    nftEligible: true,
   },
   {
     id: "s10",
