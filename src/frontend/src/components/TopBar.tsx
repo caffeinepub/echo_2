@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import { ADMIN_PRINCIPAL } from "../config/admin";
+import { isAdminPrincipal } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const MINTY_LOGO = "/assets/minty-logo.png";
@@ -986,11 +986,7 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
 
   const isLight = theme === "light";
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
-
-  const isAdmin =
-    isSignedIn &&
-    ADMIN_PRINCIPAL !== "" &&
-    identity?.getPrincipal().toText() === ADMIN_PRINCIPAL;
+  const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
 
   // ── Shared style helpers ────────────────────────────────────────────────────
   const uploadBg = isLight

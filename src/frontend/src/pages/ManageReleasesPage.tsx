@@ -35,7 +35,7 @@ import type {
   TcgSet,
   UpdateTcgSetInput,
 } from "../backend.d";
-import { ADMIN_PRINCIPAL } from "../config/admin";
+import { isAdminPrincipal } from "../config/admin";
 import {
   type AdminRelease,
   type ReleaseStatus,
@@ -1274,7 +1274,7 @@ interface ManageReleasesPageProps {
 
 export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
   const { identity } = useInternetIdentity();
-  const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
+  const _isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const {
     releases,
     addRelease,
@@ -1299,10 +1299,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Access control
-  const isAdmin =
-    isSignedIn &&
-    ADMIN_PRINCIPAL !== "" &&
-    identity?.getPrincipal().toText() === ADMIN_PRINCIPAL;
+  const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
 
   // Filtered list
   // Note: "submitted" and "rejected" are never shown in public feeds (useReleasesData
