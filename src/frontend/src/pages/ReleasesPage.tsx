@@ -1,4 +1,4 @@
-import { DollarSign, ShieldCheck, Sparkles, TrendingUp, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTheme } from "../ThemeContext";
 
@@ -20,6 +20,7 @@ interface SlabItem {
   verifiedAt: number;
   label: string;
   certNumber: string;
+  preferredPayment: "USDC" | "BTC" | "ETH" | "SOL";
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -44,6 +45,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 2 * DAY,
     label: "Trending",
     certNumber: "84792341",
+    preferredPayment: "SOL",
   },
   {
     id: "s2",
@@ -61,6 +63,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 1 * DAY,
     label: "Newly Verified",
     certNumber: "10245678",
+    preferredPayment: "BTC",
   },
   {
     id: "s3",
@@ -78,6 +81,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 3 * DAY,
     label: "Notable Sale",
     certNumber: "0013847219",
+    preferredPayment: "ETH",
   },
   {
     id: "s4",
@@ -95,6 +99,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 6 * DAY,
     label: "New Set Added",
     certNumber: "27654321",
+    preferredPayment: "USDC",
   },
   {
     id: "s5",
@@ -112,6 +117,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 4 * DAY,
     label: "High Volume",
     certNumber: "00493821",
+    preferredPayment: "BTC",
   },
   {
     id: "s6",
@@ -129,6 +135,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 12 * 3600000,
     label: "Newly Verified",
     certNumber: "84103928",
+    preferredPayment: "SOL",
   },
   {
     id: "s7",
@@ -146,6 +153,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 5 * DAY,
     label: "Notable Sale",
     certNumber: "61209384",
+    preferredPayment: "USDC",
   },
   {
     id: "s8",
@@ -163,6 +171,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 7 * DAY,
     label: "Trending",
     certNumber: "74839201",
+    preferredPayment: "ETH",
   },
   {
     id: "s9",
@@ -180,6 +189,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 8 * 3600000,
     label: "Newly Verified",
     certNumber: "09812374",
+    preferredPayment: "BTC",
   },
   {
     id: "s10",
@@ -197,6 +207,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 2 * DAY,
     label: "New Set Added",
     certNumber: "55023847",
+    preferredPayment: "SOL",
   },
   {
     id: "s11",
@@ -214,6 +225,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 3 * DAY,
     label: "High Volume",
     certNumber: "38201948",
+    preferredPayment: "USDC",
   },
   {
     id: "s12",
@@ -231,6 +243,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 4 * 3600000,
     label: "Newly Verified",
     certNumber: "66312098",
+    preferredPayment: "ETH",
   },
   {
     id: "s13",
@@ -248,6 +261,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 6 * DAY,
     label: "Notable Sale",
     certNumber: "72039481",
+    preferredPayment: "SOL",
   },
   {
     id: "s14",
@@ -265,6 +279,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 5 * DAY,
     label: "Trending",
     certNumber: "91038274",
+    preferredPayment: "BTC",
   },
   {
     id: "s15",
@@ -282,6 +297,7 @@ const MOCK_SLABS: SlabItem[] = [
     verifiedAt: NOW - 6 * 3600000,
     label: "Newly Verified",
     certNumber: "48203917",
+    preferredPayment: "USDC",
   },
 ];
 
@@ -377,52 +393,191 @@ function GradeBadge({
   );
 }
 
-// ─── Type label badge ─────────────────────────────────────────────────────────
+// ─── Crypto icons ─────────────────────────────────────────────────────────────
 
-function TypeBadge({
-  label,
-  type,
+function USDCIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      role="img"
+      aria-label="USDC"
+    >
+      <circle cx="7" cy="7" r="6.5" fill="#2775ca" />
+      <text
+        x="7"
+        y="10.5"
+        textAnchor="middle"
+        fontSize="8"
+        fontWeight="700"
+        fill="white"
+        fontFamily="system-ui"
+      >
+        $
+      </text>
+    </svg>
+  );
+}
+
+function BTCIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      role="img"
+      aria-label="BTC"
+    >
+      <text
+        x="7"
+        y="11"
+        textAnchor="middle"
+        fontSize="11"
+        fontWeight="700"
+        fill="#f7931a"
+        fontFamily="system-ui"
+      >
+        ₿
+      </text>
+    </svg>
+  );
+}
+
+function ETHIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      role="img"
+      aria-label="ETH"
+    >
+      <polygon points="7,1 12,7 7,9.5 2,7" fill="#627eea" opacity="0.85" />
+      <polygon points="7,9.5 12,7 7,13 2,7" fill="#627eea" />
+    </svg>
+  );
+}
+
+function SOLIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      role="img"
+      aria-label="SOL"
+    >
+      <defs>
+        <linearGradient
+          id="sol-grad"
+          x1="0"
+          y1="0"
+          x2="14"
+          y2="14"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#9945FF" />
+          <stop offset="1" stopColor="#14F195" />
+        </linearGradient>
+      </defs>
+      <rect
+        x="1"
+        y="2.5"
+        width="12"
+        height="2"
+        rx="1"
+        fill="url(#sol-grad)"
+        transform="rotate(-8 7 3.5)"
+      />
+      <rect x="1" y="6" width="12" height="2" rx="1" fill="url(#sol-grad)" />
+      <rect
+        x="1"
+        y="9.5"
+        width="12"
+        height="2"
+        rx="1"
+        fill="url(#sol-grad)"
+        transform="rotate(8 7 10.5)"
+      />
+    </svg>
+  );
+}
+
+// ─── Preferred Payment Badge ──────────────────────────────────────────────────
+
+function PreferredPaymentBadge({
+  payment,
   isDark,
 }: {
-  label: string;
-  type: SlabItem["type"];
+  payment: SlabItem["preferredPayment"];
   isDark?: boolean;
 }) {
   const icon =
-    type === "trending" ? (
-      <TrendingUp size={9} />
-    ) : type === "notable_sale" ? (
-      <DollarSign size={9} />
-    ) : type === "verified" ? (
-      <ShieldCheck size={9} />
+    payment === "USDC" ? (
+      <USDCIcon />
+    ) : payment === "BTC" ? (
+      <BTCIcon />
+    ) : payment === "ETH" ? (
+      <ETHIcon />
     ) : (
-      <Sparkles size={9} />
+      <SOLIcon />
     );
+
   return (
-    <span
+    <div
       style={{
         display: "inline-flex",
-        alignItems: "center",
-        gap: "3px",
-        fontSize: "9px",
-        fontWeight: 600,
-        letterSpacing: "0.06em",
-        padding: "2px 6px",
-        borderRadius: "99px",
-        background: isDark
-          ? "oklch(0.70 0.18 160 / 0.12)"
-          : "rgba(16,185,129,0.10)",
-        border: isDark
-          ? "1px solid oklch(0.70 0.18 160 / 0.22)"
-          : "1px solid rgba(16,185,129,0.15)",
-        color: isDark ? "oklch(0.78 0.14 160)" : "#1f9d84",
-        textTransform: "uppercase" as const,
-        whiteSpace: "nowrap" as const,
+        flexDirection: "column",
+        alignItems: "flex-end",
+        gap: 2,
+        flexShrink: 0,
       }}
     >
-      {icon}
-      {label}
-    </span>
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "3px 8px 3px 5px",
+          borderRadius: 99,
+          background: isDark
+            ? "oklch(0.70 0.18 160 / 0.08)"
+            : "rgba(0,0,0,0.04)",
+          border: isDark
+            ? "1px solid oklch(0.70 0.18 160 / 0.18)"
+            : "1px solid rgba(0,0,0,0.08)",
+          whiteSpace: "nowrap" as const,
+        }}
+      >
+        {icon}
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            letterSpacing: "0.03em",
+            color: isDark ? "oklch(0.85 0.06 160)" : "#374151",
+          }}
+        >
+          {payment}
+        </span>
+      </span>
+      <span
+        style={{
+          fontSize: "9px",
+          fontWeight: 500,
+          letterSpacing: "0.03em",
+          color: isDark ? "oklch(0.55 0.07 160)" : "#9ca3af",
+          paddingRight: 2,
+        }}
+      >
+        Preferred Payment
+      </span>
+    </div>
   );
 }
 
@@ -506,7 +661,7 @@ function SlabDetailSheet({
                 }}
               />
               <div className="flex flex-col gap-1.5 justify-center">
-                <TypeBadge label={slab.label} type={slab.type} isDark />
+                <PreferredPaymentBadge payment={slab.preferredPayment} isDark />
                 <p
                   style={{
                     fontSize: 17,
@@ -810,7 +965,7 @@ function SlabCard({
           minWidth: 0,
         }}
       >
-        {/* Top: card name + type badge */}
+        {/* Top: card name + preferred payment badge */}
         <div className="flex items-start justify-between gap-2">
           <p
             style={{
@@ -824,7 +979,10 @@ function SlabCard({
           >
             {slab.cardName}
           </p>
-          <TypeBadge label={slab.label} type={slab.type} isDark={isDark} />
+          <PreferredPaymentBadge
+            payment={slab.preferredPayment}
+            isDark={isDark}
+          />
         </div>
 
         {/* Set + year */}
