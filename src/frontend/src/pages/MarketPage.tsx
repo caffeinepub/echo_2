@@ -19,7 +19,7 @@ function SignalCard({
   accent?: "violet" | "cyan";
   isDark: boolean;
 }) {
-  const lightBorderColor =
+  const _lightBorderColor =
     accent === "violet"
       ? "oklch(0.55 0.25 290 / 0.3)"
       : accent === "cyan"
@@ -43,8 +43,9 @@ function SignalCard({
           "0 0 20px rgba(80, 200, 150, 0.08), inset 0 1px 0 rgba(110, 230, 185, 0.07)",
       }
     : {
-        background: "white",
-        border: `1px solid ${lightBorderColor}`,
+        background:
+          "linear-gradient(135deg, rgba(200,245,230,0.5), rgba(159,232,208,0.3))",
+        border: "1px solid rgba(16,185,129,0.2)",
         boxShadow: lightBoxShadow,
       };
 
@@ -68,11 +69,7 @@ function SignalCard({
       </p>
       <p
         className="text-base font-mono font-semibold tabular-nums leading-tight"
-        style={
-          isDark
-            ? { color: "rgba(220, 248, 235, 0.92)" }
-            : { color: "var(--echo-text-dim)" }
-        }
+        style={{ color: "#10b981" }}
       >
         {plainValue}
       </p>
@@ -392,7 +389,7 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
                             className="text-[10px] mt-0.5"
                             style={{ color: textSecondary }}
                           >
-                            {set.cardCount} cards
+                            0 / {set.cardCount} collected
                           </p>
                         )}
                     </div>

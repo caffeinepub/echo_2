@@ -710,6 +710,7 @@ function SetsTab({ isDark }: { isDark: boolean }) {
         active: form.active,
         sortOrder: Number(form.sortOrder) || 0,
         cardCount: form.cardCount ? Number(form.cardCount) : null,
+        totalCards: form.cardCount ? Number(form.cardCount) : null,
         featured: form.featured,
       };
       if (editId !== null) {
@@ -952,6 +953,15 @@ type CardFormState = {
   active: boolean;
   isSupported: boolean;
   sortOrder: string;
+  tagPopulation10: string;
+  tagPopulation9: string;
+  tagPopulation8: string;
+  totalTagPopulation: string;
+  mintyTransactions: string;
+  lastSalePriceUsd: string;
+  averageSalePriceUsd: string;
+  highestSalePriceUsd: string;
+  lowestSalePriceUsd: string;
 };
 
 const emptyCardForm = (): CardFormState => ({
@@ -963,6 +973,15 @@ const emptyCardForm = (): CardFormState => ({
   active: true,
   isSupported: false,
   sortOrder: "0",
+  tagPopulation10: "0",
+  tagPopulation9: "0",
+  tagPopulation8: "0",
+  totalTagPopulation: "0",
+  mintyTransactions: "0",
+  lastSalePriceUsd: "0",
+  averageSalePriceUsd: "0",
+  highestSalePriceUsd: "0",
+  lowestSalePriceUsd: "0",
 });
 
 function CardsTab({ isDark }: { isDark: boolean }) {
@@ -1003,6 +1022,15 @@ function CardsTab({ isDark }: { isDark: boolean }) {
       active: card.active,
       isSupported: card.isSupported,
       sortOrder: String(card.sortOrder),
+      tagPopulation10: String(card.tagPopulation10 ?? 0),
+      tagPopulation9: String(card.tagPopulation9 ?? 0),
+      tagPopulation8: String(card.tagPopulation8 ?? 0),
+      totalTagPopulation: String(card.totalTagPopulation ?? 0),
+      mintyTransactions: String(card.mintyTransactions ?? 0),
+      lastSalePriceUsd: String(card.lastSalePriceUsd ?? 0),
+      averageSalePriceUsd: String(card.averageSalePriceUsd ?? 0),
+      highestSalePriceUsd: String(card.highestSalePriceUsd ?? 0),
+      lowestSalePriceUsd: String(card.lowestSalePriceUsd ?? 0),
     });
     setShowForm(true);
   }
@@ -1019,6 +1047,16 @@ function CardsTab({ isDark }: { isDark: boolean }) {
         active: form.active,
         isSupported: form.isSupported,
         sortOrder: Number(form.sortOrder) || 0,
+        tagPopulation10: Number(form.tagPopulation10) || 0,
+        tagPopulation9: Number(form.tagPopulation9) || 0,
+        tagPopulation8: Number(form.tagPopulation8) || 0,
+        totalTagPopulation: Number(form.totalTagPopulation) || 0,
+        mintyTransactions: Number(form.mintyTransactions) || 0,
+        lastSalePriceUsd: Number(form.lastSalePriceUsd) || 0,
+        averageSalePriceUsd: Number(form.averageSalePriceUsd) || 0,
+        highestSalePriceUsd: Number(form.highestSalePriceUsd) || 0,
+        lowestSalePriceUsd: Number(form.lowestSalePriceUsd) || 0,
+        preferredCurrency: "USD" as const,
       };
       if (editId !== null) {
         updateCard(editId, base);
@@ -1139,6 +1177,119 @@ function CardsTab({ isDark }: { isDark: boolean }) {
             type="number"
             isDark={isDark}
           />
+          {/* TAG Population */}
+          <div
+            style={{
+              borderTop: isDark
+                ? "1px solid rgba(110,230,185,0.1)"
+                : "1px solid #e5e7eb",
+              paddingTop: "12px",
+              marginTop: "4px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "#10b981",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginBottom: "10px",
+              }}
+            >
+              TAG Population
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <InputField
+                label="TAG 10 Pop"
+                value={form.tagPopulation10}
+                onChange={(v) => setField("tagPopulation10", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="TAG 9 Pop"
+                value={form.tagPopulation9}
+                onChange={(v) => setField("tagPopulation9", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="TAG 8 Pop"
+                value={form.tagPopulation8}
+                onChange={(v) => setField("tagPopulation8", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="Total TAG Pop"
+                value={form.totalTagPopulation}
+                onChange={(v) => setField("totalTagPopulation", v)}
+                type="number"
+                isDark={isDark}
+              />
+            </div>
+          </div>
+          {/* Market Data */}
+          <div
+            style={{
+              borderTop: isDark
+                ? "1px solid rgba(110,230,185,0.1)"
+                : "1px solid #e5e7eb",
+              paddingTop: "12px",
+              marginTop: "4px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "#10b981",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginBottom: "10px",
+              }}
+            >
+              Market Data
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <InputField
+                label="Minty Transactions"
+                value={form.mintyTransactions}
+                onChange={(v) => setField("mintyTransactions", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="Last Sale (USD)"
+                value={form.lastSalePriceUsd}
+                onChange={(v) => setField("lastSalePriceUsd", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="Avg Sale (USD)"
+                value={form.averageSalePriceUsd}
+                onChange={(v) => setField("averageSalePriceUsd", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="Highest Sale (USD)"
+                value={form.highestSalePriceUsd}
+                onChange={(v) => setField("highestSalePriceUsd", v)}
+                type="number"
+                isDark={isDark}
+              />
+              <InputField
+                label="Lowest Sale (USD)"
+                value={form.lowestSalePriceUsd}
+                onChange={(v) => setField("lowestSalePriceUsd", v)}
+                type="number"
+                isDark={isDark}
+              />
+            </div>
+          </div>
           <div className="flex gap-6">
             <ToggleField
               label="Active"
@@ -1198,6 +1349,25 @@ function CardsTab({ isDark }: { isDark: boolean }) {
                       {card.rarity && `${card.rarity} · `}
                       {setNameMap[card.setId] ?? "Unknown Set"}
                     </p>
+                    {(card.tagPopulation10 > 0 ||
+                      card.lastSalePriceUsd > 0) && (
+                      <p
+                        style={{
+                          fontSize: "9px",
+                          color: "#10b981",
+                          fontFamily: "monospace",
+                          marginTop: "2px",
+                        }}
+                      >
+                        {card.tagPopulation10 > 0 &&
+                          `TAG10: ${card.tagPopulation10}`}
+                        {card.tagPopulation10 > 0 &&
+                          card.lastSalePriceUsd > 0 &&
+                          " · "}
+                        {card.lastSalePriceUsd > 0 &&
+                          `Last: $${card.lastSalePriceUsd.toFixed(2)}`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-1.5 flex-wrap justify-end">
                     <ActiveBadge active={card.active} />

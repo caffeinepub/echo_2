@@ -28,6 +28,7 @@ export interface MockSet {
   setCode: string;
   releaseYear: number;
   cardCount: number | null;
+  totalCards: number | null; // alias for cardCount
   featured: boolean;
 }
 
@@ -41,6 +42,18 @@ export interface MockCard {
   active: boolean;
   rarity: string;
   isSupported: boolean;
+  // TAG Population
+  tagPopulation10: number;
+  tagPopulation9: number;
+  tagPopulation8: number;
+  totalTagPopulation: number;
+  // Market Data
+  mintyTransactions: number;
+  lastSalePriceUsd: number;
+  averageSalePriceUsd: number;
+  highestSalePriceUsd: number;
+  lowestSalePriceUsd: number;
+  preferredCurrency: "USD";
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -106,7 +119,10 @@ export function toggleCategoryActive(id: string): void {
 export function getSets(): MockSet[] {
   try {
     const raw = localStorage.getItem(KEYS.sets);
-    return raw ? (JSON.parse(raw) as MockSet[]) : [];
+    if (!raw) return [];
+    const sets = JSON.parse(raw) as MockSet[];
+    // Ensure totalCards alias is always in sync with cardCount
+    return sets.map((s) => ({ ...s, totalCards: s.cardCount }));
   } catch {
     return [];
   }
@@ -117,7 +133,11 @@ export function saveSets(sets: MockSet[]): void {
 }
 
 export function addSet(input: Omit<MockSet, "id">): MockSet {
-  const item: MockSet = { ...input, id: generateId() };
+  const item: MockSet = {
+    ...input,
+    id: generateId(),
+    totalCards: input.cardCount,
+  };
   saveSets([...getSets(), item]);
   return item;
 }
@@ -129,7 +149,11 @@ export function updateSet(
   const all = getSets();
   const idx = all.findIndex((s) => s.id === id);
   if (idx === -1) return null;
-  all[idx] = { ...all[idx], ...input };
+  all[idx] = {
+    ...all[idx],
+    ...input,
+    totalCards: input.cardCount ?? all[idx].cardCount,
+  };
   saveSets(all);
   return all[idx];
 }
@@ -148,10 +172,26 @@ export function toggleSetActive(id: string): void {
 
 // ─── Cards ────────────────────────────────────────────────────────────────────
 
+function withCardDefaults(card: MockCard): MockCard {
+  return {
+    ...card,
+    tagPopulation10: card.tagPopulation10 ?? 0,
+    tagPopulation9: card.tagPopulation9 ?? 0,
+    tagPopulation8: card.tagPopulation8 ?? 0,
+    totalTagPopulation: card.totalTagPopulation ?? 0,
+    mintyTransactions: card.mintyTransactions ?? 0,
+    lastSalePriceUsd: card.lastSalePriceUsd ?? 0,
+    averageSalePriceUsd: card.averageSalePriceUsd ?? 0,
+    highestSalePriceUsd: card.highestSalePriceUsd ?? 0,
+    lowestSalePriceUsd: card.lowestSalePriceUsd ?? 0,
+    preferredCurrency: card.preferredCurrency ?? "USD",
+  };
+}
+
 export function getCards(): MockCard[] {
   try {
     const raw = localStorage.getItem(KEYS.cards);
-    return raw ? (JSON.parse(raw) as MockCard[]) : [];
+    return raw ? (JSON.parse(raw) as MockCard[]).map(withCardDefaults) : [];
   } catch {
     return [];
   }
@@ -162,7 +202,10 @@ export function saveCards(cards: MockCard[]): void {
 }
 
 export function addCard(input: Omit<MockCard, "id">): MockCard {
-  const item: MockCard = { ...input, id: generateId() };
+  const item: MockCard = withCardDefaults({
+    ...input,
+    id: generateId(),
+  } as MockCard);
   saveCards([...getCards(), item]);
   return item;
 }
@@ -174,7 +217,7 @@ export function updateCard(
   const all = getCards();
   const idx = all.findIndex((c) => c.id === id);
   if (idx === -1) return null;
-  all[idx] = { ...all[idx], ...input };
+  all[idx] = withCardDefaults({ ...all[idx], ...input });
   saveCards(all);
   return all[idx];
 }

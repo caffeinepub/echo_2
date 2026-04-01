@@ -8,6 +8,7 @@ import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
+import { CardDetailPage } from "./pages/CardDetailPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ManageCatalogPage } from "./pages/ManageCatalogPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
@@ -20,6 +21,7 @@ type View =
   | { type: "tab"; tab: Tab }
   | { type: "set-detail"; slug: string }
   | { type: "market-detail"; id: string }
+  | { type: "card-detail"; id: string }
   | { type: "upload" }
   | { type: "admin" };
 
@@ -44,6 +46,10 @@ function AppContent() {
 
   function handleMarketItemClick(id: string) {
     setView({ type: "market-detail", id });
+  }
+
+  function handleCardClick(id: string) {
+    setView({ type: "card-detail", id });
   }
 
   return (
@@ -91,6 +97,13 @@ function AppContent() {
         {view.type === "set-detail" && (
           <SetDetailPage
             slug={view.slug}
+            onBack={() => setView({ type: "tab", tab: "market" })}
+            onCardClick={handleCardClick}
+          />
+        )}
+        {view.type === "card-detail" && (
+          <CardDetailPage
+            id={view.id}
             onBack={() => setView({ type: "tab", tab: "market" })}
           />
         )}

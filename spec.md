@@ -1,38 +1,35 @@
-# Minty Catalog Manager
+# Minty Set Detail Dashboard Upgrade
 
 ## Current State
-- Admin page is `ManageReleasesPage.tsx` with music/release CMS language
-- Backend has `TcgSet` type with CRUD but no Category or Card models
-- Browse page (MarketPage) shows a flat list of sets filterable by TCG category
-- Admin context (`AdminReleasesContext`) is music-release-oriented
-- App.tsx references `ManageReleasesPage` and `AdminReleasesProvider`
+SetDetailPage.tsx shows a simple set image card, a set info card with basic metadata and a completion bar, and a 2-column grid of card tiles. There is no market data, no dashboard stats, no leaderboard, and no card detail modal.
+
+MockCatalog.ts already has all the data fields needed: tagPopulation10/9/8, totalTagPopulation, mintyTransactions, lastSalePriceUsd, averageSalePriceUsd, highestSalePriceUsd, lowestSalePriceUsd on each MockCard.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `TcgCategory` type in backend: id, name, slug, imageUrl, isActive
-- `TcgCard` type in backend: id, setId, cardName, cardNumber (optional), rarity (optional), imageUrl, isActive, isSupported
-- Backend CRUD: createCategory, updateCategory, deleteCategory, toggleCategoryActive, getCategories, getAllCategoriesAdmin
-- Backend CRUD: createCard, updateCard, deleteCard, toggleCardActive, toggleCardSupported, getCardsBySet, getAllCardsAdmin
-- New `ManageCatalogPage.tsx` replacing `ManageReleasesPage.tsx` with three tabs: Categories, Sets, Cards
-- Each tab: create form, list with edit/toggle/delete, image upload support
-- Public browse flow: Categories grid → Sets in category → Cards in set (active only)
+- Set Overview Card: set image, set name, category badge, year, set code, total cards, supported status badge — replacing the separate image and info cards
+- Set Stat Grid: 8 compact dashboard panels computed from card data: Set Volume, Transactions, Active Cards, Avg Sale, Highest Sale, Total Pop, Leader Card, Floor Price
+- Analytics Panels Row: Volume Trend, Grade Distribution, Most Active Cards panels — elegant placeholder state if no real data
+- Ranked Card Leaderboard: replaces the 2-column grid with a leaderboard sorted by mintyTransactions volume desc, transaction count desc, lastSalePriceUsd desc. Each row shows rank, image, name, number, rarity, volume, transactions, last sale, TAG 10 pop, mini trend indicator. Top 3 rows have slight emphasis.
+- Card Detail Modal: slide-up sheet opened on leaderboard row tap, showing: large card image, identity (name/number/rarity/set/category), Population Data section (TAG 10/9/8/total), Minty Market Data section (volume, transactions, high/low/avg/last sale), Recent Sales Feed (mock sample rows with date/price/grade/payment/ref), Doppler Placeholder section (velocity, liquidity, supply pressure, price movement score, trend signal)
+- Empty states: if no card data, show dashboard structure with placeholder values and "No Minty market data yet" message
 
 ### Modify
-- `App.tsx`: rename import/reference from `ManageReleasesPage` → `ManageCatalogPage`; rename `AdminReleasesProvider` → keep but deprecate (or remove if unused after catalog refactor)
-- `MarketPage.tsx` (Discover/Browse Sets section): update to show Categories first; clicking a category shows its sets; clicking a set shows cards
-- `TopBar.tsx`: admin button label stays consistent, no music language
-- Backend `main.mo`: add Category and Card types and functions alongside existing TcgSet functions
-- Seed backend with 4 categories: Pokemon, One Piece, Yu-Gi-Oh, Sports
+- SetDetailPage.tsx: full rewrite to implement dashboard layout
+- Visual style: soft mint pastel gradients, frosted panel feel, rounded cards, subtle glow borders, white/very light background in light mode
 
 ### Remove
-- `ManageReleasesPage.tsx` (replaced by `ManageCatalogPage.tsx`)
-- Music/release language from admin UI ("Manage Releases" → "Manage Catalog")
-- `AdminReleasesContext` usage from admin page (catalog manager uses backend directly)
+- Simple 2-column card grid
+- Separate cover image card and set info card (replaced by unified Set Overview card)
+- Placeholder slot grid for uncollected cards (replaced by leaderboard)
 
 ## Implementation Plan
-1. Update `main.mo` to add TcgCategory and TcgCard types with full CRUD
-2. Create `ManageCatalogPage.tsx` with Categories/Sets/Cards tabs
-3. Update `MarketPage.tsx` browse section to show category → set → card hierarchy
-4. Update `App.tsx` to use `ManageCatalogPage` instead of `ManageReleasesPage`
-5. Remove `ManageReleasesPage.tsx` and clean up dead `AdminReleasesContext` usage if possible
+1. Rewrite SetDetailPage.tsx with dashboard layout sections
+2. Compute set-level aggregates from cards array (totalVolume, totalTx, uniqueTraded, highestSale, avgSale, mostActiveCard, totalPop, floor)
+3. Build SetOverviewCard component inline (image + identity + badges)
+4. Build SetStatGrid component inline (8 compact mint panels)
+5. Build AnalyticsPanels component inline (3 chart placeholder panels with elegant empty states)
+6. Build CardLeaderboard component inline (ranked list, top 3 emphasis)
+7. Build CardDetailModal component inline (full slide-up sheet with all sections)
+8. Apply Minty soft mint aesthetic throughout: mint pastel gradients, rounded-2xl, thin mint borders, subtle glow, mobile-first responsive layout
