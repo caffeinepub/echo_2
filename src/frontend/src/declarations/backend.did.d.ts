@@ -19,6 +19,18 @@ export interface Album {
   'artist' : string,
   'collectionName' : string,
 }
+export interface CreateTcgSetInput {
+  'setCode' : string,
+  'coverImageUrl' : string,
+  'setName' : string,
+  'featured' : boolean,
+  'tcgCategory' : string,
+  'sortOrder' : bigint,
+  'slug' : string,
+  'isActive' : boolean,
+  'cardCount' : [] | [bigint],
+  'releaseYear' : bigint,
+}
 export interface MarketListing {
   'seller' : Principal,
   'editionId' : bigint,
@@ -33,14 +45,62 @@ export interface Release {
   'ownersCount' : bigint,
   'mintOpenTime' : bigint,
 }
+export interface TcgSet {
+  'id' : bigint,
+  'setCode' : string,
+  'coverImageUrl' : string,
+  'setName' : string,
+  'featured' : boolean,
+  'tcgCategory' : string,
+  'sortOrder' : bigint,
+  'slug' : string,
+  'isActive' : boolean,
+  'cardCount' : [] | [bigint],
+  'releaseYear' : bigint,
+}
 export interface Track { 'title' : string, 'duration' : bigint }
+export interface UpdateTcgSetInput {
+  'id' : bigint,
+  'setCode' : string,
+  'coverImageUrl' : string,
+  'setName' : string,
+  'featured' : boolean,
+  'tcgCategory' : string,
+  'sortOrder' : bigint,
+  'slug' : string,
+  'isActive' : boolean,
+  'cardCount' : [] | [bigint],
+  'releaseYear' : bigint,
+}
+export interface UserProfile { 'name' : string }
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
 export interface _SERVICE {
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addAlbum' : ActorMethod<[Album], undefined>,
   'addRelease' : ActorMethod<[Release], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createSet' : ActorMethod<[CreateTcgSetInput], TcgSet>,
+  'deleteSet' : ActorMethod<[bigint], undefined>,
   'getAlbumById' : ActorMethod<[string], [] | [Album]>,
   'getAlbums' : ActorMethod<[], Array<Album>>,
+  'getAllSetsAdmin' : ActorMethod<[], Array<TcgSet>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getFeaturedSets' : ActorMethod<[], Array<TcgSet>>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
+  'getPokemonSets' : ActorMethod<[], Array<TcgSet>>,
   'getReleases' : ActorMethod<[], Array<Release>>,
+  'getSetById' : ActorMethod<[bigint], [] | [TcgSet]>,
+  'getSetBySlug' : ActorMethod<[string], [] | [TcgSet]>,
+  'getSets' : ActorMethod<[], Array<TcgSet>>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,
+  'toggleSetActive' : ActorMethod<[bigint], undefined>,
+  'updateSet' : ActorMethod<[UpdateTcgSetInput], TcgSet>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

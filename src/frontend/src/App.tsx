@@ -23,11 +23,13 @@ import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
 import { RecordClipPage } from "./pages/RecordClipPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
+import { SetDetailPage } from "./pages/SetDetailPage";
 
 type View =
   | { type: "tab"; tab: Tab }
   | { type: "album-player"; albumId: string; fromTab: Tab }
   | { type: "market-detail"; albumId: string }
+  | { type: "set-detail"; slug: string }
   | { type: "admin" }
   | { type: "creator-submit" }
   | { type: "record-clip" };
@@ -65,6 +67,10 @@ function AppContent() {
 
   function handleMarketAlbumClick(albumId: string) {
     setView({ type: "market-detail", albumId });
+  }
+
+  function handleSetClick(slug: string) {
+    setView({ type: "set-detail", slug });
   }
 
   function handleUploadClick() {
@@ -115,7 +121,10 @@ function AppContent() {
               />
             )}
             {view.type === "tab" && view.tab === "market" && (
-              <MarketPage onAlbumClick={handleMarketAlbumClick} />
+              <MarketPage
+                onAlbumClick={handleMarketAlbumClick}
+                onSetClick={handleSetClick}
+              />
             )}
             {view.type === "album-player" && (
               <AlbumPlayerPage
@@ -126,6 +135,12 @@ function AppContent() {
             {view.type === "market-detail" && (
               <MarketDetailPage
                 albumId={view.albumId}
+                onBack={() => setView({ type: "tab", tab: "market" })}
+              />
+            )}
+            {view.type === "set-detail" && (
+              <SetDetailPage
+                slug={view.slug}
                 onBack={() => setView({ type: "tab", tab: "market" })}
               />
             )}

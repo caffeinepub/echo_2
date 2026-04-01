@@ -30,6 +30,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import type {
+  CreateTcgSetInput,
+  TcgSet,
+  UpdateTcgSetInput,
+} from "../backend.d";
 import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import {
   type AdminRelease,
@@ -39,6 +44,7 @@ import {
   useAdminReleases,
 } from "../context/AdminReleasesContext";
 import { useWalletContext } from "../context/WalletContext";
+import { useActor } from "../hooks/useActor";
 
 type FilterStatus = "all" | ReleaseStatus;
 
@@ -1282,6 +1288,9 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
 
+  const [activeSection, setActiveSection] = useState<"releases" | "sets">(
+    "releases",
+  );
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -1562,126 +1571,178 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
               </button>
             </div>
 
-            {/* Search + Filters */}
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "10px" }}
-            >
-              <div style={{ position: "relative" }}>
-                <Search
-                  size={14}
+            {/* Section tabs: Releases | Sets */}
+            <div style={{ display: "flex", gap: "6px", marginBottom: "2px" }}>
+              {(["releases", "sets"] as const).map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  data-ocid={`admin.${sec}.tab`}
+                  onClick={() => setActiveSection(sec)}
                   style={{
-                    position: "absolute",
-                    left: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    color: textSecondary,
-                    pointerEvents: "none",
-                  }}
-                />
-                <input
-                  data-ocid="admin.search.input"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by title or artist..."
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px 9px 34px",
+                    padding: "6px 16px",
                     borderRadius: "8px",
-                    background: isLight ? "#ffffff" : "var(--echo-input-bg)",
-                    border: `1px solid ${borderColor}`,
-                    color: textPrimary,
-                    fontSize: "13px",
-                    outline: "none",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    background:
+                      activeSection === sec
+                        ? "rgba(16,185,129,0.15)"
+                        : "transparent",
+                    color: activeSection === sec ? "#10b981" : textSecondary,
+                    border:
+                      activeSection === sec
+                        ? "1px solid rgba(16,185,129,0.3)"
+                        : `1px solid ${borderColor}`,
                   }}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: textSecondary,
-                    }}
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
+                >
+                  {sec.charAt(0).toUpperCase() + sec.slice(1)}
+                </button>
+              ))}
+            </div>
 
+            {/* Search + Filters — only shown for releases section */}
+            {activeSection === "sets" ? null : (
               <div
                 style={{
                   display: "flex",
-                  gap: "6px",
-                  overflowX: "auto",
-                  paddingBottom: "2px",
+                  flexDirection: "column",
+                  gap: "10px",
                 }}
               >
-                {FILTER_PILLS.map((pill) => (
-                  <button
-                    key={pill.id}
-                    type="button"
-                    data-ocid={`admin.filter.${pill.id}.tab`}
-                    onClick={() => setFilterStatus(pill.id)}
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={14}
                     style={{
-                      padding: "5px 14px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      whiteSpace: "nowrap",
-                      cursor: "pointer",
-                      transition: "all 0.15s",
-                      background:
-                        filterStatus === pill.id
-                          ? "oklch(0.45 0.20 290)"
-                          : "transparent",
-                      color: filterStatus === pill.id ? "white" : textSecondary,
-                      border:
-                        filterStatus === pill.id
-                          ? "1px solid transparent"
-                          : `1px solid ${borderColor}`,
-                      boxShadow:
-                        filterStatus === pill.id
-                          ? "0 0 12px oklch(0.45 0.20 290 / 0.3)"
-                          : "none",
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: textSecondary,
+                      pointerEvents: "none",
                     }}
-                  >
-                    {pill.label}
-                    {pill.id === "submitted" && submittedCount > 0 && (
-                      <span
-                        style={{
-                          marginLeft: "5px",
-                          background:
-                            filterStatus === "submitted"
-                              ? "rgba(255,255,255,0.25)"
-                              : "rgba(245,158,11,0.85)",
-                          color:
-                            filterStatus === "submitted" ? "white" : "#0a0a0f",
-                          borderRadius: "10px",
-                          fontSize: "9px",
-                          fontWeight: 700,
-                          padding: "1px 5px",
-                          lineHeight: "1.4",
-                          display: "inline-block",
-                        }}
-                      >
-                        {submittedCount}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                  />
+                  <input
+                    data-ocid="admin.search.input"
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by title or artist..."
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px 9px 34px",
+                      borderRadius: "8px",
+                      background: isLight ? "#ffffff" : "var(--echo-input-bg)",
+                      border: `1px solid ${borderColor}`,
+                      color: textPrimary,
+                      fontSize: "13px",
+                      outline: "none",
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        color: textSecondary,
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "6px",
+                    overflowX: "auto",
+                    paddingBottom: "2px",
+                  }}
+                >
+                  {FILTER_PILLS.map((pill) => (
+                    <button
+                      key={pill.id}
+                      type="button"
+                      data-ocid={`admin.filter.${pill.id}.tab`}
+                      onClick={() => setFilterStatus(pill.id)}
+                      style={{
+                        padding: "5px 14px",
+                        borderRadius: "20px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                        background:
+                          filterStatus === pill.id
+                            ? "oklch(0.45 0.20 290)"
+                            : "transparent",
+                        color:
+                          filterStatus === pill.id ? "white" : textSecondary,
+                        border:
+                          filterStatus === pill.id
+                            ? "1px solid transparent"
+                            : `1px solid ${borderColor}`,
+                        boxShadow:
+                          filterStatus === pill.id
+                            ? "0 0 12px oklch(0.45 0.20 290 / 0.3)"
+                            : "none",
+                      }}
+                    >
+                      {pill.label}
+                      {pill.id === "submitted" && submittedCount > 0 && (
+                        <span
+                          style={{
+                            marginLeft: "5px",
+                            background:
+                              filterStatus === "submitted"
+                                ? "rgba(255,255,255,0.25)"
+                                : "rgba(245,158,11,0.85)",
+                            color:
+                              filterStatus === "submitted"
+                                ? "white"
+                                : "#0a0a0f",
+                            borderRadius: "10px",
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            padding: "1px 5px",
+                            lineHeight: "1.4",
+                            display: "inline-block",
+                          }}
+                        >
+                          {submittedCount}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
+          {/* Sets management section */}
+          {activeSection === "sets" && (
+            <SetsManagementSection
+              isDark={!isLight}
+              panelBg={panelBg}
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+          )}
+
           {/* Incoming Submissions inbox — shown on "all" or "submitted" filter */}
-          {(filterStatus === "all" || filterStatus === "submitted") &&
+          {activeSection === "releases" &&
+            (filterStatus === "all" || filterStatus === "submitted") &&
             submissions.length > 0 && (
               <div style={{ padding: "16px 20px 0" }}>
                 {/* Inbox header */}
@@ -2096,7 +2157,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
             )}
 
           {/* Release list (admin's own releases, excluding submissions) */}
-          {filterStatus !== "submitted" && (
+          {activeSection === "releases" && filterStatus !== "submitted" && (
             <div
               style={{
                 padding: "16px 20px",
@@ -2481,5 +2542,697 @@ function ActionButton({
       {icon}
       {label}
     </button>
+  );
+}
+
+// ─── Sets Management Section ──────────────────────────────────────────────────
+const TCG_CATEGORIES_ADMIN = [
+  "Pokemon",
+  "One Piece",
+  "Yu-Gi-Oh",
+  "Sports",
+] as const;
+
+interface SetFormState {
+  tcgCategory: string;
+  setName: string;
+  setCode: string;
+  releaseYear: string;
+  coverImageUrl: string;
+  isActive: boolean;
+  sortOrder: string;
+  featured: boolean;
+  cardCount: string;
+}
+
+const DEFAULT_SET_FORM: SetFormState = {
+  tcgCategory: "Pokemon",
+  setName: "",
+  setCode: "",
+  releaseYear: new Date().getFullYear().toString(),
+  coverImageUrl: "",
+  isActive: true,
+  sortOrder: "0",
+  featured: false,
+  cardCount: "",
+};
+
+function SetsManagementSection({
+  isDark,
+  panelBg,
+  borderColor,
+  textPrimary,
+  textSecondary,
+}: {
+  isDark: boolean;
+  panelBg: string;
+  borderColor: string;
+  textPrimary: string;
+  textSecondary: string;
+}) {
+  const { actor, isFetching } = useActor();
+  const [sets, setSets] = useState<TcgSet[]>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingSet, setEditingSet] = useState<TcgSet | null>(null);
+  const [form, setForm] = useState<SetFormState>(DEFAULT_SET_FORM);
+  const [saving, setSaving] = useState(false);
+  const [confirmDeleteSetId, setConfirmDeleteSetId] = useState<bigint | null>(
+    null,
+  );
+  const [togglingId, setTogglingId] = useState<bigint | null>(null);
+
+  function loadSets() {
+    if (!actor) return;
+    setLoadingSets(true);
+    actor
+      .getAllSetsAdmin()
+      .then((result) => setSets(result))
+      .catch(() => setSets([]))
+      .finally(() => setLoadingSets(false));
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: actor-driven load
+  useEffect(() => {
+    if (actor && !isFetching) loadSets();
+  }, [actor, isFetching]);
+
+  function openAddForm() {
+    setEditingSet(null);
+    setForm(DEFAULT_SET_FORM);
+    setShowForm(true);
+  }
+
+  function openEditForm(set: TcgSet) {
+    setEditingSet(set);
+    setForm({
+      tcgCategory: set.tcgCategory,
+      setName: set.setName,
+      setCode: set.setCode,
+      releaseYear: Number(set.releaseYear).toString(),
+      coverImageUrl: set.coverImageUrl,
+      isActive: set.isActive,
+      sortOrder: Number(set.sortOrder).toString(),
+      featured: set.featured,
+      cardCount:
+        set.cardCount !== undefined && set.cardCount !== null
+          ? Number(set.cardCount).toString()
+          : "",
+    });
+    setShowForm(true);
+  }
+
+  async function handleSave() {
+    if (!form.setName.trim() || !form.setCode.trim()) return;
+    setSaving(true);
+    try {
+      const slug = form.setName
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const input = {
+        tcgCategory: form.tcgCategory,
+        setName: form.setName.trim(),
+        setCode: form.setCode.trim().toUpperCase(),
+        releaseYear: BigInt(
+          Number(form.releaseYear) || new Date().getFullYear(),
+        ),
+        coverImageUrl: form.coverImageUrl.trim(),
+        slug,
+        isActive: form.isActive,
+        sortOrder: BigInt(Number(form.sortOrder) || 0),
+        featured: form.featured,
+        cardCount: form.cardCount.trim()
+          ? BigInt(Number(form.cardCount))
+          : undefined,
+      };
+      if (editingSet) {
+        if (!actor) return;
+        await actor.updateSet({ ...input, id: editingSet.id });
+      } else {
+        if (!actor) return;
+        await actor.createSet(input);
+      }
+      setShowForm(false);
+      loadSets();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleActive(id: bigint) {
+    setTogglingId(id);
+    try {
+      if (!actor) return;
+      await actor.toggleSetActive(id);
+      loadSets();
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
+  async function handleDelete(id: bigint) {
+    if (!actor) return;
+    await actor.deleteSet(id);
+    setConfirmDeleteSetId(null);
+    loadSets();
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    background: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
+    border: `1px solid ${borderColor}`,
+    color: textPrimary,
+    fontSize: "13px",
+    outline: "none",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    color: textSecondary,
+    fontSize: "11px",
+    fontWeight: 600,
+    marginBottom: "4px",
+    display: "block",
+  };
+
+  return (
+    <div style={{ padding: "16px 20px" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "14px",
+        }}
+      >
+        <h2 style={{ color: textPrimary, fontSize: "15px", fontWeight: 700 }}>
+          Manage Sets
+        </h2>
+        <button
+          type="button"
+          data-ocid="admin.sets.open_modal_button"
+          onClick={openAddForm}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "7px 14px",
+            borderRadius: "8px",
+            background: "rgba(16,185,129,0.15)",
+            color: "#10b981",
+            fontSize: "12px",
+            fontWeight: 600,
+            border: "1px solid rgba(16,185,129,0.3)",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={13} /> Add Set
+        </button>
+      </div>
+
+      {/* Add / Edit form */}
+      {showForm && (
+        <div
+          data-ocid="admin.sets.modal"
+          style={{
+            background: panelBg,
+            border: `1px solid ${borderColor}`,
+            borderRadius: "14px",
+            padding: "18px",
+            marginBottom: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "14px",
+            }}
+          >
+            <h3
+              style={{ color: textPrimary, fontSize: "14px", fontWeight: 700 }}
+            >
+              {editingSet ? "Edit Set" : "Add New Set"}
+            </h3>
+            <button
+              type="button"
+              data-ocid="admin.sets.close_button"
+              onClick={() => setShowForm(false)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: textSecondary,
+                padding: "4px",
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {/* TCG Category */}
+            <div>
+              <label htmlFor="sets-category" style={labelStyle}>
+                TCG Category
+              </label>
+              <select
+                id="sets-category"
+                data-ocid="admin.sets.select"
+                value={form.tcgCategory}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, tcgCategory: e.target.value }))
+                }
+                style={inputStyle}
+              >
+                {TCG_CATEGORIES_ADMIN.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Set Name */}
+            <div>
+              <label htmlFor="sets-name" style={labelStyle}>
+                Set Name *
+              </label>
+              <input
+                id="sets-name"
+                data-ocid="admin.sets.input"
+                type="text"
+                value={form.setName}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, setName: e.target.value }))
+                }
+                placeholder="e.g. Scarlet & Violet Base"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Set Code */}
+            <div>
+              <label htmlFor="sets-code" style={labelStyle}>
+                Set Code *
+              </label>
+              <input
+                id="sets-code"
+                type="text"
+                value={form.setCode}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, setCode: e.target.value }))
+                }
+                placeholder="e.g. SV1"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Release Year + Sort Order row */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+              }}
+            >
+              <div>
+                <label htmlFor="sets-year" style={labelStyle}>
+                  Release Year
+                </label>
+                <input
+                  id="sets-year"
+                  type="number"
+                  value={form.releaseYear}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      releaseYear: e.target.value,
+                    }))
+                  }
+                  placeholder="2024"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label htmlFor="sets-sort" style={labelStyle}>
+                  Sort Order
+                </label>
+                <input
+                  id="sets-sort"
+                  type="number"
+                  value={form.sortOrder}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, sortOrder: e.target.value }))
+                  }
+                  placeholder="0"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            {/* Card Count */}
+            <div>
+              <label htmlFor="sets-count" style={labelStyle}>
+                Card Count (optional)
+              </label>
+              <input
+                id="sets-count"
+                type="number"
+                value={form.cardCount}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, cardCount: e.target.value }))
+                }
+                placeholder="e.g. 258"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Cover Image URL */}
+            <div>
+              <label htmlFor="sets-cover" style={labelStyle}>
+                Cover Image URL (optional)
+              </label>
+              <input
+                id="sets-cover"
+                type="text"
+                value={form.coverImageUrl}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    coverImageUrl: e.target.value,
+                  }))
+                }
+                placeholder="https://..."
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Toggles row */}
+            <div style={{ display: "flex", gap: "20px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  data-ocid="admin.sets.checkbox"
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, isActive: e.target.checked }))
+                  }
+                />
+                <span
+                  style={{
+                    color: textSecondary,
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  Active
+                </span>
+              </label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={form.featured}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, featured: e.target.checked }))
+                  }
+                />
+                <span
+                  style={{
+                    color: textSecondary,
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  Featured
+                </span>
+              </label>
+            </div>
+
+            {/* Save button */}
+            <button
+              type="button"
+              data-ocid="admin.sets.submit_button"
+              onClick={handleSave}
+              disabled={saving || !form.setName.trim() || !form.setCode.trim()}
+              style={{
+                padding: "10px",
+                borderRadius: "8px",
+                background: saving
+                  ? "rgba(16,185,129,0.5)"
+                  : "rgba(16,185,129,0.85)",
+                color: "white",
+                fontSize: "13px",
+                fontWeight: 600,
+                border: "none",
+                cursor: saving ? "not-allowed" : "pointer",
+                transition: "opacity 0.15s",
+              }}
+            >
+              {saving ? "Saving…" : editingSet ? "Save Changes" : "Add Set"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sets list */}
+      {loadingSets ? (
+        <div
+          data-ocid="admin.sets.loading_state"
+          style={{
+            textAlign: "center",
+            padding: "32px",
+            color: textSecondary,
+            fontSize: "13px",
+          }}
+        >
+          Loading sets…
+        </div>
+      ) : sets.length === 0 ? (
+        <div
+          data-ocid="admin.sets.empty_state"
+          style={{
+            textAlign: "center",
+            padding: "48px",
+            color: textSecondary,
+            fontSize: "13px",
+          }}
+        >
+          No sets yet. Add the first one above.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {sets.map((set, idx) => (
+            <div
+              key={set.id.toString()}
+              data-ocid={`admin.sets.item.${idx + 1}`}
+              style={{
+                background: panelBg,
+                border: `1px solid ${borderColor}`,
+                borderRadius: "12px",
+                padding: "12px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              {/* Cover thumbnail */}
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "8px",
+                  flexShrink: 0,
+                  background: isDark ? "rgba(20,50,35,0.5)" : "#f3f4f6",
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {set.coverImageUrl ? (
+                  <img
+                    src={set.coverImageUrl}
+                    alt={set.setName}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      fontFamily: "monospace",
+                      color: textSecondary,
+                    }}
+                  >
+                    {set.setCode}
+                  </span>
+                )}
+              </div>
+
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  style={{
+                    color: textPrimary,
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {set.setName}
+                </p>
+                <p style={{ color: textSecondary, fontSize: "11px" }}>
+                  {set.tcgCategory} · {set.setCode} · {Number(set.releaseYear)}
+                </p>
+              </div>
+
+              {/* Active indicator */}
+              <div style={{ flexShrink: 0 }}>
+                <button
+                  type="button"
+                  data-ocid={`admin.sets.toggle.${idx + 1}`}
+                  onClick={() => handleToggleActive(set.id)}
+                  disabled={togglingId === set.id}
+                  style={{
+                    width: "32px",
+                    height: "18px",
+                    borderRadius: "9px",
+                    background: set.isActive
+                      ? "rgba(16,185,129,0.8)"
+                      : "rgba(100,116,139,0.3)",
+                    border: "none",
+                    cursor: "pointer",
+                    position: "relative",
+                    transition: "background 0.2s",
+                  }}
+                  title={
+                    set.isActive
+                      ? "Active — click to deactivate"
+                      : "Inactive — click to activate"
+                  }
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "2px",
+                      left: set.isActive ? "16px" : "2px",
+                      width: "14px",
+                      height: "14px",
+                      borderRadius: "50%",
+                      background: "white",
+                      transition: "left 0.2s",
+                    }}
+                  />
+                </button>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
+                <button
+                  type="button"
+                  data-ocid={`admin.sets.edit_button.${idx + 1}`}
+                  onClick={() => openEditForm(set)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: "6px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: isDark ? "rgba(255,255,255,0.06)" : "#f4f5f8",
+                    color: textSecondary,
+                    border: `1px solid ${borderColor}`,
+                  }}
+                >
+                  <Edit2 size={11} />
+                </button>
+
+                {confirmDeleteSetId === set.id ? (
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      type="button"
+                      data-ocid={`admin.sets.delete_button.${idx + 1}`}
+                      onClick={() => handleDelete(set.id)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        background: "rgba(239,68,68,0.85)",
+                        color: "white",
+                        border: "none",
+                      }}
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      data-ocid={`admin.sets.cancel_button.${idx + 1}`}
+                      onClick={() => setConfirmDeleteSetId(null)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        background: "transparent",
+                        color: textSecondary,
+                        border: `1px solid ${borderColor}`,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteSetId(set.id)}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      background: "rgba(239,68,68,0.10)",
+                      color: "#f87171",
+                      border: "1px solid rgba(239,68,68,0.25)",
+                    }}
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

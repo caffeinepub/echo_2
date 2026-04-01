@@ -408,9 +408,9 @@ const CARD = {
   shadow: "0 8px 22px rgba(0,0,0,0.05)",
   shadowHover: "0 10px 28px rgba(0,0,0,0.09)",
   radius: 16,
-  title: "#1a1a1a",
+  title: "#111111",
   secondary: "#6b7280",
-  price: "#1a1a1a",
+  price: "#111111",
   pos: "#10b981",
   neg: "#f43f5e",
   imgBorder: "rgba(0,0,0,0.08)",
@@ -428,15 +428,20 @@ const DARK_CARD = {
   shadowHover:
     "0 6px 30px oklch(0.70 0.18 160 / 0.18), inset 0 1px 0 oklch(0.80 0.12 160 / 0.10)",
   radius: 16,
-  title: "oklch(0.92 0.04 160)",
-  secondary: "oklch(0.58 0.08 160)",
-  price: "oklch(0.92 0.04 160)",
+  title: "#e8f5f0",
+  secondary: "rgba(180,220,205,0.55)",
+  price: "#f0faf6",
   pos: "oklch(0.72 0.17 145)",
   neg: "oklch(0.62 0.18 25)",
   imgBorder: "oklch(0.55 0.12 160 / 0.20)",
 };
 
 // ─── Price formatter ─────────────────────────────────────────────────────────
+
+function fmtPop(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(n);
+}
 
 function fmtPrice(usd: number): string {
   if (usd >= 1000000) return `$${(usd / 1000000).toFixed(2)}M`;
@@ -861,55 +866,31 @@ function PreferredPaymentBadge({
   isDark?: boolean;
 }) {
   return (
-    <div
+    <span
       style={{
         display: "inline-flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-        gap: 2,
+        alignItems: "center",
+        gap: 4,
+        padding: "3px 8px",
+        borderRadius: 99,
+        background: isDark ? "rgba(255,255,255,0.07)" : "#f3f4f6",
+        border: "none",
+        whiteSpace: "nowrap" as const,
         flexShrink: 0,
       }}
     >
+      <CryptoIcon currency={payment} />
       <span
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "3px 8px 3px 5px",
-          borderRadius: 99,
-          background: isDark
-            ? "oklch(0.70 0.18 160 / 0.08)"
-            : "rgba(0,0,0,0.04)",
-          border: isDark
-            ? "1px solid oklch(0.70 0.18 160 / 0.18)"
-            : "1px solid rgba(0,0,0,0.08)",
-          whiteSpace: "nowrap" as const,
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.02em",
+          color: isDark ? "oklch(0.85 0.06 160)" : "#374151",
         }}
       >
-        <CryptoIcon currency={payment} />
-        <span
-          style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            letterSpacing: "0.03em",
-            color: isDark ? "oklch(0.85 0.06 160)" : "#374151",
-          }}
-        >
-          {payment}
-        </span>
+        {payment}
       </span>
-      <span
-        style={{
-          fontSize: "9px",
-          fontWeight: 500,
-          letterSpacing: "0.03em",
-          color: isDark ? "oklch(0.55 0.07 160)" : "#9ca3af",
-          paddingRight: 2,
-        }}
-      >
-        Preferred Payment
-      </span>
-    </div>
+    </span>
   );
 }
 
@@ -1972,7 +1953,7 @@ function SlabCard({
           padding: "10px 12px 10px 10px",
           display: "flex",
           flexDirection: "column",
-          gap: 4,
+          gap: 6,
           minWidth: 0,
         }}
       >
@@ -1980,8 +1961,8 @@ function SlabCard({
         <div className="flex items-start justify-between gap-2">
           <p
             style={{
-              fontSize: 14,
-              fontWeight: 700,
+              fontSize: 15,
+              fontWeight: 600,
               color: T.title,
               lineHeight: 1.25,
               flex: 1,
@@ -2006,14 +1987,14 @@ function SlabCard({
         </div>
         {/* Set + year */}
         <p style={{ fontSize: 11, color: T.secondary }}>
-          {slab.setName} · {slab.year}
+          {slab.setName} {slab.year}
         </p>
 
         {/* TAG grade badge + population */}
         <div className="flex items-center gap-2 flex-wrap">
           <GradeBadge grade={slab.grade} isDark={isDark} />
           <span style={{ fontSize: 10, color: T.secondary }}>
-            Pop {slab.population.toLocaleString()}
+            • Pop {fmtPop(slab.population)}
           </span>
         </div>
 
@@ -2025,7 +2006,7 @@ function SlabCard({
           <div>
             <span
               style={{
-                fontSize: 15,
+                fontSize: 17,
                 fontWeight: 700,
                 color: T.price,
                 letterSpacing: "-0.01em",
@@ -2042,7 +2023,7 @@ function SlabCard({
                 marginTop: 1,
               }}
             >
-              {slab.listingCount} listed
+              {slab.listingCount} listings
             </span>
           </div>
 
@@ -2068,11 +2049,9 @@ function SlabCard({
                 padding: "5px 12px",
                 fontWeight: 600,
                 fontSize: 11,
-                background:
-                  "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
-                color: "#0f2a25",
-                boxShadow:
-                  "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+                background: "#10b981",
+                color: "#ffffff",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
                 border: "none",
                 cursor: "pointer",
                 whiteSpace: "nowrap" as const,
@@ -2095,8 +2074,8 @@ function SlabCard({
                 fontSize: 11,
                 background: isDark ? "oklch(0.70 0.18 160 / 0.10)" : "#f0fdf9",
                 border: isDark
-                  ? "1px solid oklch(0.70 0.18 160 / 0.30)"
-                  : "1px solid rgba(16,185,129,0.30)",
+                  ? "1.5px solid oklch(0.70 0.18 160 / 0.50)"
+                  : "1.5px solid rgba(16,185,129,0.30)",
                 color: isDark ? "oklch(0.78 0.14 160)" : "#1f9d84",
                 cursor: "pointer",
                 whiteSpace: "nowrap" as const,
@@ -2467,7 +2446,9 @@ export function ReleasesPage(_props: ReleasesPageProps) {
                     ? isDark
                       ? "oklch(0.70 0.18 160 / 0.22)"
                       : "#10b981"
-                    : "transparent",
+                    : isDark
+                      ? "rgba(255,255,255,0.06)"
+                      : "#f3f4f6",
                   color: isActive
                     ? isDark
                       ? "oklch(0.85 0.10 160)"
@@ -2492,7 +2473,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
             fontWeight: 500,
           }}
         >
-          {sorted.length} slabs
+          {sorted.length} listings
         </span>
       </div>
 

@@ -1,44 +1,31 @@
-# Minty — Seller Listing Flow Overhaul
+# Minty — Dynamic Browse Sets CMS
 
 ## Current State
-- CreatorSubmitPage.tsx has a legacy upload form (SOL price, video/artwork upload, etc.) that does not reflect the slab-focused listing flow.
-- ReleasesPage.tsx shows an ice/NFT eligibility icon on all `nftEligible: true` slabs unconditionally.
-- NFT vault concept is surfaced at the listing card level before any purchase intent.
+The Browse Sets section in MarketPage.tsx uses a hardcoded `SETS` array (16 Pokemon sets). No backend storage, no admin management, no category filtering. All 16 sets are always shown with no way to add new ones without editing code.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New multi-step seller listing flow (5 steps) inside CreatorSubmitPage (or a new SellerListingPage) replacing the old form:
-  - **Step 1**: Select grader — TAG or PSA (two large option cards)
-  - **Step 2**: Identify slab
-    - TAG path: open camera QR code scanner, parse TAG slab QR
-    - PSA path: text input for cert number
-    - Auto-fetch and display locked metadata: card name, set, year, grade, cert ID, grader
-    - Fields shown as read-only/locked after fetch
-  - **Step 3**: Live camera photos only (front of slab, back of slab, label close-up)
-    - Camera capture only — no file upload from gallery (`capture="environment"` + no accept fallback to gallery)
-    - Preview thumbnails for each captured photo
-  - **Step 4**: Set price
-    - USD price input
-    - Preferred payment toggle: USDC / ETH / BTC / SOL
-  - **Step 5**: Review & publish listing
-    - Summary of metadata, photos, price, payment rail
-    - Publish button
-- Step progress indicator (1–5) at the top
+- Backend actor: `TcgSet` type with fields: id, tcgCategory, setName, setCode, releaseYear, coverImageUrl, slug, isActive, sortOrder, cardCount (opt), featured (opt). Stable storage for sets.
+- Backend CRUD: `createSet`, `updateSet`, `deleteSet`, `getSets` (public, returns active only sorted), `getAllSetsAdmin` (admin only)
+- Frontend: TCG category pill filter bar (All, Pokemon, One Piece, Yu-Gi-Oh, Sports) above Browse Sets grid, default selected = Pokemon
+- Frontend: Dynamic set card rendering from backend data — cover image or code placeholder, set code label, set name
+- Frontend: `/sets/:slug` dynamic route generated from set data (no hardcoded routes)
+- Frontend: Admin "Manage Sets" tab in ManageReleasesPage — table of all sets with edit/toggle/delete actions
+- Frontend: Add Set form with: tcgCategory dropdown, setName, setCode, releaseYear, coverImageUrl (URL input), isActive toggle, sortOrder, featured toggle
+- Frontend: Edit Set inline or modal
 
 ### Modify
-- Remove the ice/NFT eligibility icon from listing cards in ReleasesPage — set `nftEligible` to never render the `IceNftIcon` on cards
-- The `NftVaultModal` and `IceNftIcon` components remain in the codebase but are only triggered during buyer checkout (not shown on cards)
-- No NFT/vault mention anywhere in the seller flow
+- MarketPage.tsx: Replace static `SETS` array with backend query; add category filter pills; filter/sort sets client-side
+- ManageReleasesPage.tsx: Add a "Sets" management tab
+- App.tsx: Add `/sets/:slug` route (dynamic, not hardcoded per-set)
 
 ### Remove
-- Old CreatorSubmitPage form fields: SOL price, video upload, motion artwork upload, NFT-related checkboxes or mentions
-- Ice icon display on listing cards (`nftEligible && <IceNftIcon />` block removed from card render)
+- Hardcoded `SETS` array in MarketPage.tsx
 
 ## Implementation Plan
-1. Rewrite CreatorSubmitPage.tsx as a 5-step wizard with the steps above.
-2. Use `qr-code` camera component for TAG QR scanning in Step 2.
-3. For Step 3, use `<input type="file" accept="image/*" capture="environment">` (forces camera on mobile, no gallery fallback note needed) — or use the `camera` caffeine component.
-4. Simulate metadata fetch (mock) for both TAG QR and PSA cert number.
-5. In ReleasesPage.tsx, remove the `{slab.nftEligible && <IceNftIcon ... />}` block from the card render so no ice icon appears on listings.
-6. Keep NftVaultModal available for future wiring in buyer checkout flow.
+1. Generate Motoko backend with TcgSet type and CRUD operations, admin-only writes, public reads
+2. Seed backend with the existing 16 Pokemon sets as initial data
+3. Update MarketPage to fetch sets from backend, show category filter pills, filter/sort dynamically
+4. Add Set detail page at `/sets/:slug` (generic, data-driven)
+5. Add "Sets" tab to ManageReleasesPage with add/edit/toggle/delete UI

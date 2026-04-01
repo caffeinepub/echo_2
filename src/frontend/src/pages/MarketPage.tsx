@@ -1,5 +1,7 @@
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import { useActor } from "../hooks/useActor";
 
 // ─── Signal Card ───────────────────────────────────────────────────────────────
 function SignalCard({
@@ -76,39 +78,81 @@ function SignalCard({
   );
 }
 
-// ─── Set data ──────────────────────────────────────────────────────────────────
-const SETS: { name: string; slug: string; code: string; image?: string }[] = [
-  {
-    name: "Scarlet & Violet Base",
-    slug: "scarlet-violet-base",
-    code: "SV1",
-    image: "/assets/uploads/sv-base-booster.png",
-  },
-  { name: "Paldea Evolved", slug: "paldea-evolved", code: "SV2" },
-  { name: "Obsidian Flames", slug: "obsidian-flames", code: "SV3" },
-  { name: "Pokémon 151", slug: "pokemon-151", code: "MEW" },
-  { name: "Paradox Rift", slug: "paradox-rift", code: "SV4" },
-  { name: "Paldean Fates", slug: "paldean-fates", code: "SV4.5" },
-  { name: "Temporal Forces", slug: "temporal-forces", code: "SV5" },
-  { name: "Twilight Masquerade", slug: "twilight-masquerade", code: "SV6" },
-  { name: "Shrouded Fable", slug: "shrouded-fable", code: "SV6.5" },
-  { name: "Stellar Crown", slug: "stellar-crown", code: "SV7" },
-  { name: "Surging Sparks", slug: "surging-sparks", code: "SV8" },
-  { name: "Prismatic Evolutions", slug: "prismatic-evolutions", code: "SV8.5" },
-  { name: "Journey Together", slug: "journey-together", code: "SV9" },
-  { name: "Destined Rivals", slug: "destined-rivals", code: "SV9.5" },
-  { name: "Black Bolt", slug: "black-bolt", code: "SV10" },
-  { name: "White Flare", slug: "white-flare", code: "SV10" },
-];
+// ─── TCG Categories ─────────────────────────────────────────────────────────
+const TCG_CATEGORIES = [
+  "All",
+  "Pokemon",
+  "One Piece",
+  "Yu-Gi-Oh",
+  "Sports",
+] as const;
+type TcgCategory = (typeof TCG_CATEGORIES)[number];
+
+// ─── Set Card Skeleton ───────────────────────────────────────────────────────
+function SetCardSkeleton({ isDark }: { isDark: boolean }) {
+  const bg = isDark ? "rgba(20, 50, 35, 0.4)" : "#e9ecef";
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: isDark ? "rgba(10, 28, 20, 0.5)" : "white",
+        border: isDark
+          ? "1px solid rgba(110, 230, 185, 0.1)"
+          : "1px solid #eee",
+        animation: "pulse 1.5s ease-in-out infinite",
+      }}
+    >
+      <div style={{ height: "120px", background: bg }} />
+      <div className="px-3 py-2.5">
+        <div
+          style={{
+            height: "10px",
+            width: "40%",
+            borderRadius: "4px",
+            background: bg,
+            marginBottom: "6px",
+          }}
+        />
+        <div
+          style={{
+            height: "13px",
+            width: "80%",
+            borderRadius: "4px",
+            background: bg,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 interface MarketPageProps {
-  onAlbumClick: (albumId: string) => void;
+  onAlbumClick?: (albumId: string) => void;
+  onSetClick: (slug: string) => void;
 }
 
-export function MarketPage({ onAlbumClick }: MarketPageProps) {
+export function MarketPage({ onSetClick }: MarketPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const { actor, isFetching } = useActor();
+  const [sets, setSets] = useState<import("../backend.d").TcgSet[]>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<TcgCategory>("Pokemon");
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    actor
+      .getSets()
+      .then((result) => setSets(result))
+      .catch(() => setSets([]))
+      .finally(() => setLoadingSets(false));
+  }, [actor, isFetching]);
+
+  const filteredSets =
+    activeCategory === "All"
+      ? sets
+      : sets.filter((s) => s.tcgCategory === activeCategory);
 
   const setCardStyle = isDark
     ? {
@@ -127,6 +171,11 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04)",
         borderRadius: "16px",
       };
+
+  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
+  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+  const placeholderBg = isDark ? "rgba(20, 50, 35, 0.6)" : "#eef0f2";
+  const placeholderText = isDark ? "rgba(130, 190, 160, 0.5)" : "#9ca3af";
 
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
@@ -174,78 +223,168 @@ export function MarketPage({ onAlbumClick }: MarketPageProps) {
           Browse Sets
         </p>
 
-        <div className="grid grid-cols-2 gap-3">
-          {SETS.map((set, i) => (
-            <motion.div
-              key={set.slug}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25 + i * 0.04 }}
-            >
+        {/* ── Category filter pills ── */}
+        <div
+          className="flex gap-2 mb-4"
+          style={{
+            overflowX: "auto",
+            paddingBottom: "4px",
+            scrollbarWidth: "none",
+          }}
+          data-ocid="discover.category.tab"
+        >
+          {TCG_CATEGORIES.map((cat) => {
+            const isActive = activeCategory === cat;
+            return (
               <button
+                key={cat}
                 type="button"
-                data-ocid={`discover.item.${i + 1}`}
-                onClick={() => onAlbumClick(set.slug)}
-                className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
-                style={setCardStyle}
+                data-ocid={`discover.${cat.toLowerCase().replace(/[^a-z0-9]/g, "_")}.tab`}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  transition: "all 0.15s",
+                  background: isActive
+                    ? "#10b981"
+                    : isDark
+                      ? "rgba(20, 50, 35, 0.5)"
+                      : "#f3f4f6",
+                  color: isActive
+                    ? "white"
+                    : isDark
+                      ? "rgba(150, 210, 185, 0.65)"
+                      : "#6b7280",
+                  border: isActive
+                    ? "1px solid transparent"
+                    : isDark
+                      ? "1px solid rgba(110, 230, 185, 0.12)"
+                      : "1px solid #e5e7eb",
+                  boxShadow: isActive
+                    ? "0 0 12px rgba(16,185,129,0.3)"
+                    : "none",
+                }}
               >
-                {/* Artwork area */}
-                <div
-                  className="w-full flex items-center justify-center p-4"
-                  style={{
-                    background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
-                    minHeight: "120px",
-                  }}
-                >
-                  {set.image ? (
-                    <img
-                      src={set.image}
-                      alt={set.name}
-                      className="object-contain max-h-full max-w-full"
-                      style={{ maxHeight: "96px", maxWidth: "100%" }}
-                    />
-                  ) : (
-                    <div
-                      className="flex items-center justify-center w-full h-full rounded-lg"
-                      style={{
-                        background: isDark
-                          ? "rgba(20, 50, 35, 0.6)"
-                          : "#eef0f2",
-                        minHeight: "80px",
-                      }}
-                    >
-                      <span
-                        className="text-[11px] font-mono"
-                        style={{
-                          color: isDark
-                            ? "rgba(130, 190, 160, 0.5)"
-                            : undefined,
-                        }}
-                      >
-                        {!isDark && (
-                          <span className="text-gray-400">{set.code}</span>
-                        )}
-                        {isDark && set.code}
-                      </span>
-                    </div>
-                  )}
-                </div>
+                {cat}
+              </button>
+            );
+          })}
+        </div>
 
-                {/* Set name */}
-                <div className="px-3 py-2.5 text-center">
-                  <p
-                    className="text-[12px] font-semibold leading-tight"
+        {/* ── Set grid ── */}
+        {loadingSets ? (
+          <div
+            data-ocid="discover.sets.loading_state"
+            className="grid grid-cols-2 gap-3"
+          >
+            {Array.from({ length: 6 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+              <SetCardSkeleton key={i} isDark={isDark} />
+            ))}
+          </div>
+        ) : filteredSets.length === 0 ? (
+          <div
+            data-ocid="discover.sets.empty_state"
+            className="flex flex-col items-center justify-center py-14 text-center"
+          >
+            <p
+              style={{
+                color: textPrimary,
+                fontSize: "14px",
+                fontWeight: 600,
+                marginBottom: "4px",
+              }}
+            >
+              No sets in this category yet
+            </p>
+            <p style={{ color: textSecondary, fontSize: "12px" }}>
+              {activeCategory === "All"
+                ? "No sets have been added yet."
+                : `No ${activeCategory} sets have been added yet.`}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {filteredSets.map((set, i) => (
+              <motion.div
+                key={set.slug}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
+              >
+                <button
+                  type="button"
+                  data-ocid={`discover.item.${i + 1}`}
+                  onClick={() => onSetClick(set.slug)}
+                  className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
+                  style={setCardStyle}
+                >
+                  {/* Artwork area */}
+                  <div
+                    className="w-full flex items-center justify-center p-4"
                     style={{
-                      color: isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a",
+                      background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
+                      minHeight: "120px",
                     }}
                   >
-                    {set.name}
-                  </p>
-                </div>
-              </button>
-            </motion.div>
-          ))}
-        </div>
+                    {set.coverImageUrl ? (
+                      <img
+                        src={set.coverImageUrl}
+                        alt={set.setName}
+                        className="object-contain max-h-full max-w-full"
+                        style={{ maxHeight: "96px", maxWidth: "100%" }}
+                      />
+                    ) : (
+                      <div
+                        className="flex items-center justify-center w-full h-full rounded-lg"
+                        style={{
+                          background: placeholderBg,
+                          minHeight: "80px",
+                        }}
+                      >
+                        <span
+                          className="text-[11px] font-mono font-semibold"
+                          style={{ color: placeholderText }}
+                        >
+                          {set.setCode}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Set info */}
+                  <div className="px-3 py-2.5">
+                    <p
+                      className="text-[9px] font-mono font-medium mb-0.5"
+                      style={{ color: textSecondary }}
+                    >
+                      {set.setCode}
+                    </p>
+                    <p
+                      className="text-[12px] font-semibold leading-tight"
+                      style={{ color: textPrimary }}
+                    >
+                      {set.setName}
+                    </p>
+                    {set.cardCount !== undefined && set.cardCount !== null && (
+                      <p
+                        className="text-[10px] mt-0.5"
+                        style={{ color: textSecondary }}
+                      >
+                        {Number(set.cardCount)} cards
+                      </p>
+                    )}
+                  </div>
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </div>
   );

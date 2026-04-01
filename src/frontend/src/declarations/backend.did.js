@@ -27,19 +27,85 @@ export const Release = IDL.Record({
   'ownersCount' : IDL.Nat,
   'mintOpenTime' : IDL.Int,
 });
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
+export const CreateTcgSetInput = IDL.Record({
+  'setCode' : IDL.Text,
+  'coverImageUrl' : IDL.Text,
+  'setName' : IDL.Text,
+  'featured' : IDL.Bool,
+  'tcgCategory' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'cardCount' : IDL.Opt(IDL.Nat),
+  'releaseYear' : IDL.Nat,
+});
+export const TcgSet = IDL.Record({
+  'id' : IDL.Nat,
+  'setCode' : IDL.Text,
+  'coverImageUrl' : IDL.Text,
+  'setName' : IDL.Text,
+  'featured' : IDL.Bool,
+  'tcgCategory' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'cardCount' : IDL.Opt(IDL.Nat),
+  'releaseYear' : IDL.Nat,
+});
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const MarketListing = IDL.Record({
   'seller' : IDL.Principal,
   'editionId' : IDL.Nat,
   'price' : IDL.Nat,
 });
+export const UpdateTcgSetInput = IDL.Record({
+  'id' : IDL.Nat,
+  'setCode' : IDL.Text,
+  'coverImageUrl' : IDL.Text,
+  'setName' : IDL.Text,
+  'featured' : IDL.Bool,
+  'tcgCategory' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'cardCount' : IDL.Opt(IDL.Nat),
+  'releaseYear' : IDL.Nat,
+});
 
 export const idlService = IDL.Service({
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addAlbum' : IDL.Func([Album], [], []),
   'addRelease' : IDL.Func([Release], [], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createSet' : IDL.Func([CreateTcgSetInput], [TcgSet], []),
+  'deleteSet' : IDL.Func([IDL.Nat], [], []),
   'getAlbumById' : IDL.Func([IDL.Text], [IDL.Opt(Album)], ['query']),
   'getAlbums' : IDL.Func([], [IDL.Vec(Album)], ['query']),
+  'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getFeaturedSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+  'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
+  'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
+  'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
+  'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
+      ['query'],
+    ),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+  'toggleSetActive' : IDL.Func([IDL.Nat], [], []),
+  'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
 });
 
 export const idlInitArgs = [];
@@ -64,19 +130,85 @@ export const idlFactory = ({ IDL }) => {
     'ownersCount' : IDL.Nat,
     'mintOpenTime' : IDL.Int,
   });
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
+  const CreateTcgSetInput = IDL.Record({
+    'setCode' : IDL.Text,
+    'coverImageUrl' : IDL.Text,
+    'setName' : IDL.Text,
+    'featured' : IDL.Bool,
+    'tcgCategory' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'cardCount' : IDL.Opt(IDL.Nat),
+    'releaseYear' : IDL.Nat,
+  });
+  const TcgSet = IDL.Record({
+    'id' : IDL.Nat,
+    'setCode' : IDL.Text,
+    'coverImageUrl' : IDL.Text,
+    'setName' : IDL.Text,
+    'featured' : IDL.Bool,
+    'tcgCategory' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'cardCount' : IDL.Opt(IDL.Nat),
+    'releaseYear' : IDL.Nat,
+  });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const MarketListing = IDL.Record({
     'seller' : IDL.Principal,
     'editionId' : IDL.Nat,
     'price' : IDL.Nat,
   });
+  const UpdateTcgSetInput = IDL.Record({
+    'id' : IDL.Nat,
+    'setCode' : IDL.Text,
+    'coverImageUrl' : IDL.Text,
+    'setName' : IDL.Text,
+    'featured' : IDL.Bool,
+    'tcgCategory' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'cardCount' : IDL.Opt(IDL.Nat),
+    'releaseYear' : IDL.Nat,
+  });
   
   return IDL.Service({
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addAlbum' : IDL.Func([Album], [], []),
     'addRelease' : IDL.Func([Release], [], []),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createSet' : IDL.Func([CreateTcgSetInput], [TcgSet], []),
+    'deleteSet' : IDL.Func([IDL.Nat], [], []),
     'getAlbumById' : IDL.Func([IDL.Text], [IDL.Opt(Album)], ['query']),
     'getAlbums' : IDL.Func([], [IDL.Vec(Album)], ['query']),
+    'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getFeaturedSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+    'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
+    'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
+    'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
+    'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
+        ['query'],
+      ),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+    'toggleSetActive' : IDL.Func([IDL.Nat], [], []),
+    'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
   });
 };
 
