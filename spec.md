@@ -1,40 +1,27 @@
-# Minty Set Detail Page Refactor
+# Minty
 
 ## Current State
-SetDetailPage.tsx is a large analytics dashboard with:
-- Set header card (image, name, category, year, set code)
-- 8 stat panels (volume, transactions, active cards, avg sale, highest sale, floor, total pop, leader card)
-- Analytics row with 3 charts (volume trend, grade distribution, market activity)
-- Ranked card leaderboard
-- Card detail modal with population, market data, recent sales, Doppler placeholder
+ReleasesPage.tsx has a filter bar (Most Viewed / New / Minted) followed by a feed of slab listing cards. No leaderboard component exists above the filters.
 
 ## Requested Changes (Diff)
 
 ### Add
-- 2 market signal stat cards: SET VOLUME and ACTIVE LISTINGS (soft mint pastel, rounded, light gradient border)
+- `TopVolumeLeaderboard` component inline in ReleasesPage.tsx
+- 10 mock leaderboard entries with: id, cardName, setName, imageUrl, totalVolumeUsd, transactionCount
+- Horizontal scroll container with scroll-snap, placed above the sticky filter bar
+- Each tile (~140px wide): card image, rank badge (#1–#10) top-left, volume label, sales count
+- Hover: subtle mint accent glow
+- Tap/click navigates to card detail (opens SlabDetailSheet with matching slab or mock data)
 
 ### Modify
-- Keep set header card as-is (image, name, category, year, set code)
-- Simplify card rows to show: image, card name, card number, total volume, active listings count
-- Card detail modal remains but empty/placeholder until populated later
-- Section title: "Cards in This Set" with subtitle "Ranked by highest Minty volume"
+- ReleasesPage render: insert `<TopVolumeLeaderboard>` above the sticky filter bar div
 
 ### Remove
-- All analytics charts (volume trend, grade distribution, market activity)
-- Leader card stat panel
-- Avg sale stat panel
-- Highest sale stat panel
-- Floor stat panel
-- Population summary stat panel
-- Transaction count stat panel
-- Active cards stat panel
-- Rank numbers and rarity from card rows
-- Transaction count, last sale, TAG 10 pop from card rows
-- Recent sales feed from card detail modal (keep structure but empty placeholder)
-- Doppler section from card detail modal (keep structure but empty)
+- Nothing
 
 ## Implementation Plan
-1. Rewrite SetDetailPage.tsx keeping only: set header, 2 stat cards, cards list sorted by volume
-2. Each card row: image, name, number, volume, active listings
-3. Card detail modal: opens on tap, shows card identity only (population/sales/Doppler as future placeholders)
-4. Style: soft mint pastel cards, white background, calm spacing, no charts
+1. Define `TopVolumeEntry` interface and `TOP_VOLUME_MOCK` array (10 entries, volume desc)
+2. Build `TopVolumeLeaderboard` functional component with horizontal scroll snap
+3. Style tiles: 140px wide, white bg, rounded corners, rank badge, volume/sales text, mint glow on hover
+4. Wire tile click to open the existing `SlabDetailSheet` (match by id or fall back to first slab)
+5. Insert component above filter bar in `ReleasesPage`

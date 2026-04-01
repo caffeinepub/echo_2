@@ -449,6 +449,283 @@ function fmtPrice(usd: number): string {
   return `$${usd.toLocaleString()}`;
 }
 
+// ─── Top Volume Leaderboard ───────────────────────────────────────────────────
+
+interface TopVolumeEntry {
+  id: string;
+  cardName: string;
+  setName: string;
+  imageUrl: string;
+  totalVolumeUsd: number;
+  transactionCount: number;
+}
+
+const TOP_VOLUME_MOCK: TopVolumeEntry[] = [
+  {
+    id: "tv1",
+    cardName: "Charizard Holo",
+    setName: "Base Set 1999",
+    imageUrl: "https://picsum.photos/seed/charizard/280/392",
+    totalVolumeUsd: 824000,
+    transactionCount: 134,
+  },
+  {
+    id: "tv2",
+    cardName: "Pikachu Illustrator",
+    setName: "CoroCoro Promo 1998",
+    imageUrl: "https://picsum.photos/seed/pikachu/280/392",
+    totalVolumeUsd: 375000,
+    transactionCount: 18,
+  },
+  {
+    id: "tv3",
+    cardName: "LeBron James RC",
+    setName: "Topps Chrome 2003",
+    imageUrl: "https://picsum.photos/seed/lebron/280/392",
+    totalVolumeUsd: 298000,
+    transactionCount: 67,
+  },
+  {
+    id: "tv4",
+    cardName: "Charizard ex",
+    setName: "Scarlet & Violet 2023",
+    imageUrl: "https://picsum.photos/seed/charizard2/280/392",
+    totalVolumeUsd: 214000,
+    transactionCount: 201,
+  },
+  {
+    id: "tv5",
+    cardName: "Umbreon VMAX",
+    setName: "Evolving Skies 2021",
+    imageUrl: "https://picsum.photos/seed/umbreon/280/392",
+    totalVolumeUsd: 178000,
+    transactionCount: 89,
+  },
+  {
+    id: "tv6",
+    cardName: "Rayquaza Gold Star",
+    setName: "EX Deoxys 2005",
+    imageUrl: "https://picsum.photos/seed/rayquaza/280/392",
+    totalVolumeUsd: 142000,
+    transactionCount: 44,
+  },
+  {
+    id: "tv7",
+    cardName: "Mona Lisa Lugia",
+    setName: "Neo Genesis 2000",
+    imageUrl: "https://picsum.photos/seed/lugia/280/392",
+    totalVolumeUsd: 118000,
+    transactionCount: 31,
+  },
+  {
+    id: "tv8",
+    cardName: "Mike Trout RC",
+    setName: "Bowman Chrome 2009",
+    imageUrl: "https://picsum.photos/seed/trout/280/392",
+    totalVolumeUsd: 97000,
+    transactionCount: 56,
+  },
+  {
+    id: "tv9",
+    cardName: "Eevee Promo",
+    setName: "McDonald's 2021",
+    imageUrl: "https://picsum.photos/seed/eevee/280/392",
+    totalVolumeUsd: 82400,
+    transactionCount: 112,
+  },
+  {
+    id: "tv10",
+    cardName: "Gengar Holo",
+    setName: "Base Set 2 2000",
+    imageUrl: "https://picsum.photos/seed/gengar/280/392",
+    totalVolumeUsd: 61200,
+    transactionCount: 78,
+  },
+];
+
+function fmtVolume(usd: number): string {
+  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1)}M vol`;
+  if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}k vol`;
+  return `$${usd} vol`;
+}
+
+function TopVolumeLeaderboard({
+  onTileClick,
+  isDark,
+}: {
+  onTileClick: (entry: TopVolumeEntry) => void;
+  isDark: boolean;
+}) {
+  return (
+    <div style={{ padding: "12px 0 4px" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          paddingLeft: 16,
+          paddingRight: 16,
+          marginBottom: 10,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: isDark ? "oklch(0.92 0.04 160)" : "#0f2a25",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Top Volume
+        </span>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 11,
+            color: isDark ? "oklch(0.55 0.08 160)" : "#9ca3af",
+            fontWeight: 500,
+          }}
+        >
+          By USD volume
+        </span>
+      </div>
+
+      {/* Scroll container */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          gap: 10,
+          overflowX: "auto",
+          scrollSnapType: "x mandatory",
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingBottom: 4,
+          scrollbarWidth: "none",
+          // @ts-ignore
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {TOP_VOLUME_MOCK.map((entry, idx) => (
+          <TopVolumeTile
+            key={entry.id}
+            entry={entry}
+            rank={idx + 1}
+            isDark={isDark}
+            onClick={() => onTileClick(entry)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopVolumeTile({
+  entry,
+  rank,
+  isDark,
+  onClick,
+}: {
+  entry: TopVolumeEntry;
+  rank: number;
+  isDark: boolean;
+  onClick: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      type="button"
+      data-ocid={`leaderboard.item.${rank}`}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: 140,
+        flexShrink: 0,
+        scrollSnapAlign: "start",
+        background: isDark ? "oklch(0.14 0.04 160 / 0.95)" : "#ffffff",
+        borderRadius: 12,
+        border: isDark
+          ? "1px solid rgba(255,255,255,0.08)"
+          : "1px solid rgba(0,0,0,0.07)",
+        boxShadow: hovered
+          ? "0 0 0 2px oklch(0.70 0.18 160 / 0.35), 0 2px 8px rgba(0,0,0,0.10)"
+          : "0 1px 4px rgba(0,0,0,0.06)",
+        transition: "all 0.15s ease",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
+    >
+      {/* Image area */}
+      <div style={{ position: "relative", height: 160, overflow: "hidden" }}>
+        <img
+          src={entry.imageUrl}
+          alt={entry.cardName}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+          loading="lazy"
+        />
+        {/* Rank badge */}
+        <div
+          style={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            background: "rgba(0,0,0,0.55)",
+            color: "#ffffff",
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "2px 7px",
+            borderRadius: 6,
+            lineHeight: 1.4,
+          }}
+        >
+          #{rank}
+        </div>
+      </div>
+
+      {/* Info area */}
+      <div style={{ padding: "8px 10px 10px" }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: isDark ? "oklch(0.92 0.04 160)" : "#111827",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {entry.cardName}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "oklch(0.55 0.15 160)",
+            marginTop: 3,
+          }}
+        >
+          {fmtVolume(entry.totalVolumeUsd)}
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            color: isDark ? "oklch(0.55 0.08 160)" : "#9ca3af",
+            marginTop: 1,
+          }}
+        >
+          {entry.transactionCount} sales
+        </div>
+      </div>
+    </button>
+  );
+}
+
 // ─── NFT Vault Ice Icon & Modal ──────────────────────────────────────────────
 
 // biome-ignore lint/correctness/noUnusedVariables: reserved for buyer checkout
@@ -2401,6 +2678,16 @@ export function ReleasesPage(_props: ReleasesPageProps) {
         paddingBottom: 68,
       }}
     >
+      {/* Top Volume Leaderboard */}
+      <TopVolumeLeaderboard
+        isDark={isDark}
+        onTileClick={(entry) => {
+          const match =
+            MOCK_SLABS.find((s) => s.id === entry.id) ?? MOCK_SLABS[0];
+          setSelectedSlab(match);
+        }}
+      />
+
       {/* Filter bar */}
       <div
         style={{
