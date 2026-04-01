@@ -1057,8 +1057,8 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
               type="button"
               onClick={onAdminClick}
               data-ocid="topbar.admin.button"
-              aria-label="Manage Releases"
-              title="Manage Releases"
+              aria-label="Manage Catalog"
+              title="Manage Catalog"
               className="flex items-center gap-1.5 transition-all duration-150"
               style={{
                 padding: "5px 12px",

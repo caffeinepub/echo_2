@@ -1,31 +1,38 @@
-# Minty — Dynamic Browse Sets CMS
+# Minty Catalog Manager
 
 ## Current State
-The Browse Sets section in MarketPage.tsx uses a hardcoded `SETS` array (16 Pokemon sets). No backend storage, no admin management, no category filtering. All 16 sets are always shown with no way to add new ones without editing code.
+- Admin page is `ManageReleasesPage.tsx` with music/release CMS language
+- Backend has `TcgSet` type with CRUD but no Category or Card models
+- Browse page (MarketPage) shows a flat list of sets filterable by TCG category
+- Admin context (`AdminReleasesContext`) is music-release-oriented
+- App.tsx references `ManageReleasesPage` and `AdminReleasesProvider`
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend actor: `TcgSet` type with fields: id, tcgCategory, setName, setCode, releaseYear, coverImageUrl, slug, isActive, sortOrder, cardCount (opt), featured (opt). Stable storage for sets.
-- Backend CRUD: `createSet`, `updateSet`, `deleteSet`, `getSets` (public, returns active only sorted), `getAllSetsAdmin` (admin only)
-- Frontend: TCG category pill filter bar (All, Pokemon, One Piece, Yu-Gi-Oh, Sports) above Browse Sets grid, default selected = Pokemon
-- Frontend: Dynamic set card rendering from backend data — cover image or code placeholder, set code label, set name
-- Frontend: `/sets/:slug` dynamic route generated from set data (no hardcoded routes)
-- Frontend: Admin "Manage Sets" tab in ManageReleasesPage — table of all sets with edit/toggle/delete actions
-- Frontend: Add Set form with: tcgCategory dropdown, setName, setCode, releaseYear, coverImageUrl (URL input), isActive toggle, sortOrder, featured toggle
-- Frontend: Edit Set inline or modal
+- `TcgCategory` type in backend: id, name, slug, imageUrl, isActive
+- `TcgCard` type in backend: id, setId, cardName, cardNumber (optional), rarity (optional), imageUrl, isActive, isSupported
+- Backend CRUD: createCategory, updateCategory, deleteCategory, toggleCategoryActive, getCategories, getAllCategoriesAdmin
+- Backend CRUD: createCard, updateCard, deleteCard, toggleCardActive, toggleCardSupported, getCardsBySet, getAllCardsAdmin
+- New `ManageCatalogPage.tsx` replacing `ManageReleasesPage.tsx` with three tabs: Categories, Sets, Cards
+- Each tab: create form, list with edit/toggle/delete, image upload support
+- Public browse flow: Categories grid → Sets in category → Cards in set (active only)
 
 ### Modify
-- MarketPage.tsx: Replace static `SETS` array with backend query; add category filter pills; filter/sort sets client-side
-- ManageReleasesPage.tsx: Add a "Sets" management tab
-- App.tsx: Add `/sets/:slug` route (dynamic, not hardcoded per-set)
+- `App.tsx`: rename import/reference from `ManageReleasesPage` → `ManageCatalogPage`; rename `AdminReleasesProvider` → keep but deprecate (or remove if unused after catalog refactor)
+- `MarketPage.tsx` (Discover/Browse Sets section): update to show Categories first; clicking a category shows its sets; clicking a set shows cards
+- `TopBar.tsx`: admin button label stays consistent, no music language
+- Backend `main.mo`: add Category and Card types and functions alongside existing TcgSet functions
+- Seed backend with 4 categories: Pokemon, One Piece, Yu-Gi-Oh, Sports
 
 ### Remove
-- Hardcoded `SETS` array in MarketPage.tsx
+- `ManageReleasesPage.tsx` (replaced by `ManageCatalogPage.tsx`)
+- Music/release language from admin UI ("Manage Releases" → "Manage Catalog")
+- `AdminReleasesContext` usage from admin page (catalog manager uses backend directly)
 
 ## Implementation Plan
-1. Generate Motoko backend with TcgSet type and CRUD operations, admin-only writes, public reads
-2. Seed backend with the existing 16 Pokemon sets as initial data
-3. Update MarketPage to fetch sets from backend, show category filter pills, filter/sort dynamically
-4. Add Set detail page at `/sets/:slug` (generic, data-driven)
-5. Add "Sets" tab to ManageReleasesPage with add/edit/toggle/delete UI
+1. Update `main.mo` to add TcgCategory and TcgCard types with full CRUD
+2. Create `ManageCatalogPage.tsx` with Categories/Sets/Cards tabs
+3. Update `MarketPage.tsx` browse section to show category → set → card hierarchy
+4. Update `App.tsx` to use `ManageCatalogPage` instead of `ManageReleasesPage`
+5. Remove `ManageReleasesPage.tsx` and clean up dead `AdminReleasesContext` usage if possible

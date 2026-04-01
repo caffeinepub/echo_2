@@ -20,6 +20,29 @@ export interface Track {
     title: string;
     duration: bigint;
 }
+export interface TcgCategory {
+    id: bigint;
+    name: string;
+    slug: string;
+    imageUrl: string;
+    isActive: boolean;
+    sortOrder: bigint;
+}
+export interface CreateTcgCategoryInput {
+    name: string;
+    slug: string;
+    imageUrl: string;
+    isActive: boolean;
+    sortOrder: bigint;
+}
+export interface UpdateTcgCategoryInput {
+    id: bigint;
+    name: string;
+    slug: string;
+    imageUrl: string;
+    isActive: boolean;
+    sortOrder: bigint;
+}
 export interface TcgSet {
     id: bigint;
     setCode: string;
@@ -72,6 +95,38 @@ export interface CreateTcgSetInput {
     cardCount?: bigint;
     releaseYear: bigint;
 }
+export interface TcgCard {
+    id: bigint;
+    setId: bigint;
+    cardName: string;
+    cardNumber: string;
+    rarity: string;
+    imageUrl: string;
+    isActive: boolean;
+    isSupported: boolean;
+    sortOrder: bigint;
+}
+export interface CreateTcgCardInput {
+    setId: bigint;
+    cardName: string;
+    cardNumber: string;
+    rarity: string;
+    imageUrl: string;
+    isActive: boolean;
+    isSupported: boolean;
+    sortOrder: bigint;
+}
+export interface UpdateTcgCardInput {
+    id: bigint;
+    setId: bigint;
+    cardName: string;
+    cardNumber: string;
+    rarity: string;
+    imageUrl: string;
+    isActive: boolean;
+    isSupported: boolean;
+    sortOrder: bigint;
+}
 export interface UserProfile {
     name: string;
 }
@@ -84,6 +139,12 @@ export interface backendInterface {
     addAlbum(album: Album): Promise<void>;
     addRelease(release: Release): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createCategory(input: CreateTcgCategoryInput): Promise<TcgCategory>;
+    updateCategory(input: UpdateTcgCategoryInput): Promise<TcgCategory>;
+    deleteCategory(id: bigint): Promise<void>;
+    toggleCategoryActive(id: bigint): Promise<void>;
+    getCategories(): Promise<Array<TcgCategory>>;
+    getAllCategoriesAdmin(): Promise<Array<TcgCategory>>;
     createSet(input: CreateTcgSetInput): Promise<TcgSet>;
     deleteSet(id: bigint): Promise<void>;
     getAlbumById(id: string): Promise<Album | null>;
@@ -98,10 +159,19 @@ export interface backendInterface {
     getSetById(id: bigint): Promise<TcgSet | null>;
     getSetBySlug(slug: string): Promise<TcgSet | null>;
     getSets(): Promise<Array<TcgSet>>;
+    getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
     toggleSetActive(id: bigint): Promise<void>;
     updateSet(input: UpdateTcgSetInput): Promise<TcgSet>;
+    createCard(input: CreateTcgCardInput): Promise<TcgCard>;
+    updateCard(input: UpdateTcgCardInput): Promise<TcgCard>;
+    deleteCard(id: bigint): Promise<void>;
+    toggleCardActive(id: bigint): Promise<void>;
+    toggleCardSupported(id: bigint): Promise<void>;
+    getCardsBySet(setId: bigint): Promise<Array<TcgCard>>;
+    getAllCardsAdmin(): Promise<Array<TcgCard>>;
+    getCardsBySetAdmin(setId: bigint): Promise<Array<TcgCard>>;
 }

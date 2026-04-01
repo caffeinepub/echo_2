@@ -8,7 +8,7 @@ import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { LibraryPage } from "./pages/LibraryPage";
-import { ManageReleasesPage } from "./pages/ManageReleasesPage";
+import { ManageCatalogPage } from "./pages/ManageCatalogPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
 import { ReleasesPage } from "./pages/ReleasesPage";
@@ -85,7 +85,7 @@ function AppContent() {
           />
         )}
         {view.type === "admin" && (
-          <ManageReleasesPage
+          <ManageCatalogPage
             onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}

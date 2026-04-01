@@ -1,9 +1,11 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import type { TcgCategory as BackendCategory, TcgSet } from "../backend.d";
 import { useActor } from "../hooks/useActor";
 
 // ─── Signal Card ───────────────────────────────────────────────────────────────
+
 function SignalCard({
   label,
   plainValue,
@@ -78,17 +80,8 @@ function SignalCard({
   );
 }
 
-// ─── TCG Categories ─────────────────────────────────────────────────────────
-const TCG_CATEGORIES = [
-  "All",
-  "Pokemon",
-  "One Piece",
-  "Yu-Gi-Oh",
-  "Sports",
-] as const;
-type TcgCategory = (typeof TCG_CATEGORIES)[number];
+// ─── Set Card Skeleton ───────────────────────────────────────────────────────────────
 
-// ─── Set Card Skeleton ───────────────────────────────────────────────────────
 function SetCardSkeleton({ isDark }: { isDark: boolean }) {
   const bg = isDark ? "rgba(20, 50, 35, 0.4)" : "#e9ecef";
   return (
@@ -126,7 +119,8 @@ function SetCardSkeleton({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────────
+
 interface MarketPageProps {
   onAlbumClick?: (albumId: string) => void;
   onSetClick: (slug: string) => void;
@@ -136,23 +130,42 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const { actor, isFetching } = useActor();
-  const [sets, setSets] = useState<import("../backend.d").TcgSet[]>([]);
+  const [sets, setSets] = useState<TcgSet[]>([]);
+  const [categories, setCategories] = useState<BackendCategory[]>([]);
   const [loadingSets, setLoadingSets] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<TcgCategory>("Pokemon");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
 
   useEffect(() => {
     if (!actor || isFetching) return;
-    actor
-      .getSets()
-      .then((result) => setSets(result))
-      .catch(() => setSets([]))
+    Promise.all([actor.getSets(), (actor as any).getCategories()])
+      .then(([s, c]) => {
+        setSets(s);
+        setCategories(
+          c
+            .filter((cat: BackendCategory) => cat.isActive)
+            .sort(
+              (a: BackendCategory, b: BackendCategory) =>
+                Number(a.sortOrder) - Number(b.sortOrder),
+            ),
+        );
+      })
+      .catch(() => {})
       .finally(() => setLoadingSets(false));
   }, [actor, isFetching]);
+
+  // Build the filter pill list: All + each active category
+  const categoryPills = ["All", ...categories.map((c) => c.name)];
 
   const filteredSets =
     activeCategory === "All"
       ? sets
-      : sets.filter((s) => s.tcgCategory === activeCategory);
+      : sets.filter((s) => {
+          // Match by category name or slug
+          const cat = categories.find((c) => c.name === activeCategory);
+          return cat
+            ? s.tcgCategory === cat.slug || s.tcgCategory === cat.name
+            : false;
+        });
 
   const setCardStyle = isDark
     ? {
@@ -220,7 +233,7 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
           className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
           style={{ color: "var(--echo-text-secondary)" }}
         >
-          Browse Sets
+          Browse Categories
         </p>
 
         {/* ── Category filter pills ── */}
@@ -233,7 +246,7 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
           }}
           data-ocid="discover.category.tab"
         >
-          {TCG_CATEGORIES.map((cat) => {
+          {categoryPills.map((cat) => {
             const isActive = activeCategory === cat;
             return (
               <button
