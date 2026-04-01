@@ -17,32 +17,7 @@ import { ADMIN_WALLET_ADDRESS } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useWallet } from "../hooks/useWallet";
 
-const MINTY_LOGO =
-  "/assets/uploads/da0a37bf-f0f7-4b3e-8435-d339d757ced0-019d3c90-0de4-771f-8b28-c86522af61d6-1.png";
-
-// Mint teal glow — subtle, premium, cursive-logo-friendly
-const NEON_STYLES = `
-@keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 3px rgba(52,211,153,0.75)) drop-shadow(0 0 12px rgba(52,211,153,0.35)) drop-shadow(0 0 24px rgba(52,211,153,0.18)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
-}
-
-.echo-logo-neon {
-  filter: drop-shadow(0 0 2px rgba(52,211,153,0.55)) drop-shadow(0 0 8px rgba(52,211,153,0.22)) drop-shadow(0 0 16px rgba(52,211,153,0.12));
-  animation: echo-neon-breathe 4s ease-in-out infinite;
-  will-change: filter;
-}
-`;
-
-let styleInjected = false;
-function injectNeonStyles() {
-  if (styleInjected) return;
-  const el = document.createElement("style");
-  el.textContent = NEON_STYLES;
-  document.head.appendChild(el);
-  styleInjected = true;
-}
+const MINTY_LOGO = "/assets/minty-logo-transparent.png";
 
 // ─── Asset Data ────────────────────────────────────────────────────────────────
 const ASSETS = [
@@ -985,8 +960,6 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
-  injectNeonStyles();
-
   const isLight = theme === "light";
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
@@ -1022,22 +995,18 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
         }}
       >
         {/* Minty Logo */}
-        <div
-          className="relative flex items-center"
-          style={{ paddingTop: "6px" }}
-        >
+        <div style={{ marginRight: "12px" }} className="flex items-center">
           <img
             src={MINTY_LOGO}
             alt="Minty"
-            className="echo-logo-neon select-none"
+            className="select-none"
             style={{
-              width: "180px",
-              height: "auto",
-              maxWidth: "min(180px, 30vw)",
+              height: "clamp(44px, 6vw, 48px)",
+              width: "auto",
               objectFit: "contain",
-              imageRendering: "auto",
               display: "block",
               background: "transparent",
+              imageRendering: "auto",
             }}
             draggable={false}
           />
