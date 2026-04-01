@@ -23,6 +23,75 @@ interface SlabItem {
   preferredPayment: "USDC" | "BTC" | "ETH" | "SOL";
 }
 
+// ─── Live Offer types & helpers ───────────────────────────────────────────────
+
+type PaymentOption = "USDC" | "BTC" | "ETH" | "SOL";
+
+interface LiveOffer {
+  id: string;
+  slabId: string;
+  amountUsd: number;
+  currency: PaymentOption;
+  expiresAt: number; // timestamp ms
+}
+
+const CRYPTO_RATES: Record<PaymentOption, number> = {
+  USDC: 1,
+  BTC: 65000,
+  ETH: 2700,
+  SOL: 145,
+};
+
+function cryptoAmount(usd: number, currency: PaymentOption): string {
+  const amount = usd / CRYPTO_RATES[currency];
+  if (currency === "USDC") return amount.toFixed(2);
+  if (currency === "BTC") return amount.toFixed(6);
+  if (currency === "ETH") return amount.toFixed(4);
+  return amount.toFixed(3);
+}
+
+function fmtExpiry(expiresAt: number): string {
+  const diff = expiresAt - Date.now();
+  if (diff <= 0) return "Active";
+  const h = Math.floor(diff / 3600000);
+  if (h < 24) return `${h}h left`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h left` : `${d}d left`;
+}
+
+function seedOffers(): Record<string, LiveOffer[]> {
+  const H = 3600000;
+  const currencies: PaymentOption[] = ["USDC", "BTC", "ETH", "SOL"];
+  const map: Record<string, LiveOffer[]> = {};
+  MOCK_SLABS.forEach((slab, si) => {
+    map[slab.id] = [
+      {
+        id: `seed-${slab.id}-0`,
+        slabId: slab.id,
+        amountUsd: Math.round(slab.marketPrice * 0.97),
+        currency: currencies[si % 4],
+        expiresAt: Date.now() - H, // already expired → "Active"
+      },
+      {
+        id: `seed-${slab.id}-1`,
+        slabId: slab.id,
+        amountUsd: Math.round(slab.marketPrice * 0.93),
+        currency: currencies[(si + 1) % 4],
+        expiresAt: Date.now() + 2 * H, // 2h left
+      },
+      {
+        id: `seed-${slab.id}-2`,
+        slabId: slab.id,
+        amountUsd: Math.round(slab.marketPrice * 0.89),
+        currency: currencies[(si + 2) % 4],
+        expiresAt: Date.now() - 2 * H, // already expired → "Active"
+      },
+    ];
+  });
+  return map;
+}
+
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const NOW = Date.now();
@@ -301,6 +370,9 @@ const MOCK_SLABS: SlabItem[] = [
   },
 ];
 
+// Seeded offers — depends on MOCK_SLABS, defined after it
+const SEEDED_OFFERS = seedOffers();
+
 // ─── Colour constants (detail sheet — unchanged dark palette) ────────────────
 
 const C = {
@@ -508,6 +580,13 @@ function SOLIcon() {
   );
 }
 
+function CryptoIcon({ currency }: { currency: PaymentOption }) {
+  if (currency === "USDC") return <USDCIcon />;
+  if (currency === "BTC") return <BTCIcon />;
+  if (currency === "ETH") return <ETHIcon />;
+  return <SOLIcon />;
+}
+
 // ─── Preferred Payment Badge ──────────────────────────────────────────────────
 
 function PreferredPaymentBadge({
@@ -517,17 +596,6 @@ function PreferredPaymentBadge({
   payment: SlabItem["preferredPayment"];
   isDark?: boolean;
 }) {
-  const icon =
-    payment === "USDC" ? (
-      <USDCIcon />
-    ) : payment === "BTC" ? (
-      <BTCIcon />
-    ) : payment === "ETH" ? (
-      <ETHIcon />
-    ) : (
-      <SOLIcon />
-    );
-
   return (
     <div
       style={{
@@ -554,7 +622,7 @@ function PreferredPaymentBadge({
           whiteSpace: "nowrap" as const,
         }}
       >
-        {icon}
+        <CryptoIcon currency={payment} />
         <span
           style={{
             fontSize: "11px",
@@ -600,9 +668,8 @@ function mockSales(price: number) {
   ];
 }
 
-// ─── Buy / Offer Modal ────────────────────────────────────────────────────────
+// ─── Payment Chip ─────────────────────────────────────────────────────────────
 
-type PaymentOption = "USDC" | "BTC" | "ETH" | "SOL";
 const PAYMENT_OPTIONS: PaymentOption[] = ["USDC", "BTC", "ETH", "SOL"];
 
 function PaymentChip({
@@ -616,17 +683,6 @@ function PaymentChip({
   isDark: boolean;
   onClick: () => void;
 }) {
-  const icon =
-    payment === "USDC" ? (
-      <USDCIcon />
-    ) : payment === "BTC" ? (
-      <BTCIcon />
-    ) : payment === "ETH" ? (
-      <ETHIcon />
-    ) : (
-      <SOLIcon />
-    );
-
   return (
     <button
       type="button"
@@ -661,30 +717,67 @@ function PaymentChip({
         whiteSpace: "nowrap" as const,
       }}
     >
-      {icon}
+      <CryptoIcon currency={payment} />
       {payment}
     </button>
   );
 }
 
+// ─── Mini currency pill (non-interactive, for offer rows) ────────────────────
+
+function CurrencyPill({ currency }: { currency: PaymentOption }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "2px 7px 2px 5px",
+        borderRadius: 99,
+        background: "oklch(0.70 0.18 160 / 0.10)",
+        border: "1px solid oklch(0.70 0.18 160 / 0.20)",
+        fontSize: 10,
+        fontWeight: 600,
+        color: "oklch(0.78 0.12 160)",
+        letterSpacing: "0.03em",
+        whiteSpace: "nowrap" as const,
+      }}
+    >
+      <CryptoIcon currency={currency} />
+      {currency}
+    </span>
+  );
+}
+
+// ─── Buy / Offer Modal ────────────────────────────────────────────────────────
+
+type ExpiryOption = "1h" | "6h" | "24h" | "3d";
+const EXPIRY_OPTIONS: { label: string; value: ExpiryOption; ms: number }[] = [
+  { label: "1h", value: "1h", ms: 3600000 },
+  { label: "6h", value: "6h", ms: 6 * 3600000 },
+  { label: "24h", value: "24h", ms: 24 * 3600000 },
+  { label: "3d", value: "3d", ms: 3 * 86400000 },
+];
+
 function BuyOfferModal({
   slab,
   isDark,
   onClose,
+  onSubmitOffer,
 }: {
   slab: SlabItem;
   isDark: boolean;
   onClose: () => void;
+  onSubmitOffer: (slabId: string, offer: LiveOffer) => void;
 }) {
-  const [stage, setStage] = useState<"choose" | "payment">("choose");
-  const [chosenAction, setChosenAction] = useState<
-    "Buy now" | "Make offer" | null
-  >(null);
+  const [stage, setStage] = useState<"choose" | "buy" | "offer">("choose");
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(
     null,
   );
+  const [offerAmountStr, setOfferAmountStr] = useState("");
+  const [offerExpiry, setOfferExpiry] = useState<ExpiryOption>("24h");
 
-  const panelBg = isDark ? "oklch(0.12 0.04 160 / 0.92)" : "#ffffff";
+  const panelBg = isDark ? "oklch(0.12 0.04 160 / 0.95)" : "#ffffff";
   const panelBorder = isDark
     ? "1px solid oklch(0.55 0.12 160 / 0.22)"
     : "1px solid rgba(0,0,0,0.08)";
@@ -696,16 +789,114 @@ function BuyOfferModal({
     : "1px solid rgba(0,0,0,0.06)";
   const optionColor = isDark ? "oklch(0.88 0.04 160)" : "#1a1a1a";
 
-  function handleChoose(action: "Buy now" | "Make offer") {
-    setChosenAction(action);
+  const mintBtn = {
+    width: "100%",
+    padding: "12px 18px",
+    borderRadius: 16,
+    background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
+    color: "#0f2a25",
+    fontSize: 14,
+    fontWeight: 700,
+    border: "none",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+    letterSpacing: "0.01em",
+  } as const;
+
+  function goBack() {
+    setStage("choose");
     setSelectedPayment(null);
-    setStage("payment");
+    setOfferAmountStr("");
   }
 
-  function handleConfirm() {
-    // Placeholder confirm action
+  function handleChoose(action: "buy" | "offer") {
+    if (action === "buy") {
+      setSelectedPayment(slab.preferredPayment);
+      setStage("buy");
+    } else {
+      setSelectedPayment(null);
+      setStage("offer");
+    }
+  }
+
+  function handleConfirmBuy() {
     onClose();
   }
+
+  function handleSubmitOffer() {
+    const amount = Number.parseFloat(offerAmountStr);
+    if (!amount || !selectedPayment) return;
+    const expiryMs =
+      EXPIRY_OPTIONS.find((e) => e.value === offerExpiry)?.ms ?? 86400000;
+    const offer: LiveOffer = {
+      id: `offer-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      slabId: slab.id,
+      amountUsd: amount,
+      currency: selectedPayment,
+      expiresAt: Date.now() + expiryMs,
+    };
+    onSubmitOffer(slab.id, offer);
+    onClose();
+  }
+
+  const headerRow = (title: string, showBack = true) => (
+    <div
+      className="flex items-center justify-between"
+      style={{ marginBottom: 6 }}
+    >
+      <div className="flex items-center gap-2">
+        {showBack && (
+          <button
+            type="button"
+            onClick={goBack}
+            data-ocid="buy_offer.back_button"
+            aria-label="Back"
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              color: secColor,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <ArrowLeft size={16} />
+          </button>
+        )}
+        <p style={{ fontSize: 16, fontWeight: 700, color: titleColor }}>
+          {title}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        data-ocid="buy_offer.close_button"
+        aria-label="Close"
+        style={{
+          background: isDark ? "oklch(0.18 0.04 160)" : "rgba(0,0,0,0.05)",
+          border: panelBorder,
+          borderRadius: 99,
+          padding: 6,
+          color: secColor,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+
+  const slabHint = (
+    <p style={{ fontSize: 11, color: secColor, marginBottom: 14 }}>
+      {slab.cardName} · {fmtPrice(slab.marketPrice)}
+    </p>
+  );
+
+  const offerAmt = Number.parseFloat(offerAmountStr);
 
   return (
     <div
@@ -732,51 +923,19 @@ function BuyOfferModal({
           overflow: "hidden",
         }}
       >
-        {stage === "choose" ? (
+        {/* ── CHOOSE ── */}
+        {stage === "choose" && (
           <div style={{ padding: "22px 20px 24px" }}>
-            {/* Header */}
-            <div
-              className="flex items-center justify-between"
-              style={{ marginBottom: 18 }}
-            >
-              <p style={{ fontSize: 16, fontWeight: 700, color: titleColor }}>
-                Choose action
-              </p>
-              <button
-                type="button"
-                onClick={onClose}
-                data-ocid="buy_offer.close_button"
-                aria-label="Close"
-                style={{
-                  background: isDark
-                    ? "oklch(0.18 0.04 160)"
-                    : "rgba(0,0,0,0.05)",
-                  border: panelBorder,
-                  borderRadius: 99,
-                  padding: 6,
-                  color: secColor,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Slab hint */}
-            <p style={{ fontSize: 11, color: secColor, marginBottom: 14 }}>
-              {slab.cardName} · {fmtPrice(slab.marketPrice)}
-            </p>
-
-            {/* Options */}
+            {headerRow("Choose action", false)}
+            {slabHint}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {(["Buy now", "Make offer"] as const).map((action) => (
                 <button
                   key={action}
                   type="button"
-                  onClick={() => handleChoose(action)}
+                  onClick={() =>
+                    handleChoose(action === "Buy now" ? "buy" : "offer")
+                  }
                   data-ocid={`buy_offer.${action === "Buy now" ? "buy_now" : "make_offer"}.button`}
                   style={{
                     width: "100%",
@@ -801,69 +960,70 @@ function BuyOfferModal({
               ))}
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* ── BUY NOW ── */}
+        {stage === "buy" && (
           <div style={{ padding: "22px 20px 24px" }}>
-            {/* Header */}
+            {headerRow("Buy Now")}
+
+            {/* List price row */}
             <div
-              className="flex items-center justify-between"
-              style={{ marginBottom: 6 }}
+              style={{
+                background: isDark ? "oklch(0.18 0.06 160 / 0.40)" : "#f9fafb",
+                border: isDark
+                  ? "1px solid oklch(0.55 0.12 160 / 0.18)"
+                  : "1px solid rgba(0,0,0,0.06)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStage("choose")}
-                  data-ocid="buy_offer.back_button"
-                  aria-label="Back"
+              <div>
+                <p
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
                     color: secColor,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
+                    marginBottom: 4,
                   }}
                 >
-                  <ArrowLeft size={16} />
-                </button>
-                <p style={{ fontSize: 16, fontWeight: 700, color: titleColor }}>
-                  {chosenAction}
+                  List Price
+                </p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: titleColor }}>
+                  {fmtPrice(slab.marketPrice)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                data-ocid="buy_offer.close_button"
-                aria-label="Close"
-                style={{
-                  background: isDark
-                    ? "oklch(0.18 0.04 160)"
-                    : "rgba(0,0,0,0.05)",
-                  border: panelBorder,
-                  borderRadius: 99,
-                  padding: 6,
-                  color: secColor,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={14} />
-              </button>
+              <PreferredPaymentBadge
+                payment={slab.preferredPayment}
+                isDark={isDark}
+              />
             </div>
 
-            <p style={{ fontSize: 11, color: secColor, marginBottom: 18 }}>
-              Select payment method
+            {/* Select payment */}
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: secColor,
+                marginBottom: 8,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Select payment
             </p>
-
-            {/* Payment chips */}
             <div
               style={{
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 8,
-                marginBottom: 20,
+                marginBottom: 14,
               }}
             >
               {PAYMENT_OPTIONS.map((p) => (
@@ -879,32 +1039,212 @@ function BuyOfferModal({
               ))}
             </div>
 
-            {/* Confirm button */}
+            {/* Conversion preview */}
             {selectedPayment && (
-              <button
-                type="button"
-                onClick={handleConfirm}
-                data-ocid="buy_offer.confirm_button"
+              <p
                 style={{
-                  width: "100%",
-                  padding: "12px 18px",
-                  borderRadius: 16,
-                  background:
-                    "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
-                  color: "#0f2a25",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow:
-                    "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
-                  transition: "opacity 0.15s",
-                  letterSpacing: "0.01em",
+                  fontSize: 13,
+                  color: "oklch(0.68 0.14 160)",
+                  marginBottom: 16,
+                  fontWeight: 500,
                 }}
               >
-                Confirm — {selectedPayment}
-              </button>
+                ≈ {cryptoAmount(slab.marketPrice, selectedPayment)}{" "}
+                {selectedPayment}
+              </p>
             )}
+
+            <button
+              type="button"
+              onClick={handleConfirmBuy}
+              disabled={!selectedPayment}
+              data-ocid="buy_offer.confirm_button"
+              style={{
+                ...mintBtn,
+                opacity: selectedPayment ? 1 : 0.45,
+                cursor: selectedPayment ? "pointer" : "not-allowed",
+              }}
+            >
+              Confirm Purchase
+            </button>
+          </div>
+        )}
+
+        {/* ── MAKE OFFER ── */}
+        {stage === "offer" && (
+          <div style={{ padding: "22px 20px 24px" }}>
+            {headerRow("Make Offer")}
+            {slabHint}
+
+            {/* USD input */}
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: secColor,
+                marginBottom: 6,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Your offer (USD)
+            </p>
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <span
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: isDark ? "oklch(0.60 0.08 160)" : "#9ca3af",
+                  pointerEvents: "none",
+                }}
+              >
+                $
+              </span>
+              <input
+                type="number"
+                value={offerAmountStr}
+                onChange={(e) => setOfferAmountStr(e.target.value)}
+                placeholder="0.00"
+                min="0"
+                data-ocid="buy_offer.input"
+                style={{
+                  width: "100%",
+                  padding: "11px 14px 11px 26px",
+                  borderRadius: 10,
+                  background: isDark
+                    ? "oklch(0.16 0.05 160 / 0.55)"
+                    : "#f9fafb",
+                  border: isDark
+                    ? "1px solid oklch(0.55 0.12 160 / 0.20)"
+                    : "1px solid rgba(0,0,0,0.08)",
+                  color: titleColor,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {/* Currency chips */}
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: secColor,
+                marginBottom: 6,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Currency
+            </p>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              {PAYMENT_OPTIONS.map((p) => (
+                <PaymentChip
+                  key={p}
+                  payment={p}
+                  selected={selectedPayment === p}
+                  isDark={isDark}
+                  onClick={() =>
+                    setSelectedPayment(selectedPayment === p ? null : p)
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Expiry selector */}
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: secColor,
+                marginBottom: 6,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Expires in
+            </p>
+            <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+              {EXPIRY_OPTIONS.map((opt) => {
+                const isActive = offerExpiry === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setOfferExpiry(opt.value)}
+                    data-ocid={`buy_offer.expiry_${opt.value}.toggle`}
+                    style={{
+                      flex: 1,
+                      padding: "6px 0",
+                      borderRadius: 99,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: isActive
+                        ? "1.5px solid rgba(125,223,194,0.60)"
+                        : isDark
+                          ? "1px solid oklch(0.70 0.18 160 / 0.18)"
+                          : "1px solid rgba(0,0,0,0.08)",
+                      background: isActive
+                        ? "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)"
+                        : isDark
+                          ? "oklch(0.70 0.18 160 / 0.08)"
+                          : "rgba(0,0,0,0.04)",
+                      color: isActive
+                        ? "#0f2a25"
+                        : isDark
+                          ? "oklch(0.85 0.06 160)"
+                          : "#374151",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Conversion preview */}
+            {offerAmt > 0 && selectedPayment && (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "oklch(0.68 0.14 160)",
+                  marginBottom: 16,
+                  fontWeight: 500,
+                }}
+              >
+                ≈ {cryptoAmount(offerAmt, selectedPayment)} {selectedPayment}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={handleSubmitOffer}
+              disabled={!(offerAmt > 0 && selectedPayment)}
+              data-ocid="buy_offer.submit_button"
+              style={{
+                ...mintBtn,
+                opacity: offerAmt > 0 && selectedPayment ? 1 : 0.45,
+                cursor:
+                  offerAmt > 0 && selectedPayment ? "pointer" : "not-allowed",
+              }}
+            >
+              Submit Offer
+            </button>
           </div>
         )}
       </div>
@@ -912,13 +1252,89 @@ function BuyOfferModal({
   );
 }
 
+// ─── Live Offers Section ──────────────────────────────────────────────────────
+
+function LiveOffersSection({ offers }: { offers: LiveOffer[] }) {
+  const sorted = [...offers]
+    .sort((a, b) => b.amountUsd - a.amountUsd)
+    .slice(0, 10);
+
+  return (
+    <section
+      style={{
+        background: C.panel,
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        marginBottom: 12,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: C.textSec,
+          marginBottom: 10,
+        }}
+      >
+        Live Offers
+      </p>
+
+      {sorted.length === 0 ? (
+        <p style={{ fontSize: 12, color: C.textSec }}>No offers yet</p>
+      ) : (
+        <div>
+          {sorted.map((offer, idx) => {
+            const expiry = fmtExpiry(offer.expiresAt);
+            const isActive = expiry === "Active";
+            return (
+              <div key={offer.id}>
+                <div
+                  className="flex items-center justify-between"
+                  style={{ paddingTop: idx > 0 ? 10 : 0, paddingBottom: 10 }}
+                  data-ocid={`offers.item.${idx + 1}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      style={{ fontSize: 14, fontWeight: 600, color: C.text }}
+                    >
+                      ${offer.amountUsd.toLocaleString()}
+                    </span>
+                    <CurrencyPill currency={offer.currency} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: isActive ? "oklch(0.68 0.14 160)" : C.textSec,
+                    }}
+                  >
+                    {expiry}
+                  </span>
+                </div>
+                {idx < sorted.length - 1 && (
+                  <div style={{ height: 1, background: C.border }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ─── Slab detail sheet ────────────────────────────────────────────────────────
 
 function SlabDetailSheet({
   slab,
+  offers,
   onClose,
 }: {
   slab: SlabItem;
+  offers: LiveOffer[];
   onClose: () => void;
 }) {
   const sales = mockSales(slab.marketPrice);
@@ -1131,6 +1547,9 @@ function SlabDetailSheet({
               </div>
             ))}
           </section>
+
+          {/* Live Offers */}
+          <LiveOffersSection offers={offers} />
 
           {/* Verification */}
           <section
@@ -1405,9 +1824,18 @@ export function ReleasesPage(_props: ReleasesPageProps) {
   const [sortMode, setSortMode] = useState<SortMode>("most_viewed");
   const [selectedSlab, setSelectedSlab] = useState<SlabItem | null>(null);
   const [buyOfferSlab, setBuyOfferSlab] = useState<SlabItem | null>(null);
+  const [offersMap, setOffersMap] =
+    useState<Record<string, LiveOffer[]>>(SEEDED_OFFERS);
 
   const isLight = theme === "light";
   const isDark = !isLight;
+
+  function handleSubmitOffer(slabId: string, offer: LiveOffer) {
+    setOffersMap((prev) => ({
+      ...prev,
+      [slabId]: [offer, ...(prev[slabId] ?? [])],
+    }));
+  }
 
   const sorted = useMemo(() => {
     const arr = [...MOCK_SLABS];
@@ -1416,7 +1844,6 @@ export function ReleasesPage(_props: ReleasesPageProps) {
     } else if (sortMode === "new") {
       arr.sort((a, b) => b.verifiedAt - a.verifiedAt);
     } else {
-      // minted: sort by highest market price
       arr.sort((a, b) => b.marketPrice - a.marketPrice);
     }
     return arr;
@@ -1542,6 +1969,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
       {selectedSlab && (
         <SlabDetailSheet
           slab={selectedSlab}
+          offers={offersMap[selectedSlab.id] ?? []}
           onClose={() => setSelectedSlab(null)}
         />
       )}
@@ -1552,6 +1980,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
           slab={buyOfferSlab}
           isDark={isDark}
           onClose={() => setBuyOfferSlab(null)}
+          onSubmitOffer={handleSubmitOffer}
         />
       )}
     </div>
