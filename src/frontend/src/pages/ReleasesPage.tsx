@@ -318,21 +318,19 @@ const C = {
 // ─── Card surface tokens (white marketplace style) ───────────────────────────
 
 const CARD = {
-  bg: "#ffffff",
-  bgHover: "#fafffe",
-  border: "rgba(0,0,0,0.06)",
-  borderHover: "rgba(0,0,0,0.10)",
-  shadow: "0 6px 18px rgba(0,0,0,0.06)",
-  shadowHover: "0 8px 24px rgba(0,0,0,0.10)",
+  bg: "#FFFFFF",
+  bgHover: "#fafafa",
+  border: "rgba(0,0,0,0.05)",
+  borderHover: "rgba(0,0,0,0.08)",
+  shadow: "0 8px 22px rgba(0,0,0,0.05)",
+  shadowHover: "0 10px 28px rgba(0,0,0,0.09)",
   radius: 16,
   // text
   title: "#1a1a1a",
   secondary: "#6b7280",
   price: "#1a1a1a",
   pos: "#10b981",
-  neg: "#ef4444",
-  // accent bar
-  accentBar: "#10b981",
+  neg: "#f43f5e",
   // thumbnail border
   imgBorder: "rgba(0,0,0,0.08)",
 };
@@ -400,9 +398,9 @@ function GradeBadge({ grader, grade }: { grader: string; grade: number }) {
         letterSpacing: "0.04em",
         padding: "2px 6px",
         borderRadius: "4px",
-        background: "rgba(16,185,129,0.08)",
-        border: "1px solid rgba(16,185,129,0.20)",
-        color: "#059669",
+        background: "rgba(16,185,129,0.10)",
+        border: "1px solid rgba(16,185,129,0.15)",
+        color: "#1f9d84",
         whiteSpace: "nowrap" as const,
       }}
     >
@@ -435,9 +433,9 @@ function TypeBadge({ label, type }: { label: string; type: SlabItem["type"] }) {
         letterSpacing: "0.06em",
         padding: "2px 6px",
         borderRadius: "99px",
-        background: "rgba(16,185,129,0.12)",
-        border: "1px solid rgba(16,185,129,0.20)",
-        color: "#059669",
+        background: "rgba(16,185,129,0.10)",
+        border: "1px solid rgba(16,185,129,0.15)",
+        color: "#1f9d84",
         textTransform: "uppercase" as const,
         whiteSpace: "nowrap" as const,
       }}
@@ -817,7 +815,6 @@ function SlabCard({
   onTap: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const isTrending = slab.type === "trending" || slab.type === "high_volume";
 
   return (
     <button
@@ -843,17 +840,6 @@ function SlabCard({
         position: "relative",
       }}
     >
-      {/* Left accent bar (trending/high-volume only) */}
-      {isTrending && (
-        <div
-          style={{
-            width: 2,
-            background: CARD.accentBar,
-            flexShrink: 0,
-          }}
-        />
-      )}
-
       {/* Thumbnail */}
       <img
         src={slab.imageUrl}
@@ -991,7 +977,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
     return arr;
   }, [sortMode]);
 
-  const bgColor = isLight ? "#f0f7f4" : C.bg;
+  const bgColor = isLight ? "#f8f8f8" : C.bg;
 
   return (
     <div
@@ -1009,7 +995,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
           top: 72,
           zIndex: 20,
           background: isLight
-            ? "rgba(240,247,244,0.92)"
+            ? "rgba(248,248,248,0.95)"
             : "oklch(0.08 0.02 160 / 0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : C.border}`,
