@@ -1,215 +1,17 @@
-import { Loader2, Pause, Play, Search, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SolSymbol } from "../components/SolSymbol";
-import { SolUsdValue } from "../components/SolUsdValue";
-import { useAudioPlayer } from "../context/AudioPlayerContext";
-import { useSolPriceContext } from "../contexts/SolPriceContext";
-import { formatUSD } from "../utils/formatUSD";
 
-// ─── Types ────────────────────────────────────────────────────────────────────────────────
-type SortMode = "marketcap" | "volume" | "change";
-
-interface AlbumEntry {
-  id: string;
-  title: string;
-  artist: string;
-  artworkSrc: string | null;
-  floor_price_sol: number;
-  editions_in_circulation: number;
-  total_supply: number;
-  volume_24h_sol: number;
-  transaction_volume: number;
-  listening_volume: number;
-  listeners: number;
-  plays_raw: number;
-  change_24h_pct: number;
-  preview_url: string;
-  daysAtNumber1: number;
-}
-
-// ─── Mock data ──────────────────────────────────────────────────────────────────────────────
-const BASE_ALBUMS: AlbumEntry[] = [
-  {
-    id: "echo_001",
-    title: "Fragments",
-    artist: "Halo Drift",
-    artworkSrc: "/assets/generated/album-fragments.dim_600x600.jpg",
-    floor_price_sol: 2.6,
-    editions_in_circulation: 89,
-    total_supply: 150,
-    volume_24h_sol: 18.4,
-    transaction_volume: 18.4,
-    listening_volume: 142000,
-    listeners: 2400,
-    plays_raw: 142000,
-    change_24h_pct: 12.2,
-    preview_url: "",
-    daysAtNumber1: 35,
-  },
-  {
-    id: "echo_002",
-    title: "Charcoal",
-    artist: "Vessel",
-    artworkSrc: "/assets/generated/album-charcoal.dim_600x600.jpg",
-    floor_price_sol: 1.8,
-    editions_in_circulation: 61,
-    total_supply: 120,
-    volume_24h_sol: 7.8,
-    transaction_volume: 7.8,
-    listening_volume: 118000,
-    listeners: 1800,
-    plays_raw: 118000,
-    change_24h_pct: 4.7,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-03",
-    title: "Pale Shore",
-    artist: "Mira Fold",
-    artworkSrc: null,
-    floor_price_sol: 1.4,
-    editions_in_circulation: 45,
-    total_supply: 100,
-    volume_24h_sol: 5.2,
-    transaction_volume: 5.2,
-    listening_volume: 97000,
-    listeners: 970,
-    plays_raw: 97000,
-    change_24h_pct: -2.1,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-04",
-    title: "Overgrowth",
-    artist: "Kin Solar",
-    artworkSrc: null,
-    floor_price_sol: 1.1,
-    editions_in_circulation: 38,
-    total_supply: 80,
-    volume_24h_sol: 3.8,
-    transaction_volume: 3.8,
-    listening_volume: 83000,
-    listeners: 830,
-    plays_raw: 83000,
-    change_24h_pct: 8.3,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-05",
-    title: "Solstice",
-    artist: "Null Tide",
-    artworkSrc: null,
-    floor_price_sol: 0.9,
-    editions_in_circulation: 52,
-    total_supply: 90,
-    volume_24h_sol: 4.1,
-    transaction_volume: 4.1,
-    listening_volume: 74000,
-    listeners: 740,
-    plays_raw: 74000,
-    change_24h_pct: -0.8,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-06",
-    title: "Dusk Index",
-    artist: "Aeris",
-    artworkSrc: null,
-    floor_price_sol: 1.2,
-    editions_in_circulation: 31,
-    total_supply: 75,
-    volume_24h_sol: 3.2,
-    transaction_volume: 3.2,
-    listening_volume: 68000,
-    listeners: 680,
-    plays_raw: 68000,
-    change_24h_pct: 6.1,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-07",
-    title: "Between Layers",
-    artist: "Slow Form",
-    artworkSrc: null,
-    floor_price_sol: 0.7,
-    editions_in_circulation: 28,
-    total_supply: 60,
-    volume_24h_sol: 2.1,
-    transaction_volume: 2.1,
-    listening_volume: 61000,
-    listeners: 610,
-    plays_raw: 61000,
-    change_24h_pct: 1.4,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-  {
-    id: "ta-08",
-    title: "Mirage",
-    artist: "Echo Field",
-    artworkSrc: null,
-    floor_price_sol: 0.6,
-    editions_in_circulation: 24,
-    total_supply: 50,
-    volume_24h_sol: 1.8,
-    transaction_volume: 1.8,
-    listening_volume: 54000,
-    listeners: 540,
-    plays_raw: 54000,
-    change_24h_pct: -3.5,
-    preview_url: "",
-    daysAtNumber1: 0,
-  },
-];
-
-// ─── Crown Icon ────────────────────────────────────────────────────────────────────────────────
-function CrownIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      className="animate-crown-float"
-      style={{ filter: "drop-shadow(0 0 6px #D4AF37aa)" }}
-      role="img"
-      aria-label="#1 crown"
-    >
-      <path
-        d="M2 20h20M5 20l-1-9 5 4 3-6 3 6 5-4-1 9"
-        stroke="#D4AF37"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-// ─── Signal Card ───────────────────────────────────────────────────────────────────────────────
+// ─── Signal Card ───────────────────────────────────────────────────────────────
 function SignalCard({
   label,
-  solValue,
   plainValue,
   index,
   accent,
 }: {
   label: string;
-  /** If provided, show SOL value + USD equivalent */
-  solValue?: number;
-  /** If provided (non-SOL stat), show as plain text */
   plainValue?: string;
   index: number;
   accent?: "violet" | "cyan";
 }) {
-  const { solPrice } = useSolPriceContext();
-
   const borderColor =
     accent === "violet"
       ? "oklch(0.55 0.25 290 / 0.3)"
@@ -240,666 +42,223 @@ function SignalCard({
       >
         {label}
       </p>
-      {solValue !== undefined ? (
-        <div>
-          <p
-            className="text-base font-mono font-semibold tabular-nums leading-tight flex items-center gap-2"
-            style={{ color: "oklch(0.82 0.15 210)" }}
-          >
-            <SolSymbol large animated={true} />
-            {solValue.toLocaleString("en-US", { maximumFractionDigits: 1 })}
-          </p>
-          <p
-            className="text-[11px] font-mono tabular-nums mt-0.5"
-            style={{ color: "var(--echo-text-dark)", opacity: 0.75 }}
-          >
-            {formatUSD(solValue * solPrice)}
-          </p>
-        </div>
-      ) : (
-        <p
-          className="text-base font-mono font-semibold tabular-nums leading-tight"
-          style={{ color: "var(--echo-text-dim)" }}
-        >
-          {plainValue}
-        </p>
-      )}
+      <p
+        className="text-base font-mono font-semibold tabular-nums leading-tight"
+        style={{ color: "var(--echo-text-dim)" }}
+      >
+        {plainValue}
+      </p>
     </motion.div>
   );
 }
 
-// ─── Change badge ──────────────────────────────────────────────────────────────────────────────
-function ChangeBadge({ pct, flash }: { pct: number; flash?: boolean }) {
-  const positive = pct >= 0;
-  return (
-    <span
-      className={`text-[12px] font-mono tabular-nums shrink-0 font-medium ${
-        flash ? "animate-value-flash" : ""
-      }`}
-      style={{
-        color: positive ? "oklch(0.76 0.18 160)" : "oklch(0.65 0.22 10)",
-        textShadow: positive
-          ? "0 0 8px oklch(0.76 0.18 160 / 0.5)"
-          : "0 0 8px oklch(0.65 0.22 10 / 0.5)",
-      }}
-    >
-      {positive ? "+" : ""}
-      {pct.toFixed(1)}%
-    </span>
-  );
-}
+// ─── Set data ──────────────────────────────────────────────────────────────────
+const SETS = [
+  {
+    name: "Scarlet & Violet Base",
+    slug: "scarlet-violet-base",
+    code: "SV1",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.15 185), oklch(0.45 0.12 210))",
+  },
+  {
+    name: "Paldea Evolved",
+    slug: "paldea-evolved",
+    code: "SV2",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.18 160), oklch(0.45 0.15 185))",
+  },
+  {
+    name: "Obsidian Flames",
+    slug: "obsidian-flames",
+    code: "SV3",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.18 30), oklch(0.45 0.15 10))",
+  },
+  {
+    name: "Pokémon 151",
+    slug: "pokemon-151",
+    code: "MEW",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.20 290), oklch(0.45 0.18 270))",
+  },
+  {
+    name: "Paradox Rift",
+    slug: "paradox-rift",
+    code: "SV4",
+    gradient:
+      "linear-gradient(135deg, oklch(0.50 0.15 220), oklch(0.40 0.12 240))",
+  },
+  {
+    name: "Paldean Fates",
+    slug: "paldean-fates",
+    code: "SV4.5",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.22 340), oklch(0.45 0.18 320))",
+  },
+  {
+    name: "Temporal Forces",
+    slug: "temporal-forces",
+    code: "SV5",
+    gradient:
+      "linear-gradient(135deg, oklch(0.50 0.12 200), oklch(0.40 0.10 220))",
+  },
+  {
+    name: "Twilight Masquerade",
+    slug: "twilight-masquerade",
+    code: "SV6",
+    gradient:
+      "linear-gradient(135deg, oklch(0.50 0.20 280), oklch(0.40 0.18 300))",
+  },
+  {
+    name: "Shrouded Fable",
+    slug: "shrouded-fable",
+    code: "SV6.5",
+    gradient:
+      "linear-gradient(135deg, oklch(0.40 0.08 250), oklch(0.30 0.06 270))",
+  },
+  {
+    name: "Stellar Crown",
+    slug: "stellar-crown",
+    code: "SV7",
+    gradient:
+      "linear-gradient(135deg, oklch(0.60 0.18 50), oklch(0.50 0.15 40))",
+  },
+  {
+    name: "Surging Sparks",
+    slug: "surging-sparks",
+    code: "SV8",
+    gradient:
+      "linear-gradient(135deg, oklch(0.60 0.20 60), oklch(0.50 0.18 80))",
+  },
+  {
+    name: "Prismatic Evolutions",
+    slug: "prismatic-evolutions",
+    code: "SV8.5",
+    gradient:
+      "linear-gradient(135deg, oklch(0.60 0.25 290), oklch(0.50 0.22 330))",
+  },
+  {
+    name: "Journey Together",
+    slug: "journey-together",
+    code: "SV9",
+    gradient:
+      "linear-gradient(135deg, oklch(0.55 0.15 175), oklch(0.45 0.12 195))",
+  },
+  {
+    name: "Destined Rivals",
+    slug: "destined-rivals",
+    code: "SV9.5",
+    gradient:
+      "linear-gradient(135deg, oklch(0.50 0.20 15), oklch(0.40 0.18 350))",
+  },
+  {
+    name: "Black Bolt",
+    slug: "black-bolt",
+    code: "SV10",
+    gradient:
+      "linear-gradient(135deg, oklch(0.25 0.05 250), oklch(0.15 0.03 270))",
+  },
+  {
+    name: "White Flare",
+    slug: "white-flare",
+    code: "SV10",
+    gradient:
+      "linear-gradient(135deg, oklch(0.85 0.08 185), oklch(0.75 0.06 200))",
+  },
+];
 
-// ─── Artwork circle ─────────────────────────────────────────────────────────────────────────────
-function ArtCircle({
-  src,
-  title,
-  isPlaying,
-  onPress,
-}: {
-  src: string | null;
-  title: string;
-  isPlaying: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onPress();
-      }}
-      aria-label={isPlaying ? `Pause ${title}` : `Preview ${title}`}
-      className="relative shrink-0 focus:outline-none group"
-      style={{ width: 56, height: 56 }}
-    >
-      {/* Spinning ring + glow when playing */}
-      {isPlaying && (
-        <span
-          className="absolute inset-0 rounded-full"
-          style={{
-            boxShadow:
-              "0 0 0 2px oklch(0.55 0.25 290 / 0.85), 0 0 18px oklch(0.55 0.25 290 / 0.45)",
-          }}
-        />
-      )}
-      {/* Art circle */}
-      <div
-        className={`w-full h-full rounded-full overflow-hidden ${
-          isPlaying ? "animate-spin-slow" : ""
-        }`}
-      >
-        {src ? (
-          <img src={src} alt={title} className="w-full h-full object-cover" />
-        ) : (
-          <div
-            className="w-full h-full rounded-full"
-            style={{
-              background:
-                "linear-gradient(135deg, var(--echo-border), var(--echo-elevated))",
-            }}
-          />
-        )}
-      </div>
-      {/* Play/pause overlay */}
-      <div
-        className="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ background: "var(--echo-bg)" }}
-      >
-        {isPlaying ? (
-          <Pause className="w-4 h-4" style={{ color: "var(--echo-text)" }} />
-        ) : (
-          <Play
-            className="w-4 h-4 ml-0.5"
-            style={{ color: "var(--echo-text)" }}
-          />
-        )}
-      </div>
-    </button>
-  );
-}
-
-// ─── Album Row ───────────────────────────────────────────────────────────────────────────────
-function AlbumRow({
-  album,
-  rank,
-  sortMode,
-  onPreviewToggle,
-  onAlbumClick,
-  index,
-  flashId,
-}: {
-  album: AlbumEntry;
-  rank: number;
-  sortMode: SortMode;
-  onPreviewToggle: (album: AlbumEntry) => void;
-  onAlbumClick: (id: string) => void;
-  index: number;
-  flashId: string | null;
-}) {
-  const { currentTrack, isPlaying } = useAudioPlayer();
-  const { solPrice } = useSolPriceContext();
-  const isActive = currentTrack?.id === album.id && isPlaying;
-  const mktCap = album.floor_price_sol * album.editions_in_circulation;
-  const isFlashing = flashId === album.id;
-  const isHot = album.change_24h_pct > 5;
-  const hasCrown = rank === 1 && album.daysAtNumber1 >= 30;
-
-  let metricNode: React.ReactNode;
-  switch (sortMode) {
-    case "marketcap":
-      metricNode = (
-        <span
-          className={`text-[13px] font-mono tabular-nums flex flex-col items-end ${
-            isFlashing ? "animate-value-flash" : ""
-          }`}
-        >
-          <span
-            className="flex items-center gap-1.5"
-            style={{ color: "oklch(0.82 0.15 210)" }}
-          >
-            <SolSymbol animated={true} />
-            {mktCap.toFixed(1)}
-          </span>
-          <span
-            className="text-[10px] font-mono tabular-nums"
-            style={{ color: "var(--echo-text-dark)", opacity: 0.7 }}
-          >
-            {formatUSD(mktCap * solPrice)}
-          </span>
-        </span>
-      );
-      break;
-    case "volume":
-      metricNode = (
-        <span
-          className={`text-[13px] font-mono tabular-nums flex flex-col items-end ${
-            isFlashing ? "animate-value-flash" : ""
-          }`}
-        >
-          <span
-            className="flex items-center gap-1.5"
-            style={{ color: "oklch(0.82 0.15 210)" }}
-          >
-            <SolSymbol animated={true} />
-            {album.volume_24h_sol.toFixed(1)}
-          </span>
-          <span
-            className="text-[10px] font-mono tabular-nums"
-            style={{ color: "var(--echo-text-dark)", opacity: 0.7 }}
-          >
-            {formatUSD(album.volume_24h_sol * solPrice)}
-          </span>
-        </span>
-      );
-      break;
-    case "change":
-      metricNode = (
-        <ChangeBadge pct={album.change_24h_pct} flash={isFlashing} />
-      );
-      break;
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: index * 0.04 }}
-      data-ocid={`discover.item.${rank}`}
-      onClick={() => onAlbumClick(album.id)}
-      className="flex items-center gap-3 px-4 py-3.5 mb-1.5 rounded-2xl cursor-pointer transition-colors album-row-card"
-      style={{
-        background: isActive
-          ? "oklch(0.55 0.25 290 / 0.08)"
-          : "var(--echo-surface)",
-        border: isActive
-          ? "1px solid oklch(0.55 0.25 290 / 0.35)"
-          : "1px solid var(--echo-border-subtle)",
-        boxShadow:
-          isHot && !isActive
-            ? "0 0 0 0 transparent"
-            : isActive
-              ? "0 0 20px oklch(0.55 0.25 290 / 0.12)"
-              : undefined,
-      }}
-    >
-      {/* Rank */}
-      <div className="w-6 shrink-0 flex items-center justify-center">
-        {hasCrown ? (
-          <CrownIcon />
-        ) : (
-          <span
-            className="text-[12px] tabular-nums font-mono"
-            style={{
-              color:
-                rank <= 3 ? "var(--echo-text-dim)" : "var(--echo-text-dark)",
-            }}
-          >
-            {rank}
-          </span>
-        )}
-      </div>
-
-      {/* Album art */}
-      <ArtCircle
-        src={album.artworkSrc}
-        title={album.title}
-        isPlaying={isActive}
-        onPress={() => onPreviewToggle(album)}
-      />
-
-      {/* Title + artist */}
-      <div className="flex-1 min-w-0">
-        <p
-          className="text-[14px] font-medium truncate leading-tight"
-          style={{ color: "var(--echo-text-dim)" }}
-        >
-          {album.title}
-        </p>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <p
-            className="text-[11px] truncate"
-            style={{ color: "var(--echo-text-secondary)" }}
-          >
-            {album.artist}
-          </p>
-          {isHot && (
-            <TrendingUp
-              className="w-3 h-3 shrink-0"
-              style={{ color: "oklch(0.76 0.18 160)" }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Metric */}
-      <div className="text-right min-w-[68px]">{metricNode}</div>
-
-      {/* Change */}
-      <div className="w-[56px] text-right">
-        <ChangeBadge pct={album.change_24h_pct} />
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Main page ──────────────────────────────────────────────────────────────────────────────
+// ─── Main page ─────────────────────────────────────────────────────────────────
 interface MarketPageProps {
   onAlbumClick: (albumId: string) => void;
 }
 
 export function MarketPage({ onAlbumClick }: MarketPageProps) {
-  const [query, setQuery] = useState("");
-  const [sortMode, setSortMode] = useState<SortMode>("marketcap");
-  const [albums, setAlbums] = useState<AlbumEntry[]>(BASE_ALBUMS);
-  const [visibleCount, setVisibleCount] = useState(8);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [flashId, setFlashId] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const { currentTrack, play, stop } = useAudioPlayer();
-
-  // ── Live market cap update (every 60s) ──
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAlbums((prev) =>
-        prev.map((a) => {
-          const delta = 1 + (Math.random() * 0.04 - 0.02); // ±2%
-          const updated = {
-            ...a,
-            floor_price_sol: Math.max(0.01, a.floor_price_sol * delta),
-          };
-          return updated;
-        }),
-      );
-      // flash a random album
-      const randomId =
-        BASE_ALBUMS[Math.floor(Math.random() * BASE_ALBUMS.length)].id;
-      setFlashId(randomId);
-      setTimeout(() => setFlashId(null), 900);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // ── Ranking re-sort (every 90s) ──
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setAlbums((prev) => {
-        const sorted = [...prev].sort(
-          (a, b) =>
-            b.floor_price_sol * b.editions_in_circulation -
-            a.floor_price_sol * a.editions_in_circulation,
-        );
-        return sorted;
-      });
-    }, 90000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // ── Infinite scroll observer ──
-  const loadMore = useCallback(() => {
-    if (isLoadingMore) return;
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((c) => c + 4);
-      setIsLoadingMore(false);
-    }, 600);
-  }, [isLoadingMore]);
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMore();
-      },
-      { rootMargin: "100px" },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [loadMore]);
-
-  function handlePreviewToggle(album: AlbumEntry) {
-    if (currentTrack?.id === album.id) {
-      stop();
-    } else {
-      play({
-        id: album.id,
-        title: album.title,
-        artist: album.artist,
-        artworkSrc: album.artworkSrc,
-        preview_url: album.preview_url,
-      });
-    }
-  }
-
-  const sortedAlbums = useMemo(() => {
-    const list = [...albums];
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      return list.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.artist.toLowerCase().includes(q),
-      );
-    }
-    switch (sortMode) {
-      case "marketcap":
-        return list.sort(
-          (a, b) =>
-            b.floor_price_sol * b.editions_in_circulation -
-            a.floor_price_sol * a.editions_in_circulation,
-        );
-      case "volume":
-        return list.sort((a, b) => b.volume_24h_sol - a.volume_24h_sol);
-      case "change":
-        return list.sort((a, b) => b.change_24h_pct - a.change_24h_pct);
-    }
-  }, [sortMode, query, albums]);
-
-  // For infinite scroll — extend with duplicates for demo
-  const extendedAlbums = useMemo(() => {
-    const result = [...sortedAlbums];
-    if (result.length < visibleCount) {
-      const extras = sortedAlbums.map((a, i) => ({
-        ...a,
-        id: `${a.id}-x${i}`,
-      }));
-      result.push(...extras);
-    }
-    return result.slice(0, visibleCount);
-  }, [sortedAlbums, visibleCount]);
-
-  const SORT_OPTIONS: { key: SortMode; label: string }[] = [
-    { key: "marketcap", label: "MARKET CAP" },
-    { key: "volume", label: "VOLUME" },
-    { key: "change", label: "CHANGE" },
-  ];
-
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
-      {/* ── Search ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="relative mb-6"
-      >
-        <Search
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: "var(--echo-text-secondary)" }}
-        />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search albums, artists, tracks…"
-          data-ocid="discover.search_input"
-          className="w-full pl-10 pr-4 py-3 text-sm outline-none transition-all rounded-2xl"
-          style={{
-            background: "var(--echo-surface)",
-            border: "1px solid var(--echo-border)",
-            color: "var(--echo-text-dim)",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = "oklch(0.55 0.25 290 / 0.6)";
-            e.currentTarget.style.boxShadow =
-              "0 0 0 1px oklch(0.55 0.25 290 / 0.15), 0 0 20px oklch(0.55 0.25 290 / 0.08)";
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = "var(--echo-border)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        />
-      </motion.div>
-
       {/* ── Signal cards ── */}
-      {!query.trim() && (
-        <div className="grid grid-cols-2 gap-2.5 mb-5">
-          <SignalCard
-            label="Total Volume (All Time)"
-            plainValue="$2,847,320"
-            index={0}
-            accent="cyan"
-          />
-          <SignalCard
-            label="24H Volume"
-            plainValue="$48,210"
-            index={1}
-            accent="cyan"
-          />
-          <SignalCard
-            label="Total Transactions"
-            plainValue="14,203"
-            index={2}
-          />
-          <SignalCard
-            label="Frozen Assets"
-            plainValue="312"
-            index={3}
-            accent="violet"
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2.5 mb-6">
+        <SignalCard
+          label="Total Volume (All Time)"
+          plainValue="$2,847,320"
+          index={0}
+          accent="cyan"
+        />
+        <SignalCard
+          label="24H Volume"
+          plainValue="$48,210"
+          index={1}
+          accent="cyan"
+        />
+        <SignalCard label="Total Transactions" plainValue="14,203" index={2} />
+        <SignalCard
+          label="Frozen Assets"
+          plainValue="312"
+          index={3}
+          accent="violet"
+        />
+      </div>
 
       {/* ── Browse Sets ── */}
-      {!query.trim() && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.2 }}
-          className="mb-8"
-        >
-          <p
-            className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
-            style={{ color: "var(--echo-text-secondary)" }}
-          >
-            Browse Sets
-          </p>
-          <div
-            className="rounded-2xl px-4 py-4 flex items-center justify-between gap-3"
-            style={{
-              background: "oklch(0.18 0.03 185 / 0.55)",
-              border: "1px solid oklch(0.65 0.15 185 / 0.2)",
-              backdropFilter: "blur(12px)",
-              boxShadow:
-                "0 0 24px oklch(0.65 0.15 185 / 0.06), inset 0 1px 0 oklch(0.65 0.15 185 / 0.08)",
-            }}
-          >
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-[14px] font-semibold leading-tight"
-                style={{ color: "var(--echo-text-dim)" }}
-              >
-                Scarlet &amp; Violet Base Set
-              </p>
-              <p
-                className="text-[11px] mt-0.5"
-                style={{ color: "var(--echo-text-secondary)" }}
-              >
-                SV Base · EN / JP
-              </p>
-            </div>
-            <button
-              type="button"
-              data-ocid="discover.button"
-              className="shrink-0 px-4 py-2 rounded-full text-[11px] font-semibold tracking-wide transition-all"
-              style={{
-                background: "oklch(0.65 0.15 185 / 0.18)",
-                border: "1px solid oklch(0.65 0.15 185 / 0.35)",
-                color: "oklch(0.82 0.15 185)",
-              }}
-            >
-              Browse Set
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* ── Leaderboard panel ── */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
+        transition={{ duration: 0.35, delay: 0.2 }}
       >
-        {/* Header */}
-        {!query.trim() && (
-          <div className="flex items-center justify-between mb-4">
-            {/* Sort pills */}
-            <div className="flex items-center gap-1" data-ocid="discover.tab">
-              {SORT_OPTIONS.map((opt) => {
-                const active = sortMode === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => setSortMode(opt.key)}
-                    className="px-3 py-1.5 rounded-full text-[10px] font-semibold tracking-wider uppercase transition-all cursor-pointer"
-                    style={{
-                      background: active
-                        ? "oklch(0.55 0.25 290 / 0.18)"
-                        : "transparent",
-                      color: active
-                        ? "oklch(0.78 0.20 290)"
-                        : "var(--echo-text-muted)",
-                      border: active
-                        ? "1px solid oklch(0.55 0.25 290 / 0.35)"
-                        : "1px solid transparent",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Live indicator */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  background: "oklch(0.76 0.18 160)",
-                  animation: "live-dot 1.8s ease-in-out infinite",
-                  boxShadow: "0 0 6px oklch(0.76 0.18 160 / 0.7)",
-                }}
-              />
-              <span
-                className="text-[9px] font-semibold tracking-[0.14em] uppercase"
-                style={{ color: "oklch(0.76 0.18 160)" }}
-              >
-                Updating live
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Column headers */}
-        <div
-          className="flex items-center gap-3 px-4 mb-2"
-          style={{ color: "var(--echo-text-dark)" }}
+        <p
+          className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
+          style={{ color: "var(--echo-text-secondary)" }}
         >
-          <span className="w-6 shrink-0" />
-          <span className="w-14 shrink-0" />
-          <span className="flex-1 text-[9px] uppercase tracking-widest">
-            Album
-          </span>
-          <span className="text-[9px] uppercase tracking-widest min-w-[68px] text-right">
-            {sortMode === "marketcap"
-              ? "MCap"
-              : sortMode === "volume"
-                ? "Vol"
-                : "Change"}
-          </span>
-          <span className="text-[9px] uppercase tracking-widest w-14 text-right">
-            24H
-          </span>
+          Browse Sets
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {SETS.map((set, i) => (
+            <motion.div
+              key={set.slug}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.25 + i * 0.04 }}
+            >
+              <button
+                type="button"
+                data-ocid={`discover.item.${i + 1}`}
+                onClick={() => onAlbumClick(set.slug)}
+                className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
+                style={{
+                  background: "var(--echo-surface, white)",
+                  border: "1px solid oklch(0.88 0.01 185 / 0.25)",
+                  boxShadow:
+                    "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.05)",
+                }}
+              >
+                {/* Artwork area */}
+                <div
+                  className="aspect-square w-full flex items-center justify-center"
+                  style={{ background: set.gradient }}
+                >
+                  <span
+                    className="text-[11px] font-mono font-semibold tracking-wider"
+                    style={{ color: "white", opacity: 0.7 }}
+                  >
+                    {set.code}
+                  </span>
+                </div>
+
+                {/* Set name */}
+                <div className="px-2 py-2.5 text-center">
+                  <p
+                    className="text-[13px] font-semibold leading-tight"
+                    style={{ color: "var(--echo-text-dim)" }}
+                  >
+                    {set.name}
+                  </p>
+                </div>
+              </button>
+            </motion.div>
+          ))}
         </div>
-
-        {/* Rows */}
-        {extendedAlbums.length === 0 ? (
-          <p
-            data-ocid="discover.empty_state"
-            className="text-sm py-12 text-center"
-            style={{ color: "var(--echo-text-dark)" }}
-          >
-            No albums found
-          </p>
-        ) : (
-          <div>
-            {extendedAlbums.map((album, i) => (
-              <AlbumRow
-                key={album.id}
-                album={album}
-                rank={i + 1}
-                sortMode={sortMode}
-                onPreviewToggle={handlePreviewToggle}
-                onAlbumClick={onAlbumClick}
-                index={i}
-                flashId={flashId}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Infinite scroll sentinel */}
-        <div ref={sentinelRef} className="h-4" />
-        {isLoadingMore && (
-          <div
-            className="flex justify-center py-4"
-            data-ocid="discover.loading_state"
-          >
-            <Loader2
-              className="w-5 h-5 animate-spin"
-              style={{ color: "oklch(0.55 0.25 290 / 0.6)" }}
-            />
-          </div>
-        )}
       </motion.div>
-
-      <p
-        className="text-center text-[10px] mt-4 font-mono"
-        style={{ color: "var(--echo-text-dark)" }}
-      >
-        Tap artwork to preview · Click row to explore
-      </p>
     </div>
   );
 }
