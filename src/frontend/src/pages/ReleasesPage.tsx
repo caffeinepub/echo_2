@@ -11,12 +11,11 @@ interface SlabItem {
   setName: string;
   year: string;
   grade: number;
-  grader: "PSA" | "BGS" | "SGC";
+  grader: "TAG";
   population: number;
   marketPrice: number;
-  priceChange: number;
-  volume24h: number;
-  sparkline: number[];
+  condition: "Mint" | "Near Mint" | "Excellent" | "Good";
+  listingCount: number;
   imageUrl: string;
   verifiedAt: number;
   label: string;
@@ -36,12 +35,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Base Set",
     year: "1999",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 121,
     marketPrice: 42800,
-    priceChange: 8.4,
-    volume24h: 385000,
-    sparkline: [310, 330, 320, 360, 400, 390, 420, 428],
+    condition: "Mint",
+    listingCount: 8,
     imageUrl: "https://picsum.photos/seed/charizard/200/280",
     verifiedAt: NOW - 2 * DAY,
     label: "Trending",
@@ -54,12 +52,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "CoroCoro Promo",
     year: "1998",
     grade: 9,
-    grader: "PSA",
+    grader: "TAG",
     population: 9,
     marketPrice: 375000,
-    priceChange: 2.1,
-    volume24h: 375000,
-    sparkline: [340000, 355000, 348000, 360000, 370000, 365000, 372000, 375000],
+    condition: "Near Mint",
+    listingCount: 2,
     imageUrl: "https://picsum.photos/seed/pikachu98/200/280",
     verifiedAt: NOW - 1 * DAY,
     label: "Newly Verified",
@@ -72,12 +69,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Topps Chrome",
     year: "2003",
     grade: 10,
-    grader: "BGS",
+    grader: "TAG",
     population: 44,
     marketPrice: 98500,
-    priceChange: 14.2,
-    volume24h: 295000,
-    sparkline: [72000, 78000, 81000, 86000, 90000, 92000, 96000, 98500],
+    condition: "Mint",
+    listingCount: 5,
     imageUrl: "https://picsum.photos/seed/lebron2003/200/280",
     verifiedAt: NOW - 3 * DAY,
     label: "Notable Sale",
@@ -90,12 +86,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Base Set",
     year: "1999",
     grade: 9.5,
-    grader: "BGS",
+    grader: "TAG",
     population: 312,
     marketPrice: 1850,
-    priceChange: -1.3,
-    volume24h: 42000,
-    sparkline: [1900, 1870, 1860, 1880, 1850, 1830, 1840, 1850],
+    condition: "Near Mint",
+    listingCount: 19,
     imageUrl: "https://picsum.photos/seed/mewtwo99/200/280",
     verifiedAt: NOW - 6 * DAY,
     label: "New Set Added",
@@ -108,12 +103,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Fleer",
     year: "1986",
     grade: 8,
-    grader: "PSA",
+    grader: "TAG",
     population: 1204,
     marketPrice: 24200,
-    priceChange: 3.7,
-    volume24h: 510000,
-    sparkline: [21000, 21500, 22000, 22800, 23400, 23800, 24000, 24200],
+    condition: "Excellent",
+    listingCount: 34,
     imageUrl: "https://picsum.photos/seed/jordan86/200/280",
     verifiedAt: NOW - 4 * DAY,
     label: "High Volume",
@@ -126,12 +120,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Base Set",
     year: "1999",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 87,
     marketPrice: 9400,
-    priceChange: 5.2,
-    volume24h: 78000,
-    sparkline: [8200, 8400, 8600, 8900, 9000, 9100, 9300, 9400],
+    condition: "Mint",
+    listingCount: 11,
     imageUrl: "https://picsum.photos/seed/venusaur99/200/280",
     verifiedAt: NOW - 12 * 3600000,
     label: "Newly Verified",
@@ -144,12 +137,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Panini Prizm",
     year: "2017",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 523,
     marketPrice: 4200,
-    priceChange: 11.8,
-    volume24h: 188000,
-    sparkline: [3100, 3300, 3500, 3700, 3800, 3950, 4050, 4200],
+    condition: "Mint",
+    listingCount: 27,
     imageUrl: "https://picsum.photos/seed/mahomes17/200/280",
     verifiedAt: NOW - 5 * DAY,
     label: "Notable Sale",
@@ -162,12 +154,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Base Set",
     year: "1999",
     grade: 9,
-    grader: "PSA",
+    grader: "TAG",
     population: 498,
     marketPrice: 3150,
-    priceChange: -2.8,
-    volume24h: 62000,
-    sparkline: [3400, 3350, 3300, 3250, 3200, 3180, 3160, 3150],
+    condition: "Near Mint",
+    listingCount: 22,
     imageUrl: "https://picsum.photos/seed/blastoise99/200/280",
     verifiedAt: NOW - 7 * DAY,
     label: "Trending",
@@ -180,12 +171,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Topps Chrome",
     year: "1996",
     grade: 9.5,
-    grader: "BGS",
+    grader: "TAG",
     population: 67,
     marketPrice: 55000,
-    priceChange: 6.0,
-    volume24h: 220000,
-    sparkline: [48000, 49500, 50200, 51000, 52500, 53800, 54500, 55000],
+    condition: "Near Mint",
+    listingCount: 4,
     imageUrl: "https://picsum.photos/seed/kobe96/200/280",
     verifiedAt: NOW - 8 * 3600000,
     label: "Newly Verified",
@@ -198,12 +188,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Neo Genesis",
     year: "2000",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 36,
     marketPrice: 18900,
-    priceChange: 4.5,
-    volume24h: 94000,
-    sparkline: [16500, 17000, 17400, 17800, 18000, 18400, 18700, 18900],
+    condition: "Mint",
+    listingCount: 6,
     imageUrl: "https://picsum.photos/seed/lugia2000/200/280",
     verifiedAt: NOW - 2 * DAY,
     label: "New Set Added",
@@ -216,12 +205,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Playoff Contenders",
     year: "2000",
     grade: 8.5,
-    grader: "BGS",
+    grader: "TAG",
     population: 312,
     marketPrice: 8750,
-    priceChange: -0.5,
-    volume24h: 430000,
-    sparkline: [8900, 8850, 8800, 8780, 8760, 8740, 8750, 8750],
+    condition: "Excellent",
+    listingCount: 41,
     imageUrl: "https://picsum.photos/seed/brady2000/200/280",
     verifiedAt: NOW - 3 * DAY,
     label: "High Volume",
@@ -234,12 +222,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Fossil",
     year: "1999",
     grade: 9,
-    grader: "PSA",
+    grader: "TAG",
     population: 744,
     marketPrice: 620,
-    priceChange: 1.8,
-    volume24h: 18000,
-    sparkline: [570, 580, 595, 600, 610, 615, 618, 620],
+    condition: "Near Mint",
+    listingCount: 58,
     imageUrl: "https://picsum.photos/seed/gengar99/200/280",
     verifiedAt: NOW - 4 * 3600000,
     label: "Newly Verified",
@@ -252,12 +239,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Panini Prizm Silver",
     year: "2018",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 892,
     marketPrice: 3400,
-    priceChange: 9.3,
-    volume24h: 142000,
-    sparkline: [2600, 2750, 2900, 3000, 3100, 3200, 3300, 3400],
+    condition: "Mint",
+    listingCount: 47,
     imageUrl: "https://picsum.photos/seed/luka18/200/280",
     verifiedAt: NOW - 6 * DAY,
     label: "Notable Sale",
@@ -269,13 +255,12 @@ const MOCK_SLABS: SlabItem[] = [
     cardName: "Eevee Promo",
     setName: "McDonald's",
     year: "2021",
-    grade: 10,
-    grader: "PSA",
+    grade: 7,
+    grader: "TAG",
     population: 8203,
     marketPrice: 185,
-    priceChange: -4.1,
-    volume24h: 95000,
-    sparkline: [210, 205, 200, 195, 192, 188, 186, 185],
+    condition: "Good",
+    listingCount: 113,
     imageUrl: "https://picsum.photos/seed/eevee21/200/280",
     verifiedAt: NOW - 5 * DAY,
     label: "Trending",
@@ -288,12 +273,11 @@ const MOCK_SLABS: SlabItem[] = [
     setName: "Panini Prizm",
     year: "2023",
     grade: 10,
-    grader: "PSA",
+    grader: "TAG",
     population: 1144,
     marketPrice: 2100,
-    priceChange: 18.5,
-    volume24h: 340000,
-    sparkline: [1200, 1350, 1450, 1600, 1700, 1850, 1980, 2100],
+    condition: "Mint",
+    listingCount: 63,
     imageUrl: "https://picsum.photos/seed/wemby23/200/280",
     verifiedAt: NOW - 6 * 3600000,
     label: "Newly Verified",
@@ -353,52 +337,6 @@ const DARK_CARD = {
   imgBorder: "oklch(0.55 0.12 160 / 0.20)",
 };
 
-// ─── Sparkline SVG ───────────────────────────────────────────────────────────
-
-function Sparkline({
-  data,
-  positive,
-  isDark,
-}: {
-  data: number[];
-  positive: boolean;
-  isDark?: boolean;
-}) {
-  if (!data || data.length < 2) return null;
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const w = 60;
-  const h = 24;
-  const pts = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const tokens = isDark ? DARK_CARD : CARD;
-  const color = positive ? tokens.pos : tokens.neg;
-  return (
-    <svg
-      width={w}
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      fill="none"
-      role="img"
-      aria-label={positive ? "Price trending up" : "Price trending down"}
-    >
-      <polyline
-        points={pts.join(" ")}
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.85"
-      />
-    </svg>
-  );
-}
-
 // ─── Price formatter ─────────────────────────────────────────────────────────
 
 function fmtPrice(usd: number): string {
@@ -407,20 +345,12 @@ function fmtPrice(usd: number): string {
   return `$${usd.toLocaleString()}`;
 }
 
-function fmtVol(usd: number): string {
-  if (usd >= 1000000) return `$${(usd / 1000000).toFixed(1)}M`;
-  if (usd >= 1000) return `$${(usd / 1000).toFixed(0)}K`;
-  return `$${usd}`;
-}
-
 // ─── Grade badge ─────────────────────────────────────────────────────────────
 
 function GradeBadge({
-  grader,
   grade,
   isDark,
 }: {
-  grader: string;
   grade: number;
   isDark?: boolean;
 }) {
@@ -442,7 +372,7 @@ function GradeBadge({
         whiteSpace: "nowrap" as const,
       }}
     >
-      {grader} {grade}
+      TAG {grade}
     </span>
   );
 }
@@ -496,28 +426,15 @@ function TypeBadge({
   );
 }
 
-// ─── Detail sheet (dark/frosted — unchanged) ─────────────────────────────────
+// ─── TAG grade distribution (for detail sheet) ────────────────────────────────
 
-const MOCK_GRADE_DIST: Record<string, { grade: string; count: number }[]> = {
-  PSA: [
-    { grade: "PSA 10", count: 121 },
-    { grade: "PSA 9", count: 543 },
-    { grade: "PSA 8", count: 812 },
-    { grade: "PSA 7", count: 640 },
-    { grade: "PSA 6", count: 310 },
-  ],
-  BGS: [
-    { grade: "BGS 10", count: 44 },
-    { grade: "BGS 9.5", count: 178 },
-    { grade: "BGS 9", count: 512 },
-    { grade: "BGS 8.5", count: 388 },
-  ],
-  SGC: [
-    { grade: "SGC 10", count: 37 },
-    { grade: "SGC 9.5", count: 120 },
-    { grade: "SGC 9", count: 290 },
-  ],
-};
+const TAG_GRADE_DIST: { grade: string; count: number }[] = [
+  { grade: "TAG 10", count: 121 },
+  { grade: "TAG 9.5", count: 284 },
+  { grade: "TAG 9", count: 543 },
+  { grade: "TAG 8.5", count: 388 },
+  { grade: "TAG 8", count: 210 },
+];
 
 function mockSales(price: number) {
   return [
@@ -536,7 +453,6 @@ function SlabDetailSheet({
   onClose: () => void;
 }) {
   const sales = mockSales(slab.marketPrice);
-  const gradeDist = MOCK_GRADE_DIST[slab.grader] ?? MOCK_GRADE_DIST.PSA;
 
   return (
     <div
@@ -604,7 +520,7 @@ function SlabDetailSheet({
                 <p style={{ fontSize: 12, color: C.textSec }}>
                   {slab.setName} · {slab.year}
                 </p>
-                <GradeBadge grader={slab.grader} grade={slab.grade} isDark />
+                <GradeBadge grade={slab.grade} isDark />
               </div>
             </div>
             <button
@@ -626,7 +542,7 @@ function SlabDetailSheet({
             </button>
           </div>
 
-          {/* Price & Volume */}
+          {/* List Price */}
           <section
             style={{
               background: C.panel,
@@ -646,44 +562,15 @@ function SlabDetailSheet({
                 marginBottom: 10,
               }}
             >
-              Price &amp; Volume
+              List Price
             </p>
-            <div className="flex justify-between items-center">
-              <div>
-                <p style={{ fontSize: 22, fontWeight: 700, color: C.text }}>
-                  {fmtPrice(slab.marketPrice)}
-                </p>
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: slab.priceChange >= 0 ? C.pos : C.neg,
-                    marginTop: 2,
-                  }}
-                >
-                  {slab.priceChange >= 0 ? "+" : ""}
-                  {slab.priceChange.toFixed(1)}% (24h)
-                </p>
-              </div>
-              <div className="text-right">
-                <p style={{ fontSize: 12, color: C.textSec }}>24h Volume</p>
-                <p
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 600,
-                    color: C.text,
-                    marginTop: 2,
-                  }}
-                >
-                  {fmtVol(slab.volume24h)}
-                </p>
-              </div>
-            </div>
-            <div className="mt-3">
-              <Sparkline
-                data={slab.sparkline}
-                positive={slab.priceChange >= 0}
-                isDark
-              />
+            <div className="flex items-baseline gap-3">
+              <p style={{ fontSize: 26, fontWeight: 700, color: C.text }}>
+                {fmtPrice(slab.marketPrice)}
+              </p>
+              <p style={{ fontSize: 12, color: C.textSec }}>
+                {slab.listingCount} listed
+              </p>
             </div>
           </section>
 
@@ -711,7 +598,7 @@ function SlabDetailSheet({
             </p>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
-                {gradeDist.map((row) => (
+                {TAG_GRADE_DIST.map((row) => (
                   <tr key={row.grade}>
                     <td
                       style={{
@@ -812,7 +699,7 @@ function SlabDetailSheet({
                     marginTop: 2,
                   }}
                 >
-                  {slab.grader}
+                  TAG
                 </p>
               </div>
               <div className="text-right">
@@ -923,7 +810,7 @@ function SlabCard({
           minWidth: 0,
         }}
       >
-        {/* Top: card name + badge */}
+        {/* Top: card name + type badge */}
         <div className="flex items-start justify-between gap-2">
           <p
             style={{
@@ -945,50 +832,41 @@ function SlabCard({
           {slab.setName} · {slab.year}
         </p>
 
-        {/* Grade + population */}
+        {/* TAG grade badge + population */}
         <div className="flex items-center gap-2 flex-wrap">
-          <GradeBadge grader={slab.grader} grade={slab.grade} isDark={isDark} />
+          <GradeBadge grade={slab.grade} isDark={isDark} />
           <span style={{ fontSize: 10, color: T.secondary }}>
             Pop {slab.population.toLocaleString()}
           </span>
         </div>
 
-        {/* Bottom: price, change, volume, sparkline */}
+        {/* Bottom: price + listing count */}
         <div
-          className="flex items-center justify-between"
+          className="flex items-end justify-between"
           style={{ marginTop: 4 }}
         >
-          <div className="flex items-baseline gap-1.5">
+          <div>
             <span
               style={{
                 fontSize: 15,
                 fontWeight: 700,
                 color: T.price,
                 letterSpacing: "-0.01em",
+                display: "block",
               }}
             >
               {fmtPrice(slab.marketPrice)}
             </span>
             <span
               style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: slab.priceChange >= 0 ? T.pos : T.neg,
+                fontSize: 10,
+                color: T.secondary,
+                display: "block",
+                marginTop: 1,
               }}
             >
-              {slab.priceChange >= 0 ? "+" : ""}
-              {slab.priceChange.toFixed(1)}%
+              {slab.listingCount} listed
             </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span style={{ fontSize: 10, color: T.secondary }}>
-              Vol {fmtVol(slab.volume24h)}
-            </span>
-            <Sparkline
-              data={slab.sparkline}
-              positive={slab.priceChange >= 0}
-              isDark={isDark}
-            />
           </div>
         </div>
       </div>
@@ -1024,17 +902,12 @@ export function ReleasesPage(_props: ReleasesPageProps) {
   const sorted = useMemo(() => {
     const arr = [...MOCK_SLABS];
     if (sortMode === "most_viewed") {
-      arr.sort((a, b) => b.volume24h - a.volume24h);
+      arr.sort((a, b) => b.listingCount - a.listingCount);
     } else if (sortMode === "new") {
       arr.sort((a, b) => b.verifiedAt - a.verifiedAt);
     } else {
-      // minted: sort by notable_sale type first, then by priceChange
-      arr.sort((a, b) => {
-        const aIsNotable = a.type === "notable_sale" ? 0 : 1;
-        const bIsNotable = b.type === "notable_sale" ? 0 : 1;
-        if (aIsNotable !== bIsNotable) return aIsNotable - bIsNotable;
-        return b.priceChange - a.priceChange;
-      });
+      // minted: sort by highest market price
+      arr.sort((a, b) => b.marketPrice - a.marketPrice);
     }
     return arr;
   }, [sortMode]);
