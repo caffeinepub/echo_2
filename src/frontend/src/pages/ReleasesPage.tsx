@@ -21,6 +21,7 @@ interface SlabItem {
   label: string;
   certNumber: string;
   preferredPayment: "USDC" | "BTC" | "ETH" | "SOL";
+  nftEligible?: boolean;
 }
 
 // ─── Live Offer types & helpers ───────────────────────────────────────────────
@@ -115,6 +116,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "84792341",
     preferredPayment: "SOL",
+    nftEligible: true,
   },
   {
     id: "s2",
@@ -133,6 +135,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "10245678",
     preferredPayment: "BTC",
+    nftEligible: true,
   },
   {
     id: "s3",
@@ -151,6 +154,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Notable Sale",
     certNumber: "0013847219",
     preferredPayment: "ETH",
+    nftEligible: true,
   },
   {
     id: "s4",
@@ -169,6 +173,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "New Set Added",
     certNumber: "27654321",
     preferredPayment: "USDC",
+    nftEligible: true,
   },
   {
     id: "s5",
@@ -187,6 +192,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "High Volume",
     certNumber: "00493821",
     preferredPayment: "BTC",
+    nftEligible: true,
   },
   {
     id: "s6",
@@ -205,6 +211,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "84103928",
     preferredPayment: "SOL",
+    nftEligible: true,
   },
   {
     id: "s7",
@@ -223,6 +230,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Notable Sale",
     certNumber: "61209384",
     preferredPayment: "USDC",
+    nftEligible: true,
   },
   {
     id: "s8",
@@ -241,6 +249,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Trending",
     certNumber: "74839201",
     preferredPayment: "ETH",
+    nftEligible: true,
   },
   {
     id: "s9",
@@ -259,6 +268,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "Newly Verified",
     certNumber: "09812374",
     preferredPayment: "BTC",
+    nftEligible: true,
   },
   {
     id: "s10",
@@ -277,6 +287,7 @@ const MOCK_SLABS: SlabItem[] = [
     label: "New Set Added",
     certNumber: "55023847",
     preferredPayment: "SOL",
+    nftEligible: true,
   },
   {
     id: "s11",
@@ -431,6 +442,257 @@ function fmtPrice(usd: number): string {
   if (usd >= 1000000) return `$${(usd / 1000000).toFixed(2)}M`;
   if (usd >= 1000) return `$${(usd / 1000).toFixed(1)}K`;
   return `$${usd.toLocaleString()}`;
+}
+
+// ─── NFT Vault Ice Icon & Modal ──────────────────────────────────────────────
+
+function IceNftIcon({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(e);
+      }}
+      aria-label="Minty Vault NFT Available"
+      data-ocid="releases.nft_vault.button"
+      style={{
+        background: "none",
+        border: "none",
+        padding: 2,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        opacity: 0.85,
+        transition: "opacity 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
+      }}
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#7ddfc2"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-label="NFT eligible snowflake"
+        role="img"
+      >
+        {/* Center vertical */}
+        <line x1="12" y1="2" x2="12" y2="22" />
+        {/* Center horizontal */}
+        <line x1="2" y1="12" x2="22" y2="12" />
+        {/* Diagonal 1 */}
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+        {/* Diagonal 2 */}
+        <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" />
+        {/* Branch tips - top */}
+        <polyline points="9,5 12,2 15,5" />
+        {/* Branch tips - bottom */}
+        <polyline points="9,19 12,22 15,19" />
+        {/* Branch tips - left */}
+        <polyline points="5,9 2,12 5,15" />
+        {/* Branch tips - right */}
+        <polyline points="19,9 22,12 19,15" />
+        {/* Small center diamond */}
+        <circle cx="12" cy="12" r="1.5" fill="#7ddfc2" stroke="none" />
+      </svg>
+    </button>
+  );
+}
+
+function NftVaultModal({
+  isDark,
+  onClose,
+}: {
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const bg = isDark ? "oklch(0.12 0.04 160 / 0.97)" : "#ffffff";
+  const border = isDark
+    ? "oklch(0.70 0.18 160 / 0.25)"
+    : "rgba(125,223,194,0.25)";
+  const titleColor = isDark ? "oklch(0.92 0.04 160)" : "#0f2a25";
+  const bodyColor = isDark ? "oklch(0.72 0.06 160)" : "#374151";
+  const bulletColor = "#7ddfc2";
+
+  const benefits = [
+    "Instant settlement",
+    "No shipping delays",
+    "Secure storage",
+    "Tradable digitally",
+    "Verified ownership history",
+  ];
+
+  return (
+    <div
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+      role="presentation"
+      data-ocid="releases.nft_vault.modal"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.35)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+        padding: "0 16px",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        style={{
+          background: bg,
+          border: `1px solid ${border}`,
+          borderRadius: 16,
+          boxShadow: isDark
+            ? "0 12px 40px rgba(0,0,0,0.55), 0 0 0 1px oklch(0.70 0.18 160 / 0.12)"
+            : "0 12px 40px rgba(0,0,0,0.12)",
+          backdropFilter: isDark ? "blur(20px)" : undefined,
+          WebkitBackdropFilter: isDark ? "blur(20px)" : undefined,
+          maxWidth: 300,
+          width: "100%",
+          padding: "20px 20px 20px 20px",
+          position: "relative",
+        }}
+      >
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          data-ocid="releases.nft_vault.close_button"
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: bodyColor,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 4,
+            borderRadius: 6,
+            minWidth: 28,
+            minHeight: 28,
+          }}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <line x1="1" y1="1" x2="13" y2="13" />
+            <line x1="13" y1="1" x2="1" y2="13" />
+          </svg>
+        </button>
+
+        {/* Title row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 10,
+            paddingRight: 20,
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#7ddfc2"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="2" x2="12" y2="22" />
+            <line x1="2" y1="12" x2="22" y2="12" />
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+            <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" />
+            <polyline points="9,5 12,2 15,5" />
+            <polyline points="9,19 12,22 15,19" />
+            <polyline points="5,9 2,12 5,15" />
+            <polyline points="19,9 22,12 19,15" />
+            <circle cx="12" cy="12" r="1.5" fill="#7ddfc2" stroke="none" />
+          </svg>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: titleColor,
+              lineHeight: 1.3,
+            }}
+          >
+            Minty Vault NFT Available
+          </span>
+        </div>
+
+        {/* Description */}
+        <p
+          style={{
+            fontSize: 12,
+            color: bodyColor,
+            lineHeight: 1.55,
+            marginBottom: 12,
+          }}
+        >
+          This slab can be stored securely with Minty and minted as a 1 of 1
+          NFT. Ownership can be transferred instantly while the physical slab
+          remains secured in the vault.
+        </p>
+
+        {/* Benefits */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {benefits.map((b) => (
+            <div
+              key={b}
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke={bulletColor}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="1.5,6 4.5,9 10.5,3" />
+              </svg>
+              <span style={{ fontSize: 12, color: bodyColor }}>{b}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Grade badge ─────────────────────────────────────────────────────────────
@@ -764,13 +1026,15 @@ function BuyOfferModal({
   isDark,
   onClose,
   onSubmitOffer,
+  initialStage = "choose",
 }: {
   slab: SlabItem;
   isDark: boolean;
   onClose: () => void;
   onSubmitOffer: (slabId: string, offer: LiveOffer) => void;
+  initialStage?: "choose" | "buy" | "offer";
 }) {
-  const [stage, setStage] = useState<"choose" | "buy" | "offer">("choose");
+  const [stage, setStage] = useState<"choose" | "buy" | "offer">(initialStage);
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(
     null,
   );
@@ -1636,15 +1900,18 @@ function SlabCard({
   index,
   onTap,
   onBuyOffer,
+  onOffers,
   isDark,
 }: {
   slab: SlabItem;
   index: number;
   onTap: () => void;
   onBuyOffer: (slab: SlabItem) => void;
+  onOffers: (slab: SlabItem) => void;
   isDark: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [showNftModal, setShowNftModal] = useState(false);
   const T = isDark ? DARK_CARD : CARD;
 
   return (
@@ -1722,11 +1989,29 @@ function SlabCard({
           >
             {slab.cardName}
           </p>
-          <PreferredPaymentBadge
-            payment={slab.preferredPayment}
-            isDark={isDark}
-          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              flexShrink: 0,
+            }}
+          >
+            {slab.nftEligible && (
+              <IceNftIcon onClick={() => setShowNftModal(true)} />
+            )}
+            <PreferredPaymentBadge
+              payment={slab.preferredPayment}
+              isDark={isDark}
+            />
+          </div>
         </div>
+        {showNftModal && (
+          <NftVaultModal
+            isDark={isDark}
+            onClose={() => setShowNftModal(false)}
+          />
+        )}
 
         {/* Set + year */}
         <p style={{ fontSize: 11, color: T.secondary }}>
@@ -1770,31 +2055,306 @@ function SlabCard({
             </span>
           </div>
 
-          {/* Buy / Offer button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuyOffer(slab);
-            }}
-            data-ocid={`releases.item.${index + 1}.button`}
+          {/* Buy + Offers buttons */}
+          <div
             style={{
-              borderRadius: 16,
-              padding: "6px 14px",
-              fontWeight: 600,
-              fontSize: 12,
-              background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
-              color: "#0f2a25",
-              boxShadow:
-                "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
-              border: "none",
-              cursor: "pointer",
-              whiteSpace: "nowrap" as const,
-              letterSpacing: "0.01em",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              alignItems: "stretch",
               flexShrink: 0,
             }}
           >
-            Buy / Offer
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuyOffer(slab);
+              }}
+              data-ocid={`releases.item.${index + 1}.buy_button`}
+              style={{
+                borderRadius: 99,
+                padding: "5px 12px",
+                fontWeight: 600,
+                fontSize: 11,
+                background:
+                  "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
+                color: "#0f2a25",
+                boxShadow:
+                  "0 2px 6px rgba(0,0,0,0.06), 0 0 0 1px rgba(125,223,194,0.35)",
+                border: "none",
+                cursor: "pointer",
+                whiteSpace: "nowrap" as const,
+                letterSpacing: "0.01em",
+              }}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOffers(slab);
+              }}
+              data-ocid={`releases.item.${index + 1}.offers_button`}
+              style={{
+                borderRadius: 99,
+                padding: "5px 12px",
+                fontWeight: 600,
+                fontSize: 11,
+                background: isDark ? "oklch(0.70 0.18 160 / 0.10)" : "#f0fdf9",
+                border: isDark
+                  ? "1px solid oklch(0.70 0.18 160 / 0.30)"
+                  : "1px solid rgba(16,185,129,0.30)",
+                color: isDark ? "oklch(0.78 0.14 160)" : "#1f9d84",
+                cursor: "pointer",
+                whiteSpace: "nowrap" as const,
+                letterSpacing: "0.01em",
+              }}
+            >
+              Offers
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Live Offers Modal ────────────────────────────────────────────────────────
+
+function LiveOffersModal({
+  slab,
+  offers,
+  isDark,
+  onClose,
+  onMakeOffer,
+}: {
+  slab: SlabItem;
+  offers: LiveOffer[];
+  isDark: boolean;
+  onClose: () => void;
+  onMakeOffer: () => void;
+}) {
+  const sorted = [...offers].sort((a, b) => b.amountUsd - a.amountUsd);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      data-ocid="live_offers.modal"
+      style={{ background: "rgba(0,0,0,0.65)" }}
+    >
+      <div
+        className="w-full"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        style={{
+          background: isDark ? "oklch(0.12 0.04 160 / 0.95)" : "#ffffff",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: isDark
+            ? "1px solid oklch(0.55 0.12 160 / 0.22)"
+            : "1px solid rgba(0,0,0,0.08)",
+          borderRadius: "20px 20px 0 0",
+          maxHeight: "75dvh",
+          boxShadow: isDark
+            ? "0 -4px 40px oklch(0.70 0.18 160 / 0.10)"
+            : "0 -4px 40px rgba(0,0,0,0.10)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Drag handle */}
+        <div
+          className="flex justify-center pt-3 pb-1"
+          style={{ flexShrink: 0 }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 99,
+              background: isDark ? "oklch(0.35 0.05 160)" : "rgba(0,0,0,0.12)",
+            }}
+          />
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              padding: "16px 20px 12px",
+            }}
+          >
+            <div>
+              <p
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: isDark ? "oklch(0.92 0.04 160)" : "#1a1a1a",
+                  margin: 0,
+                }}
+              >
+                Live Offers
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
+                  margin: "3px 0 0",
+                }}
+              >
+                {slab.cardName} • {fmtPrice(slab.marketPrice)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              data-ocid="live_offers.close_button"
+              aria-label="Close"
+              style={{
+                background: isDark
+                  ? "oklch(0.18 0.04 160)"
+                  : "rgba(0,0,0,0.05)",
+                border: isDark
+                  ? "1px solid oklch(0.55 0.12 160 / 0.22)"
+                  : "1px solid rgba(0,0,0,0.08)",
+                borderRadius: 99,
+                minWidth: 44,
+                minHeight: 44,
+                color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                marginLeft: 12,
+                marginTop: -4,
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Offer rows */}
+          <div style={{ padding: "0 20px 8px" }}>
+            {sorted.length === 0 ? (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: isDark ? "oklch(0.58 0.08 160)" : "#9ca3af",
+                  textAlign: "center",
+                  padding: "32px 0",
+                }}
+              >
+                No offers yet
+              </p>
+            ) : (
+              <div>
+                {sorted.map((offer, idx) => {
+                  const expiry = fmtExpiry(offer.expiresAt);
+                  const cryptoAmt = cryptoAmount(
+                    offer.amountUsd,
+                    offer.currency,
+                  );
+                  return (
+                    <div key={offer.id}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          gap: 4,
+                          paddingTop: 16,
+                          paddingBottom: 16,
+                        }}
+                        data-ocid={`live_offers.item.${idx + 1}`}
+                      >
+                        {/* Line 1 — USD value */}
+                        <span
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 700,
+                            color: isDark ? "oklch(0.93 0.04 160)" : "#111827",
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          ${offer.amountUsd.toLocaleString()}
+                        </span>
+                        {/* Line 2 — currency + crypto amount */}
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: isDark ? "oklch(0.60 0.08 160)" : "#6b7280",
+                          }}
+                        >
+                          {offer.currency} • {cryptoAmt} {offer.currency}
+                        </span>
+                        {/* Line 3 — status/expiry */}
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: isDark ? "oklch(0.70 0.15 160)" : "#10b981",
+                          }}
+                        >
+                          {expiry}
+                        </span>
+                      </div>
+                      {idx < sorted.length - 1 && (
+                        <div
+                          style={{
+                            height: 1,
+                            background: isDark
+                              ? "oklch(0.55 0.12 160 / 0.18)"
+                              : "rgba(0,0,0,0.06)",
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sticky footer */}
+        <div
+          style={{
+            padding: "12px 20px",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+            borderTop: isDark
+              ? "1px solid oklch(0.55 0.12 160 / 0.18)"
+              : "1px solid rgba(0,0,0,0.07)",
+            background: isDark ? "oklch(0.12 0.04 160 / 0.95)" : "#ffffff",
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            onClick={onMakeOffer}
+            data-ocid="live_offers.primary_button"
+            style={{
+              width: "100%",
+              padding: "14px 0",
+              borderRadius: 14,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 700,
+              fontSize: 15,
+              background: "linear-gradient(135deg, #c8f5e6, #9fe8d0, #7ddfc2)",
+              color: "#0f2a25",
+              boxShadow: "0 2px 8px rgba(125,223,194,0.30)",
+            }}
+          >
+            Make Offer
           </button>
         </div>
       </div>
@@ -1824,6 +2384,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
   const [sortMode, setSortMode] = useState<SortMode>("most_viewed");
   const [selectedSlab, setSelectedSlab] = useState<SlabItem | null>(null);
   const [buyOfferSlab, setBuyOfferSlab] = useState<SlabItem | null>(null);
+  const [offersModalSlab, setOffersModalSlab] = useState<SlabItem | null>(null);
   const [offersMap, setOffersMap] =
     useState<Record<string, LiveOffer[]>>(SEEDED_OFFERS);
 
@@ -1960,6 +2521,7 @@ export function ReleasesPage(_props: ReleasesPageProps) {
             index={i}
             onTap={() => setSelectedSlab(slab)}
             onBuyOffer={(s) => setBuyOfferSlab(s)}
+            onOffers={(s) => setOffersModalSlab(s)}
             isDark={isDark}
           />
         ))}
@@ -1974,13 +2536,29 @@ export function ReleasesPage(_props: ReleasesPageProps) {
         />
       )}
 
-      {/* Buy / Offer modal */}
+      {/* Buy modal */}
       {buyOfferSlab && (
         <BuyOfferModal
           slab={buyOfferSlab}
           isDark={isDark}
+          initialStage="buy"
           onClose={() => setBuyOfferSlab(null)}
           onSubmitOffer={handleSubmitOffer}
+        />
+      )}
+
+      {/* Live Offers modal */}
+      {offersModalSlab && (
+        <LiveOffersModal
+          slab={offersModalSlab}
+          offers={offersMap[offersModalSlab.id] ?? []}
+          isDark={isDark}
+          onClose={() => setOffersModalSlab(null)}
+          onMakeOffer={() => {
+            const s = offersModalSlab;
+            setOffersModalSlab(null);
+            setBuyOfferSlab(s);
+          }}
         />
       )}
     </div>
