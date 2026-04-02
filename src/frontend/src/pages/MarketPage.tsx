@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type { MockCategory, MockSet } from "../store/mockCatalog";
-import { getCategories, getSets } from "../store/mockCatalog";
+import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
+import { getCards, getCategories, getSets } from "../store/mockCatalog";
 
 // ─── Signal Card ───────────────────────────────────────────────────────────────
 
@@ -116,6 +116,241 @@ function SetCardSkeleton({ isDark }: { isDark: boolean }) {
   );
 }
 
+// ─── Ranks View ───────────────────────────────────────────────────────────────
+
+function formatVol(val: number): string {
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
+  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}k`;
+  return `$${val.toFixed(0)}`;
+}
+
+const rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
+
+function RankRow({
+  card,
+  set,
+  rank,
+  vol24h,
+  isDark,
+}: {
+  card: MockCard;
+  set: MockSet | undefined;
+  rank: number;
+  vol24h: number;
+  isDark: boolean;
+}) {
+  const isTop3 = rank <= 3;
+  const rankColor = isTop3
+    ? rankColors[rank - 1]
+    : isDark
+      ? "rgba(150, 210, 185, 0.5)"
+      : "#10b981";
+
+  const rowStyle = isDark
+    ? {
+        background: "rgba(10, 28, 20, 0.72)",
+        border: isTop3
+          ? "1px solid rgba(110, 230, 185, 0.25)"
+          : "1px solid rgba(110, 230, 185, 0.12)",
+        boxShadow: isTop3
+          ? "0 2px 12px rgba(80,200,150,0.12), inset 0 1px 0 rgba(110,230,185,0.07)"
+          : "0 1px 4px rgba(0,0,0,0.15)",
+      }
+    : {
+        background: "white",
+        border: isTop3
+          ? "1px solid rgba(16,185,129,0.25)"
+          : "1px solid oklch(0.92 0.004 185)",
+        boxShadow: isTop3
+          ? "0 2px 12px rgba(16,185,129,0.08)"
+          : "0 1px 4px rgba(0,0,0,0.05)",
+      };
+
+  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
+  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+      style={rowStyle}
+    >
+      {/* Rank */}
+      <span
+        className="font-bold tabular-nums shrink-0"
+        style={{
+          fontSize: "13px",
+          color: rankColor,
+          width: "22px",
+          textAlign: "center",
+        }}
+      >
+        #{rank}
+      </span>
+
+      {/* Thumbnail */}
+      <div
+        className="rounded-lg overflow-hidden shrink-0"
+        style={{
+          width: "40px",
+          height: "40px",
+          border: isTop3
+            ? `1.5px solid ${rankColor}`
+            : isDark
+              ? "1px solid rgba(110,230,185,0.18)"
+              : "1px solid #e5e7eb",
+          background: isDark ? "rgba(20,50,35,0.4)" : "#f3f4f6",
+        }}
+      >
+        {card.imageUrl ? (
+          <img
+            src={card.imageUrl}
+            alt={card.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: isDark ? "rgba(20,50,35,0.6)" : "#eef0f2" }}
+          >
+            <span
+              style={{
+                fontSize: "8px",
+                color: textSecondary,
+                fontFamily: "monospace",
+              }}
+            >
+              {card.number}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Card info */}
+      <div className="flex-1 min-w-0">
+        <p
+          className="font-semibold truncate"
+          style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
+        >
+          {card.name}
+        </p>
+        <p
+          className="truncate"
+          style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}
+        >
+          {set?.name ?? "Unknown Set"}
+        </p>
+      </div>
+
+      {/* Volume + txns */}
+      <div className="shrink-0 text-right">
+        <p
+          className="font-semibold tabular-nums"
+          style={{ fontSize: "13px", color: "#10b981", lineHeight: 1.3 }}
+        >
+          {formatVol(vol24h)}
+        </p>
+        <p style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}>
+          {card.mintyTransactions} txns
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RanksView({
+  isDark,
+  cards,
+  sets,
+}: { isDark: boolean; cards: MockCard[]; sets: MockSet[] }) {
+  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
+  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+
+  const ranked = cards
+    .filter((c) => c.active)
+    .map((c) => ({
+      card: c,
+      set: sets.find((s) => s.id === c.setId),
+      vol24h: c.lastSalePriceUsd * c.mintyTransactions,
+    }))
+    .sort((a, b) => {
+      if (b.card.mintyTransactions !== a.card.mintyTransactions)
+        return b.card.mintyTransactions - a.card.mintyTransactions;
+      return b.vol24h - a.vol24h;
+    })
+    .slice(0, 20);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        <p
+          className="text-[9px] uppercase tracking-[0.16em] font-medium"
+          style={{ color: "var(--echo-text-secondary)" }}
+        >
+          Rankings
+        </p>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            fontSize: "11px",
+            color: "#10b981",
+          }}
+        >
+          <span
+            className="animate-pulse"
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "#10b981",
+              display: "inline-block",
+            }}
+          />
+          Updating Live
+        </span>
+      </div>
+
+      {/* Rank list */}
+      {ranked.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 text-center">
+          <p
+            style={{
+              color: textPrimary,
+              fontSize: "14px",
+              fontWeight: 600,
+              marginBottom: "4px",
+            }}
+          >
+            No market data yet
+          </p>
+          <p style={{ color: textSecondary, fontSize: "12px" }}>
+            Cards with transactions will appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {ranked.map(({ card, set, vol24h }, i) => (
+            <RankRow
+              key={card.id}
+              card={card}
+              set={set}
+              rank={i + 1}
+              vol24h={vol24h}
+              isDark={isDark}
+            />
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────────
 
 interface MarketPageProps {
@@ -127,9 +362,12 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [sets, setSets] = useState<MockSet[]>([]);
+  const [allSets, setAllSets] = useState<MockSet[]>([]);
   const [categories, setCategories] = useState<MockCategory[]>([]);
+  const [cards, setCards] = useState<MockCard[]>([]);
   const [loadingSets, setLoadingSets] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [activeView, setActiveView] = useState<"browse" | "ranks">("browse");
 
   useEffect(() => {
     try {
@@ -139,14 +377,19 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
       const s = getSets()
         .filter((s) => s.active)
         .sort((a, b) => a.sortOrder - b.sortOrder);
+      const c = getCards();
       console.log(
         "[Discover] Loaded sets:",
         s.length,
         "categories:",
         cats.length,
+        "cards:",
+        c.length,
       );
       setCategories(cats);
       setSets(s);
+      setAllSets(s);
+      setCards(c);
     } catch (err) {
       console.error("[Discover] Failed to load discover data:", err);
     }
@@ -187,6 +430,16 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
   const placeholderBg = isDark ? "rgba(20, 50, 35, 0.6)" : "#eef0f2";
   const placeholderText = isDark ? "rgba(130, 190, 160, 0.5)" : "#9ca3af";
 
+  const toggleContainerStyle = isDark
+    ? {
+        background: "rgba(10, 28, 20, 0.6)",
+        border: "1px solid rgba(110, 230, 185, 0.15)",
+      }
+    : {
+        background: "#f3f4f6",
+        border: "1px solid #e5e7eb",
+      };
+
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
       {/* ── Signal cards ── */}
@@ -220,185 +473,241 @@ export function MarketPage({ onSetClick }: MarketPageProps) {
         />
       </div>
 
-      {/* ── Browse Sets ── */}
+      {/* ── Browse / Ranks toggle ── */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.2 }}
+        transition={{ duration: 0.3, delay: 0.18 }}
+        className="flex mb-5"
+        style={{
+          ...toggleContainerStyle,
+          borderRadius: "24px",
+          padding: "3px",
+          gap: "2px",
+        }}
+        data-ocid="discover.view.toggle"
       >
-        <p
-          className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
-          style={{ color: "var(--echo-text-secondary)" }}
-        >
-          Browse Categories
-        </p>
-
-        {/* ── Category filter pills ── */}
-        <div
-          className="flex gap-2 mb-4"
-          style={{
-            overflowX: "auto",
-            paddingBottom: "4px",
-            scrollbarWidth: "none",
-          }}
-          data-ocid="discover.category.tab"
-        >
-          {categoryPills.map((cat) => {
-            const isActive = activeCategory === cat;
-            return (
-              <button
-                key={cat}
-                type="button"
-                data-ocid={`discover.${cat.toLowerCase().replace(/[^a-z0-9]/g, "_")}.tab`}
-                onClick={() => setActiveCategory(cat)}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: "20px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  transition: "all 0.15s",
-                  background: isActive
-                    ? "#10b981"
-                    : isDark
-                      ? "rgba(20, 50, 35, 0.5)"
-                      : "#f3f4f6",
-                  color: isActive
-                    ? "white"
-                    : isDark
-                      ? "rgba(150, 210, 185, 0.65)"
-                      : "#6b7280",
-                  border: isActive
-                    ? "1px solid transparent"
-                    : isDark
-                      ? "1px solid rgba(110, 230, 185, 0.12)"
-                      : "1px solid #e5e7eb",
-                  boxShadow: isActive
-                    ? "0 0 12px rgba(16,185,129,0.3)"
-                    : "none",
-                }}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Set grid ── */}
-        {loadingSets ? (
-          <div
-            data-ocid="discover.sets.loading_state"
-            className="grid grid-cols-2 gap-3"
-          >
-            {Array.from({ length: 6 }).map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
-              <SetCardSkeleton key={i} isDark={isDark} />
-            ))}
-          </div>
-        ) : filteredSets.length === 0 ? (
-          <div
-            data-ocid="discover.sets.empty_state"
-            className="flex flex-col items-center justify-center py-14 text-center"
-          >
-            <p
+        {(["browse", "ranks"] as const).map((view) => {
+          const isActive = activeView === view;
+          return (
+            <button
+              key={view}
+              type="button"
+              data-ocid={`discover.${view}.tab`}
+              onClick={() => setActiveView(view)}
               style={{
-                color: textPrimary,
-                fontSize: "14px",
+                flex: 1,
+                padding: "7px 0",
+                borderRadius: "20px",
+                fontSize: "13px",
                 fontWeight: 600,
-                marginBottom: "4px",
+                cursor: "pointer",
+                transition: "all 0.18s ease",
+                background: isActive ? "#10b981" : "transparent",
+                color: isActive
+                  ? "white"
+                  : isDark
+                    ? "rgba(150, 210, 185, 0.55)"
+                    : "#6b7280",
+                border: "none",
+                boxShadow: isActive
+                  ? "0 2px 8px rgba(16,185,129,0.25)"
+                  : "none",
+                letterSpacing: "0.01em",
               }}
             >
-              No sets in this category yet
-            </p>
-            <p style={{ color: textSecondary, fontSize: "12px" }}>
-              {activeCategory === "All"
-                ? "No sets have been added yet."
-                : `No ${activeCategory} sets have been added yet.`}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredSets
-              .filter((set) => set?.slug && set?.name)
-              .map((set, i) => (
-                <motion.div
-                  key={set.slug}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
-                >
-                  <button
-                    type="button"
-                    data-ocid={`discover.item.${i + 1}`}
-                    onClick={() => onSetClick(set.slug)}
-                    className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
-                    style={setCardStyle}
-                  >
-                    {/* Artwork area */}
-                    <div
-                      className="w-full flex items-center justify-center p-4"
-                      style={{
-                        background: isDark ? "rgba(8, 22, 15, 0.5)" : "#f8f9fa",
-                        minHeight: "120px",
-                      }}
-                    >
-                      {set?.imageUrl ? (
-                        <img
-                          src={set.imageUrl}
-                          alt={set?.name ?? ""}
-                          className="object-contain max-h-full max-w-full"
-                          style={{ maxHeight: "96px", maxWidth: "100%" }}
-                        />
-                      ) : (
-                        <div
-                          className="flex items-center justify-center w-full h-full rounded-lg"
-                          style={{
-                            background: placeholderBg,
-                            minHeight: "80px",
-                          }}
-                        >
-                          <span
-                            className="text-[11px] font-mono font-semibold"
-                            style={{ color: placeholderText }}
-                          >
-                            {set?.setCode ?? ""}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Set info */}
-                    <div className="px-3 py-2.5">
-                      <p
-                        className="text-[9px] font-mono font-medium mb-0.5"
-                        style={{ color: textSecondary }}
-                      >
-                        {set?.setCode ?? ""}
-                      </p>
-                      <p
-                        className="text-[12px] font-semibold leading-tight"
-                        style={{ color: textPrimary }}
-                      >
-                        {set?.name ?? ""}
-                      </p>
-                      {set?.cardCount !== undefined &&
-                        set?.cardCount !== null && (
-                          <p
-                            className="text-[10px] mt-0.5"
-                            style={{ color: textSecondary }}
-                          >
-                            0 / {set.cardCount} collected
-                          </p>
-                        )}
-                    </div>
-                  </button>
-                </motion.div>
-              ))}
-          </div>
-        )}
+              {view === "browse" ? "Browse" : "Ranks"}
+            </button>
+          );
+        })}
       </motion.div>
+
+      {/* ── Content section ── */}
+      {activeView === "browse" ? (
+        <motion.div
+          key="browse"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <p
+            className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
+            style={{ color: "var(--echo-text-secondary)" }}
+          >
+            Browse Categories
+          </p>
+
+          {/* ── Category filter pills ── */}
+          <div
+            className="flex gap-2 mb-4"
+            style={{
+              overflowX: "auto",
+              paddingBottom: "4px",
+              scrollbarWidth: "none",
+            }}
+            data-ocid="discover.category.tab"
+          >
+            {categoryPills.map((cat) => {
+              const isActive = activeCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  data-ocid={`discover.${cat.toLowerCase().replace(/[^a-z0-9]/g, "_")}.tab`}
+                  onClick={() => setActiveCategory(cat)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    transition: "all 0.15s",
+                    background: isActive
+                      ? "#10b981"
+                      : isDark
+                        ? "rgba(20, 50, 35, 0.5)"
+                        : "#f3f4f6",
+                    color: isActive
+                      ? "white"
+                      : isDark
+                        ? "rgba(150, 210, 185, 0.65)"
+                        : "#6b7280",
+                    border: isActive
+                      ? "1px solid transparent"
+                      : isDark
+                        ? "1px solid rgba(110, 230, 185, 0.12)"
+                        : "1px solid #e5e7eb",
+                    boxShadow: isActive
+                      ? "0 0 12px rgba(16,185,129,0.3)"
+                      : "none",
+                  }}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Set grid ── */}
+          {loadingSets ? (
+            <div
+              data-ocid="discover.sets.loading_state"
+              className="grid grid-cols-2 gap-3"
+            >
+              {Array.from({ length: 6 }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+                <SetCardSkeleton key={i} isDark={isDark} />
+              ))}
+            </div>
+          ) : filteredSets.length === 0 ? (
+            <div
+              data-ocid="discover.sets.empty_state"
+              className="flex flex-col items-center justify-center py-14 text-center"
+            >
+              <p
+                style={{
+                  color: textPrimary,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  marginBottom: "4px",
+                }}
+              >
+                No sets in this category yet
+              </p>
+              <p style={{ color: textSecondary, fontSize: "12px" }}>
+                {activeCategory === "All"
+                  ? "No sets have been added yet."
+                  : `No ${activeCategory} sets have been added yet.`}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {filteredSets
+                .filter((set) => set?.slug && set?.name)
+                .map((set, i) => (
+                  <motion.div
+                    key={set.slug}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
+                  >
+                    <button
+                      type="button"
+                      data-ocid={`discover.item.${i + 1}`}
+                      onClick={() => onSetClick(set.slug)}
+                      className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
+                      style={setCardStyle}
+                    >
+                      {/* Artwork area */}
+                      <div
+                        className="w-full flex items-center justify-center p-4"
+                        style={{
+                          background: isDark
+                            ? "rgba(8, 22, 15, 0.5)"
+                            : "#f8f9fa",
+                          minHeight: "120px",
+                        }}
+                      >
+                        {set?.imageUrl ? (
+                          <img
+                            src={set.imageUrl}
+                            alt={set?.name ?? ""}
+                            className="object-contain max-h-full max-w-full"
+                            style={{ maxHeight: "96px", maxWidth: "100%" }}
+                          />
+                        ) : (
+                          <div
+                            className="flex items-center justify-center w-full h-full rounded-lg"
+                            style={{
+                              background: placeholderBg,
+                              minHeight: "80px",
+                            }}
+                          >
+                            <span
+                              className="text-[11px] font-mono font-semibold"
+                              style={{ color: placeholderText }}
+                            >
+                              {set?.setCode ?? ""}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Set info */}
+                      <div className="px-3 py-2.5">
+                        <p
+                          className="text-[9px] font-mono font-medium mb-0.5"
+                          style={{ color: textSecondary }}
+                        >
+                          {set?.setCode ?? ""}
+                        </p>
+                        <p
+                          className="text-[12px] font-semibold leading-tight"
+                          style={{ color: textPrimary }}
+                        >
+                          {set?.name ?? ""}
+                        </p>
+                        {set?.cardCount !== undefined &&
+                          set?.cardCount !== null && (
+                            <p
+                              className="text-[10px] mt-0.5"
+                              style={{ color: textSecondary }}
+                            >
+                              0 / {set.cardCount} collected
+                            </p>
+                          )}
+                      </div>
+                    </button>
+                  </motion.div>
+                ))}
+            </div>
+          )}
+        </motion.div>
+      ) : (
+        <RanksView isDark={isDark} cards={cards} sets={allSets} />
+      )}
     </div>
   );
 }
