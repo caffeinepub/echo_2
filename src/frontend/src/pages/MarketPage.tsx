@@ -1,38 +1,46 @@
-import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
-import { getCards, getCategories, getSets } from "../store/mockCatalog";
+import type { CompletedSale } from "../store/mockSales";
+import { getTopSoldItems } from "../store/mockSales";
 
-// ─── Signal Card ───────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+
+function timeAgo(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffH = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffH < 24) return `sold ${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `sold ${diffD}d ago`;
+  const diffW = Math.floor(diffD / 7);
+  if (diffW < 5) return `sold ${diffW}w ago`;
+  const diffMo = Math.floor(diffD / 30);
+  if (diffMo < 12) return `sold ${diffMo}mo ago`;
+  const diffYr = Math.floor(diffMo / 12);
+  return `sold ${diffYr}yr ago`;
+}
+
+function formatUsd(val: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(val);
+}
+
+// ─── Signal Card ────────────────────────────────────────────────────────────────
 
 function SignalCard({
   label,
   plainValue,
   index,
-  accent,
   isDark,
 }: {
   label: string;
-  plainValue?: string;
+  plainValue: string;
   index: number;
-  accent?: "violet" | "cyan";
   isDark: boolean;
 }) {
-  const _lightBorderColor =
-    accent === "violet"
-      ? "oklch(0.55 0.25 290 / 0.3)"
-      : accent === "cyan"
-        ? "oklch(0.82 0.15 210 / 0.25)"
-        : "var(--echo-border)";
-
-  const lightBoxShadow =
-    accent === "cyan"
-      ? "0 0 24px oklch(0.82 0.15 210 / 0.08), inset 0 1px 0 oklch(0.82 0.15 210 / 0.05)"
-      : accent === "violet"
-        ? "0 0 24px oklch(0.55 0.25 290 / 0.08), inset 0 1px 0 oklch(0.55 0.25 290 / 0.05)"
-        : "0 6px 18px rgba(0,0,0,0.06)";
-
   const cardStyle = isDark
     ? {
         background: "rgba(10, 28, 20, 0.72)",
@@ -46,7 +54,7 @@ function SignalCard({
         background:
           "linear-gradient(135deg, rgba(200,245,230,0.5), rgba(159,232,208,0.3))",
         border: "1px solid rgba(16,185,129,0.2)",
-        boxShadow: lightBoxShadow,
+        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
       };
 
   return (
@@ -77,71 +85,22 @@ function SignalCard({
   );
 }
 
-// ─── Set Card Skeleton ───────────────────────────────────────────────────────────────
+// ─── Rank Row ────────────────────────────────────────────────────────────────────
 
-function SetCardSkeleton({ isDark }: { isDark: boolean }) {
-  const bg = isDark ? "rgba(20, 50, 35, 0.4)" : "#e9ecef";
-  return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: isDark ? "rgba(10, 28, 20, 0.5)" : "white",
-        border: isDark
-          ? "1px solid rgba(110, 230, 185, 0.1)"
-          : "1px solid #eee",
-        animation: "pulse 1.5s ease-in-out infinite",
-      }}
-    >
-      <div style={{ height: "120px", background: bg }} />
-      <div className="px-3 py-2.5">
-        <div
-          style={{
-            height: "10px",
-            width: "40%",
-            borderRadius: "4px",
-            background: bg,
-            marginBottom: "6px",
-          }}
-        />
-        <div
-          style={{
-            height: "13px",
-            width: "80%",
-            borderRadius: "4px",
-            background: bg,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Ranks View ───────────────────────────────────────────────────────────────
-
-function formatVol(val: number): string {
-  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-  if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}k`;
-  return `$${val.toFixed(0)}`;
-}
-
-const rankColors = ["#f59e0b", "#94a3b8", "#b45309"];
+const RANK_COLORS = ["#f59e0b", "#94a3b8", "#b45309"];
 
 function RankRow({
-  card,
-  set,
+  sale,
   rank,
-  vol24h,
   isDark,
 }: {
-  card: MockCard;
-  set: MockSet | undefined;
+  sale: CompletedSale;
   rank: number;
-  vol24h: number;
   isDark: boolean;
 }) {
   const isTop3 = rank <= 3;
   const rankColor = isTop3
-    ? rankColors[rank - 1]
+    ? RANK_COLORS[rank - 1]
     : isDark
       ? "rgba(150, 210, 185, 0.5)"
       : "#10b981";
@@ -170,9 +129,13 @@ function RankRow({
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, delay: rank * 0.04 }}
       className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
       style={rowStyle}
+      data-ocid={`discover.item.${rank}`}
     >
       {/* Rank */}
       <span
@@ -201,97 +164,186 @@ function RankRow({
           background: isDark ? "rgba(20,50,35,0.4)" : "#f3f4f6",
         }}
       >
-        {card.imageUrl ? (
+        {sale.imageUrl ? (
           <img
-            src={card.imageUrl}
-            alt={card.name}
+            src={sale.imageUrl}
+            alt={sale.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
             style={{ background: isDark ? "rgba(20,50,35,0.6)" : "#eef0f2" }}
           >
-            <span
-              style={{
-                fontSize: "8px",
-                color: textSecondary,
-                fontFamily: "monospace",
-              }}
-            >
-              {card.number}
-            </span>
+            <span style={{ fontSize: "8px", color: textSecondary }}>IMG</span>
           </div>
         )}
       </div>
 
-      {/* Card info */}
+      {/* Item info */}
       <div className="flex-1 min-w-0">
         <p
           className="font-semibold truncate"
           style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
         >
-          {card.name}
+          {sale.title}
         </p>
         <p
           className="truncate"
           style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}
         >
-          {set?.name ?? "Unknown Set"}
+          {sale.category}
         </p>
       </div>
 
-      {/* Volume + txns */}
+      {/* Price + time */}
       <div className="shrink-0 text-right">
         <p
           className="font-semibold tabular-nums"
           style={{ fontSize: "13px", color: "#10b981", lineHeight: 1.3 }}
         >
-          {formatVol(vol24h)}
+          {formatUsd(sale.priceUsd)}
         </p>
         <p style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}>
-          {card.mintyTransactions} txns
+          {timeAgo(sale.soldAt)}
         </p>
       </div>
+    </motion.div>
+  );
+}
+
+// ─── Time Filter Pills ────────────────────────────────────────────────────────────
+
+type TimeRange = "24H" | "1W" | "1M" | "1Y" | "ALL";
+const TIME_RANGES: TimeRange[] = ["24H", "1W", "1M", "1Y", "ALL"];
+
+function TimeFilterPills({
+  active,
+  onChange,
+  isDark,
+}: {
+  active: TimeRange;
+  onChange: (t: TimeRange) => void;
+  isDark: boolean;
+}) {
+  return (
+    <div
+      className="flex gap-2 mt-5 mb-4"
+      style={{
+        overflowX: "auto",
+        paddingBottom: "4px",
+        scrollbarWidth: "none",
+      }}
+    >
+      {TIME_RANGES.map((t) => {
+        const isActive = active === t;
+        return (
+          <button
+            key={t}
+            type="button"
+            data-ocid={`discover.${t.toLowerCase()}.tab`}
+            onClick={() => onChange(t)}
+            style={{
+              padding: "6px 16px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+              flexShrink: 0,
+              transition: "all 0.15s",
+              background: isActive
+                ? "#10b981"
+                : isDark
+                  ? "rgba(20, 50, 35, 0.5)"
+                  : "#f3f4f6",
+              color: isActive
+                ? "white"
+                : isDark
+                  ? "rgba(150, 210, 185, 0.65)"
+                  : "#6b7280",
+              border: isActive
+                ? "1px solid transparent"
+                : isDark
+                  ? "1px solid rgba(110, 230, 185, 0.12)"
+                  : "1px solid #e5e7eb",
+              boxShadow: isActive ? "0 0 12px rgba(16,185,129,0.3)" : "none",
+            }}
+          >
+            {t}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function RanksView({
-  isDark,
-  cards,
-  sets,
-}: { isDark: boolean; cards: MockCard[]; sets: MockSet[] }) {
-  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
+// ─── Main Page ────────────────────────────────────────────────────────────────────
+
+interface MarketPageProps {
+  onAlbumClick?: (albumId: string) => void;
+  onSetClick: (slug: string) => void;
+}
+
+export function MarketPage({
+  onAlbumClick: _onAlbumClick,
+  onSetClick: _onSetClick,
+}: MarketPageProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
+
+  const rankings = getTopSoldItems(timeRange);
+
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
 
-  const ranked = cards
-    .filter((c) => c.active)
-    .map((c) => ({
-      card: c,
-      set: sets.find((s) => s.id === c.setId),
-      vol24h: c.lastSalePriceUsd * c.mintyTransactions,
-    }))
-    .sort((a, b) => {
-      if (b.card.mintyTransactions !== a.card.mintyTransactions)
-        return b.card.mintyTransactions - a.card.mintyTransactions;
-      return b.vol24h - a.vol24h;
-    })
-    .slice(0, 20);
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Header row */}
+    <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
+      {/* ── Signal cards ── */}
+      <div className="grid grid-cols-2 gap-2.5 mb-2">
+        <SignalCard
+          label="Total Volume (All Time)"
+          plainValue="$2,847,320"
+          index={0}
+          isDark={isDark}
+        />
+        <SignalCard
+          label="24H Volume"
+          plainValue="$48,210"
+          index={1}
+          isDark={isDark}
+        />
+        <SignalCard
+          label="Total Transactions"
+          plainValue="14,203"
+          index={2}
+          isDark={isDark}
+        />
+        <SignalCard
+          label="Live Users"
+          plainValue="1,284"
+          index={3}
+          isDark={isDark}
+        />
+      </div>
+
+      {/* ── Time filter pills ── */}
+      <TimeFilterPills
+        active={timeRange}
+        onChange={setTimeRange}
+        isDark={isDark}
+      />
+
+      {/* ── TOP SOLD header ── */}
       <div className="flex items-center justify-between mb-3">
         <p
           className="text-[9px] uppercase tracking-[0.16em] font-medium"
           style={{ color: "var(--echo-text-secondary)" }}
         >
-          Rankings
+          Top Sold
         </p>
         <span
           style={{
@@ -316,398 +368,48 @@ function RanksView({
         </span>
       </div>
 
-      {/* Rank list */}
-      {ranked.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-14 text-center">
-          <p
-            style={{
-              color: textPrimary,
-              fontSize: "14px",
-              fontWeight: 600,
-              marginBottom: "4px",
-            }}
-          >
-            No market data yet
-          </p>
-          <p style={{ color: textSecondary, fontSize: "12px" }}>
-            Cards with transactions will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {ranked.map(({ card, set, vol24h }, i) => (
-            <RankRow
-              key={card.id}
-              card={card}
-              set={set}
-              rank={i + 1}
-              vol24h={vol24h}
-              isDark={isDark}
-            />
-          ))}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────────
-
-interface MarketPageProps {
-  onAlbumClick?: (albumId: string) => void;
-  onSetClick: (slug: string) => void;
-}
-
-export function MarketPage({ onSetClick }: MarketPageProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const [sets, setSets] = useState<MockSet[]>([]);
-  const [allSets, setAllSets] = useState<MockSet[]>([]);
-  const [categories, setCategories] = useState<MockCategory[]>([]);
-  const [cards, setCards] = useState<MockCard[]>([]);
-  const [loadingSets, setLoadingSets] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [activeView, setActiveView] = useState<"browse" | "ranks">("browse");
-
-  useEffect(() => {
-    try {
-      const cats = getCategories()
-        .filter((c) => c.active)
-        .sort((a, b) => a.sortOrder - b.sortOrder);
-      const s = getSets()
-        .filter((s) => s.active)
-        .sort((a, b) => a.sortOrder - b.sortOrder);
-      const c = getCards();
-      console.log(
-        "[Discover] Loaded sets:",
-        s.length,
-        "categories:",
-        cats.length,
-        "cards:",
-        c.length,
-      );
-      setCategories(cats);
-      setSets(s);
-      setAllSets(s);
-      setCards(c);
-    } catch (err) {
-      console.error("[Discover] Failed to load discover data:", err);
-    }
-    setLoadingSets(false);
-  }, []);
-
-  // Build the filter pill list: All + each active category
-  const categoryPills = ["All", ...categories.map((c) => c.name)];
-
-  const filteredSets =
-    activeCategory === "All"
-      ? sets
-      : sets.filter((s) => {
-          const cat = categories.find((c) => c.name === activeCategory);
-          return cat ? s.categoryId === cat.id : false;
-        });
-
-  const setCardStyle = isDark
-    ? {
-        background: "rgba(10, 28, 20, 0.72)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        border: "1px solid rgba(110, 230, 185, 0.15)",
-        boxShadow:
-          "0 0 20px rgba(80, 200, 150, 0.08), inset 0 1px 0 rgba(110, 230, 185, 0.07)",
-        borderRadius: "16px",
-      }
-    : {
-        background: "white",
-        border: "1px solid oklch(0.9 0.005 185)",
-        boxShadow:
-          "0 2px 8px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.04)",
-        borderRadius: "16px",
-      };
-
-  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
-  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
-  const placeholderBg = isDark ? "rgba(20, 50, 35, 0.6)" : "#eef0f2";
-  const placeholderText = isDark ? "rgba(130, 190, 160, 0.5)" : "#9ca3af";
-
-  const toggleContainerStyle = isDark
-    ? {
-        background: "rgba(10, 28, 20, 0.6)",
-        border: "1px solid rgba(110, 230, 185, 0.15)",
-      }
-    : {
-        background: "#f3f4f6",
-        border: "1px solid #e5e7eb",
-      };
-
-  return (
-    <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
-      {/* ── Signal cards ── */}
-      <div className="grid grid-cols-2 gap-2.5 mb-6">
-        <SignalCard
-          label="Total Volume (All Time)"
-          plainValue="$2,847,320"
-          index={0}
-          accent="cyan"
-          isDark={isDark}
-        />
-        <SignalCard
-          label="24H Volume"
-          plainValue="$48,210"
-          index={1}
-          accent="cyan"
-          isDark={isDark}
-        />
-        <SignalCard
-          label="Total Transactions"
-          plainValue="14,203"
-          index={2}
-          isDark={isDark}
-        />
-        <SignalCard
-          label="Frozen Assets"
-          plainValue="312"
-          index={3}
-          accent="violet"
-          isDark={isDark}
-        />
-      </div>
-
-      {/* ── Browse / Ranks toggle ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.18 }}
-        className="flex mb-5"
-        style={{
-          ...toggleContainerStyle,
-          borderRadius: "24px",
-          padding: "3px",
-          gap: "2px",
-        }}
-        data-ocid="discover.view.toggle"
-      >
-        {(["browse", "ranks"] as const).map((view) => {
-          const isActive = activeView === view;
-          return (
-            <button
-              key={view}
-              type="button"
-              data-ocid={`discover.${view}.tab`}
-              onClick={() => setActiveView(view)}
-              style={{
-                flex: 1,
-                padding: "7px 0",
-                borderRadius: "20px",
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.18s ease",
-                background: isActive ? "#10b981" : "transparent",
-                color: isActive
-                  ? "white"
-                  : isDark
-                    ? "rgba(150, 210, 185, 0.55)"
-                    : "#6b7280",
-                border: "none",
-                boxShadow: isActive
-                  ? "0 2px 8px rgba(16,185,129,0.25)"
-                  : "none",
-                letterSpacing: "0.01em",
-              }}
-            >
-              {view === "browse" ? "Browse" : "Ranks"}
-            </button>
-          );
-        })}
-      </motion.div>
-
-      {/* ── Content section ── */}
-      {activeView === "browse" ? (
+      {/* ── Rank list ── */}
+      <AnimatePresence mode="wait">
         <motion.div
-          key="browse"
-          initial={{ opacity: 0, y: 8 }}
+          key={timeRange}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.22 }}
         >
-          <p
-            className="text-[9px] uppercase tracking-[0.16em] font-medium mb-3"
-            style={{ color: "var(--echo-text-secondary)" }}
-          >
-            Browse Categories
-          </p>
-
-          {/* ── Category filter pills ── */}
-          <div
-            className="flex gap-2 mb-4"
-            style={{
-              overflowX: "auto",
-              paddingBottom: "4px",
-              scrollbarWidth: "none",
-            }}
-            data-ocid="discover.category.tab"
-          >
-            {categoryPills.map((cat) => {
-              const isActive = activeCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  data-ocid={`discover.${cat.toLowerCase().replace(/[^a-z0-9]/g, "_")}.tab`}
-                  onClick={() => setActiveCategory(cat)}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    transition: "all 0.15s",
-                    background: isActive
-                      ? "#10b981"
-                      : isDark
-                        ? "rgba(20, 50, 35, 0.5)"
-                        : "#f3f4f6",
-                    color: isActive
-                      ? "white"
-                      : isDark
-                        ? "rgba(150, 210, 185, 0.65)"
-                        : "#6b7280",
-                    border: isActive
-                      ? "1px solid transparent"
-                      : isDark
-                        ? "1px solid rgba(110, 230, 185, 0.12)"
-                        : "1px solid #e5e7eb",
-                    boxShadow: isActive
-                      ? "0 0 12px rgba(16,185,129,0.3)"
-                      : "none",
-                  }}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ── Set grid ── */}
-          {loadingSets ? (
+          {rankings.length === 0 ? (
             <div
-              data-ocid="discover.sets.loading_state"
-              className="grid grid-cols-2 gap-3"
-            >
-              {Array.from({ length: 6 }).map((_, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
-                <SetCardSkeleton key={i} isDark={isDark} />
-              ))}
-            </div>
-          ) : filteredSets.length === 0 ? (
-            <div
-              data-ocid="discover.sets.empty_state"
               className="flex flex-col items-center justify-center py-14 text-center"
+              data-ocid="discover.rankings.empty_state"
             >
               <p
                 style={{
-                  color: textPrimary,
+                  color: isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a",
                   fontSize: "14px",
                   fontWeight: 600,
                   marginBottom: "4px",
                 }}
               >
-                No sets in this category yet
+                No sales in this period
               </p>
               <p style={{ color: textSecondary, fontSize: "12px" }}>
-                {activeCategory === "All"
-                  ? "No sets have been added yet."
-                  : `No ${activeCategory} sets have been added yet.`}
+                Try a broader time range to see top sold items.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {filteredSets
-                .filter((set) => set?.slug && set?.name)
-                .map((set, i) => (
-                  <motion.div
-                    key={set.slug}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.05 + i * 0.04 }}
-                  >
-                    <button
-                      type="button"
-                      data-ocid={`discover.item.${i + 1}`}
-                      onClick={() => onSetClick(set.slug)}
-                      className="w-full rounded-2xl overflow-hidden text-left transition-transform active:scale-95 hover:scale-[1.02]"
-                      style={setCardStyle}
-                    >
-                      {/* Artwork area */}
-                      <div
-                        className="w-full flex items-center justify-center p-4"
-                        style={{
-                          background: isDark
-                            ? "rgba(8, 22, 15, 0.5)"
-                            : "#f8f9fa",
-                          minHeight: "120px",
-                        }}
-                      >
-                        {set?.imageUrl ? (
-                          <img
-                            src={set.imageUrl}
-                            alt={set?.name ?? ""}
-                            className="object-contain max-h-full max-w-full"
-                            style={{ maxHeight: "96px", maxWidth: "100%" }}
-                          />
-                        ) : (
-                          <div
-                            className="flex items-center justify-center w-full h-full rounded-lg"
-                            style={{
-                              background: placeholderBg,
-                              minHeight: "80px",
-                            }}
-                          >
-                            <span
-                              className="text-[11px] font-mono font-semibold"
-                              style={{ color: placeholderText }}
-                            >
-                              {set?.setCode ?? ""}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Set info */}
-                      <div className="px-3 py-2.5">
-                        <p
-                          className="text-[9px] font-mono font-medium mb-0.5"
-                          style={{ color: textSecondary }}
-                        >
-                          {set?.setCode ?? ""}
-                        </p>
-                        <p
-                          className="text-[12px] font-semibold leading-tight"
-                          style={{ color: textPrimary }}
-                        >
-                          {set?.name ?? ""}
-                        </p>
-                        {set?.cardCount !== undefined &&
-                          set?.cardCount !== null && (
-                            <p
-                              className="text-[10px] mt-0.5"
-                              style={{ color: textSecondary }}
-                            >
-                              0 / {set.cardCount} collected
-                            </p>
-                          )}
-                      </div>
-                    </button>
-                  </motion.div>
-                ))}
+            <div className="flex flex-col gap-2">
+              {rankings.map((sale, i) => (
+                <RankRow
+                  key={sale.id}
+                  sale={sale}
+                  rank={i + 1}
+                  isDark={isDark}
+                />
+              ))}
             </div>
           )}
         </motion.div>
-      ) : (
-        <RanksView isDark={isDark} cards={cards} sets={allSets} />
-      )}
+      </AnimatePresence>
     </div>
   );
 }

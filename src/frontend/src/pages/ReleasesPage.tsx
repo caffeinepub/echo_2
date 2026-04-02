@@ -1,4 +1,5 @@
 import { ArrowLeft, ShieldCheck, X } from "lucide-react";
+import type React from "react";
 import { useMemo, useState } from "react";
 import { useTheme } from "../ThemeContext";
 
@@ -383,6 +384,159 @@ const MOCK_SLABS: SlabItem[] = [
 
 // Seeded offers — depends on MOCK_SLABS, defined after it
 const SEEDED_OFFERS = seedOffers();
+
+// ─── Ticker transactions ──────────────────────────────────────────────────────
+
+interface TickerTransaction {
+  id: string;
+  cardName: string;
+  grade: number;
+  priceUsd: number;
+  soldAt: number;
+}
+
+const RECENT_TRANSACTIONS: TickerTransaction[] = [
+  {
+    id: "t1",
+    cardName: "Pikachu SAR",
+    grade: 10,
+    priceUsd: 1240,
+    soldAt: NOW - DAY * 0.2,
+  },
+  {
+    id: "t2",
+    cardName: "Charizard EX",
+    grade: 10,
+    priceUsd: 2100,
+    soldAt: NOW - DAY * 0.5,
+  },
+  {
+    id: "t3",
+    cardName: "Gengar Holo",
+    grade: 9,
+    priceUsd: 620,
+    soldAt: NOW - DAY * 1,
+  },
+  {
+    id: "t4",
+    cardName: "Umbreon VMax",
+    grade: 10,
+    priceUsd: 980,
+    soldAt: NOW - DAY * 1.5,
+  },
+  {
+    id: "t5",
+    cardName: "Mewtwo GX",
+    grade: 9,
+    priceUsd: 450,
+    soldAt: NOW - DAY * 2,
+  },
+  {
+    id: "t6",
+    cardName: "Rayquaza Holo",
+    grade: 10,
+    priceUsd: 1580,
+    soldAt: NOW - DAY * 2.5,
+  },
+  {
+    id: "t7",
+    cardName: "Lugia SAR",
+    grade: 10,
+    priceUsd: 3200,
+    soldAt: NOW - DAY * 3,
+  },
+  {
+    id: "t8",
+    cardName: "Blastoise Base",
+    grade: 8,
+    priceUsd: 320,
+    soldAt: NOW - DAY * 4,
+  },
+  {
+    id: "t9",
+    cardName: "Mew ex",
+    grade: 10,
+    priceUsd: 760,
+    soldAt: NOW - DAY * 5,
+  },
+  {
+    id: "t10",
+    cardName: "Eevee Promo",
+    grade: 9,
+    priceUsd: 185,
+    soldAt: NOW - DAY * 6,
+  },
+  {
+    id: "t11",
+    cardName: "Pikachu ex",
+    grade: 10,
+    priceUsd: 420,
+    soldAt: NOW - DAY * 7,
+  },
+  {
+    id: "t12",
+    cardName: "Sylveon VMax",
+    grade: 10,
+    priceUsd: 540,
+    soldAt: NOW - DAY * 8,
+  },
+  {
+    id: "t13",
+    cardName: "Darkrai EX",
+    grade: 9,
+    priceUsd: 290,
+    soldAt: NOW - DAY * 9,
+  },
+  {
+    id: "t14",
+    cardName: "Ho-Oh Legend",
+    grade: 8,
+    priceUsd: 210,
+    soldAt: NOW - DAY * 10,
+  },
+  {
+    id: "t15",
+    cardName: "Zacian V",
+    grade: 10,
+    priceUsd: 370,
+    soldAt: NOW - DAY * 11,
+  },
+  {
+    id: "t16",
+    cardName: "Charizard VSTAR",
+    grade: 10,
+    priceUsd: 1890,
+    soldAt: NOW - DAY * 12,
+  },
+  {
+    id: "t17",
+    cardName: "Espeon GX",
+    grade: 9,
+    priceUsd: 430,
+    soldAt: NOW - DAY * 13,
+  },
+  {
+    id: "t18",
+    cardName: "Alakazam Base",
+    grade: 7,
+    priceUsd: 120,
+    soldAt: NOW - DAY * 14,
+  },
+  {
+    id: "t19",
+    cardName: "Giratina VSTAR",
+    grade: 10,
+    priceUsd: 660,
+    soldAt: NOW - DAY * 16,
+  },
+  {
+    id: "t20",
+    cardName: "Umbreon SAR",
+    grade: 10,
+    priceUsd: 1120,
+    soldAt: NOW - DAY * 18,
+  },
+].sort((a, b) => b.soldAt - a.soldAt);
 
 // ─── Colour constants (detail sheet — unchanged dark palette) ────────────────
 
@@ -2342,6 +2496,124 @@ function LiveOffersModal({
   );
 }
 
+// ─── Ticker Bar ──────────────────────────────────────────────────────────────
+
+function TickerBar({
+  transactions,
+  isDark,
+}: { transactions: TickerTransaction[]; isDark: boolean }) {
+  const [paused, setPaused] = useState(false);
+
+  const items = [...transactions, ...transactions];
+
+  const mintColor = isDark ? "oklch(0.75 0.14 160)" : "#10b981";
+  const badgeBg = isDark
+    ? "oklch(0.70 0.18 160 / 0.20)"
+    : "rgba(16,185,129,0.15)";
+  const containerBg = isDark
+    ? "oklch(0.70 0.18 160 / 0.08)"
+    : "rgba(16,185,129,0.07)";
+  const containerBorder = isDark
+    ? "oklch(0.70 0.18 160 / 0.22)"
+    : "rgba(16,185,129,0.18)";
+  const textColor = isDark ? "oklch(0.72 0.06 160)" : "#6b7280";
+  const dimDot = isDark ? "oklch(0.38 0.06 160)" : "rgba(0,0,0,0.12)";
+  const sepDot = isDark ? "oklch(0.58 0.08 160)" : "#9ca3af";
+
+  return (
+    <>
+      <style>{`
+        @keyframes tickerScroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+      `}</style>
+      <div
+        style={{
+          height: 40,
+          borderRadius: 20,
+          background: containerBg,
+          border: `1px solid ${containerBorder}`,
+          overflow: "hidden",
+          marginBottom: 8,
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+        }}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onTouchStart={() => setPaused(true)}
+        onTouchEnd={() => setPaused(false)}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            whiteSpace: "nowrap",
+            animation: "tickerScroll 40s linear infinite",
+            animationPlayState: paused ? "paused" : "running",
+            willChange: "transform",
+          }}
+        >
+          {items.map((tx, idx) => (
+            <span
+              key={`${tx.id}-${idx}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "0 4px",
+                cursor: "default",
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLSpanElement).style.textShadow =
+                  "0 0 8px rgba(16,185,129,0.4)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLSpanElement).style.textShadow = "none";
+              }}
+            >
+              <span style={{ fontSize: 12, color: textColor, fontWeight: 500 }}>
+                {tx.cardName}
+              </span>
+              <span style={{ fontSize: 11, color: sepDot, margin: "0 2px" }}>
+                •
+              </span>
+              <span
+                style={{
+                  display: "inline-block",
+                  background: badgeBg,
+                  color: mintColor,
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.03em",
+                }}
+              >
+                TAG {tx.grade}
+              </span>
+              <span style={{ fontSize: 11, color: sepDot, margin: "0 2px" }}>
+                •
+              </span>
+              <span style={{ fontSize: 12, color: mintColor, fontWeight: 600 }}>
+                ${tx.priceUsd.toLocaleString()}
+              </span>
+              <span
+                style={{ fontSize: 12, color: dimDot, margin: "0 12px 0 8px" }}
+              >
+                •
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Sort filter bar ──────────────────────────────────────────────────────────
 
 type SortMode = "most_viewed" | "new" | "minted";
@@ -2411,79 +2683,91 @@ export function ReleasesPage(_props: ReleasesPageProps) {
             : "oklch(0.08 0.02 160 / 0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : C.border}`,
-          padding: "10px 16px",
+          padding: "8px 16px 10px",
           display: "flex",
-          alignItems: "center",
-          gap: 6,
+          flexDirection: "column",
+          gap: 0,
         }}
       >
+        <TickerBar
+          transactions={RECENT_TRANSACTIONS.slice(0, 25)}
+          isDark={isDark}
+        />
         <div
           style={{
             display: "flex",
-            background: isDark
-              ? "oklch(0.14 0.04 160 / 0.50)"
-              : "rgba(0,0,0,0.04)",
-            border: isDark
-              ? "1px solid oklch(0.55 0.12 160 / 0.18)"
-              : "1px solid rgba(0,0,0,0.08)",
-            borderRadius: 99,
-            padding: "3px",
-            gap: 2,
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          {SORT_LABELS.map(({ key, label }) => {
-            const isActive = sortMode === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSortMode(key)}
-                data-ocid={`releases.${key}.tab`}
-                style={{
-                  padding: "5px 14px",
-                  borderRadius: 99,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.02em",
-                  border:
-                    isDark && isActive
-                      ? "1px solid oklch(0.70 0.18 160 / 0.30)"
-                      : "none",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  background: isActive
-                    ? isDark
-                      ? "oklch(0.70 0.18 160 / 0.22)"
-                      : "#10b981"
-                    : isDark
-                      ? "rgba(255,255,255,0.06)"
-                      : "#f3f4f6",
-                  color: isActive
-                    ? isDark
-                      ? "oklch(0.85 0.10 160)"
-                      : "#ffffff"
-                    : isDark
-                      ? "oklch(0.58 0.08 160)"
-                      : "#6b7280",
-                  boxShadow: "none",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+          <div
+            style={{
+              display: "flex",
+              background: isDark
+                ? "oklch(0.14 0.04 160 / 0.50)"
+                : "rgba(0,0,0,0.04)",
+              border: isDark
+                ? "1px solid oklch(0.55 0.12 160 / 0.18)"
+                : "1px solid rgba(0,0,0,0.08)",
+              borderRadius: 99,
+              padding: "3px",
+              gap: 2,
+            }}
+          >
+            {SORT_LABELS.map(({ key, label }) => {
+              const isActive = sortMode === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSortMode(key)}
+                  data-ocid={`releases.${key}.tab`}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 99,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    border:
+                      isDark && isActive
+                        ? "1px solid oklch(0.70 0.18 160 / 0.30)"
+                        : "none",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    background: isActive
+                      ? isDark
+                        ? "oklch(0.70 0.18 160 / 0.22)"
+                        : "#10b981"
+                      : isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "#f3f4f6",
+                    color: isActive
+                      ? isDark
+                        ? "oklch(0.85 0.10 160)"
+                        : "#ffffff"
+                      : isDark
+                        ? "oklch(0.58 0.08 160)"
+                        : "#6b7280",
+                    boxShadow: "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
 
-        <span
-          style={{
-            marginLeft: "auto",
-            fontSize: 11,
-            color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
-            fontWeight: 500,
-          }}
-        >
-          {sorted.length} listings
-        </span>
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 11,
+              color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
+              fontWeight: 500,
+            }}
+          >
+            {sorted.length} listings
+          </span>
+        </div>
       </div>
 
       {/* Feed */}
