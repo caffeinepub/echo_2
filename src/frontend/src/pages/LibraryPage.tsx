@@ -1,9 +1,11 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
+import { MintMomentModal } from "../components/MintMomentModal";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
   onBrowseReleases?: () => void;
+  onCaptureMoment?: () => void;
 }
 
 type PackState = "idle" | "opening" | "revealed";
@@ -367,26 +369,21 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
   );
 }
 
-export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
+export function LibraryPage({
+  onBrowseReleases,
+  onCaptureMoment,
+}: LibraryPageProps) {
   const [packState, setPackState] = useState<PackState>("idle");
   const [currentCollectible, setCurrentCollectible] =
     useState<Collectible | null>(null);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
   const [isButtonActive, setIsButtonActive] = useState(false);
   const [isAltButtonHovered, setIsAltButtonHovered] = useState(false);
+  const [showMintModal, setShowMintModal] = useState(false);
 
   const pickRandomCollectible = useCallback((): Collectible => {
     return COLLECTIBLES[Math.floor(Math.random() * COLLECTIBLES.length)];
   }, []);
-
-  function handleBuyPack() {
-    setPackState("opening");
-    const picked = pickRandomCollectible();
-    setTimeout(() => {
-      setCurrentCollectible(picked);
-      setPackState("revealed");
-    }, 300);
-  }
 
   function handleOpenAnother() {
     setPackState("idle");
@@ -401,6 +398,16 @@ export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
       setCurrentCollectible(null);
     }
   }
+
+  // pickRandomCollectible used in revealed flow when opening another
+  const handleRevealRandom = useCallback(() => {
+    setPackState("opening");
+    const picked = pickRandomCollectible();
+    setTimeout(() => {
+      setCurrentCollectible(picked);
+      setPackState("revealed");
+    }, 300);
+  }, [pickRandomCollectible]);
 
   const primaryButtonStyle = {
     ...BUTTON_BASE,
@@ -465,7 +472,7 @@ export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
         }}
       >
         <AnimatePresence mode="wait">
-          {/* IDLE — pack card + buy button */}
+          {/* IDLE — pack card + mint moment button */}
           {packState === "idle" && (
             <motion.div
               key="pack"
@@ -493,7 +500,7 @@ export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
                 Supply remaining: 50,000
               </p>
 
-              {/* Buy Pack button */}
+              {/* Mint Moment button */}
               <button
                 type="button"
                 data-ocid="library.primary_button"
@@ -505,9 +512,9 @@ export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
                 }}
                 onMouseDown={() => setIsButtonActive(true)}
                 onMouseUp={() => setIsButtonActive(false)}
-                onClick={handleBuyPack}
+                onClick={() => setShowMintModal(true)}
               >
-                Buy Pack
+                Mint Moment
               </button>
             </motion.div>
           )}
@@ -585,6 +592,20 @@ export function LibraryPage({ onBrowseReleases }: LibraryPageProps) {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Mint Moment Modal */}
+      <MintMomentModal
+        open={showMintModal}
+        onClose={() => setShowMintModal(false)}
+        onConfirm={() => {
+          setShowMintModal(false);
+          onCaptureMoment?.();
+          // If no navigation handler, fall back to the pack reveal experience
+          if (!onCaptureMoment) {
+            handleRevealRandom();
+          }
+        }}
+      />
     </div>
   );
 }

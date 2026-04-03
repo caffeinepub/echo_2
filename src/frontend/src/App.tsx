@@ -7,6 +7,7 @@ import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
+import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CardDetailPage } from "./pages/CardDetailPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ManageCatalogPage } from "./pages/ManageCatalogPage";
@@ -23,7 +24,8 @@ type View =
   | { type: "market-detail"; id: string }
   | { type: "card-detail"; id: string }
   | { type: "upload" }
-  | { type: "admin" };
+  | { type: "admin" }
+  | { type: "capture-moment" };
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
@@ -53,6 +55,10 @@ function AppContent() {
     setView({ type: "market-detail", id });
   }
 
+  function handleCaptureMoment() {
+    setView({ type: "capture-moment" });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
@@ -66,6 +72,7 @@ function AppContent() {
         {view.type === "tab" && view.tab === "library" && (
           <LibraryPage
             onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
+            onCaptureMoment={handleCaptureMoment}
           />
         )}
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
@@ -120,6 +127,11 @@ function AppContent() {
         )}
         {view.type === "admin" && (
           <ManageCatalogPage
+            onBack={() => setView({ type: "tab", tab: "library" })}
+          />
+        )}
+        {view.type === "capture-moment" && (
+          <CaptureMomentPage
             onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}

@@ -1,49 +1,34 @@
-# Minty Pack Hero Card Enhancement
+# Minty — Mint Moment Flow
 
 ## Current State
-The LibraryPage.tsx has a `PackCard` component — a plain white rounded card with:
-- Top label "MINTY PACK"
-- Divider line
-- Small 80x80 SVG icon placeholder inside a gray rounded square
-- Title "Minty Pack"
-- Subtitle "Contains 1 collectible"
-- Price "$1 per pack"
-- Below the card: "Supply remaining: 50,000" and "Buy Pack" button
-
-The card is entirely static, no animation, no imagery.
+The LibraryPage has a "Buy Pack" button that directly triggers the pack opening animation (handleBuyPack). No modal or minting concept exists yet. App.tsx manages view state as a union type; all page routing is done via setView.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Background image (`/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png`) filling the large card with cover sizing, frosted white overlay, and top-to-bottom white gradient for readability
-- Product image (`/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png`) inside the center product pedestal container
-- CSS keyframe animations: floating Y-axis (4–8px), slow 3D Y rotation (−7° to 7°), slight X tilt (2–4°), slow glow pulse
-- Rare slow light sweep animation across the pack surface (every ~12s)
-- Entry animation: fade in + upward rise on mount, transitioning into idle float
-- Hover/tap interaction: scale 1.02 + slightly intensified glow
-- `prefers-reduced-motion` media query that disables rotation/float but preserves layout
-- Soft ambient mint-white bloom glow behind the pack
-- Subtle luminous edge on the product pedestal
-- Soft drop shadow on the large card
+- `MintMomentModal` component: mobile-first modal that slides up with fade-in animation, explains the minting process
+  - Title: "Mint a Moment"
+  - Description paragraph
+  - Details bullet list (9 photo cards, 1 video card, 5 packs, etc.)
+  - Mint price: $1.00
+  - Process steps (1–4, visual numbered list)
+  - Payment pills: USDC (default selected), BTC, ETH, SOL
+  - Helper text for non-USDC currencies
+  - Slide-to-Start-Mint control (custom draggable thumb on mint track, completes at ~90%)
+  - Close button (X) top-right
+- `CaptureMomentPage` component: new page shown after slider completes
+  - Basic placeholder UI with back button and title "Capture Moment"
+- New view type `{ type: "capture-moment" }` in App.tsx
 
 ### Modify
-- `PackCard` component: replace SVG placeholder with image-based product pedestal + animated pack image
-- Large card background: replace solid `#FAFAF8` with background image + overlays
-- Product container: styled as soft glass pedestal (translucent off-white, inner highlight, mint-white border, shadow underneath)
-- Text readability: add subtle text shadows where needed over the background image
+- `LibraryPage`: rename "Buy Pack" button text to "Mint Moment"; on click, open MintMomentModal instead of calling handleBuyPack directly
+- `App.tsx`: add `capture-moment` view type, render CaptureMomentPage when active; pass handler to LibraryPage
 
 ### Remove
-- SVG icon placeholder inside the pack container
-- Solid flat card background (replaced by image + overlay)
+- Nothing removed
 
 ## Implementation Plan
-1. Add CSS keyframe animations to `index.css`: `packFloat`, `packRotate`, `glowPulse`, `lightSweep`
-2. Rewrite `PackCard` in `LibraryPage.tsx`:
-   - Large card outer div: background image + frosted white overlay + gradient overlay
-   - Center product container: glass pedestal styling
-   - Pack image: object-fit contain, 75% scale, bloom glow via box-shadow, animated with float + 3D rotate
-   - Light sweep overlay pseudo-element or absolutely positioned div
-   - Entry animation via motion/react initial/animate
-   - Hover state managed with useState for intensified glow + scale
-3. Respect `prefers-reduced-motion` via CSS media query on animation classes
-4. All text preserved exactly, with `text-shadow` for readability over background image
+1. Create `src/frontend/src/components/MintMomentModal.tsx` with all modal content and slide control
+2. Create `src/frontend/src/pages/CaptureMomentPage.tsx` as a placeholder page
+3. Update `LibraryPage.tsx` to rename button and open modal
+4. Update `App.tsx` to add capture-moment view type and pass navigation handler down
