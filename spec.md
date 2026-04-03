@@ -1,27 +1,30 @@
-# Minty
+# Minty — Pack Opening Interface
 
 ## Current State
-ReleasesPage.tsx has a filter bar (Most Viewed / New / Minted) followed by a feed of slab listing cards. No leaderboard component exists above the filters.
+The Library tab (`LibraryPage.tsx`) shows a set collection manager: empty state, a plus button to add sets, a modal to select sets, and a set detail view. It uses dark Minty styling with mint green accents.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `TopVolumeLeaderboard` component inline in ReleasesPage.tsx
-- 10 mock leaderboard entries with: id, cardName, setName, imageUrl, totalVolumeUsd, transactionCount
-- Horizontal scroll container with scroll-snap, placed above the sticky filter bar
-- Each tile (~140px wide): card image, rank badge (#1–#10) top-left, volume label, sales count
-- Hover: subtle mint accent glow
-- Tap/click navigates to card detail (opens SlabDetailSheet with matching slab or mock data)
+- New `PackOpeningPage.tsx` component replacing LibraryPage entirely
+- Three states managed internally: `idle` (pack shown), `opening` (transition), `revealed` (card shown)
+- Pack card UI: large centered card with soft off-white background (#F7F6F2), rounded corners, subtle shadow, centered text ("Minty Pack", "Contains 1 collectible", "$1 per pack"), supply remaining text below
+- Buy Pack button: rounded rectangle, dark text (#111111) on soft gray background (#E8E8E6), no gradients, no glow
+- Transition animation: screen dims slightly, pack slides/fades out, collectible card slides in from right to center (0.6–1s, smooth easing, CSS/framer-motion)
+- Revealed card UI: large centered card with off-white background, collectible name and rarity below (e.g. "Mint Chip" / "Common")
+- Two post-reveal buttons: "Open Another" (resets to idle) and "View Library" (placeholder/navigates)
+- Light background forced for this page: #F7F6F2 warm white, text #111111, secondary text #6B6B6B, accent #E8E8E6
+- Mock collectibles pool (5–8 items) with name + rarity for random reveal
 
 ### Modify
-- ReleasesPage render: insert `<TopVolumeLeaderboard>` above the sticky filter bar div
+- `App.tsx`: replace `LibraryPage` import/usage with `PackOpeningPage`; keep same `onBrowseReleases` prop for "View Library" button
+- Library tab label in BottomNav stays as-is ("Library")
 
 ### Remove
-- Nothing
+- All set management logic (AVAILABLE_SETS, AddSetModal, SetCard, SetDetailView) from LibraryPage — the entire file is replaced
 
 ## Implementation Plan
-1. Define `TopVolumeEntry` interface and `TOP_VOLUME_MOCK` array (10 entries, volume desc)
-2. Build `TopVolumeLeaderboard` functional component with horizontal scroll snap
-3. Style tiles: 140px wide, white bg, rounded corners, rank badge, volume/sales text, mint glow on hover
-4. Wire tile click to open the existing `SlabDetailSheet` (match by id or fall back to first slab)
-5. Insert component above filter bar in `ReleasesPage`
+1. Create `src/frontend/src/pages/PackOpeningPage.tsx` with three states (idle/opening/revealed), mock collectibles pool, animations using framer-motion, and the exact color scheme specified (#F7F6F2 bg, #111111 text, #6B6B6B secondary, #E8E8E6 accent)
+2. Update `App.tsx` to import and render `PackOpeningPage` instead of `LibraryPage` for the library tab
+3. Keep `LibraryPage.tsx` file but it will no longer be rendered (or delete and remove import)
+4. Validate with typecheck + build
