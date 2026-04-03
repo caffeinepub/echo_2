@@ -5,6 +5,10 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
+import {
+  MomentDraftProvider,
+  useMomentDraft,
+} from "./context/MomentDraftContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
@@ -30,6 +34,7 @@ type View =
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
+  const { startDraft } = useMomentDraft();
 
   // Seed mock data once on mount (idempotent)
   useEffect(() => {
@@ -56,6 +61,7 @@ function AppContent() {
   }
 
   function handleCaptureMoment() {
+    startDraft(); // creates draft if none exists (idempotent)
     setView({ type: "capture-moment" });
   }
 
@@ -148,7 +154,9 @@ export default function App() {
       <InternetIdentityProvider>
         <WalletProvider>
           <AdminReleasesProvider>
-            <AppContent />
+            <MomentDraftProvider>
+              <AppContent />
+            </MomentDraftProvider>
           </AdminReleasesProvider>
         </WalletProvider>
       </InternetIdentityProvider>

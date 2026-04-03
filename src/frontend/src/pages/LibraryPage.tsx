@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
+import { useMomentDraft } from "../context/MomentDraftContext";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -369,6 +370,140 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
   );
 }
 
+// ── Locked state shown when a draft is in progress ───────────────────────────
+function DraftLockedState({ onFinish }: { onFinish: () => void }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
+  const { activeDraft } = useMomentDraft();
+
+  const photoCount = activeDraft?.photos.length ?? 0;
+  const hasVideo = activeDraft?.video !== null;
+
+  const mintButtonStyle = {
+    ...BUTTON_BASE,
+    background: isActive
+      ? "linear-gradient(160deg, #28a07c, #1e8a68)"
+      : isHovered
+        ? "linear-gradient(160deg, #2eaa88, #259474)"
+        : "linear-gradient(160deg, #34A884, #2a9070)",
+    color: "#ffffff",
+    boxShadow: isHovered
+      ? "0 4px 20px rgba(52,168,132,0.38), 0 1px 6px rgba(52,168,132,0.25), inset 0 1px 0 rgba(255,255,255,0.20)"
+      : "0 2px 12px rgba(52,168,132,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
+    transform: isActive ? "scale(0.97)" : "scale(1)",
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        width: "280px",
+      }}
+    >
+      {/* Status message box */}
+      <div
+        data-ocid="library.loading_state"
+        style={{
+          background: "rgba(52,168,132,0.06)",
+          border: "1px solid rgba(52,168,132,0.18)",
+          borderRadius: "14px",
+          padding: "16px 20px",
+          width: "100%",
+          marginBottom: "20px",
+          textAlign: "center",
+        }}
+      >
+        {/* Soft pulsing dot */}
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            background: "rgba(52,168,132,0.75)",
+            margin: "0 auto 12px",
+            animation: "draftDotPulse 2s ease-in-out infinite",
+          }}
+        />
+        <p
+          style={{
+            fontSize: "14px",
+            fontWeight: 500,
+            color: "#2a4a3a",
+            margin: "0 0 6px",
+            lineHeight: 1.4,
+          }}
+        >
+          Your Moment is in progress.
+        </p>
+        <p
+          style={{
+            fontSize: "13px",
+            fontWeight: 400,
+            color: "#5a7a6a",
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          Complete capture and print to unlock your next Moment.
+        </p>
+
+        {/* Progress summary */}
+        <div
+          style={{
+            marginTop: "12px",
+            paddingTop: "12px",
+            borderTop: "1px solid rgba(52,168,132,0.12)",
+            display: "flex",
+            justifyContent: "center",
+            gap: "16px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "12px",
+              color: photoCount === 9 ? "rgba(52,168,132,1)" : "#7a9a8a",
+              fontWeight: photoCount === 9 ? 600 : 400,
+            }}
+          >
+            {photoCount}/9 photos
+          </span>
+          <span
+            style={{
+              fontSize: "12px",
+              color: hasVideo ? "rgba(52,168,132,1)" : "#7a9a8a",
+              fontWeight: hasVideo ? 600 : 400,
+            }}
+          >
+            {hasVideo ? "1" : "0"}/1 video
+          </span>
+        </div>
+      </div>
+
+      {/* Finish Current Moment button */}
+      <button
+        type="button"
+        data-ocid="library.primary_button"
+        style={mintButtonStyle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => {
+          setIsHovered(false);
+          setIsActive(false);
+        }}
+        onMouseDown={() => setIsActive(true)}
+        onMouseUp={() => setIsActive(false)}
+        onClick={onFinish}
+      >
+        Finish Current Moment
+      </button>
+    </motion.div>
+  );
+}
+
 export function LibraryPage({
   onBrowseReleases,
   onCaptureMoment,
@@ -380,6 +515,23 @@ export function LibraryPage({
   const [isButtonActive, setIsButtonActive] = useState(false);
   const [isAltButtonHovered, setIsAltButtonHovered] = useState(false);
   const [showMintModal, setShowMintModal] = useState(false);
+
+  const { hasDraft, startDraft } = useMomentDraft();
+
+  // Inject pulse animation once
+  useEffect(() => {
+    const id = "draft-dot-pulse-style";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes draftDotPulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50%       { opacity: 1;   transform: scale(1.25); }
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   const pickRandomCollectible = useCallback((): Collectible => {
     return COLLECTIBLES[Math.floor(Math.random() * COLLECTIBLES.length)];
@@ -472,8 +624,28 @@ export function LibraryPage({
         }}
       >
         <AnimatePresence mode="wait">
-          {/* IDLE — pack card + mint moment button */}
-          {packState === "idle" && (
+          {/* LOCKED STATE — draft in progress */}
+          {hasDraft && packState === "idle" && (
+            <motion.div
+              key="locked"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <PackCard />
+              <div style={{ height: "20px" }} />
+              <DraftLockedState onFinish={() => onCaptureMoment?.()} />
+            </motion.div>
+          )}
+
+          {/* IDLE — normal pack card + mint moment button */}
+          {!hasDraft && packState === "idle" && (
             <motion.div
               key="pack"
               initial={{ opacity: 0, y: 12 }}
@@ -593,19 +765,22 @@ export function LibraryPage({
         </AnimatePresence>
       </div>
 
-      {/* Mint Moment Modal */}
-      <MintMomentModal
-        open={showMintModal}
-        onClose={() => setShowMintModal(false)}
-        onConfirm={() => {
-          setShowMintModal(false);
-          onCaptureMoment?.();
-          // If no navigation handler, fall back to the pack reveal experience
-          if (!onCaptureMoment) {
-            handleRevealRandom();
-          }
-        }}
-      />
+      {/* Mint Moment Modal — only shown when no active draft */}
+      {!hasDraft && (
+        <MintMomentModal
+          open={showMintModal}
+          onClose={() => setShowMintModal(false)}
+          onConfirm={() => {
+            setShowMintModal(false);
+            startDraft();
+            onCaptureMoment?.();
+            // If no navigation handler, fall back to the pack reveal experience
+            if (!onCaptureMoment) {
+              handleRevealRandom();
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
