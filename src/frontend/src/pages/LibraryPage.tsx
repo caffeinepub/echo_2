@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -31,12 +31,14 @@ const RARITY_COLOR: Record<string, string> = {
   "Ultra Rare": "#C9A84C",
 };
 
-const CARD_STYLE = {
+const CARD_OUTER_STYLE = {
   width: "280px",
-  background: "#FAFAF8",
   border: "1px solid rgba(0,0,0,0.06)",
   borderRadius: "20px",
-  boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+  boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
+  overflow: "hidden",
+  position: "relative" as const,
+  background: "none",
 } as const;
 
 const BUTTON_BASE = {
@@ -55,10 +57,59 @@ const BUTTON_BASE = {
 } as const;
 
 function PackCard() {
+  const [isHovered, setIsHovered] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
-    <div style={CARD_STYLE}>
+    <div style={CARD_OUTER_STYLE}>
+      {/* Background image layer — muted/desaturated */}
       <div
         style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "url('/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "saturate(0.65) contrast(0.88)",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Frosted white gradient overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.68) 100%)",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Slow card bg shimmer — rare sweep */}
+      <div
+        className="card-bg-shimmer"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 2,
+          pointerEvents: "none",
+          borderRadius: "20px",
+          overflow: "hidden",
+        }}
+      />
+
+      {/* Content layer */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 3,
           padding: "44px 32px",
           display: "flex",
           flexDirection: "column",
@@ -71,9 +122,10 @@ function PackCard() {
           style={{
             fontSize: "11px",
             letterSpacing: "0.14em",
-            color: "#6B6B6B",
+            color: "#4a5a52",
             fontWeight: 500,
             textTransform: "uppercase",
+            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
           }}
         >
           MINTY PACK
@@ -84,68 +136,89 @@ function PackCard() {
           style={{
             width: "32px",
             height: "1px",
-            background: "rgba(0,0,0,0.08)",
+            background: "rgba(0,0,0,0.10)",
             margin: "16px 0",
           }}
         />
 
-        {/* Pack icon placeholder */}
+        {/* Glass pedestal container */}
         <div
           style={{
-            width: "80px",
-            height: "80px",
-            borderRadius: "16px",
-            background: "rgba(0,0,0,0.04)",
+            position: "relative",
+            width: "120px",
+            height: "120px",
+            borderRadius: "20px",
+            background: "rgba(255,255,255,0.72)",
+            backdropFilter: "blur(12px) saturate(1.2)",
+            WebkitBackdropFilter: "blur(12px) saturate(1.2)",
+            border: "1px solid rgba(200,245,230,0.6)",
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05)",
+            outline: "1px solid rgba(200,245,230,0.3)",
+            filter: "drop-shadow(0 0 18px rgba(120,230,190,0.25))",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginBottom: "24px",
+            overflow: "hidden",
           }}
         >
-          <svg
-            width="36"
-            height="36"
-            viewBox="0 0 36 36"
-            fill="none"
-            aria-hidden="true"
+          {/* Pack image with float + 3D animate */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              opacity: mounted ? 1 : 0,
+              transform: mounted ? "translateY(0)" : "translateY(16px)",
+              transition: "opacity 0.6s ease, transform 0.6s ease",
+            }}
           >
-            <rect
-              x="6"
-              y="4"
-              width="24"
-              height="28"
-              rx="4"
-              stroke="rgba(0,0,0,0.15)"
-              strokeWidth="1.5"
-              fill="none"
+            <img
+              src="/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png"
+              alt="Minty Pack"
+              className={`pack-hero-animate${isHovered ? " pack-hero-hover" : ""}`}
+              style={{
+                width: "75%",
+                height: "75%",
+                objectFit: "contain",
+                display: "block",
+                filter:
+                  "drop-shadow(0 0 12px rgba(150,240,200,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))",
+              }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+              onTouchStart={() => setIsHovered(true)}
+              onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
             />
-            <rect
-              x="6"
-              y="4"
-              width="24"
-              height="10"
-              rx="4"
-              fill="rgba(0,0,0,0.06)"
-            />
-            <line
-              x1="11"
-              y1="20"
-              x2="25"
-              y2="20"
-              stroke="rgba(0,0,0,0.12)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-            <line
-              x1="11"
-              y1="25"
-              x2="20"
-              y2="25"
-              stroke="rgba(0,0,0,0.08)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          </div>
+
+          {/* Ambient mint glow behind pack */}
+          <div
+            className="pack-glow-pulse"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(140,240,200,0.22) 0%, transparent 70%)",
+              pointerEvents: "none",
+              borderRadius: "20px",
+            }}
+          />
+
+          {/* Light sweep overlay */}
+          <div
+            className="pack-light-sweep"
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "20px",
+              overflow: "hidden",
+              pointerEvents: "none",
+            }}
+          />
         </div>
 
         {/* Main name */}
@@ -157,6 +230,7 @@ function PackCard() {
             letterSpacing: "0.02em",
             margin: 0,
             textAlign: "center",
+            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
           }}
         >
           Minty Pack
@@ -166,9 +240,10 @@ function PackCard() {
         <p
           style={{
             fontSize: "13px",
-            color: "#6B6B6B",
+            color: "#4a5a52",
             margin: "8px 0 0",
             textAlign: "center",
+            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
           }}
         >
           Contains 1 collectible
@@ -182,6 +257,7 @@ function PackCard() {
             color: "#111111",
             margin: "8px 0 0",
             textAlign: "center",
+            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
           }}
         >
           $1 per pack
@@ -195,7 +271,15 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
   const rarityColor = RARITY_COLOR[collectible.rarity] ?? "#9B9B9B";
 
   return (
-    <div style={CARD_STYLE}>
+    <div
+      style={{
+        width: "280px",
+        background: "#FAFAF8",
+        border: "1px solid rgba(0,0,0,0.06)",
+        borderRadius: "20px",
+        boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+      }}
+    >
       <div
         style={{
           padding: "44px 32px",

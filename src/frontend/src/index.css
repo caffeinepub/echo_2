@@ -599,3 +599,139 @@
   box-shadow: 0 2px 8px rgba(62, 207, 160, 0.2), inset 0 1px 0
     rgba(255, 255, 255, 0.2);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Pack Hero — premium animated product display
+   ───────────────────────────────────────────────────────────── */
+
+/* Slow 3D float + Y-axis rotation — luxury product render feel */
+@keyframes packHeroFloat {
+  0%,
+  100% {
+    transform: translateY(0px) rotateY(-7deg) rotateX(2deg);
+  }
+  50% {
+    transform: translateY(-7px) rotateY(7deg) rotateX(4deg);
+  }
+}
+
+/* Ambient mint glow behind pack — very low intensity breath */
+@keyframes packGlowPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+/* Rare foil light sweep — barely noticeable, elegant */
+@keyframes packLightSweep {
+  0%,
+  88% {
+    opacity: 0;
+    transform: translateX(-120%) skewX(-15deg);
+  }
+  90% {
+    opacity: 0.13;
+  }
+  96% {
+    opacity: 0;
+    transform: translateX(220%) skewX(-15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(220%) skewX(-15deg);
+  }
+}
+
+/* Card background subtle slow shimmer — very rare */
+@keyframes cardBgShimmer {
+  0%,
+  85% {
+    opacity: 0;
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  88% {
+    opacity: 0.06;
+  }
+  95% {
+    opacity: 0;
+    transform: translateX(200%) skewX(-12deg);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ── Pack hero image — idle floating animation ── */
+.pack-hero-animate {
+  animation: packHeroFloat 7s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: filter 0.3s ease;
+  display: block;
+}
+
+.pack-hero-animate:hover,
+.pack-hero-hover {
+  filter: drop-shadow(0 0 18px rgba(150, 240, 200, 0.6))
+    drop-shadow(0 2px 10px rgba(0, 0, 0, 0.14)) !important;
+}
+
+/* ── Ambient mint glow behind pack — breathing pulse ── */
+.pack-glow-pulse {
+  animation: packGlowPulse 4s ease-in-out infinite;
+}
+
+/* ── Rare foil light sweep across pack surface ── */
+.pack-light-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 60%
+  );
+  animation: packLightSweep 12s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Slow card background shimmer — even rarer ── */
+.card-bg-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 65%
+  );
+  animation: cardBgShimmer 18s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Reduced motion — disable all pack animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .pack-hero-animate {
+    animation: none !important;
+    transform: none !important;
+  }
+  .pack-glow-pulse {
+    animation: none !important;
+  }
+  .pack-light-sweep::after {
+    animation: none !important;
+    display: none;
+  }
+  .card-bg-shimmer::after {
+    animation: none !important;
+    display: none;
+  }
+}
