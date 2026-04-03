@@ -1,34 +1,46 @@
-# Minty — Mint Moment Flow
+# Minty — Mint Bubble Window
 
 ## Current State
-The LibraryPage has a "Buy Pack" button that directly triggers the pack opening animation (handleBuyPack). No modal or minting concept exists yet. App.tsx manages view state as a union type; all page routing is done via setView.
+The "Mint a Moment" button on LibraryPage opens `MintMomentModal`, which is a standard bottom-sheet slide-up panel (slides in from bottom, flat backdrop, no atmospheric effects).
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MintMomentModal` component: mobile-first modal that slides up with fade-in animation, explains the minting process
-  - Title: "Mint a Moment"
-  - Description paragraph
-  - Details bullet list (9 photo cards, 1 video card, 5 packs, etc.)
-  - Mint price: $1.00
-  - Process steps (1–4, visual numbered list)
-  - Payment pills: USDC (default selected), BTC, ETH, SOL
-  - Helper text for non-USDC currencies
-  - Slide-to-Start-Mint control (custom draggable thumb on mint track, completes at ~90%)
-  - Close button (X) top-right
-- `CaptureMomentPage` component: new page shown after slider completes
-  - Basic placeholder UI with back button and title "Capture Moment"
-- New view type `{ type: "capture-moment" }` in App.tsx
+- Immersive glassmorphism bubble window centered on screen (replaces bottom sheet)
+- Animated floating abstract particles/shapes behind the bubble at very low opacity
+- Glow breathing keyframe animation on the bubble border
+- Floating vertical drift animation on the bubble container
+- Scale-in entry animation (0.96 → 1) + fade
+- Atmospheric backdrop: darkened + blurred page, subtle floating abstract shapes
 
 ### Modify
-- `LibraryPage`: rename "Buy Pack" button text to "Mint Moment"; on click, open MintMomentModal instead of calling handleBuyPack directly
-- `App.tsx`: add `capture-moment` view type, render CaptureMomentPage when active; pass handler to LibraryPage
+- `MintMomentModal`: Replace bottom-sheet layout with a centered floating bubble window
+  - 32px border radius
+  - Translucent off-white glassmorphism surface (rgba ~255,255,255,0.72)
+  - Backdrop-filter blur on the bubble itself
+  - Soft mint ambient glow (box-shadow with mint color)
+  - Light gradient lighting overlay inside the bubble
+  - Smooth soft shadow
+  - Backdrop now darkened + blurred (backdrop-filter on overlay)
+  - Floating particles layer behind bubble
+  - Payment pill buttons: rounded pill style, selected has soft mint glow outline
+  - Same content structure and order preserved
 
 ### Remove
-- Nothing removed
+- Bottom-sheet slide-up animation (y: "100%" → 0)
+- Drag handle pill at top
+- Sheet-style border radius (24px top only)
 
 ## Implementation Plan
-1. Create `src/frontend/src/components/MintMomentModal.tsx` with all modal content and slide control
-2. Create `src/frontend/src/pages/CaptureMomentPage.tsx` as a placeholder page
-3. Update `LibraryPage.tsx` to rename button and open modal
-4. Update `App.tsx` to add capture-moment view type and pass navigation handler down
+1. Rewrite `MintMomentModal.tsx`:
+   - Centered modal layout (fixed, centered with flex)
+   - Glassmorphism surface: translucent white, backdrop-filter blur, 32px radius
+   - Mint ambient glow via box-shadow
+   - Entry animation: scale 0.96→1 + opacity fade
+   - Slow floating drift via CSS keyframe (translateY ±6px, 4s ease-in-out infinite)
+   - Glow breathing via box-shadow keyframe
+   - Particle layer: 6–8 soft abstract blobs at very low opacity, CSS animated
+   - Backdrop: dark overlay + backdrop-filter blur
+   - Scrollable interior content, max height 88vh
+   - Payment pills: full pill shape, selected has `box-shadow: 0 0 0 2px mint + soft glow`
+   - All existing content sections preserved in same order
