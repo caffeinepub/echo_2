@@ -138,7 +138,7 @@ export function PackOpeningOverlay({
   // Keep a ref for trackRef so updateKnob doesn't need it in deps
   const trackRefStable = trackRef;
 
-  const packImageUrl = pack.coverPhotoUrl || PACK_IMAGE;
+  const wrapperImageUrl = PACK_IMAGE;
 
   // Open the native dialog on mount
   useEffect(() => {
@@ -308,16 +308,48 @@ export function PackOpeningOverlay({
               flexShrink: 0,
             }}
           >
+            {/* Wrapper shell — full fill */}
             <img
-              src={packImageUrl}
+              src={wrapperImageUrl}
               alt="Sealed Pack"
               style={{
+                position: "absolute",
+                inset: 0,
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
+                zIndex: 0,
               }}
             />
+            {/* Cover art insert — centered label visible through wrapper window */}
+            {pack.coverPhotoUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1,
+                }}
+              >
+                <img
+                  src={pack.coverPhotoUrl}
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    width: "58%",
+                    height: "52%",
+                    objectFit: "cover",
+                    borderRadius: "6px",
+                    opacity: 0.88,
+                    display: "block",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.32)",
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Spacer */}
@@ -487,16 +519,48 @@ export function PackOpeningOverlay({
             flexShrink: 0,
           }}
         >
+          {/* Wrapper shell */}
           <img
-            src={packImageUrl}
+            src={wrapperImageUrl}
             alt="Sealed Pack"
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
               objectFit: "cover",
               display: "block",
+              zIndex: 0,
             }}
           />
+          {/* Cover art insert */}
+          {pack.coverPhotoUrl && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1,
+              }}
+            >
+              <img
+                src={pack.coverPhotoUrl}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  width: "58%",
+                  height: "52%",
+                  objectFit: "cover",
+                  borderRadius: "6px",
+                  opacity: 0.88,
+                  display: "block",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.32)",
+                }}
+              />
+            </div>
+          )}
           {/* Inner glow overlay */}
           <div
             style={{
@@ -505,6 +569,7 @@ export function PackOpeningOverlay({
               background:
                 "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.18), transparent 70%)",
               pointerEvents: "none",
+              zIndex: 2,
             }}
           />
         </div>
@@ -534,7 +599,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src={packImageUrl}
+              src={wrapperImageUrl}
               alt=""
               aria-hidden="true"
               style={{
@@ -562,7 +627,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src={packImageUrl}
+              src={wrapperImageUrl}
               alt=""
               aria-hidden="true"
               style={{
