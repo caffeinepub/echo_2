@@ -1,786 +1,1308 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useTheme } from "../ThemeContext";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const MOCK_OWNED_CARDS = [
+  {
+    id: "1",
+    name: "Pikachu ex",
+    editionNumber: "042/100",
+    rarity: "Ultra Rare",
+    setName: "Scarlet & Violet",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "2",
+    name: "Charizard",
+    editionNumber: "001/100",
+    rarity: "Rare",
+    setName: "Base Set",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "3",
+    name: "Gengar Holo",
+    editionNumber: "088/150",
+    rarity: "Rare",
+    setName: "Pokemon 151",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "4",
+    name: "Eevee Promo",
+    editionNumber: "007/050",
+    rarity: "Common",
+    setName: "Promo",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "5",
+    name: "Mewtwo V",
+    editionNumber: "023/100",
+    rarity: "Ultra Rare",
+    setName: "Scarlet & Violet",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "6",
+    name: "Blastoise",
+    editionNumber: "055/100",
+    rarity: "Rare",
+    setName: "Base Set",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+];
+
+const MOCK_OWNED_SETS = [
+  {
+    id: "1",
+    name: "Scarlet & Violet Base",
+    category: "Pokemon",
+    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
+    totalCards: 198,
+    collectedCards: 42,
+  },
+  {
+    id: "2",
+    name: "Base Set",
+    category: "Pokemon",
+    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
+    totalCards: 102,
+    collectedCards: 7,
+  },
+  {
+    id: "3",
+    name: "Pokemon 151",
+    category: "Pokemon",
+    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
+    totalCards: 165,
+    collectedCards: 88,
+  },
+];
+
+const MOCK_OWNED_MEDIA = [
+  {
+    id: "1",
+    type: "photo",
+    title: "Mint Sunrise",
+    price: 25,
+    imageUrl: "https://placehold.co/300x300/f0fdf4/059669?text=Photo",
+  },
+  {
+    id: "2",
+    type: "video",
+    title: "Opening Day",
+    price: 45,
+    imageUrl: "https://placehold.co/300x300/f0f9ff/3b82f6?text=Video",
+  },
+  {
+    id: "3",
+    type: "photo",
+    title: "Crystal Drop",
+    price: 15,
+    imageUrl: "https://placehold.co/300x300/f0fdf4/059669?text=Photo",
+  },
+  {
+    id: "4",
+    type: "photo",
+    title: "Sage Walk",
+    price: 20,
+    imageUrl: "https://placehold.co/300x300/f0fdf4/059669?text=Photo",
+  },
+];
+
+const MOCK_OWNED_LISTINGS = [
+  {
+    id: "1",
+    name: "Charizard TAG 10",
+    setName: "Base Set",
+    price: 2100,
+    currency: "USDC",
+    offerCount: 3,
+    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
+  },
+  {
+    id: "2",
+    name: "Pikachu SAR TAG 9",
+    setName: "Scarlet & Violet",
+    price: 420,
+    currency: "ETH",
+    offerCount: 1,
+    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
+  },
+];
+
+const MOCK_CREATED_SETS = [
+  {
+    id: "1",
+    name: "My First Moment",
+    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
+    assetCount: 10,
+    supply: 100,
+    sold: 34,
+    remaining: 66,
+    status: "Active",
+  },
+  {
+    id: "2",
+    name: "Summer Drop",
+    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
+    assetCount: 5,
+    supply: 50,
+    sold: 0,
+    remaining: 50,
+    status: "Draft",
+  },
+];
+
+const MOCK_CREATED_CARDS = [
+  {
+    id: "1",
+    name: "Golden Hour",
+    setName: "My First Moment",
+    editionNumber: "#001",
+    listingStatus: "Listed",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "2",
+    name: "Crystal Light",
+    setName: "My First Moment",
+    editionNumber: "#002",
+    listingStatus: "Unlisted",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "3",
+    name: "Mint Dew",
+    setName: "My First Moment",
+    editionNumber: "#003",
+    listingStatus: "Listed",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+  {
+    id: "4",
+    name: "Frosted Peak",
+    setName: "Summer Drop",
+    editionNumber: "#001",
+    listingStatus: "Unlisted",
+    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
+  },
+];
+
+const MOCK_CREATED_LISTINGS = [
+  {
+    id: "1",
+    name: "Golden Hour #001",
+    setName: "My First Moment",
+    price: 85,
+    currency: "USDC",
+    views: 312,
+    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
+  },
+  {
+    id: "2",
+    name: "Mint Dew #003",
+    setName: "My First Moment",
+    price: 60,
+    currency: "USDC",
+    views: 148,
+    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
+  },
+];
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ActiveTab = "collected" | "created";
+type FilterType = "all" | "sets" | "cards" | "media" | "listings";
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface LibraryPageProps {
-  onAlbumClick?: (albumId: string) => void;
+  onAlbumClick?: () => void;
   onBrowseReleases?: () => void;
   onCaptureMoment?: () => void;
 }
 
-type PackState = "idle" | "opening" | "revealed";
+// ─── Rarity Badge ─────────────────────────────────────────────────────────────
 
-interface Collectible {
-  name: string;
-  rarity: string;
-}
-
-const COLLECTIBLES: Collectible[] = [
-  { name: "Mint Chip", rarity: "Common" },
-  { name: "Glacier", rarity: "Rare" },
-  { name: "Sage Leaf", rarity: "Common" },
-  { name: "Arctic Bloom", rarity: "Uncommon" },
-  { name: "Frosted Peak", rarity: "Rare" },
-  { name: "Dew Drop", rarity: "Common" },
-  { name: "Crystal Mint", rarity: "Ultra Rare" },
-  { name: "Spearmint", rarity: "Uncommon" },
-];
-
-const RARITY_COLOR: Record<string, string> = {
-  Common: "#9B9B9B",
-  Uncommon: "#4A90A4",
-  Rare: "#7B6CF6",
-  "Ultra Rare": "#C9A84C",
-};
-
-const CARD_OUTER_STYLE = {
-  width: "280px",
-  border: "1px solid rgba(0,0,0,0.06)",
-  borderRadius: "20px",
-  boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
-  overflow: "hidden",
-  position: "relative" as const,
-  background: "none",
-} as const;
-
-const BUTTON_BASE = {
-  width: "280px",
-  height: "52px",
-  borderRadius: "14px",
-  fontSize: "15px",
-  fontWeight: 500,
-  letterSpacing: "0.02em",
-  border: "none",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  transition: "background 0.15s ease, transform 0.1s ease",
-} as const;
-
-function PackCard() {
-  const [isHovered, setIsHovered] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
+function RarityBadge({ rarity }: { rarity: string }) {
+  let bg = "#e5e7eb";
+  let color = "#6b7280";
+  if (rarity === "Rare") {
+    bg = "#dbeafe";
+    color = "#1d4ed8";
+  }
+  if (rarity === "Ultra Rare") {
+    bg = "#fef3c7";
+    color = "#b45309";
+  }
   return (
-    <div style={CARD_OUTER_STYLE}>
-      {/* Background image layer — muted/desaturated */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage:
-            "url('/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "saturate(0.65) contrast(0.88)",
-          zIndex: 0,
-        }}
-      />
-
-      {/* Frosted white gradient overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.68) 100%)",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Slow card bg shimmer — rare sweep */}
-      <div
-        className="card-bg-shimmer"
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 2,
-          pointerEvents: "none",
-          borderRadius: "20px",
-          overflow: "hidden",
-        }}
-      />
-
-      {/* Content layer */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 3,
-          padding: "44px 32px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "0",
-        }}
-      >
-        {/* Small top label */}
-        <span
-          style={{
-            fontSize: "11px",
-            letterSpacing: "0.14em",
-            color: "#4a5a52",
-            fontWeight: 500,
-            textTransform: "uppercase",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-          }}
-        >
-          MINTY PACK
-        </span>
-
-        {/* Divider */}
-        <div
-          style={{
-            width: "32px",
-            height: "1px",
-            background: "rgba(0,0,0,0.10)",
-            margin: "16px 0",
-          }}
-        />
-
-        {/* Glass pedestal container */}
-        <div
-          style={{
-            position: "relative",
-            width: "120px",
-            height: "120px",
-            borderRadius: "20px",
-            background: "rgba(255,255,255,0.72)",
-            backdropFilter: "blur(12px) saturate(1.2)",
-            WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-            border: "1px solid rgba(200,245,230,0.6)",
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05)",
-            outline: "1px solid rgba(200,245,230,0.3)",
-            filter: "drop-shadow(0 0 18px rgba(120,230,190,0.25))",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "24px",
-            overflow: "hidden",
-          }}
-        >
-          {/* Pack image with float + 3D animate */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 0.6s ease, transform 0.6s ease",
-            }}
-          >
-            <img
-              src="/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png"
-              alt="Minty Pack"
-              className={`pack-hero-animate${isHovered ? " pack-hero-hover" : ""}`}
-              style={{
-                width: "75%",
-                height: "75%",
-                objectFit: "contain",
-                display: "block",
-                filter:
-                  "drop-shadow(0 0 12px rgba(150,240,200,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))",
-              }}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              onTouchStart={() => setIsHovered(true)}
-              onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
-            />
-          </div>
-
-          {/* Ambient mint glow behind pack */}
-          <div
-            className="pack-glow-pulse"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(140,240,200,0.22) 0%, transparent 70%)",
-              pointerEvents: "none",
-              borderRadius: "20px",
-            }}
-          />
-
-          {/* Light sweep overlay */}
-          <div
-            className="pack-light-sweep"
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "20px",
-              overflow: "hidden",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
-
-        {/* Main name */}
-        <h2
-          style={{
-            fontSize: "22px",
-            fontWeight: 600,
-            color: "#111111",
-            letterSpacing: "0.02em",
-            margin: 0,
-            textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-          }}
-        >
-          Minty Pack
-        </h2>
-
-        {/* Sub text */}
-        <p
-          style={{
-            fontSize: "13px",
-            color: "#4a5a52",
-            margin: "8px 0 0",
-            textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-          }}
-        >
-          Contains 1 collectible
-        </p>
-
-        {/* Price */}
-        <p
-          style={{
-            fontSize: "15px",
-            fontWeight: 500,
-            color: "#111111",
-            margin: "8px 0 0",
-            textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-          }}
-        >
-          $1 per pack
-        </p>
-      </div>
-    </div>
+    <span
+      style={{
+        display: "inline-block",
+        background: bg,
+        color,
+        fontSize: "10px",
+        fontWeight: 600,
+        padding: "2px 7px",
+        borderRadius: "99px",
+        letterSpacing: "0.02em",
+        lineHeight: "1.5",
+      }}
+    >
+      {rarity}
+    </span>
   );
 }
 
-function RevealedCard({ collectible }: { collectible: Collectible }) {
-  const rarityColor = RARITY_COLOR[collectible.rarity] ?? "#9B9B9B";
+// ─── Section Header ───────────────────────────────────────────────────────────
 
+function SectionHeader({ label }: { label: string }) {
   return (
     <div
       style={{
-        width: "280px",
-        background: "#FAFAF8",
-        border: "1px solid rgba(0,0,0,0.06)",
-        borderRadius: "20px",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+        fontSize: "11px",
+        fontWeight: 600,
+        color: "#9ca3af",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        padding: "4px 16px 8px",
+        marginTop: "8px",
       }}
     >
-      <div
-        style={{
-          padding: "44px 32px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "0",
-        }}
-      >
-        {/* Thin accent line */}
-        <div
-          style={{
-            width: "40px",
-            height: "2px",
-            background: "rgba(52, 168, 132, 0.4)",
-            borderRadius: "1px",
-            marginBottom: "28px",
-          }}
-        />
-
-        {/* Collectible illustration placeholder */}
-        <div
-          style={{
-            width: "100px",
-            height: "100px",
-            borderRadius: "20px",
-            background: "rgba(0,0,0,0.04)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "28px",
-            border: "1px solid rgba(0,0,0,0.05)",
-          }}
-        >
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              cx="24"
-              cy="24"
-              r="16"
-              stroke="rgba(0,0,0,0.12)"
-              strokeWidth="1.5"
-              fill="rgba(52,168,132,0.08)"
-            />
-            <circle cx="24" cy="24" r="8" fill="rgba(52,168,132,0.18)" />
-            <circle cx="24" cy="24" r="3" fill="rgba(52,168,132,0.5)" />
-          </svg>
-        </div>
-
-        {/* Card name */}
-        <h2
-          style={{
-            fontSize: "20px",
-            fontWeight: 600,
-            color: "#111111",
-            letterSpacing: "0.01em",
-            margin: 0,
-            textAlign: "center",
-          }}
-        >
-          {collectible.name}
-        </h2>
-
-        {/* Rarity */}
-        <p
-          style={{
-            fontSize: "13px",
-            color: rarityColor,
-            letterSpacing: "0.10em",
-            textTransform: "uppercase",
-            fontWeight: 500,
-            margin: "10px 0 0",
-            textAlign: "center",
-          }}
-        >
-          {collectible.rarity}
-        </p>
-      </div>
+      {label}
     </div>
   );
 }
 
-// ── Locked state shown when a draft is in progress ───────────────────────────
-function DraftLockedState({ onFinish }: { onFinish: () => void }) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isActive, setIsActive] = useState(false);
-  const { activeDraft } = useMomentDraft();
+// ─── Collected: Cards Grid ────────────────────────────────────────────────────
 
-  const photoCount = activeDraft?.photos.length ?? 0;
-  const hasVideo = activeDraft?.video !== null;
-
-  const mintButtonStyle = {
-    ...BUTTON_BASE,
-    background: isActive
-      ? "linear-gradient(160deg, #28a07c, #1e8a68)"
-      : isHovered
-        ? "linear-gradient(160deg, #2eaa88, #259474)"
-        : "linear-gradient(160deg, #34A884, #2a9070)",
-    color: "#ffffff",
-    boxShadow: isHovered
-      ? "0 4px 20px rgba(52,168,132,0.38), 0 1px 6px rgba(52,168,132,0.25), inset 0 1px 0 rgba(255,255,255,0.20)"
-      : "0 2px 12px rgba(52,168,132,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
-    transform: isActive ? "scale(0.97)" : "scale(1)",
-  };
-
+function CollectedCardsGrid({ cards }: { cards: typeof MOCK_OWNED_CARDS }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+    <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        width: "280px",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "12px",
+        padding: "0 16px 16px",
       }}
     >
-      {/* Status message box */}
-      <div
-        data-ocid="library.loading_state"
-        style={{
-          background: "rgba(52,168,132,0.06)",
-          border: "1px solid rgba(52,168,132,0.18)",
-          borderRadius: "14px",
-          padding: "16px 20px",
-          width: "100%",
-          marginBottom: "20px",
-          textAlign: "center",
-        }}
-      >
-        {/* Soft pulsing dot */}
+      {cards.map((card) => (
         <div
+          key={card.id}
+          data-ocid="library.cards.item"
           style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background: "rgba(52,168,132,0.75)",
-            margin: "0 auto 12px",
-            animation: "draftDotPulse 2s ease-in-out infinite",
-          }}
-        />
-        <p
-          style={{
-            fontSize: "14px",
-            fontWeight: 500,
-            color: "#2a4a3a",
-            margin: "0 0 6px",
-            lineHeight: 1.4,
+            background: "#ffffff",
+            borderRadius: "14px",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+            overflow: "hidden",
+            cursor: "pointer",
           }}
         >
-          Your Moment is in progress.
-        </p>
-        <p
-          style={{
-            fontSize: "13px",
-            fontWeight: 400,
-            color: "#5a7a6a",
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
-          Complete capture and print to unlock your next Moment.
-        </p>
-
-        {/* Progress summary */}
-        <div
-          style={{
-            marginTop: "12px",
-            paddingTop: "12px",
-            borderTop: "1px solid rgba(52,168,132,0.12)",
-            display: "flex",
-            justifyContent: "center",
-            gap: "16px",
-          }}
-        >
-          <span
+          <img
+            src={card.imageUrl}
+            alt={card.name}
             style={{
-              fontSize: "12px",
-              color: photoCount === 9 ? "rgba(52,168,132,1)" : "#7a9a8a",
-              fontWeight: photoCount === 9 ? 600 : 400,
+              width: "100%",
+              aspectRatio: "3/4",
+              objectFit: "cover",
+              display: "block",
             }}
-          >
-            {photoCount}/9 photos
-          </span>
-          <span
-            style={{
-              fontSize: "12px",
-              color: hasVideo ? "rgba(52,168,132,1)" : "#7a9a8a",
-              fontWeight: hasVideo ? 600 : 400,
-            }}
-          >
-            {hasVideo ? "1" : "0"}/1 video
-          </span>
+          />
+          <div style={{ padding: "8px 10px 10px" }}>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#9ca3af",
+                marginBottom: "3px",
+              }}
+            >
+              #{card.editionNumber}
+            </div>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#111",
+                marginBottom: "5px",
+                lineHeight: "1.3",
+              }}
+            >
+              {card.name}
+            </div>
+            <RarityBadge rarity={card.rarity} />
+            <div
+              style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}
+            >
+              {card.setName}
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Finish Current Moment button */}
-      <button
-        type="button"
-        data-ocid="library.primary_button"
-        style={mintButtonStyle}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setIsActive(false);
-        }}
-        onMouseDown={() => setIsActive(true)}
-        onMouseUp={() => setIsActive(false)}
-        onClick={onFinish}
-      >
-        Finish Current Moment
-      </button>
-    </motion.div>
+      ))}
+    </div>
   );
 }
 
-export function LibraryPage({
-  onBrowseReleases,
-  onCaptureMoment,
-}: LibraryPageProps) {
-  const [packState, setPackState] = useState<PackState>("idle");
-  const [currentCollectible, setCurrentCollectible] =
-    useState<Collectible | null>(null);
-  const [isButtonHovered, setIsButtonHovered] = useState(false);
-  const [isButtonActive, setIsButtonActive] = useState(false);
-  const [isAltButtonHovered, setIsAltButtonHovered] = useState(false);
-  const [showMintModal, setShowMintModal] = useState(false);
+// ─── Collected: Sets List ─────────────────────────────────────────────────────
 
-  const { hasDraft, startDraft } = useMomentDraft();
+function CollectedSetsList({ sets }: { sets: typeof MOCK_OWNED_SETS }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {sets.map((set) => {
+        const pct = Math.round((set.collectedCards / set.totalCards) * 100);
+        return (
+          <div
+            key={set.id}
+            data-ocid="library.sets.item"
+            style={{
+              background: "#ffffff",
+              borderRadius: "14px",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+              padding: "12px",
+              cursor: "pointer",
+            }}
+          >
+            <div
+              style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}
+            >
+              <img
+                src={set.imageUrl}
+                alt={set.name}
+                style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "10px",
+                  objectFit: "cover",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    color: "#111",
+                    marginBottom: "3px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {set.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#059669",
+                    fontWeight: 500,
+                    marginBottom: "8px",
+                  }}
+                >
+                  {set.collectedCards}/{set.totalCards} collected
+                </div>
+                <div
+                  style={{
+                    height: "4px",
+                    borderRadius: "99px",
+                    background: "#e5e7eb",
+                    overflow: "hidden",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${pct}%`,
+                      background: "#10b981",
+                      borderRadius: "99px",
+                      transition: "width 0.4s ease",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 500,
+                    color: "#9ca3af",
+                    background: "#f3f4f6",
+                    padding: "2px 7px",
+                    borderRadius: "99px",
+                  }}
+                >
+                  {set.category}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
-  // Inject pulse animation once
-  useEffect(() => {
-    const id = "draft-dot-pulse-style";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = `
-      @keyframes draftDotPulse {
-        0%, 100% { opacity: 0.5; transform: scale(1); }
-        50%       { opacity: 1;   transform: scale(1.25); }
-      }
-    `;
-    document.head.appendChild(style);
-  }, []);
+// ─── Collected: Media Grid ────────────────────────────────────────────────────
 
-  const pickRandomCollectible = useCallback((): Collectible => {
-    return COLLECTIBLES[Math.floor(Math.random() * COLLECTIBLES.length)];
-  }, []);
+function CollectedMediaGrid({ media }: { media: typeof MOCK_OWNED_MEDIA }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "10px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {media.map((item) => (
+        <div
+          key={item.id}
+          data-ocid="library.media.item"
+          style={{
+            aspectRatio: "1",
+            borderRadius: "12px",
+            overflow: "hidden",
+            position: "relative",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          {/* Type badge */}
+          <div
+            style={{
+              position: "absolute",
+              top: "8px",
+              left: "8px",
+              background:
+                item.type === "video"
+                  ? "rgba(59,130,246,0.85)"
+                  : "rgba(16,185,129,0.85)",
+              color: "#fff",
+              fontSize: "10px",
+              fontWeight: 600,
+              padding: "2px 7px",
+              borderRadius: "99px",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            {item.type === "video" ? "Video" : "Photo"}
+          </div>
+          {/* Price overlay */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.55), transparent)",
+              padding: "20px 10px 8px",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
+            <span style={{ color: "#fff", fontSize: "13px", fontWeight: 600 }}>
+              ${item.price}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  function handleOpenAnother() {
-    setPackState("idle");
-    setCurrentCollectible(null);
+// ─── Collected: Listings List ─────────────────────────────────────────────────
+
+function CollectedListingsList({
+  listings,
+}: { listings: typeof MOCK_OWNED_LISTINGS }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {listings.map((listing) => (
+        <div
+          key={listing.id}
+          data-ocid="library.listings.item"
+          style={{
+            background: "#ffffff",
+            borderRadius: "14px",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+            padding: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <img
+            src={listing.imageUrl}
+            alt={listing.name}
+            style={{
+              width: "50px",
+              height: "50px",
+              borderRadius: "10px",
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "#111",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                marginBottom: "2px",
+              }}
+            >
+              {listing.name}
+            </div>
+            <div style={{ fontSize: "12px", color: "#9ca3af" }}>
+              {listing.setName}
+            </div>
+            <div style={{ marginTop: "4px" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  color: "#059669",
+                  background: "rgba(16,185,129,0.10)",
+                  border: "1px solid rgba(16,185,129,0.20)",
+                  padding: "2px 7px",
+                  borderRadius: "99px",
+                }}
+              >
+                {listing.offerCount} offer{listing.offerCount !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: "16px", fontWeight: 700, color: "#111" }}>
+              ${listing.price.toLocaleString()}
+            </div>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 500,
+                color: "#059669",
+                background: "rgba(16,185,129,0.08)",
+                padding: "2px 7px",
+                borderRadius: "99px",
+                marginTop: "3px",
+                display: "inline-block",
+              }}
+            >
+              {listing.currency}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Created: Sets List ───────────────────────────────────────────────────────
+
+function CreatedSetsList({ sets }: { sets: typeof MOCK_CREATED_SETS }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "16px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {sets.map((set) => (
+        <div
+          key={set.id}
+          data-ocid="library.created_sets.item"
+          style={{
+            background: "#ffffff",
+            borderRadius: "16px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src={set.imageUrl}
+            alt={set.name}
+            style={{
+              width: "100%",
+              aspectRatio: "16/9",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          <div style={{ padding: "14px 16px 16px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "10px",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    color: "#111",
+                    marginBottom: "3px",
+                  }}
+                >
+                  {set.name}
+                </div>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: "99px",
+                    background:
+                      set.status === "Active"
+                        ? "rgba(16,185,129,0.12)"
+                        : "#f3f4f6",
+                    color: set.status === "Active" ? "#059669" : "#6b7280",
+                    border:
+                      set.status === "Active"
+                        ? "1px solid rgba(16,185,129,0.25)"
+                        : "1px solid #e5e7eb",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {set.status}
+                </span>
+              </div>
+              <button
+                data-ocid="library.created_sets.edit_button"
+                type="button"
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  color: "#374151",
+                  background: "#f9fafb",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                }}
+              >
+                Manage
+              </button>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {[
+                { label: `${set.assetCount} assets`, mint: false },
+                { label: `${set.supply} editions`, mint: false },
+                { label: `${set.sold} sold`, mint: true },
+                { label: `${set.remaining} remaining`, mint: false },
+              ].map(({ label, mint }) => (
+                <span
+                  key={label}
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    padding: "3px 10px",
+                    borderRadius: "99px",
+                    background: mint ? "rgba(16,185,129,0.10)" : "#f3f4f6",
+                    color: mint ? "#059669" : "#6b7280",
+                    border: mint
+                      ? "1px solid rgba(16,185,129,0.20)"
+                      : "1px solid transparent",
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Created: Cards Grid ──────────────────────────────────────────────────────
+
+function CreatedCardsGrid({ cards }: { cards: typeof MOCK_CREATED_CARDS }) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "12px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {cards.map((card) => (
+        <div
+          key={card.id}
+          data-ocid="library.created_cards.item"
+          style={{
+            background: "#ffffff",
+            borderRadius: "14px",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+            overflow: "hidden",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={card.imageUrl}
+            alt={card.name}
+            style={{
+              width: "100%",
+              aspectRatio: "3/4",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          <div style={{ padding: "8px 10px 10px" }}>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#9ca3af",
+                marginBottom: "3px",
+              }}
+            >
+              {card.editionNumber}
+            </div>
+            <div
+              style={{
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#111",
+                marginBottom: "5px",
+                lineHeight: "1.3",
+              }}
+            >
+              {card.name}
+            </div>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                padding: "2px 7px",
+                borderRadius: "99px",
+                background:
+                  card.listingStatus === "Listed"
+                    ? "rgba(16,185,129,0.12)"
+                    : "#f3f4f6",
+                color: card.listingStatus === "Listed" ? "#059669" : "#6b7280",
+              }}
+            >
+              {card.listingStatus}
+            </span>
+            <div
+              style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}
+            >
+              {card.setName}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Created: Listings List ───────────────────────────────────────────────────
+
+function CreatedListingsList({
+  listings,
+}: { listings: typeof MOCK_CREATED_LISTINGS }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        padding: "0 16px 16px",
+      }}
+    >
+      {listings.map((listing) => (
+        <div
+          key={listing.id}
+          data-ocid="library.created_listings.item"
+          style={{
+            background: "#ffffff",
+            borderRadius: "14px",
+            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+            padding: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <img
+            src={listing.imageUrl}
+            alt={listing.name}
+            style={{
+              width: "50px",
+              height: "50px",
+              borderRadius: "10px",
+              objectFit: "cover",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "#111",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                marginBottom: "2px",
+              }}
+            >
+              {listing.name}
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#9ca3af",
+                marginBottom: "4px",
+              }}
+            >
+              {listing.setName}
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#9ca3af",
+              }}
+            >
+              {listing.views.toLocaleString()} views
+            </div>
+          </div>
+          <div
+            style={{
+              textAlign: "right",
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "6px",
+            }}
+          >
+            <div style={{ fontSize: "16px", fontWeight: 700, color: "#111" }}>
+              ${listing.price}
+            </div>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 500,
+                color: "#059669",
+                background: "rgba(16,185,129,0.08)",
+                padding: "2px 7px",
+                borderRadius: "99px",
+              }}
+            >
+              {listing.currency}
+            </span>
+            <button
+              data-ocid="library.created_listings.edit_button"
+              type="button"
+              style={{
+                fontSize: "12px",
+                fontWeight: 500,
+                color: "#374151",
+                background: "transparent",
+                border: "1px solid rgba(0,0,0,0.12)",
+                borderRadius: "99px",
+                padding: "4px 10px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Edit Listing
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Mint Moment Banner (Created tab) ─────────────────────────────────────────
+
+function MintMomentBanner({
+  hasDraft,
+  onMint,
+  onFinish,
+}: {
+  hasDraft: boolean;
+  onMint: () => void;
+  onFinish: () => void;
+}) {
+  if (hasDraft) {
+    return (
+      <div
+        style={{
+          background: "rgba(16,185,129,0.06)",
+          border: "1px solid rgba(16,185,129,0.15)",
+          borderRadius: "14px",
+          padding: "16px",
+          margin: "0 16px 16px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#059669",
+            marginBottom: "4px",
+          }}
+        >
+          Your Moment is in progress
+        </div>
+        <div
+          style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}
+        >
+          Complete capture and print to unlock your next Moment.
+        </div>
+        <button
+          data-ocid="library.finish_moment.button"
+          type="button"
+          onClick={onFinish}
+          style={{
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#059669",
+            background: "rgba(16,185,129,0.10)",
+            border: "1px solid rgba(16,185,129,0.25)",
+            borderRadius: "8px",
+            padding: "8px 16px",
+            cursor: "pointer",
+          }}
+        >
+          Finish Current Moment →
+        </button>
+      </div>
+    );
   }
 
-  function handleViewLibrary() {
-    if (onBrowseReleases) {
-      onBrowseReleases();
-    } else {
-      setPackState("idle");
-      setCurrentCollectible(null);
+  return (
+    <button
+      data-ocid="library.mint_moment.button"
+      type="button"
+      onClick={onMint}
+      style={{
+        display: "block",
+        width: "calc(100% - 32px)",
+        margin: "0 16px 16px",
+        background: "#111",
+        color: "#fff",
+        borderRadius: "12px",
+        fontSize: "14px",
+        fontWeight: 600,
+        padding: "13px 24px",
+        border: "none",
+        cursor: "pointer",
+        letterSpacing: "0.01em",
+        transition: "opacity 0.15s ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+      }}
+    >
+      ✦ Mint Moment
+    </button>
+  );
+}
+
+// ─── Main LibraryPage ─────────────────────────────────────────────────────────
+
+export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+  const { hasDraft, startDraft } = useMomentDraft();
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>("collected");
+  const [collectedFilter, setCollectedFilter] = useState<FilterType>("all");
+  const [createdFilter, setCreatedFilter] = useState<FilterType>("all");
+  const [showMintModal, setShowMintModal] = useState(false);
+
+  const pageBg = isLight ? "#F8F8F8" : "oklch(0.08 0.02 160)";
+  const _cardBg = isLight ? "#ffffff" : "oklch(0.12 0.04 160 / 0.97)";
+
+  const activeFilter =
+    activeTab === "collected" ? collectedFilter : createdFilter;
+  const setFilter =
+    activeTab === "collected" ? setCollectedFilter : setCreatedFilter;
+
+  const filterChips: { key: FilterType; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "sets", label: "Sets" },
+    { key: "cards", label: "Cards" },
+    { key: "media", label: "Media" },
+    { key: "listings", label: "Listings" },
+  ];
+
+  function handleMintClick() {
+    if (!hasDraft) {
+      setShowMintModal(true);
+    } else if (onCaptureMoment) {
+      onCaptureMoment();
     }
   }
 
-  // pickRandomCollectible used in revealed flow when opening another
-  const handleRevealRandom = useCallback(() => {
-    setPackState("opening");
-    const picked = pickRandomCollectible();
-    setTimeout(() => {
-      setCurrentCollectible(picked);
-      setPackState("revealed");
-    }, 300);
-  }, [pickRandomCollectible]);
+  function handleMintConfirm() {
+    startDraft();
+    setShowMintModal(false);
+    if (onCaptureMoment) onCaptureMoment();
+  }
 
-  const primaryButtonStyle = {
-    ...BUTTON_BASE,
-    background: isButtonActive
-      ? "#CCCAC8"
-      : isButtonHovered
-        ? "#DDDBD9"
-        : "#E8E8E6",
-    color: "#111111",
-    transform: isButtonActive ? "scale(0.98)" : "scale(1)",
-  };
+  // ─── Collected Content ───────────────────────────────────────────────────
 
-  const secondaryButtonStyle = {
-    ...BUTTON_BASE,
-    background: isAltButtonHovered ? "#E6E4E2" : "#F0EEEC",
-    color: "#6B6B6B",
-  };
+  function renderCollectedContent() {
+    const f = collectedFilter;
+    if (f === "sets") {
+      return <CollectedSetsList sets={MOCK_OWNED_SETS} />;
+    }
+    if (f === "cards") {
+      return <CollectedCardsGrid cards={MOCK_OWNED_CARDS} />;
+    }
+    if (f === "media") {
+      return <CollectedMediaGrid media={MOCK_OWNED_MEDIA} />;
+    }
+    if (f === "listings") {
+      return <CollectedListingsList listings={MOCK_OWNED_LISTINGS} />;
+    }
+    // All — stacked sections
+    return (
+      <>
+        <SectionHeader label="Sets" />
+        <CollectedSetsList sets={MOCK_OWNED_SETS} />
+        <SectionHeader label="Cards" />
+        <CollectedCardsGrid cards={MOCK_OWNED_CARDS} />
+        <SectionHeader label="Media" />
+        <CollectedMediaGrid media={MOCK_OWNED_MEDIA} />
+        <SectionHeader label="Listings" />
+        <CollectedListingsList listings={MOCK_OWNED_LISTINGS} />
+      </>
+    );
+  }
+
+  // ─── Created Content ─────────────────────────────────────────────────────
+
+  function renderCreatedContent() {
+    const f = createdFilter;
+    if (f === "sets") {
+      return <CreatedSetsList sets={MOCK_CREATED_SETS} />;
+    }
+    if (f === "cards") {
+      return <CreatedCardsGrid cards={MOCK_CREATED_CARDS} />;
+    }
+    if (f === "listings") {
+      return <CreatedListingsList listings={MOCK_CREATED_LISTINGS} />;
+    }
+    // All — stacked sections (no media for created)
+    return (
+      <>
+        <SectionHeader label="Sets" />
+        <CreatedSetsList sets={MOCK_CREATED_SETS} />
+        <SectionHeader label="Cards" />
+        <CreatedCardsGrid cards={MOCK_CREATED_CARDS} />
+        <SectionHeader label="Listings" />
+        <CreatedListingsList listings={MOCK_CREATED_LISTINGS} />
+      </>
+    );
+  }
 
   return (
     <div
       data-ocid="library.page"
       style={{
-        minHeight: "calc(100vh - 68px - 64px)",
-        background: "#F7F6F2",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 24px",
-        position: "relative",
+        minHeight: "100dvh",
+        background: pageBg,
+        paddingTop: 72,
+        paddingBottom: 88,
       }}
     >
-      {/* Dim overlay during opening transition */}
-      <AnimatePresence>
-        {packState === "opening" && (
+      {/* ── Segmented Toggle ── */}
+      <div
+        style={{
+          padding: "14px 16px 0",
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            background: isLight ? "#f3f4f6" : "rgba(255,255,255,0.08)",
+            borderRadius: "99px",
+            padding: "3px",
+            border: `1px solid ${isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.10)"}`,
+          }}
+        >
+          {(["collected", "created"] as ActiveTab[]).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              data-ocid={`library.${tab}.tab`}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: "7px 22px",
+                borderRadius: "99px",
+                fontSize: "14px",
+                fontWeight: activeTab === tab ? 600 : 500,
+                color: activeTab === tab ? "#111" : "#6b7280",
+                background:
+                  activeTab === tab
+                    ? isLight
+                      ? "#ffffff"
+                      : "rgba(255,255,255,0.12)"
+                    : "transparent",
+                boxShadow:
+                  activeTab === tab ? "0 1px 4px rgba(0,0,0,0.10)" : "none",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 0.18s ease",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Mint Moment Banner (Created tab only) ── */}
+      <AnimatePresence mode="wait">
+        {activeTab === "created" && (
           <motion.div
-            key="overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0,0,0,0.03)",
-              pointerEvents: "none",
-              zIndex: 0,
-            }}
-          />
+            key="mint-banner"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+            style={{ marginTop: "14px" }}
+          >
+            <MintMomentBanner
+              hasDraft={hasDraft}
+              onMint={handleMintClick}
+              onFinish={() => onCaptureMoment?.()}
+            />
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main content */}
+      {/* ── Filter Chips (sticky) ── */}
       <div
+        data-ocid="library.filter.tab"
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "0",
-          position: "relative",
-          zIndex: 1,
+          position: "sticky",
+          top: 56,
+          zIndex: 20,
+          background: isLight
+            ? "rgba(248,248,248,0.90)"
+            : "rgba(10,15,12,0.90)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)"}`,
+          marginTop: activeTab === "created" ? 0 : "14px",
         }}
       >
-        <AnimatePresence mode="wait">
-          {/* LOCKED STATE — draft in progress */}
-          {hasDraft && packState === "idle" && (
-            <motion.div
-              key="locked"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <PackCard />
-              <div style={{ height: "20px" }} />
-              <DraftLockedState onFinish={() => onCaptureMoment?.()} />
-            </motion.div>
-          )}
-
-          {/* IDLE — normal pack card + mint moment button */}
-          {!hasDraft && packState === "idle" && (
-            <motion.div
-              key="pack"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <PackCard />
-
-              {/* Supply text */}
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#9B9B9B",
-                  marginTop: "16px",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Supply remaining: 50,000
-              </p>
-
-              {/* Mint Moment button */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            padding: "10px 16px",
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling:
+              "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+          }}
+        >
+          {filterChips.map(({ key, label }) => {
+            const isActive = activeFilter === key;
+            return (
               <button
+                key={key}
+                onClick={() => setFilter(key)}
                 type="button"
-                data-ocid="library.primary_button"
-                style={{ ...primaryButtonStyle, marginTop: "32px" }}
-                onMouseEnter={() => setIsButtonHovered(true)}
-                onMouseLeave={() => {
-                  setIsButtonHovered(false);
-                  setIsButtonActive(false);
-                }}
-                onMouseDown={() => setIsButtonActive(true)}
-                onMouseUp={() => setIsButtonActive(false)}
-                onClick={() => setShowMintModal(true)}
-              >
-                Mint Moment
-              </button>
-            </motion.div>
-          )}
-
-          {/* OPENING — brief transition state */}
-          {packState === "opening" && (
-            <motion.div
-              key="opening"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              style={{
-                width: "280px",
-                height: "373px",
-                background: "#FAFAF8",
-                borderRadius: "20px",
-              }}
-            />
-          )}
-
-          {/* REVEALED — collectible card + action buttons */}
-          {packState === "revealed" && currentCollectible && (
-            <motion.div
-              key="revealed"
-              initial={{ opacity: 0, x: 60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -40 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <RevealedCard collectible={currentCollectible} />
-
-              {/* Action buttons */}
-              <div
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  marginTop: "28px",
-                  width: "280px",
+                  flexShrink: 0,
+                  padding: "6px 14px",
+                  borderRadius: "99px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: isActive ? "#059669" : "#6b7280",
+                  background: isActive
+                    ? "rgba(16,185,129,0.10)"
+                    : isLight
+                      ? "#f3f4f6"
+                      : "rgba(255,255,255,0.06)",
+                  border: isActive
+                    ? "1px solid rgba(16,185,129,0.30)"
+                    : "1px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  whiteSpace: "nowrap",
                 }}
               >
-                <button
-                  type="button"
-                  data-ocid="library.primary_button"
-                  style={primaryButtonStyle}
-                  onMouseEnter={() => setIsButtonHovered(true)}
-                  onMouseLeave={() => {
-                    setIsButtonHovered(false);
-                    setIsButtonActive(false);
-                  }}
-                  onMouseDown={() => setIsButtonActive(true)}
-                  onMouseUp={() => setIsButtonActive(false)}
-                  onClick={handleOpenAnother}
-                >
-                  Open Another
-                </button>
-
-                <button
-                  type="button"
-                  data-ocid="library.secondary_button"
-                  style={secondaryButtonStyle}
-                  onMouseEnter={() => setIsAltButtonHovered(true)}
-                  onMouseLeave={() => setIsAltButtonHovered(false)}
-                  onClick={handleViewLibrary}
-                >
-                  View Library
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Mint Moment Modal — only shown when no active draft */}
-      {!hasDraft && (
-        <MintMomentModal
-          open={showMintModal}
-          onClose={() => setShowMintModal(false)}
-          onConfirm={() => {
-            setShowMintModal(false);
-            startDraft();
-            onCaptureMoment?.();
-            // If no navigation handler, fall back to the pack reveal experience
-            if (!onCaptureMoment) {
-              handleRevealRandom();
-            }
-          }}
-        />
-      )}
+      {/* ── Content ── */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${activeTab}-${activeFilter}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          style={{ paddingTop: "12px" }}
+        >
+          {activeTab === "collected"
+            ? renderCollectedContent()
+            : renderCreatedContent()}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* ── Mint Moment Modal ── */}
+      <MintMomentModal
+        open={showMintModal}
+        onClose={() => setShowMintModal(false)}
+        onConfirm={handleMintConfirm}
+      />
     </div>
   );
 }
