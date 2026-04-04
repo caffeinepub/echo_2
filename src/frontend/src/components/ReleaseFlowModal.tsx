@@ -375,7 +375,7 @@ export function ReleaseFlowModal({
             <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 24 }}>
               {pack.setName} ·{" "}
               <span style={{ color: MINT, fontWeight: 600 }}>
-                {pack.collectibleType === "photo" ? "📷 Photo" : "🎬 Video"}
+                "9 Photos + Video"
               </span>
             </p>
 

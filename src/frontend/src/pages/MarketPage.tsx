@@ -1,24 +1,18 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type { MintMomentSetRank } from "../store/mockDiscoverSets";
-import { getDiscoverSets } from "../store/mockDiscoverSets";
+import type {
+  DiscoverSections,
+  MintMomentSetRank,
+} from "../store/mockDiscoverSets";
+import { getDiscoverSections } from "../store/mockDiscoverSets";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-function formatUsd(val: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(val);
-}
-
-function formatUsdShort(val: number): string {
-  if (val >= 1000) {
-    return `$${(val / 1000).toFixed(1)}k`;
-  }
-  return `$${val.toFixed(0)}`;
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
 
 // ─── Signal Card ────────────────────────────────────────────────────────────────
@@ -83,14 +77,14 @@ function SignalCard({
 function PreviewThumb({
   set,
   isDark,
-  isTop3,
-  rankColor,
+  isHighlight,
+  highlightColor,
   size = "sm",
 }: {
   set: MintMomentSetRank;
   isDark: boolean;
-  isTop3: boolean;
-  rankColor: string;
+  isHighlight: boolean;
+  highlightColor: string;
   size?: "sm" | "lg";
 }) {
   const containerStyle: React.CSSProperties =
@@ -101,8 +95,8 @@ function PreviewThumb({
           flexShrink: 0,
           borderRadius: "8px",
           overflow: "hidden",
-          border: isTop3
-            ? `1.5px solid ${rankColor}`
+          border: isHighlight
+            ? `1.5px solid ${highlightColor}`
             : isDark
               ? "1px solid rgba(110,230,185,0.18)"
               : "1px solid #e5e7eb",
@@ -149,15 +143,17 @@ function SetRankRow({
   rank,
   isDark,
   onClick,
+  sectionRank,
 }: {
   set: MintMomentSetRank;
   rank: number;
   isDark: boolean;
   onClick: () => void;
+  sectionRank: number;
 }) {
-  const isTop3 = rank <= 3;
-  const rankColor = isTop3
-    ? RANK_COLORS[rank - 1]
+  const isHighlight = sectionRank <= 3;
+  const rankColor = isHighlight
+    ? RANK_COLORS[sectionRank - 1]
     : isDark
       ? "rgba(150, 210, 185, 0.5)"
       : "#10b981";
@@ -165,19 +161,19 @@ function SetRankRow({
   const rowStyle = isDark
     ? {
         background: "rgba(10, 28, 20, 0.72)",
-        border: isTop3
+        border: isHighlight
           ? "1px solid rgba(110, 230, 185, 0.25)"
           : "1px solid rgba(110, 230, 185, 0.12)",
-        boxShadow: isTop3
+        boxShadow: isHighlight
           ? "0 2px 12px rgba(80,200,150,0.12), inset 0 1px 0 rgba(110,230,185,0.07)"
           : "0 1px 4px rgba(0,0,0,0.15)",
       }
     : {
         background: "white",
-        border: isTop3
+        border: isHighlight
           ? "1px solid rgba(16,185,129,0.25)"
           : "1px solid oklch(0.92 0.004 185)",
-        boxShadow: isTop3
+        boxShadow: isHighlight
           ? "0 2px 12px rgba(16,185,129,0.08)"
           : "0 1px 4px rgba(0,0,0,0.05)",
       };
@@ -189,7 +185,7 @@ function SetRankRow({
     <motion.div
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(rank * 0.03, 0.6) }}
+      transition={{ duration: 0.25, delay: Math.min(sectionRank * 0.04, 0.5) }}
       className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer"
       style={rowStyle}
       onClick={onClick}
@@ -206,26 +202,47 @@ function SetRankRow({
           textAlign: "center",
         }}
       >
-        #{rank}
+        #{sectionRank}
       </span>
 
       {/* Thumbnail 4:5 portrait */}
       <PreviewThumb
         set={set}
         isDark={isDark}
-        isTop3={isTop3}
-        rankColor={rankColor}
+        isHighlight={isHighlight}
+        highlightColor={rankColor}
         size="sm"
       />
 
       {/* Set info */}
       <div className="flex-1 min-w-0">
-        <p
-          className="font-semibold truncate"
-          style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
-        >
-          {set.title}
-        </p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p
+            className="font-semibold truncate"
+            style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
+          >
+            {set.title}
+          </p>
+          {set.trendingTag && (
+            <span
+              style={{
+                fontSize: "9px",
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: "8px",
+                background: isDark
+                  ? "rgba(245, 158, 11, 0.18)"
+                  : "rgba(245, 158, 11, 0.12)",
+                color: "#f59e0b",
+                border: "1px solid rgba(245, 158, 11, 0.25)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              🔥 trending
+            </span>
+          )}
+        </div>
         <p
           className="truncate"
           style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}
@@ -234,26 +251,100 @@ function SetRankRow({
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Engagement stats */}
       <div className="shrink-0 text-right">
         <p
           className="font-semibold tabular-nums"
-          style={{ fontSize: "13px", color: "#10b981", lineHeight: 1.3 }}
+          style={{ fontSize: "12px", color: "#10b981", lineHeight: 1.3 }}
         >
-          {formatUsdShort(set.totalVolume)}
+          {formatCount(set.packOpens)} opens
         </p>
         <p
           className="tabular-nums"
           style={{ fontSize: "10px", color: textSecondary, lineHeight: 1.3 }}
         >
-          {set.salesCount} sales · {set.uniqueCollectors} collectors
+          {formatCount(set.uniqueCollectors)} collectors
         </p>
       </div>
     </motion.div>
   );
 }
 
-// ─── Time Filter Pills ────────────────────────────────────────────────────────────
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+function SectionHeader({
+  icon,
+  label,
+  isDark,
+}: {
+  icon: string;
+  label: string;
+  isDark: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 mt-6 mb-2.5">
+      <span style={{ fontSize: "16px" }}>{icon}</span>
+      <p
+        className="text-[11px] uppercase tracking-[0.14em] font-semibold"
+        style={{
+          color: isDark ? "rgba(150, 210, 185, 0.75)" : "#10b981",
+        }}
+      >
+        {label}
+      </p>
+      <div
+        style={{
+          flex: 1,
+          height: "1px",
+          background: isDark
+            ? "rgba(110,230,185,0.1)"
+            : "rgba(16,185,129,0.12)",
+          marginLeft: "4px",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Discover Section ─────────────────────────────────────────────────────────
+
+function DiscoverSection({
+  icon,
+  label,
+  sets,
+  globalOffset,
+  isDark,
+  onSelect,
+}: {
+  icon: string;
+  label: string;
+  sets: MintMomentSetRank[];
+  globalOffset: number;
+  isDark: boolean;
+  onSelect: (set: MintMomentSetRank) => void;
+}) {
+  if (sets.length === 0) return null;
+
+  return (
+    <div>
+      <SectionHeader icon={icon} label={label} isDark={isDark} />
+      <div className="flex flex-col gap-2">
+        {sets.map((set, i) => (
+          <SetRankRow
+            key={set.id}
+            set={set}
+            rank={globalOffset + i + 1}
+            sectionRank={i + 1}
+            isDark={isDark}
+            onClick={() => onSelect(set)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Time Filter Pills ────────────────────────────────────────────────────────
 
 type TimeRange = "ALL_TIME" | "24H" | "7D" | "30D";
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
@@ -274,7 +365,7 @@ function TimeFilterPills({
 }) {
   return (
     <div
-      className="flex gap-2 mt-5 mb-4"
+      className="flex gap-2 mt-5 mb-1"
       style={{
         overflowX: "auto",
         paddingBottom: "4px",
@@ -472,18 +563,39 @@ function SetDetailSheet({
             )}
           </div>
 
-          {/* Title + creator */}
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: 700,
-              color: textPrimary,
-              marginBottom: "2px",
-              lineHeight: 1.2,
-            }}
-          >
-            {set.title}
-          </h2>
+          {/* Title + creator + trending */}
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <h2
+              style={{
+                fontSize: "20px",
+                fontWeight: 700,
+                color: textPrimary,
+                lineHeight: 1.2,
+              }}
+            >
+              {set.title}
+            </h2>
+            {set.trendingTag && (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  padding: "3px 8px",
+                  borderRadius: "10px",
+                  background: isDark
+                    ? "rgba(245, 158, 11, 0.18)"
+                    : "rgba(245, 158, 11, 0.12)",
+                  color: "#f59e0b",
+                  border: "1px solid rgba(245, 158, 11, 0.25)",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  marginTop: "2px",
+                }}
+              >
+                🔥 trending
+              </span>
+            )}
+          </div>
           <p
             style={{
               fontSize: "13px",
@@ -494,7 +606,7 @@ function SetDetailSheet({
             by {set.creator}
           </p>
 
-          {/* Stats row */}
+          {/* Engagement stats row */}
           <div
             style={{
               display: "grid",
@@ -504,12 +616,9 @@ function SetDetailSheet({
             }}
           >
             {[
-              { label: "Volume", value: formatUsd(set.totalVolume) },
-              { label: "Sales", value: set.salesCount.toLocaleString() },
-              {
-                label: "Collectors",
-                value: set.uniqueCollectors.toLocaleString(),
-              },
+              { label: "Opens", value: formatCount(set.packOpens) },
+              { label: "Collectors", value: formatCount(set.uniqueCollectors) },
+              { label: "Plays", value: formatCount(set.previewPlays) },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -547,6 +656,18 @@ function SetDetailSheet({
               </div>
             ))}
           </div>
+
+          {/* Volume as secondary line */}
+          <p
+            style={{
+              fontSize: "11px",
+              color: textSecondary,
+              marginBottom: "12px",
+            }}
+          >
+            Volume: ${set.totalVolume.toLocaleString()} &nbsp;·&nbsp;{" "}
+            {set.salesCount} sales
+          </p>
 
           {/* Pack info */}
           <div
@@ -653,29 +774,54 @@ function SetDetailSheet({
                     <span style={{ fontSize: "12px", color: textPrimary }}>
                       {sale.itemTitle}
                     </span>
-                    <div style={{ textAlign: "right" }}>
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          color: "#10b981",
-                        }}
-                      >
-                        ${sale.priceUsd.toFixed(2)}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "10px",
-                          color: textSecondary,
-                          marginLeft: "8px",
-                        }}
-                      >
-                        {sale.timeAgo}
-                      </span>
-                    </div>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        color: textSecondary,
+                      }}
+                    >
+                      {sale.timeAgo}
+                    </span>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Activity velocity blip */}
+          {set.recentActivityVelocity > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                marginBottom: "14px",
+                padding: "8px 10px",
+                background: isDark
+                  ? "rgba(110,230,185,0.05)"
+                  : "rgba(16,185,129,0.05)",
+                borderRadius: "10px",
+                border: isDark
+                  ? "1px solid rgba(110,230,185,0.1)"
+                  : "1px solid rgba(16,185,129,0.12)",
+              }}
+            >
+              <span
+                className="animate-pulse"
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: "#10b981",
+                  display: "inline-block",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{ fontSize: "11px", color: "#10b981", fontWeight: 600 }}
+              >
+                {set.recentActivityVelocity} events in the last 2 hours
+              </span>
             </div>
           )}
 
@@ -743,35 +889,47 @@ export function MarketPage({
     null,
   );
 
-  const rankings = getDiscoverSets(timeRange);
-
+  const sections: DiscoverSections = getDiscoverSections(timeRange);
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+
+  // Compute global offset counters so data-ocid rank stays unique across sections
+  const trendingCount = sections.trendingNow.length;
+  const openedCount = sections.mostOpened.length;
+  const risingCount = sections.risingFast.length;
+  const collectedCount = sections.mostCollected.length;
+
+  const hasAnySets =
+    trendingCount > 0 ||
+    openedCount > 0 ||
+    risingCount > 0 ||
+    collectedCount > 0 ||
+    sections.freshMoments.length > 0;
 
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
       {/* ── Signal cards ── */}
       <div className="grid grid-cols-2 gap-2.5 mb-2">
         <SignalCard
-          label="Total Volume (All Time)"
-          plainValue="$2,847,320"
+          label="Total Opens"
+          plainValue="842K opens"
           index={0}
           isDark={isDark}
         />
         <SignalCard
-          label="24H Volume"
-          plainValue="$48,210"
+          label="Active Collectors"
+          plainValue="12.4K collectors"
           index={1}
           isDark={isDark}
         />
         <SignalCard
-          label="Total Transactions"
-          plainValue="14,203"
+          label="Moments Live"
+          plainValue="100 moments"
           index={2}
           isDark={isDark}
         />
         <SignalCard
-          label="Live Users"
-          plainValue="1,284"
+          label="Active Now"
+          plainValue="1,284 active"
           index={3}
           isDark={isDark}
         />
@@ -784,38 +942,32 @@ export function MarketPage({
         isDark={isDark}
       />
 
-      {/* ── Leaderboard header ── */}
-      <div className="flex items-center justify-between mb-3">
-        <p
-          className="text-[9px] uppercase tracking-[0.16em] font-medium"
-          style={{ color: "var(--echo-text-secondary)" }}
-        >
-          Top 100 Mint Moment Sets
-        </p>
+      {/* ── Subtle live note ── */}
+      <div className="flex items-center justify-end mt-1 mb-1">
         <span
           style={{
             display: "flex",
             alignItems: "center",
             gap: "5px",
-            fontSize: "11px",
-            color: "#10b981",
+            fontSize: "10px",
+            color: isDark ? "rgba(150, 210, 185, 0.45)" : "#9ca3af",
           }}
         >
           <span
             className="animate-pulse"
             style={{
-              width: "6px",
-              height: "6px",
+              width: "5px",
+              height: "5px",
               borderRadius: "50%",
               background: "#10b981",
               display: "inline-block",
             }}
           />
-          Updating Live
+          100 moments · live
         </span>
       </div>
 
-      {/* ── Rank list ── */}
+      {/* ── Sections ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={timeRange}
@@ -824,7 +976,7 @@ export function MarketPage({
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.22 }}
         >
-          {rankings.length === 0 ? (
+          {!hasAnySets ? (
             <div
               className="flex flex-col items-center justify-center py-14 text-center"
               data-ocid="discover.rankings.empty_state"
@@ -837,23 +989,56 @@ export function MarketPage({
                   marginBottom: "4px",
                 }}
               >
-                No active sets in this period
+                No active moments in this period
               </p>
               <p style={{ color: textSecondary, fontSize: "12px" }}>
-                Try a broader time range to see top Mint Moment sets.
+                Try a broader time range to see trending Mint Moment sets.
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {rankings.map((set, i) => (
-                <SetRankRow
-                  key={set.id}
-                  set={set}
-                  rank={i + 1}
-                  isDark={isDark}
-                  onClick={() => setSelectedSet(set)}
-                />
-              ))}
+            <div>
+              <DiscoverSection
+                icon="🔥"
+                label="Trending Now"
+                sets={sections.trendingNow}
+                globalOffset={0}
+                isDark={isDark}
+                onSelect={setSelectedSet}
+              />
+              <DiscoverSection
+                icon="📦"
+                label="Most Opened"
+                sets={sections.mostOpened}
+                globalOffset={trendingCount}
+                isDark={isDark}
+                onSelect={setSelectedSet}
+              />
+              <DiscoverSection
+                icon="⚡"
+                label="Rising Fast"
+                sets={sections.risingFast}
+                globalOffset={trendingCount + openedCount}
+                isDark={isDark}
+                onSelect={setSelectedSet}
+              />
+              <DiscoverSection
+                icon="❤️"
+                label="Most Collected"
+                sets={sections.mostCollected}
+                globalOffset={trendingCount + openedCount + risingCount}
+                isDark={isDark}
+                onSelect={setSelectedSet}
+              />
+              <DiscoverSection
+                icon="✨"
+                label="Fresh Moments"
+                sets={sections.freshMoments}
+                globalOffset={
+                  trendingCount + openedCount + risingCount + collectedCount
+                }
+                isDark={isDark}
+                onSelect={setSelectedSet}
+              />
             </div>
           )}
         </motion.div>

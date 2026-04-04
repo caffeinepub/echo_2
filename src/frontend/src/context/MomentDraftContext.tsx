@@ -21,6 +21,7 @@ export interface MomentDraft {
   completed: boolean;
   createdAt: number;
   captureMetadata: CaptureMetadataItem[];
+  packSupply: number; // how many packs the creator wants to mint
 }
 
 interface MomentDraftCtx {
@@ -33,6 +34,7 @@ interface MomentDraftCtx {
   removeVideo: () => void;
   completeDraft: () => void;
   clearDraft: () => void;
+  setPackSupply: (n: number) => void;
 }
 
 const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
@@ -45,6 +47,10 @@ function loadFromStorage(): MomentDraft | null {
     // Backfill captureMetadata for drafts saved before this field existed
     if (!parsed.captureMetadata) {
       parsed.captureMetadata = [];
+    }
+    // Backfill packSupply for drafts saved before this field existed
+    if (!parsed.packSupply || parsed.packSupply < 10) {
+      parsed.packSupply = 100;
     }
     return parsed;
   } catch {
@@ -89,6 +95,7 @@ export function MomentDraftProvider({
         completed: false,
         createdAt: Date.now(),
         captureMetadata: [],
+        packSupply: 100,
       };
       return draft;
     });
@@ -177,6 +184,13 @@ export function MomentDraftProvider({
     setActiveDraft(null);
   }, []);
 
+  const setPackSupply = useCallback((n: number) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, packSupply: Math.max(10, Math.min(10000, n)) };
+    });
+  }, []);
+
   return (
     <MomentDraftContext.Provider
       value={{
@@ -189,6 +203,7 @@ export function MomentDraftProvider({
         removeVideo,
         completeDraft,
         clearDraft,
+        setPackSupply,
       }}
     >
       {children}

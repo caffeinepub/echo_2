@@ -1,5 +1,14 @@
-import { Camera, Link2, Package, Play, Star, Store, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Camera,
+  Flame,
+  Link2,
+  Package,
+  Play,
+  Star,
+  Store,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { ReleaseFlowModal } from "../components/ReleaseFlowModal";
 import {
   type CollectionNFT,
@@ -148,6 +157,12 @@ const KEYFRAMES = `
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
+  @keyframes burnFadeIn {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+    15%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(0); }
+  }
 `;
 
 // ─── Vault Tile ───────────────────────────────────────────────────────────────
@@ -185,8 +200,6 @@ function VaultTile({
     }
     onTap();
   }
-
-  const rc = rarity ? rarityColor(rarity) : MINT_TEXT;
 
   return (
     <button
@@ -298,20 +311,34 @@ function VaultTile({
         </div>
       )}
 
-      {/* Rarity dot — top-right */}
-      {rarity && (
+      {/* Rarity badge — top-right */}
+      {rarity && !isPack && (
         <div
           style={{
             position: "absolute",
-            top: "6px",
-            right: "6px",
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background: rc,
-            boxShadow: `0 0 4px ${rc}88`,
+            top: "5px",
+            right: "5px",
+            background: "rgba(255,255,255,0.92)",
+            border:
+              rarity === "Rare"
+                ? "1px solid rgba(52,168,132,0.35)"
+                : "1px solid rgba(0,0,0,0.10)",
+            borderRadius: "20px",
+            padding: "2px 6px",
           }}
-        />
+        >
+          <span
+            style={{
+              fontSize: "7px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: rarity === "Rare" ? "#34a884" : "#9B9B9B",
+            }}
+          >
+            {rarity === "Rare" ? "RARE" : "COMMON"}
+          </span>
+        </div>
       )}
 
       {/* Leader star — bottom-right */}
@@ -365,16 +392,20 @@ interface InlineDescPanelProps {
   type: "pack" | "nft";
   pack?: SealedPack;
   nft?: CollectionNFT;
+  burnedCount?: number;
   onClose: () => void;
   onSecondTap: () => void;
+  onBurn?: () => void;
 }
 
 function InlineDescPanel({
   type,
   pack,
   nft,
+  burnedCount = 0,
   onClose,
   onSecondTap,
+  onBurn,
 }: InlineDescPanelProps) {
   const rc = nft ? rarityColor(nft.rarity) : MINT_TEXT;
 
@@ -464,9 +495,34 @@ function InlineDescPanel({
           {type === "pack"
             ? "SEALED"
             : nft?.mediaType === "video"
-              ? "VIDEO"
+              ? "VIDEO 30s"
               : "PHOTO"}
         </div>
+        {type === "nft" && nft?.rarity && (
+          <div
+            style={{
+              background:
+                nft.rarity === "Rare"
+                  ? "rgba(52,168,132,0.10)"
+                  : "rgba(0,0,0,0.05)",
+              color: nft.rarity === "Rare" ? "#34a884" : "#9B9B9B",
+              border:
+                nft.rarity === "Rare"
+                  ? "1px solid rgba(52,168,132,0.25)"
+                  : "1px solid rgba(0,0,0,0.08)",
+              borderRadius: "20px",
+              padding: "3px 8px",
+              fontSize: "9px",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase" as const,
+              flexShrink: 0,
+              marginTop: "1px",
+            }}
+          >
+            {nft.rarity === "Rare" ? "RARE" : "COMMON"}
+          </div>
+        )}
       </div>
 
       {/* Separator */}
@@ -511,12 +567,17 @@ function InlineDescPanel({
           }}
         >
           <MetaCell
-            label="Edition"
+            label="Print"
             value={`#${nft.editionNumber} of ${nft.totalSupply}`}
           />
           <MetaCell label="Rarity" value={nft.rarity} valueColor={rc} />
+          <MetaCell label="Minted" value={String(nft.totalSupply)} />
+          <MetaCell label="Burned" value={String(burnedCount)} />
+          <MetaCell
+            label="Remaining"
+            value={String(nft.totalSupply - burnedCount)}
+          />
           <MetaCell label="Creator" value={nft.creator} />
-          <MetaCell label="Minted" value={formatDate(nft.mintDate)} />
         </div>
       )}
 
@@ -530,31 +591,65 @@ function InlineDescPanel({
       />
 
       {/* Hint */}
-      <button
-        type="button"
-        data-ocid="collection.secondary_button"
-        onClick={onSecondTap}
+      <div
         style={{
-          background: "none",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          fontSize: "10px",
-          color: MINT_TEXT,
-          fontWeight: 600,
-          letterSpacing: "0.02em",
           display: "flex",
           alignItems: "center",
-          gap: "4px",
+          justifyContent: "space-between",
+          gap: "8px",
         }}
       >
-        <span>→</span>
-        <span>
-          {type === "pack"
-            ? "Tap again to open pack detail"
-            : "Tap again to view full image"}
-        </span>
-      </button>
+        <button
+          type="button"
+          data-ocid="collection.secondary_button"
+          onClick={onSecondTap}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontSize: "10px",
+            color: MINT_TEXT,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <span>→</span>
+          <span>
+            {type === "pack"
+              ? "Tap again to open pack detail"
+              : "Tap again to view full image"}
+          </span>
+        </button>
+
+        {type === "nft" && onBurn && (
+          <button
+            type="button"
+            data-ocid="collection.delete_button"
+            onClick={onBurn}
+            style={{
+              background: "none",
+              border: "none",
+              padding: "2px 0",
+              cursor: "pointer",
+              fontSize: "10px",
+              color: "rgba(52,168,132,0.60)",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              display: "flex",
+              alignItems: "center",
+              gap: "3px",
+              flexShrink: 0,
+            }}
+          >
+            <Flame size={9} style={{ opacity: 0.7 }} />
+            Burn
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -610,16 +705,20 @@ function TileRows({
   items,
   selectedTileId,
   ocidOffset,
+  burnedCounts,
   onTap,
   onSecondTap,
   onClosePanel,
+  onBurn,
 }: {
   items: TileItem[];
   selectedTileId: string | null;
   ocidOffset: number;
+  burnedCounts: Record<string, number>;
   onTap: (id: string) => void;
   onSecondTap: (id: string) => void;
   onClosePanel: () => void;
+  onBurn: (nft: CollectionNFT) => void;
 }) {
   const rows: TileItem[][] = [];
   for (let i = 0; i < items.length; i += 3) {
@@ -685,8 +784,18 @@ function TileRows({
                   type={selectedItem.isPack ? "pack" : "nft"}
                   pack={selectedItem.pack}
                   nft={selectedItem.nft}
+                  burnedCount={
+                    selectedItem.nft
+                      ? (burnedCounts[selectedItem.nft.id] ?? 0)
+                      : 0
+                  }
                   onClose={onClosePanel}
                   onSecondTap={() => onSecondTap(selectedItem.id)}
+                  onBurn={
+                    selectedItem.nft
+                      ? () => onBurn(selectedItem.nft!)
+                      : undefined
+                  }
                 />
               </div>
             )}
@@ -701,17 +810,21 @@ function TileRows({
 function SetSection({
   group,
   selectedTileId,
+  burnedCounts,
   onTap,
   onSecondTap,
   onClosePanel,
   onRelease,
+  onBurn,
 }: {
   group: SetGroup;
   selectedTileId: string | null;
+  burnedCounts: Record<string, number>;
   onTap: (id: string) => void;
   onSecondTap: (id: string) => void;
   onClosePanel: () => void;
   onRelease: (pack: SealedPack, all: SealedPack[]) => void;
+  onBurn: (nft: CollectionNFT) => void;
 }) {
   const statParts: { text: string; highlight?: boolean }[] = [
     { text: `${group.totalMinted} minted` },
@@ -850,9 +963,11 @@ function SetSection({
             items={packItems}
             selectedTileId={selectedTileId}
             ocidOffset={0}
+            burnedCounts={burnedCounts}
             onTap={onTap}
             onSecondTap={onSecondTap}
             onClosePanel={onClosePanel}
+            onBurn={onBurn}
           />
         </div>
       )}
@@ -891,9 +1006,11 @@ function SetSection({
             items={nftItems}
             selectedTileId={selectedTileId}
             ocidOffset={packItems.length}
+            burnedCounts={burnedCounts}
             onTap={onTap}
             onSecondTap={onSecondTap}
             onClosePanel={onClosePanel}
+            onBurn={onBurn}
           />
         </div>
       )}
@@ -1193,14 +1310,19 @@ function SendToWalletModal({
 // ─── NFT Detail Sheet ─────────────────────────────────────────────────────────
 function NFTDetailSheet({
   nft,
+  burnedCount,
   onClose,
   onRemove,
+  onBurnConfirm,
 }: {
   nft: CollectionNFT;
+  burnedCount: number;
   onClose: () => void;
   onRemove: (id: string) => void;
+  onBurnConfirm: () => void;
 }) {
   const [showSendModal, setShowSendModal] = useState(false);
+  const [showBurnConfirm, setShowBurnConfirm] = useState(false);
 
   return (
     <>
@@ -1372,13 +1494,21 @@ function NFTDetailSheet({
             >
               {[
                 {
-                  label: "Mint Number",
+                  label: "Print",
                   value: `#${nft.editionNumber} of ${nft.totalSupply}`,
                 },
                 { label: "Total Minted", value: String(nft.totalSupply) },
+                { label: "Total Burned", value: String(burnedCount) },
+                {
+                  label: "Remaining",
+                  value: String(nft.totalSupply - burnedCount),
+                },
                 {
                   label: "Type",
-                  value: nft.mediaType === "photo" ? "Photo" : "Video",
+                  value:
+                    nft.mediaType === "photo"
+                      ? "Photo Moment"
+                      : "Video Moment (30s)",
                 },
                 {
                   label: "Rarity",
@@ -1565,6 +1695,30 @@ function NFTDetailSheet({
               <button
                 type="button"
                 data-ocid="collection.delete_button"
+                onClick={() => setShowBurnConfirm(true)}
+                style={{
+                  width: "100%",
+                  height: "44px",
+                  borderRadius: "12px",
+                  background: "transparent",
+                  border: "1.5px solid rgba(52,168,132,0.40)",
+                  color: MINT_TEXT,
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.02em",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                }}
+              >
+                <Flame size={13} style={{ opacity: 0.8 }} />
+                Burn Collectible
+              </button>
+
+              <button
+                type="button"
                 disabled
                 title="Coming soon"
                 style={{
@@ -1597,7 +1751,171 @@ function NFTDetailSheet({
           }}
         />
       )}
+
+      {showBurnConfirm && (
+        <BurnConfirmModal
+          nft={nft}
+          onClose={() => setShowBurnConfirm(false)}
+          onConfirm={() => {
+            setShowBurnConfirm(false);
+            onBurnConfirm();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+// ─── Burn Confirm Modal ───────────────────────────────────────────────────────
+function BurnConfirmModal({
+  nft,
+  onClose,
+  onConfirm,
+}: {
+  nft: CollectionNFT;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      data-ocid="collection.modal"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 500,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+      }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(4px)",
+        }}
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter") onClose();
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          background: "#fff",
+          borderRadius: "24px",
+          padding: "24px",
+          width: "100%",
+          maxWidth: "320px",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+          animation: "modalFadeIn 0.22s ease",
+        }}
+      >
+        {/* Title */}
+        <h3
+          style={{
+            fontSize: "16px",
+            fontWeight: 700,
+            color: "#111",
+            marginBottom: "6px",
+          }}
+        >
+          Burn Collectible?
+        </h3>
+        <p style={{ fontSize: "12px", color: "#6B6B6B", marginBottom: "14px" }}>
+          {nft.title} · #{nft.editionNumber} of {nft.totalSupply}
+        </p>
+
+        {/* Info box */}
+        <div
+          style={{
+            background: MINT_SOFT,
+            border: "1px solid rgba(52,168,132,0.25)",
+            borderRadius: "12px",
+            padding: "12px 14px",
+            marginBottom: "18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+          }}
+        >
+          {[
+            "This permanently removes the collectible from your vault.",
+            "Burning reduces total circulating supply of this collectible.",
+            "This action cannot be undone.",
+          ].map((line) => (
+            <div
+              key={line}
+              style={{
+                fontSize: "12px",
+                color: "#444",
+                lineHeight: 1.5,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "6px",
+              }}
+            >
+              <span
+                style={{ color: MINT_TEXT, marginTop: "1px", flexShrink: 0 }}
+              >
+                ·
+              </span>
+              <span>{line}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            type="button"
+            data-ocid="collection.cancel_button"
+            onClick={onClose}
+            style={{
+              flex: 1,
+              height: "44px",
+              borderRadius: "10px",
+              border: `1.5px solid ${MINT}`,
+              background: "transparent",
+              color: MINT_TEXT,
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-ocid="collection.confirm_button"
+            onClick={onConfirm}
+            style={{
+              flex: 1,
+              height: "44px",
+              borderRadius: "10px",
+              border: "none",
+              background: "linear-gradient(160deg, #34A884, #2a9070)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "6px",
+            }}
+          >
+            <Flame size={13} />
+            Burn Collectible
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1939,7 +2257,10 @@ function PackDetailSheet({
                   },
                   {
                     label: "Type",
-                    value: nft.mediaType === "photo" ? "Photo" : "Video",
+                    value:
+                      nft.mediaType === "photo"
+                        ? "Photo Moment"
+                        : "Video Moment (30s)",
                   },
                   {
                     label: "Rarity",
@@ -2099,7 +2420,8 @@ export function CollectionPage({
 }: {
   onGoToLibrary?: () => void;
 }) {
-  const { nfts, sealedPacks, openPack, removeNFT } = useCollection();
+  const { nfts, sealedPacks, burnedCounts, openPack, removeNFT, burnNFT } =
+    useCollection();
 
   // First tap: select tile → show inline panel
   const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
@@ -2109,6 +2431,10 @@ export function CollectionPage({
     pack: SealedPack;
     all: SealedPack[];
   } | null>(null);
+  // Burn state
+  const [burnTarget, setBurnTarget] = useState<CollectionNFT | null>(null);
+  const [showBurnConfirm, setShowBurnConfirm] = useState(false);
+  const [burnFeedback, setBurnFeedback] = useState(false);
 
   const setGroups = buildSetGroups(sealedPacks, nfts);
   const isEmpty = setGroups.length === 0;
@@ -2142,6 +2468,27 @@ export function CollectionPage({
     setSecondTapId(null);
     setSelectedTileId(null);
   }
+
+  function handleBurnRequest(nft: CollectionNFT) {
+    setBurnTarget(nft);
+    setShowBurnConfirm(true);
+  }
+
+  function handleBurnConfirm() {
+    if (!burnTarget) return;
+    burnNFT(burnTarget.id);
+    setShowBurnConfirm(false);
+    setBurnTarget(null);
+    clearSecondTap();
+    setBurnFeedback(true);
+  }
+
+  // Auto-dismiss burn feedback banner after 2.5s
+  useEffect(() => {
+    if (!burnFeedback) return;
+    const t = setTimeout(() => setBurnFeedback(false), 2500);
+    return () => clearTimeout(t);
+  }, [burnFeedback]);
 
   // Unused var suppression
   void Link2;
@@ -2184,10 +2531,12 @@ export function CollectionPage({
               <SetSection
                 group={group}
                 selectedTileId={selectedTileId}
+                burnedCounts={burnedCounts}
                 onTap={handleTap}
                 onSecondTap={handleSecondTap}
                 onClosePanel={handleClosePanel}
                 onRelease={(pack, all) => setReleaseModalData({ pack, all })}
+                onBurn={handleBurnRequest}
               />
               {/* Separator between sets */}
               {groupIdx < setGroups.length - 1 && (
@@ -2223,10 +2572,16 @@ export function CollectionPage({
         ) : (
           <NFTDetailSheet
             nft={secondTapNFT}
+            burnedCount={burnedCounts[secondTapNFT.id] ?? 0}
             onClose={clearSecondTap}
             onRemove={(id) => {
               removeNFT(id);
               clearSecondTap();
+            }}
+            onBurnConfirm={() => {
+              burnNFT(secondTapNFT.id);
+              clearSecondTap();
+              setBurnFeedback(true);
             }}
           />
         ))}
@@ -2239,6 +2594,54 @@ export function CollectionPage({
           pack={releaseModalData.pack}
           allPacksInSet={releaseModalData.all}
         />
+      )}
+
+      {/* Burn confirm modal — triggered from inline panel */}
+      {showBurnConfirm && burnTarget && (
+        <BurnConfirmModal
+          nft={burnTarget}
+          onClose={() => {
+            setShowBurnConfirm(false);
+            setBurnTarget(null);
+          }}
+          onConfirm={handleBurnConfirm}
+        />
+      )}
+
+      {/* Burn feedback banner */}
+      {burnFeedback && (
+        <div
+          data-ocid="collection.toast"
+          style={{
+            position: "fixed",
+            bottom: "90px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 600,
+            background: "#fff",
+            border: "1px solid rgba(52,168,132,0.35)",
+            borderRadius: "100px",
+            padding: "10px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
+            animation: "burnFadeIn 2.5s ease forwards",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Flame size={13} style={{ color: MINT_TEXT, opacity: 0.8 }} />
+          <span
+            style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: MINT_TEXT,
+              letterSpacing: "0.01em",
+            }}
+          >
+            Collectible burned
+          </span>
+        </div>
       )}
     </div>
   );

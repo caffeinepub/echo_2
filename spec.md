@@ -1,44 +1,45 @@
-# Minty — Discover Page Leaderboard
+# Minty — Mint Moment Collectible Generation Logic
 
 ## Current State
 
-The Discover (MarketPage) page currently shows:
-- 4 stat signal cards (Total Volume, 24H Volume, Total Transactions, Live Users)
-- Time filter pills: 24H, 1W, 1M, 1Y, ALL
-- A ranked list of the top 10 **individual luxury item completed sales** (Rolex, iPhone, Birkin bag, etc.) from mockSales.ts
-- RankRow components showing thumbnail, title, category, price, and time ago
-- No preview media, no set structure, no collector counts, no sales count
-
-The mock data contains luxury/fashion/watch items unrelated to Mint Moment sets.
+- `handleMintComplete` in `App.tsx` hardcodes `totalPacks = 10` (9 photos + 1 video)
+- Only 10 collectibles are ever generated per set, regardless of pack supply
+- Pool is built from exactly the 9 source photos + 1 video asset
+- Rarity values on NFTs are arbitrary strings ("Rare", "Uncommon", etc.) not tied to photo/video type
+- Collection tiles show a coloured rarity dot but no labelled badge (Common / Rare)
+- The `InlineDescPanel` shows a generic rarity value without a visual rarity badge
 
 ## Requested Changes (Diff)
 
 ### Add
-- New data model: `MintMomentSetRank` — represents a ranked Mint Moment set with: id, rank, title, creator, totalVolume, salesCount, nftTrades, uniqueCollectors, recentActivityScore, previewClipUrl (optional), coverImageUrl, description, totalPacks, remainingPacks, pricePerPack, recentSales array
-- Weighted scoring function to compute rank: totalVolume (40%) + salesCount (25%) + nftTrades (15%) + uniqueCollectors (15%) + recentActivityBoost (5%)
-- Filter tabs: All Time, 24H, 7D, 30D (default: All Time)
-- Top 100 ranked set rows, each showing: rank number, looping preview clip (1–2s, 4:5 ratio, muted), set title, creator name/wallet, total volume, number of sales, number of collectors
-- Set detail sheet/modal: preview clip, set description, total packs, remaining packs, price per pack, recent activity list, Buy Packs button
-- Leaderboard header text ("Top 100 Mint Moment Sets")
-- New mock data file: `store/mockDiscoverSets.ts` — 100 Mint Moment sets with realistic names and stats
+- Pack supply input field in `MintMomentModal` so creator sets how many packs to mint (e.g. 10–10000)
+- `generateCollectibles(draft, totalPacks)` utility that:
+  - Computes `photoCount = Math.round(totalPacks * 0.9)` and `videoCount = totalPacks - photoCount`
+  - Assigns each pack a pre-determined collectible slot (photo or video) via shuffled pool
+  - Photo collectibles numbered `#1…photoCount of photoCount`; each picks one of the 9 source photos cyclically
+  - Video collectibles numbered `#1…videoCount of videoCount`; all use the same 30s video
+  - Rarity: photo → `"Common"`, video → `"Rare"`
+- Rarity badge on `VaultTile` (replaces rarity dot) showing `COMMON` or `RARE` text label, off-white pill style
+- Rarity badge in `InlineDescPanel` header, matching Minty off-white styling
+- Update `DETAILS` list in `MintMomentModal` to reflect dynamic pack supply
 
 ### Modify
-- `MarketPage.tsx` — completely replace the luxury-item rank list with the new Mint Moment set leaderboard. Keep stat signal cards. Replace time filter options with All Time / 24H / 7D / 30D. Replace RankRow with new SetRankRow. Add SetDetailSheet.
-- `store/mockSales.ts` — keep as-is (used for ticker elsewhere if any), but Discover no longer reads from it
+- `handleMintComplete` in `App.tsx`: replace hardcoded `totalPacks = 10` with value from draft/modal; call new distribution logic
+- `CollectionNFT.rarity` values from old arbitrary strings → `"Common"` | `"Rare"` for new mints (mock seeds can stay as-is for legacy)
+- `VaultTile`: replace rarity dot with text badge pill; colour: grey for Common, mint for Rare
+- `InlineDescPanel`: show rarity badge next to type badge; update `Print` label to show per-type numbering (e.g. Photo #23 of 90, Video #4 of 10)
+- `MarketRelease.caption` updated to reflect actual pack count
+- Mock seed NFT rarity values updated to `"Common"` or `"Rare"` where applicable
 
 ### Remove
-- MOCK_SALES luxury item data from Discover display
-- RankRow component showing individual sale rows with luxury items
-- `getTopSoldItems` usage in MarketPage
+- Hardcoded `const totalPacks = 10` in `handleMintComplete`
+- Old rarity dot overlay on `VaultTile`
 
 ## Implementation Plan
 
-1. Create `src/frontend/src/store/mockDiscoverSets.ts` with 100 mock Mint Moment sets, each with weighted scoring fields
-2. Add weighted scoring utility function and filter logic by time window
-3. Rewrite `MarketPage.tsx`:
-   - Keep stat signal cards at top
-   - Replace time filters with All Time / 24H / 7D / 30D
-   - Add leaderboard header
-   - New `SetRankRow` component: rank badge, 4:5 preview clip loop or cover image, set title, creator, volume/sales/collectors stats
-   - New `SetDetailSheet` bottom sheet: preview clip, description, pack stats, recent activity, Buy Packs CTA
-4. Validate and build
+1. Add `packSupply` field to `MomentDraft` context (default 100); add number input to `MintMomentModal`
+2. Create `generateMintCollectibles(draft, totalPacks)` function in `App.tsx` (or a utils file)
+3. Update `handleMintComplete` to use the draft's packSupply and call the generator
+4. Replace rarity dot in `VaultTile` with a labelled badge pill (COMMON / RARE)
+5. Update `InlineDescPanel` to show `Photo #X of N` vs `Video #X of M` per-type numbering and rarity badge
+6. Update mock seed data to use `"Common"` / `"Rare"` rarity strings

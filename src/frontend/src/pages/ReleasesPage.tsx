@@ -632,11 +632,7 @@ function ReleaseCard({
                 fontWeight: 600,
               }}
             >
-              {hasClip
-                ? "🎬 Clip"
-                : release.collectibleType === "photo"
-                  ? "📷 Photo"
-                  : "🎬 Video"}
+              {hasClip ? "🎬 Preview Clip" : "📷 9 + 🎬 1"}
             </span>
           </div>
 
@@ -820,22 +816,38 @@ function ReleaseDetailSheet({
   function handleBuy() {
     buyPack(release.id);
     // Create a new sealed pack in Collection
+    const totalPacks = release.packsAvailable;
+    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
+    const photoCount = totalPacks - videoCount;
+    // Randomly assign collectible type based on 90/10 split
+    const isVideoCollectible = Math.random() < 0.1;
+    const assignedType: "photo" | "video" = isVideoCollectible
+      ? "video"
+      : "photo";
+    const typeSupplyForPack = isVideoCollectible ? videoCount : photoCount;
+    const collectibleNumForPack = isVideoCollectible
+      ? Math.ceil(Math.random() * videoCount)
+      : Math.ceil(Math.random() * photoCount);
+    const rarityForPack = isVideoCollectible ? "Rare" : "Common";
+
     const newPack: SealedPack = {
       id: `pack_bought_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
       setName: release.setName,
-      editionNumber: 1,
-      totalSupply: release.packsAvailable,
-      collectibleType: release.collectibleType,
+      editionNumber: collectibleNumForPack,
+      totalSupply: totalPacks,
+      collectibleType: assignedType,
+      collectibleNumber: collectibleNumForPack,
+      typeSupply: typeSupplyForPack,
       createdAt: Date.now(),
       pendingNFT: {
         id: `nft_bought_${Date.now()}`,
         title: release.title,
         setName: release.setName,
-        editionNumber: 1,
-        totalSupply: release.packsAvailable,
-        mediaType: release.collectibleType,
+        editionNumber: collectibleNumForPack,
+        totalSupply: assignedType === "video" ? videoCount : photoCount,
+        mediaType: assignedType,
         imageUrl: release.coverImageUrl,
-        rarity: "Common",
+        rarity: rarityForPack,
         mintDate: new Date().toISOString(),
         creator: release.creatorName,
         owners: ["you"],
@@ -1001,11 +1013,7 @@ function ReleaseDetailSheet({
                 fontWeight: 600,
               }}
             >
-              {release.previewClipUrl
-                ? "🎬 Clip"
-                : release.collectibleType === "photo"
-                  ? "📷 Photo"
-                  : "🎬 Video"}
+              {release.previewClipUrl ? "🎬 Preview Clip" : "📷 9 + 🎬 1"}
             </span>
           </div>
 

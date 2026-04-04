@@ -62,7 +62,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
     title: "First Mint Moment",
-    caption: "Personal collectible drop from a late night drive",
+    caption: "9 photos + 1 video from a late night drive",
     setName: "Night Drive Series",
     packsAvailable: 3,
     packIds: [],
@@ -70,7 +70,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 18 * H,
     expiresAt: NOW - 18 * H + 24 * H,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
   },
   {
     id: "release_seed_3",

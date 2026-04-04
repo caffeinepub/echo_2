@@ -10,6 +10,7 @@ const LS_KEY = "minty_collection";
 const LS_SEEDED_KEY = "minty_collection_seeded";
 const LS_PACKS_KEY = "minty_sealed_packs";
 const LS_PACKS_SEEDED_KEY = "minty_packs_seeded";
+const LS_BURNED_KEY = "minty_burned_counts";
 
 export interface CollectionNFT {
   id: string;
@@ -27,14 +28,17 @@ export interface CollectionNFT {
   isLeader: boolean;
   hasOwnershipHistory: boolean;
   addedAt: number;
+  burnedCount?: number;
 }
 
 export interface SealedPack {
   id: string;
   setName: string;
   editionNumber: number;
-  totalSupply: number;
+  totalSupply: number; // total packs in the set
   collectibleType: "photo" | "video";
+  collectibleNumber: number; // this collectible's number within its type (e.g. photo #23 or video #4)
+  typeSupply: number; // total collectibles of this type in the set (e.g. 90 photos or 10 videos)
   pendingNFT: CollectionNFT;
   createdAt: number;
 }
@@ -42,12 +46,14 @@ export interface SealedPack {
 interface CollectionCtx {
   nfts: CollectionNFT[];
   sealedPacks: SealedPack[];
+  burnedCounts: Record<string, number>;
   addNFT: (nft: CollectionNFT) => void;
   addNFTs: (nfts: CollectionNFT[]) => void;
   addSealedPacks: (packs: SealedPack[]) => void;
   openPack: (packId: string) => void;
   removeNFT: (nftId: string) => void;
   removeSealedPacks: (packIds: string[]) => void;
+  burnNFT: (nftId: string) => void;
 }
 
 const CollectionContext = createContext<CollectionCtx | null>(null);
@@ -61,7 +67,7 @@ const MOCK_NFTS: CollectionNFT[] = [
     totalSupply: 100,
     mediaType: "photo",
     imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    rarity: "Rare",
+    rarity: "Common",
     mintDate: new Date(Date.now() - 86400000 * 5).toISOString(),
     creator: "minty.xyz",
     owners: ["0x3f2a...c8e1", "0xa1b2...d3e4"],
@@ -78,7 +84,7 @@ const MOCK_NFTS: CollectionNFT[] = [
     totalSupply: 50,
     mediaType: "video",
     imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    rarity: "Uncommon",
+    rarity: "Rare",
     mintDate: new Date(Date.now() - 86400000 * 12).toISOString(),
     creator: "minty.xyz",
     owners: ["0x3f2a...c8e1"],
@@ -112,7 +118,7 @@ const MOCK_NFTS: CollectionNFT[] = [
     totalSupply: 25,
     mediaType: "photo",
     imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    rarity: "Ultra Rare",
+    rarity: "Common",
     mintDate: new Date(Date.now() - 86400000 * 30).toISOString(),
     creator: "minty.xyz",
     owners: ["0x3f2a...c8e1"],
@@ -130,6 +136,8 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
     editionNumber: 4,
     totalSupply: 100,
     collectibleType: "photo",
+    collectibleNumber: 1,
+    typeSupply: 90,
     pendingNFT: {
       id: "nft_from_pack_1",
       title: "Sunlit Path",
@@ -138,7 +146,7 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
       totalSupply: 100,
       mediaType: "photo",
       imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-      rarity: "Uncommon",
+      rarity: "Common",
       mintDate: new Date().toISOString(),
       creator: "minty.xyz",
       owners: ["you"],
@@ -155,9 +163,11 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
     editionNumber: 2,
     totalSupply: 50,
     collectibleType: "video",
+    collectibleNumber: 1,
+    typeSupply: 5,
     pendingNFT: {
       id: "nft_from_pack_2",
-      title: "Frozen Drift",
+      title: "Frozen Drift — Video Moment",
       setName: "Arctic Series",
       editionNumber: 2,
       totalSupply: 50,
@@ -212,6 +222,24 @@ function savePacksToStorage(packs: SealedPack[]) {
   }
 }
 
+function loadBurnedCountsFromStorage(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(LS_BURNED_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function saveBurnedCountsToStorage(counts: Record<string, number>) {
+  try {
+    localStorage.setItem(LS_BURNED_KEY, JSON.stringify(counts));
+  } catch {
+    // ignore
+  }
+}
+
 export function CollectionProvider({
   children,
 }: { children: React.ReactNode }) {
@@ -220,6 +248,9 @@ export function CollectionProvider({
   );
   const [sealedPacks, setSealedPacks] = useState<SealedPack[]>(() =>
     loadPacksFromStorage(),
+  );
+  const [burnedCounts, setBurnedCounts] = useState<Record<string, number>>(() =>
+    loadBurnedCountsFromStorage(),
   );
 
   // Seed mock NFTs once on first mount
@@ -249,6 +280,11 @@ export function CollectionProvider({
   useEffect(() => {
     savePacksToStorage(sealedPacks);
   }, [sealedPacks]);
+
+  // Persist whenever burnedCounts change
+  useEffect(() => {
+    saveBurnedCountsToStorage(burnedCounts);
+  }, [burnedCounts]);
 
   const addNFT = useCallback((nft: CollectionNFT) => {
     setNfts((prev) => [nft, ...prev]);
@@ -281,17 +317,32 @@ export function CollectionProvider({
     setSealedPacks((prev) => prev.filter((p) => !idSet.has(p.id)));
   }, []);
 
+  const burnNFT = useCallback((nftId: string) => {
+    setNfts((prev) => {
+      const nft = prev.find((n) => n.id === nftId);
+      if (!nft) return prev;
+      // Increment burned count for this NFT id
+      setBurnedCounts((prevCounts) => ({
+        ...prevCounts,
+        [nftId]: (prevCounts[nftId] ?? 0) + 1,
+      }));
+      return prev.filter((n) => n.id !== nftId);
+    });
+  }, []);
+
   return (
     <CollectionContext.Provider
       value={{
         nfts,
         sealedPacks,
+        burnedCounts,
         addNFT,
         addNFTs,
         addSealedPacks,
         openPack,
         removeNFT,
         removeSealedPacks,
+        burnNFT,
       }}
     >
       {children}

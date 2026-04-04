@@ -77,24 +77,41 @@ function AppContent() {
   // The creator is the origin of the set but not the holder of the packs.
   function handleMintComplete(draft: MomentDraft) {
     const now = Date.now();
-    const totalPacks = draft.photos.length + (draft.video ? 1 : 0);
-    if (totalPacks === 0) return;
+    const totalPacks = draft.packSupply ?? 100;
 
-    // Use the first captured photo as the cover image for the release
+    // 90/10 split — round to integers, ensure they sum to totalPacks
+    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
+    const photoCount = totalPacks - videoCount;
+
+    // Build assignment pool: photoCount slots + videoCount slots
+    // Photo slots are numbered 1..photoCount, video slots 1..videoCount
+    type SlotPhoto = { type: "photo"; num: number };
+    type SlotVideo = { type: "video"; num: number };
+    type Slot = SlotPhoto | SlotVideo;
+
+    const pool: Slot[] = [
+      ...Array.from({ length: photoCount }, (_, i) => ({
+        type: "photo" as const,
+        num: i + 1,
+      })),
+      ...Array.from({ length: videoCount }, (_, i) => ({
+        type: "video" as const,
+        num: i + 1,
+      })),
+    ];
+
+    // Fisher-Yates shuffle — randomizes which packs get photo vs video
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
     const coverImageUrl =
       draft.photos.length > 0
         ? draft.photos[0]
         : "https://images.pokemontcg.io/sv1/025_hires.png";
 
-    const collectibleType: "photo" | "video" = draft.video ? "video" : "photo";
-
-    // Build a pack-id list for tracking (one entry per collectible in the set)
-    const packIds: string[] = draft.photos.map(
-      (_, idx) => `pack_${draft.id}_photo_${idx}`,
-    );
-    if (draft.video) {
-      packIds.push(`pack_${draft.id}_video`);
-    }
+    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
@@ -102,17 +119,15 @@ function AppContent() {
       coverImageUrl,
       previewClipUrl: draft.video ?? undefined,
       title: "My Mint Moment",
-      caption: `${draft.photos.length} photo${draft.photos.length !== 1 ? "s" : ""}${
-        draft.video ? " + 1 video" : ""
-      } · just minted`,
+      caption: `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`,
       setName: "My Mint Moment",
       packsAvailable: totalPacks,
       packIds,
       priceUsd: 3.0,
       listedAt: now,
-      expiresAt: now + 24 * 3600000, // 24-hour burn window
+      expiresAt: now + 24 * 3600000,
       status: "active",
-      collectibleType,
+      collectibleType: "photo",
     };
 
     addRelease(release);

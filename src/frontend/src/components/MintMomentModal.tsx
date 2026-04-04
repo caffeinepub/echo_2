@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useAnimationControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMomentDraft } from "../context/MomentDraftContext";
 
 interface MintMomentModalProps {
   open: boolean;
@@ -35,11 +36,9 @@ type PaymentOption = "USDC" | "BTC" | "ETH" | "SOL";
 const PAYMENT_OPTIONS: PaymentOption[] = ["USDC", "BTC", "ETH", "SOL"];
 
 const DETAILS = [
-  "9 photo cards (common)",
-  "1 video card (rare)",
-  "5 sealed packs generated",
-  "You receive all packs after minting",
-  "Packs can be opened, kept, or shared",
+  "9 photos → Common collectibles",
+  "1 video → Rare collectible",
+  "Collectibles = pack supply × 90% photos / 10% video",
 ];
 
 const STEPS = [
@@ -301,6 +300,8 @@ export function MintMomentModal({
   onConfirm,
 }: MintMomentModalProps) {
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("USDC");
+  const { activeDraft, setPackSupply } = useMomentDraft();
+  const packSupplyValue = activeDraft?.packSupply ?? 100;
   const controls = useAnimationControls();
 
   // Inject CSS keyframes once
@@ -547,6 +548,55 @@ export function MintMomentModal({
                         </li>
                       ))}
                     </ul>
+                  </section>
+
+                  <hr style={DIVIDER_STYLE} />
+
+                  {/* Pack Supply */}
+                  <section>
+                    <span style={SECTION_LABEL_STYLE}>Pack Supply</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
+                      <input
+                        type="number"
+                        data-ocid="mint.input"
+                        min={10}
+                        max={10000}
+                        step={10}
+                        value={packSupplyValue}
+                        onChange={(e) => {
+                          const v = Number.parseInt(e.target.value, 10);
+                          if (!Number.isNaN(v)) setPackSupply(v);
+                        }}
+                        style={{
+                          width: "80px",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          border: "1.5px solid rgba(52,168,132,0.40)",
+                          background: "rgba(52,168,132,0.05)",
+                          fontSize: "14px",
+                          fontWeight: 600,
+                          color: "#111",
+                          textAlign: "center",
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        color: "#9B9B9B",
+                        marginTop: "6px",
+                        marginBottom: 0,
+                      }}
+                    >
+                      Determines how many collectibles are generated.
+                    </p>
                   </section>
 
                   <hr style={DIVIDER_STYLE} />
