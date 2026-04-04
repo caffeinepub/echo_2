@@ -4,9 +4,7 @@ import { useTheme } from "../ThemeContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 import {
   type MintMomentSetRank,
-  type TrendingHashtag,
   getDiscoverSets,
-  getTrendingHashtags,
 } from "../store/mockDiscoverSets";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
@@ -347,55 +345,6 @@ function SectionHeader({
           marginLeft: "4px",
         }}
       />
-    </div>
-  );
-}
-
-// ─── Trending Hashtags Section ───────────────────────────────────────────────
-
-function TrendingHashtagsSection({
-  hashtags,
-  isDark,
-}: {
-  hashtags: TrendingHashtag[];
-  isDark: boolean;
-}) {
-  if (hashtags.length === 0) return null;
-
-  return (
-    <div className="mt-4 mb-2">
-      <div className="flex flex-wrap gap-2">
-        {hashtags.map(({ tag, hot }) => (
-          <span
-            key={tag}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "3px",
-              padding: "5px 12px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 500,
-              letterSpacing: "0.01em",
-              cursor: "default",
-              background: isDark
-                ? "rgba(10, 32, 22, 0.65)"
-                : "rgba(240, 253, 248, 0.85)",
-              border: isDark
-                ? "1px solid rgba(110, 230, 185, 0.14)"
-                : "1px solid rgba(16, 185, 129, 0.18)",
-              color: isDark
-                ? "rgba(160, 220, 195, 0.85)"
-                : "rgba(5, 120, 80, 0.9)",
-              backdropFilter: isDark ? "blur(8px)" : "none",
-              WebkitBackdropFilter: isDark ? "blur(8px)" : "none",
-            }}
-          >
-            {tag}
-            {hot ? " 🔥" : ""}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -947,7 +896,6 @@ export function MarketPage({
   );
 
   const top100Sets = getDiscoverSets(timeRange);
-  const trendingHashtags = getTrendingHashtags(timeRange);
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
 
   const hasAnySets = top100Sets.length > 0;
@@ -1044,12 +992,6 @@ export function MarketPage({
             </div>
           ) : (
             <div>
-              {/* ── Trending Hashtags ── */}
-              <TrendingHashtagsSection
-                hashtags={trendingHashtags}
-                isDark={isDark}
-              />
-
               {/* ── Top 100 ── */}
               <div className="mt-4">
                 <SectionHeader icon="🏆" label="Top 100" isDark={isDark} />

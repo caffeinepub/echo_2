@@ -19,6 +19,10 @@ import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 
+import {
+  type TrendingHashtag,
+  getTrendingHashtags,
+} from "../store/mockDiscoverSets";
 // ─── Countdown helper ─────────────────────────────────────────────────────────
 
 function formatCountdown(msLeft: number): string {
@@ -1653,6 +1657,55 @@ function SectionHeader({
   );
 }
 
+// ─── Trending Hashtags Section ───────────────────────────────────────────────
+
+function TrendingHashtagsSection({
+  hashtags,
+  isDark,
+}: {
+  hashtags: TrendingHashtag[];
+  isDark: boolean;
+}) {
+  if (hashtags.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 4 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+        {hashtags.map(({ tag, hot }) => (
+          <span
+            key={tag}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
+              padding: "5px 12px",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+              cursor: "default",
+              background: isDark
+                ? "rgba(10, 32, 22, 0.65)"
+                : "rgba(240, 253, 248, 0.85)",
+              border: isDark
+                ? "1px solid rgba(110, 230, 185, 0.14)"
+                : "1px solid rgba(16, 185, 129, 0.18)",
+              color: isDark
+                ? "rgba(160, 220, 195, 0.85)"
+                : "rgba(5, 120, 80, 0.9)",
+              backdropFilter: isDark ? "blur(8px)" : "none",
+              WebkitBackdropFilter: isDark ? "blur(8px)" : "none",
+            }}
+          >
+            {tag}
+            {hot ? " 🔥" : ""}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Filter pills ─────────────────────────────────────────────────────────────
 
 type FilterMode = "live" | "ending" | "new";
@@ -1674,6 +1727,7 @@ export function ReleasesPage() {
     null,
   );
   const [filterMode, setFilterMode] = useState<FilterMode>("live");
+  const trendingHashtags = getTrendingHashtags("ALL_TIME");
 
   const isLight = theme === "light";
   const isDark = !isLight;
@@ -1887,6 +1941,14 @@ export function ReleasesPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Trending Hashtags */}
+        <div style={{ paddingTop: 10 }}>
+          <TrendingHashtagsSection
+            hashtags={trendingHashtags}
+            isDark={isDark}
+          />
         </div>
       </div>
 
