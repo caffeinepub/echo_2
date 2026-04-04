@@ -47,6 +47,7 @@ interface CollectionCtx {
   addSealedPacks: (packs: SealedPack[]) => void;
   openPack: (packId: string) => void;
   removeNFT: (nftId: string) => void;
+  removeSealedPacks: (packIds: string[]) => void;
 }
 
 const CollectionContext = createContext<CollectionCtx | null>(null);
@@ -275,6 +276,11 @@ export function CollectionProvider({
     setNfts((prev) => prev.filter((n) => n.id !== nftId));
   }, []);
 
+  const removeSealedPacks = useCallback((packIds: string[]) => {
+    const idSet = new Set(packIds);
+    setSealedPacks((prev) => prev.filter((p) => !idSet.has(p.id)));
+  }, []);
+
   return (
     <CollectionContext.Provider
       value={{
@@ -285,6 +291,7 @@ export function CollectionProvider({
         addSealedPacks,
         openPack,
         removeNFT,
+        removeSealedPacks,
       }}
     >
       {children}

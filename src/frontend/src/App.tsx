@@ -12,6 +12,7 @@ import {
   useMomentDraft,
 } from "./context/MomentDraftContext";
 import type { MomentDraft } from "./context/MomentDraftContext";
+import { ReleasesMarketProvider } from "./context/ReleasesMarketContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
@@ -226,7 +227,9 @@ export default function App() {
           <AdminReleasesProvider>
             <MomentDraftProvider>
               <CollectionProvider>
-                <AppContent />
+                <ReleasesMarketProvider>
+                  <AppContent />
+                </ReleasesMarketProvider>
               </CollectionProvider>
             </MomentDraftProvider>
           </AdminReleasesProvider>

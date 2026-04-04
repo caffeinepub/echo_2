@@ -1,0 +1,855 @@
+import { Check, ChevronLeft, ChevronRight, Flame, X } from "lucide-react";
+import { useState } from "react";
+import type { SealedPack } from "../context/CollectionContext";
+import { useCollection } from "../context/CollectionContext";
+import type { MarketRelease } from "../context/ReleasesMarketContext";
+import { useReleasesMarket } from "../context/ReleasesMarketContext";
+
+const MINT = "#10b981";
+const MINT_LIGHT = "rgba(16,185,129,0.10)";
+const MINT_BORDER = "rgba(16,185,129,0.30)";
+
+const COVER_OPTIONS = [
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80",
+  "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
+  "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
+  "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
+];
+
+interface ReleaseFlowModalProps {
+  open: boolean;
+  onClose: () => void;
+  pack: SealedPack;
+  allPacksInSet: SealedPack[];
+}
+
+export function ReleaseFlowModal({
+  open,
+  onClose,
+  pack,
+  allPacksInSet,
+}: ReleaseFlowModalProps) {
+  const { addRelease } = useReleasesMarket();
+  const { removeSealedPacks } = useCollection();
+
+  const [step, setStep] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [coverImage, setCoverImage] = useState(
+    allPacksInSet[0]?.pendingNFT?.imageUrl ?? COVER_OPTIONS[0],
+  );
+  const [title, setTitle] = useState("");
+  const [caption, setCaption] = useState("");
+  const [priceStr, setPriceStr] = useState("2.00");
+  const [confirmed, setConfirmed] = useState(false);
+
+  const maxQty = allPacksInSet.length;
+  const priceUsd = Number.parseFloat(priceStr) || 0;
+
+  // Collect cover images from packs (deduplicated)
+  const packImages = [
+    ...new Set(
+      allPacksInSet
+        .map((p) => p.pendingNFT?.imageUrl)
+        .filter(Boolean) as string[],
+    ),
+    ...COVER_OPTIONS,
+  ].slice(0, 8);
+
+  function handleQuantityChange(delta: number) {
+    setQuantity((prev) => Math.min(maxQty, Math.max(1, prev + delta)));
+  }
+
+  function handleConfirmRelease() {
+    const now = Date.now();
+    const selectedPacks = allPacksInSet.slice(0, quantity);
+    const release: MarketRelease = {
+      id: `release_${now}_${Math.random().toString(36).slice(2, 7)}`,
+      creatorName: "you.icp",
+      coverImageUrl: coverImage,
+      title: title.trim() || pack.setName,
+      caption: caption.trim(),
+      setName: pack.setName,
+      packsAvailable: quantity,
+      packIds: selectedPacks.map((p) => p.id),
+      priceUsd,
+      listedAt: now,
+      expiresAt: now + 24 * 3600000,
+      status: "active",
+      collectibleType: pack.collectibleType,
+    };
+    addRelease(release);
+    removeSealedPacks(selectedPacks.map((p) => p.id));
+    setConfirmed(true);
+    setTimeout(() => {
+      onClose();
+      setStep(0);
+      setQuantity(1);
+      setTitle("");
+      setCaption("");
+      setPriceStr("2.00");
+      setConfirmed(false);
+    }, 1200);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div
+      data-ocid="release_flow.modal"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 400,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        padding: "0",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter") onClose();
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          animation: "rfBackdropIn 0.2s ease",
+        }}
+      />
+
+      {/* Sheet */}
+      <div
+        style={{
+          position: "relative",
+          background: "#FAFAF8",
+          borderRadius: "28px 28px 0 0",
+          width: "100%",
+          maxWidth: 520,
+          maxHeight: "90dvh",
+          overflowY: "auto",
+          padding: "28px 20px 40px",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+          animation: "rfSlideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)",
+        }}
+      >
+        <style>{`
+          @keyframes rfBackdropIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          @keyframes rfSlideUp {
+            from { transform: translateY(60px); opacity: 0; }
+            to   { transform: translateY(0); opacity: 1; }
+          }
+        `}</style>
+
+        {/* Close */}
+        <button
+          type="button"
+          data-ocid="release_flow.close_button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            background: "rgba(0,0,0,0.06)",
+            border: "none",
+            borderRadius: "50%",
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#6b7280",
+          }}
+        >
+          <X size={16} />
+        </button>
+
+        {/* Step dots */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 6,
+            marginBottom: 20,
+          }}
+        >
+          {[0, 1, 2].map((s) => (
+            <div
+              key={s}
+              style={{
+                width: s === step ? 20 : 7,
+                height: 7,
+                borderRadius: 4,
+                background: s === step ? MINT : "rgba(0,0,0,0.12)",
+                transition: "width 0.2s ease, background 0.2s ease",
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Step 0 — Quantity */}
+        {step === 0 && (
+          <div>
+            <h2
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#111",
+                marginBottom: 6,
+              }}
+            >
+              How many packs to release?
+            </h2>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 24 }}>
+              {pack.setName} ·{" "}
+              <span style={{ color: MINT, fontWeight: 600 }}>
+                {pack.collectibleType === "photo" ? "📷 Photo" : "🎬 Video"}
+              </span>
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 20,
+                marginBottom: 20,
+              }}
+            >
+              <button
+                type="button"
+                data-ocid="release_flow.button"
+                onClick={() => handleQuantityChange(-1)}
+                disabled={quantity <= 1}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  border: `1.5px solid ${MINT_BORDER}`,
+                  background: MINT_LIGHT,
+                  color: MINT,
+                  fontSize: 22,
+                  cursor: quantity <= 1 ? "not-allowed" : "pointer",
+                  opacity: quantity <= 1 ? 0.4 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                −
+              </button>
+              <span
+                style={{
+                  fontSize: 36,
+                  fontWeight: 700,
+                  color: "#111",
+                  minWidth: 56,
+                  textAlign: "center",
+                }}
+              >
+                {quantity}
+              </span>
+              <button
+                type="button"
+                data-ocid="release_flow.button"
+                onClick={() => handleQuantityChange(1)}
+                disabled={quantity >= maxQty}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  border: `1.5px solid ${MINT_BORDER}`,
+                  background: MINT_LIGHT,
+                  color: MINT,
+                  fontSize: 22,
+                  cursor: quantity >= maxQty ? "not-allowed" : "pointer",
+                  opacity: quantity >= maxQty ? 0.4 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              data-ocid="release_flow.secondary_button"
+              onClick={() => setQuantity(maxQty)}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "11px",
+                border: `1.5px solid ${MINT_BORDER}`,
+                borderRadius: 12,
+                background: MINT_LIGHT,
+                color: MINT,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginBottom: 16,
+              }}
+            >
+              Send all ({maxQty} packs)
+            </button>
+
+            <p
+              style={{
+                fontSize: 12,
+                color: "#9ca3af",
+                textAlign: "center",
+                marginBottom: 24,
+              }}
+            >
+              {maxQty} sealed pack{maxQty !== 1 ? "s" : ""} available in this
+              set
+            </p>
+
+            <button
+              type="button"
+              data-ocid="release_flow.primary_button"
+              onClick={() => setStep(1)}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: 14,
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "#fff",
+                fontSize: 15,
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              Next
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* Step 1 — Listing Setup */}
+        {step === 1 && (
+          <div>
+            <h2
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#111",
+                marginBottom: 6,
+              }}
+            >
+              Set up your release
+            </h2>
+            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 20 }}>
+              Releasing {quantity} pack{quantity !== 1 ? "s" : ""} ·{" "}
+              {pack.setName}
+            </p>
+
+            {/* Cover image picker */}
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                marginBottom: 8,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Cover Image
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 8,
+                marginBottom: 20,
+              }}
+            >
+              {packImages.slice(0, 8).map((url) => (
+                <button
+                  key={url}
+                  type="button"
+                  data-ocid="release_flow.button"
+                  onClick={() => setCoverImage(url)}
+                  style={{
+                    aspectRatio: "1",
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    border: `2px solid ${
+                      coverImage === url ? MINT : "rgba(0,0,0,0.08)"
+                    }`,
+                    padding: 0,
+                    cursor: "pointer",
+                    outline:
+                      coverImage === url
+                        ? `2px solid ${MINT}`
+                        : "2px solid transparent",
+                    outlineOffset: 1,
+                    transition: "border 0.15s, outline 0.15s",
+                  }}
+                >
+                  <img
+                    src={url}
+                    alt="Cover option"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Title */}
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                marginBottom: 6,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Title
+            </p>
+            <input
+              data-ocid="release_flow.input"
+              type="text"
+              placeholder="e.g. Sunset Ride"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={60}
+              style={{
+                width: "100%",
+                padding: "11px 13px",
+                borderRadius: 12,
+                border: "1.5px solid rgba(0,0,0,0.10)",
+                background: "#fff",
+                fontSize: 14,
+                color: "#111",
+                marginBottom: 16,
+                boxSizing: "border-box",
+                outline: "none",
+                transition: "border 0.15s",
+              }}
+              onFocus={(e) => {
+                (e.target as HTMLInputElement).style.border =
+                  `1.5px solid ${MINT}`;
+              }}
+              onBlur={(e) => {
+                (e.target as HTMLInputElement).style.border =
+                  "1.5px solid rgba(0,0,0,0.10)";
+              }}
+            />
+
+            {/* Caption */}
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                marginBottom: 6,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Caption{" "}
+              <span style={{ fontWeight: 400, color: "#9ca3af" }}>
+                (optional)
+              </span>
+            </p>
+            <div style={{ position: "relative", marginBottom: 16 }}>
+              <textarea
+                data-ocid="release_flow.textarea"
+                placeholder="Add a short description (optional)"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value.slice(0, 120))}
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "11px 13px",
+                  borderRadius: 12,
+                  border: "1.5px solid rgba(0,0,0,0.10)",
+                  background: "#fff",
+                  fontSize: 14,
+                  color: "#111",
+                  resize: "none",
+                  boxSizing: "border-box",
+                  outline: "none",
+                  fontFamily: "inherit",
+                  transition: "border 0.15s",
+                }}
+                onFocus={(e) => {
+                  (e.target as HTMLTextAreaElement).style.border =
+                    `1.5px solid ${MINT}`;
+                }}
+                onBlur={(e) => {
+                  (e.target as HTMLTextAreaElement).style.border =
+                    "1.5px solid rgba(0,0,0,0.10)";
+                }}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 12,
+                  fontSize: 11,
+                  color: caption.length > 100 ? "#f59e0b" : "#9ca3af",
+                }}
+              >
+                {caption.length}/120
+              </span>
+            </div>
+
+            {/* Price */}
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#374151",
+                marginBottom: 6,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Price per pack
+            </p>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                border: "1.5px solid rgba(0,0,0,0.10)",
+                borderRadius: 12,
+                background: "#fff",
+                overflow: "hidden",
+                marginBottom: 24,
+              }}
+            >
+              <span
+                style={{
+                  padding: "11px 4px 11px 13px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#374151",
+                }}
+              >
+                $
+              </span>
+              <input
+                data-ocid="release_flow.input"
+                type="number"
+                step="0.50"
+                min="0.01"
+                value={priceStr}
+                onChange={(e) => setPriceStr(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "11px 13px 11px 4px",
+                  border: "none",
+                  outline: "none",
+                  fontSize: 14,
+                  color: "#111",
+                  background: "transparent",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+              }}
+            >
+              <button
+                type="button"
+                data-ocid="release_flow.cancel_button"
+                onClick={() => setStep(0)}
+                style={{
+                  flex: 1,
+                  padding: "13px",
+                  borderRadius: 14,
+                  border: "1.5px solid rgba(0,0,0,0.10)",
+                  background: "#fff",
+                  color: "#374151",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 4,
+                }}
+              >
+                <ChevronLeft size={15} />
+                Back
+              </button>
+              <button
+                type="button"
+                data-ocid="release_flow.primary_button"
+                onClick={() => setStep(2)}
+                style={{
+                  flex: 2,
+                  padding: "13px",
+                  borderRadius: 14,
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Confirm */}
+        {step === 2 && (
+          <div>
+            {confirmed ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  padding: "40px 0",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 16px rgba(16,185,129,0.35)",
+                  }}
+                >
+                  <Check size={26} color="white" />
+                </div>
+                <p
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 700,
+                    color: "#111",
+                  }}
+                >
+                  Released!
+                </p>
+                <p style={{ fontSize: 13, color: "#6b7280" }}>
+                  Your packs are now live in the marketplace.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h2
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: "#111",
+                    marginBottom: 16,
+                  }}
+                >
+                  Confirm release
+                </h2>
+
+                {/* Summary card */}
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    border: "1.5px solid rgba(0,0,0,0.08)",
+                    marginBottom: 16,
+                  }}
+                >
+                  <img
+                    src={coverImage}
+                    alt="Release cover"
+                    style={{
+                      width: "100%",
+                      height: 140,
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                  <div style={{ padding: "14px 16px" }}>
+                    <p
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: "#111",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {title.trim() || pack.setName}
+                    </p>
+                    {caption.trim() && (
+                      <p
+                        style={{
+                          fontSize: 13,
+                          color: "#6b7280",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {caption}
+                      </p>
+                    )}
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#9ca3af",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {pack.setName}
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: "#374151" }}>
+                        {quantity} pack{quantity !== 1 ? "s" : ""}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 700,
+                          color: MINT,
+                        }}
+                      >
+                        ${priceUsd.toFixed(2)}
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#9ca3af",
+                            fontWeight: 400,
+                            marginLeft: 3,
+                          }}
+                        >
+                          each
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Burn warning */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.20)",
+                    borderRadius: 12,
+                    padding: "11px 14px",
+                    marginBottom: 20,
+                  }}
+                >
+                  <Flame
+                    size={15}
+                    color="#f59e0b"
+                    style={{ flexShrink: 0, marginTop: 1 }}
+                  />
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#92400e",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Listing expires in <strong>24 hours</strong>. Unsold packs
+                    will be <strong>burned permanently</strong> — they do not
+                    return to your Collection.
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    type="button"
+                    data-ocid="release_flow.cancel_button"
+                    onClick={() => setStep(1)}
+                    style={{
+                      flex: 1,
+                      padding: "13px",
+                      borderRadius: 14,
+                      border: "1.5px solid rgba(0,0,0,0.10)",
+                      background: "#fff",
+                      color: "#374151",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <ChevronLeft size={15} />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    data-ocid="release_flow.confirm_button"
+                    onClick={handleConfirmRelease}
+                    style={{
+                      flex: 2,
+                      padding: "13px",
+                      borderRadius: 14,
+                      background:
+                        "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      color: "#fff",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      border: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(16,185,129,0.30)",
+                    }}
+                  >
+                    Confirm Release
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

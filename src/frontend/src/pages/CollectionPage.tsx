@@ -1,5 +1,6 @@
-import { Camera, Link2, Package, Play, Star, X } from "lucide-react";
+import { Camera, Link2, Package, Play, Star, Store, X } from "lucide-react";
 import { useState } from "react";
+import { ReleaseFlowModal } from "../components/ReleaseFlowModal";
 import {
   type CollectionNFT,
   type SealedPack,
@@ -1066,10 +1067,12 @@ function PackDetailSheet({
 function SealedPackTile({
   pack,
   onClick,
+  onRelease,
   index,
 }: {
   pack: SealedPack;
   onClick: () => void;
+  onRelease: (pack: SealedPack) => void;
   index: number;
 }) {
   return (
@@ -1235,6 +1238,36 @@ function SealedPackTile({
             1 collectible inside
           </span>
         </div>
+
+        {/* Release to Market button */}
+        <button
+          type="button"
+          data-ocid={`collection.release_button.${index + 1}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRelease(pack);
+          }}
+          style={{
+            marginTop: "8px",
+            width: "100%",
+            padding: "7px 0",
+            borderRadius: "10px",
+            border: "1.5px solid rgba(52,168,132,0.30)",
+            background: "rgba(52,168,132,0.07)",
+            color: "#10b981",
+            fontSize: "11px",
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "4px",
+            letterSpacing: "0.01em",
+          }}
+        >
+          <Store size={10} />
+          Release to Market
+        </button>
       </div>
     </button>
   );
@@ -1569,6 +1602,9 @@ export function CollectionPage({
   const { nfts, sealedPacks, openPack, removeNFT } = useCollection();
   const [selectedNFT, setSelectedNFT] = useState<CollectionNFT | null>(null);
   const [selectedPack, setSelectedPack] = useState<SealedPack | null>(null);
+  const [releaseModalPack, setReleaseModalPack] = useState<SealedPack | null>(
+    null,
+  );
 
   // Sort newest first
   const sortedPacks = [...sealedPacks].sort(
@@ -1632,6 +1668,7 @@ export function CollectionPage({
                     pack={pack}
                     index={idx}
                     onClick={() => setSelectedPack(pack)}
+                    onRelease={(p) => setReleaseModalPack(p)}
                   />
                 ))}
               </div>
@@ -1696,6 +1733,18 @@ export function CollectionPage({
             removeNFT(id);
             setSelectedNFT(null);
           }}
+        />
+      )}
+
+      {/* Release to Market modal */}
+      {releaseModalPack && (
+        <ReleaseFlowModal
+          open={!!releaseModalPack}
+          onClose={() => setReleaseModalPack(null)}
+          pack={releaseModalPack}
+          allPacksInSet={sealedPacks.filter(
+            (p) => p.setName === releaseModalPack.setName,
+          )}
         />
       )}
     </div>
