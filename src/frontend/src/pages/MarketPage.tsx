@@ -2,11 +2,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { useUserSettings } from "../context/UserSettingsContext";
-import type {
-  DiscoverSections,
-  MintMomentSetRank,
+import {
+  type MintMomentSetRank,
+  type TrendingHashtag,
+  getDiscoverSets,
+  getTrendingHashtags,
 } from "../store/mockDiscoverSets";
-import { getDiscoverSections } from "../store/mockDiscoverSets";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -350,41 +351,49 @@ function SectionHeader({
   );
 }
 
-// ─── Discover Section ─────────────────────────────────────────────────────────
+// ─── Trending Hashtags Section ───────────────────────────────────────────────
 
-function DiscoverSection({
-  icon,
-  label,
-  sets,
-  globalOffset,
+function TrendingHashtagsSection({
+  hashtags,
   isDark,
-  onSelect,
-  explicitModeOn = false,
 }: {
-  icon: string;
-  label: string;
-  sets: MintMomentSetRank[];
-  globalOffset: number;
+  hashtags: TrendingHashtag[];
   isDark: boolean;
-  onSelect: (set: MintMomentSetRank) => void;
-  explicitModeOn?: boolean;
 }) {
-  if (sets.length === 0) return null;
+  if (hashtags.length === 0) return null;
 
   return (
-    <div>
-      <SectionHeader icon={icon} label={label} isDark={isDark} />
-      <div className="flex flex-col gap-2">
-        {sets.map((set, i) => (
-          <SetRankRow
-            key={set.id}
-            set={set}
-            rank={globalOffset + i + 1}
-            sectionRank={i + 1}
-            isDark={isDark}
-            onClick={() => onSelect(set)}
-            explicitModeOn={explicitModeOn}
-          />
+    <div className="mt-4 mb-2">
+      <div className="flex flex-wrap gap-2">
+        {hashtags.map(({ tag, hot }) => (
+          <span
+            key={tag}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "3px",
+              padding: "5px 12px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: 500,
+              letterSpacing: "0.01em",
+              cursor: "default",
+              background: isDark
+                ? "rgba(10, 32, 22, 0.65)"
+                : "rgba(240, 253, 248, 0.85)",
+              border: isDark
+                ? "1px solid rgba(110, 230, 185, 0.14)"
+                : "1px solid rgba(16, 185, 129, 0.18)",
+              color: isDark
+                ? "rgba(160, 220, 195, 0.85)"
+                : "rgba(5, 120, 80, 0.9)",
+              backdropFilter: isDark ? "blur(8px)" : "none",
+              WebkitBackdropFilter: isDark ? "blur(8px)" : "none",
+            }}
+          >
+            {tag}
+            {hot ? " 🔥" : ""}
+          </span>
         ))}
       </div>
     </div>
@@ -937,21 +946,11 @@ export function MarketPage({
     null,
   );
 
-  const sections: DiscoverSections = getDiscoverSections(timeRange);
+  const top100Sets = getDiscoverSets(timeRange);
+  const trendingHashtags = getTrendingHashtags(timeRange);
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
 
-  // Compute global offset counters so data-ocid rank stays unique across sections
-  const trendingCount = sections.trendingNow.length;
-  const openedCount = sections.mostOpened.length;
-  const risingCount = sections.risingFast.length;
-  const collectedCount = sections.mostCollected.length;
-
-  const hasAnySets =
-    trendingCount > 0 ||
-    openedCount > 0 ||
-    risingCount > 0 ||
-    collectedCount > 0 ||
-    sections.freshMoments.length > 0;
+  const hasAnySets = top100Sets.length > 0;
 
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
@@ -1045,53 +1044,29 @@ export function MarketPage({
             </div>
           ) : (
             <div>
-              <DiscoverSection
-                icon="🔥"
-                label="Trending Now"
-                sets={sections.trendingNow}
-                globalOffset={0}
+              {/* ── Trending Hashtags ── */}
+              <TrendingHashtagsSection
+                hashtags={trendingHashtags}
                 isDark={isDark}
-                onSelect={setSelectedSet}
-                explicitModeOn={explicitModeOn}
               />
-              <DiscoverSection
-                icon="📦"
-                label="Most Opened"
-                sets={sections.mostOpened}
-                globalOffset={trendingCount}
-                isDark={isDark}
-                onSelect={setSelectedSet}
-                explicitModeOn={explicitModeOn}
-              />
-              <DiscoverSection
-                icon="⚡"
-                label="Rising Fast"
-                sets={sections.risingFast}
-                globalOffset={trendingCount + openedCount}
-                isDark={isDark}
-                onSelect={setSelectedSet}
-                explicitModeOn={explicitModeOn}
-              />
-              <DiscoverSection
-                icon="❤️"
-                label="Most Collected"
-                sets={sections.mostCollected}
-                globalOffset={trendingCount + openedCount + risingCount}
-                isDark={isDark}
-                onSelect={setSelectedSet}
-                explicitModeOn={explicitModeOn}
-              />
-              <DiscoverSection
-                icon="✨"
-                label="Fresh Moments"
-                sets={sections.freshMoments}
-                globalOffset={
-                  trendingCount + openedCount + risingCount + collectedCount
-                }
-                isDark={isDark}
-                onSelect={setSelectedSet}
-                explicitModeOn={explicitModeOn}
-              />
+
+              {/* ── Top 100 ── */}
+              <div className="mt-4">
+                <SectionHeader icon="🏆" label="Top 100" isDark={isDark} />
+                <div className="flex flex-col gap-2">
+                  {top100Sets.map((set, i) => (
+                    <SetRankRow
+                      key={set.id}
+                      set={set}
+                      rank={i + 1}
+                      sectionRank={i + 1}
+                      isDark={isDark}
+                      onClick={() => setSelectedSet(set)}
+                      explicitModeOn={explicitModeOn}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </motion.div>

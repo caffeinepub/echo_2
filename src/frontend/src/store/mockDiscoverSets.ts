@@ -1365,3 +1365,67 @@ export function getDiscoverSections(
 
   return { trendingNow, mostOpened, risingFast, mostCollected, freshMoments };
 }
+
+// ─── Trending Hashtags ──────────────────────────────────────────────────────────
+
+export interface TrendingHashtag {
+  tag: string;
+  hot: boolean; // true = fire emoji shown
+}
+
+const HASHTAG_SETS: Record<string, TrendingHashtag[]> = {
+  ALL_TIME: [
+    { tag: "#nightdrive", hot: true },
+    { tag: "#citylights", hot: true },
+    { tag: "#goldenratio", hot: false },
+    { tag: "#coldmorning", hot: false },
+    { tag: "#latevibes", hot: true },
+    { tag: "#fogseason", hot: false },
+    { tag: "#mintmoment", hot: true },
+    { tag: "#saltflats", hot: false },
+    { tag: "#blueshift", hot: false },
+    { tag: "#rooftopview", hot: false },
+  ],
+  "24H": [
+    { tag: "#nightdrive", hot: true },
+    { tag: "#citylights", hot: true },
+    { tag: "#latevibes", hot: true },
+    { tag: "#neonarcade", hot: true },
+    { tag: "#rainwindow", hot: true },
+    { tag: "#emptystage", hot: false },
+    { tag: "#mintmoment", hot: false },
+    { tag: "#desertbloom", hot: false },
+    { tag: "#coldstart", hot: false },
+    { tag: "#foghorn", hot: false },
+  ],
+  "7D": [
+    { tag: "#citylights", hot: true },
+    { tag: "#nightdrive", hot: true },
+    { tag: "#firstsnow", hot: true },
+    { tag: "#oceanmist", hot: false },
+    { tag: "#latevibes", hot: false },
+    { tag: "#mintmoment", hot: true },
+    { tag: "#midnightrun", hot: false },
+    { tag: "#vinylbar", hot: false },
+    { tag: "#tokyoalley", hot: false },
+    { tag: "#rooftopview", hot: false },
+  ],
+  "30D": [
+    { tag: "#goldenhour", hot: true },
+    { tag: "#nightdrive", hot: true },
+    { tag: "#citylights", hot: false },
+    { tag: "#oceanmist", hot: true },
+    { tag: "#firstsnow", hot: false },
+    { tag: "#morningcoffee", hot: false },
+    { tag: "#mintmoment", hot: false },
+    { tag: "#sunsetride", hot: false },
+    { tag: "#latevibes", hot: false },
+    { tag: "#harvesthour", hot: false },
+  ],
+};
+
+export function getTrendingHashtags(
+  timeRange: "ALL_TIME" | "24H" | "7D" | "30D",
+): TrendingHashtag[] {
+  return HASHTAG_SETS[timeRange] ?? HASHTAG_SETS.ALL_TIME;
+}

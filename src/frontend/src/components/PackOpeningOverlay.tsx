@@ -11,6 +11,10 @@ const OVERLAY_KEYFRAMES = `
     50%  { transform: translateY(-8px); }
     100% { transform: translateY(0px); }
   }
+  @keyframes packAppear {
+    0%   { opacity: 0; transform: translateY(24px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0px) scale(1); }
+  }
   @keyframes packShake {
     0%   { transform: translateX(0px); }
     8%   { transform: translateX(-4px); }
@@ -115,7 +119,7 @@ type Phase =
 const KNOB_SIZE = 54;
 
 export function PackOpeningOverlay({
-  pack,
+  pack: _pack,
   nft,
   onComplete,
   onClose: _onClose,
@@ -135,7 +139,6 @@ export function PackOpeningOverlay({
   const [sliderTriggered, setSliderTriggered] = useState(false);
   const dragStartXRef = useRef(0);
   const knobStartXRef = useRef(0);
-  // Keep a ref for trackRef so updateKnob doesn't need it in deps
   const trackRefStable = trackRef;
 
   const wrapperImageUrl = PACK_IMAGE;
@@ -263,9 +266,6 @@ export function PackOpeningOverlay({
   const isVideo = nft.mediaType === "video";
   const isRare = nft.rarity === "Rare";
 
-  const glowBase = 0.25 + sliderProgress * 0.45;
-  const glowOuter = 0.1 + sliderProgress * 0.25;
-  const packGlow = `0 0 ${40 + sliderProgress * 40}px rgba(52,211,153,${glowBase}), 0 0 ${80 + sliderProgress * 80}px rgba(52,211,153,${glowOuter})`;
   const labelOpacity = Math.max(0, 1 - sliderProgress * 2.5);
 
   const inIdleOrSliding = phase === "idle";
@@ -283,77 +283,57 @@ export function PackOpeningOverlay({
       style={{
         zIndex: 9999,
         padding: "24px 20px 48px",
-        background: "rgba(4,12,8,0.88)",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-        animation: "overlayFadeIn 0.28s ease",
+        background: "rgba(4,12,8,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        animation: "overlayFadeIn 0.32s ease",
       }}
     >
-      {/* ── IDLE: Pack + Slide to Open ─────────────────────────────────────── */}
+      {/* ── IDLE: Pack wrapper only + Slide to Open ─────────────────────── */}
       {inIdleOrSliding && (
         <>
-          {/* Floating pack card */}
+          {/* Floating pack — wrapper only, no cover art */}
           <div
             style={{
-              width: "220px",
-              aspectRatio: "4/5",
-              borderRadius: "18px",
-              overflow: "hidden",
-              border: "1.5px solid rgba(52,211,153,0.30)",
-              boxShadow: packGlow,
+              width: "240px",
+              aspectRatio: "3/4",
               position: "relative",
-              animation: "packFloat 3s ease-in-out infinite",
+              animation:
+                "packAppear 0.42s cubic-bezier(0.22,1,0.36,1) both, packFloat 3s ease-in-out 0.42s infinite",
               marginBottom: "auto",
               marginTop: "auto",
               flexShrink: 0,
+              filter: `drop-shadow(0 0 ${28 + sliderProgress * 36}px rgba(52,211,153,${0.28 + sliderProgress * 0.38})) drop-shadow(0 24px 48px rgba(0,0,0,0.6))`,
+              transition: isDragging ? "none" : "filter 0.2s ease",
             }}
           >
-            {/* Wrapper shell — full fill */}
             <img
               src={wrapperImageUrl}
               alt="Sealed Pack"
               style={{
-                position: "absolute",
-                inset: 0,
                 width: "100%",
                 height: "100%",
-                objectFit: "cover",
+                objectFit: "contain",
                 display: "block",
-                zIndex: 0,
+                borderRadius: "16px",
               }}
             />
-            {/* Cover art insert — centered label visible through wrapper window */}
-            {pack.coverPhotoUrl && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 1,
-                }}
-              >
-                <img
-                  src={pack.coverPhotoUrl}
-                  alt=""
-                  aria-hidden="true"
-                  style={{
-                    width: "58%",
-                    height: "52%",
-                    objectFit: "cover",
-                    borderRadius: "6px",
-                    opacity: 0.88,
-                    display: "block",
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.32)",
-                  }}
-                />
-              </div>
-            )}
+            {/* Subtle inner glow intensifies as slider advances */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "16px",
+                background: `radial-gradient(ellipse at 50% 50%, rgba(52,211,153,${sliderProgress * 0.12}), transparent 70%)`,
+                pointerEvents: "none",
+                transition: isDragging ? "none" : "background 0.2s ease",
+              }}
+            />
           </div>
 
           {/* Spacer */}
-          <div style={{ flex: 1, minHeight: "32px" }} />
+          <div style={{ flex: 1, minHeight: "28px" }} />
 
           {/* Slide to Open control */}
           <div
@@ -451,7 +431,6 @@ export function PackOpeningOverlay({
                   flexShrink: 0,
                 }}
               >
-                {/* Arrow chevron — decorative */}
                 <svg
                   aria-hidden="true"
                   width="18"
@@ -470,7 +449,7 @@ export function PackOpeningOverlay({
                 </svg>
               </div>
 
-              {/* Chevron hint on right — decorative */}
+              {/* Chevron hint on right */}
               <div
                 style={{
                   position: "absolute",
@@ -503,85 +482,52 @@ export function PackOpeningOverlay({
         </>
       )}
 
-      {/* ── ANTICIPATION: Pack shakes + glows ─────────────────────────────── */}
+      {/* ── ANTICIPATION: Wrapper shakes + glows, no cover art ───────────── */}
       {phase === "anticipation" && (
         <div
           style={{
-            width: "220px",
-            aspectRatio: "4/5",
-            borderRadius: "18px",
-            overflow: "hidden",
-            border: "1.5px solid rgba(52,211,153,0.50)",
-            boxShadow:
-              "0 0 80px rgba(52,211,153,0.70), 0 0 160px rgba(52,211,153,0.35), inset 0 0 40px rgba(52,211,153,0.15)",
+            width: "240px",
+            aspectRatio: "3/4",
             position: "relative",
             animation: "packShake 400ms ease-in-out forwards",
             flexShrink: 0,
+            filter:
+              "drop-shadow(0 0 60px rgba(52,211,153,0.75)) drop-shadow(0 0 120px rgba(52,211,153,0.40)) drop-shadow(0 24px 48px rgba(0,0,0,0.7))",
           }}
         >
-          {/* Wrapper shell */}
           <img
             src={wrapperImageUrl}
             alt="Sealed Pack"
             style={{
-              position: "absolute",
-              inset: 0,
               width: "100%",
               height: "100%",
-              objectFit: "cover",
+              objectFit: "contain",
               display: "block",
-              zIndex: 0,
+              borderRadius: "16px",
             }}
           />
-          {/* Cover art insert */}
-          {pack.coverPhotoUrl && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1,
-              }}
-            >
-              <img
-                src={pack.coverPhotoUrl}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  width: "58%",
-                  height: "52%",
-                  objectFit: "cover",
-                  borderRadius: "6px",
-                  opacity: 0.88,
-                  display: "block",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.32)",
-                }}
-              />
-            </div>
-          )}
-          {/* Inner glow overlay */}
+          {/* Inner glow at peak */}
           <div
+            aria-hidden="true"
             style={{
               position: "absolute",
               inset: 0,
+              borderRadius: "16px",
               background:
-                "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.18), transparent 70%)",
+                "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.22), transparent 65%)",
               pointerEvents: "none",
-              zIndex: 2,
             }}
           />
         </div>
       )}
 
-      {/* ── TEAR: Pack halves split ───────────────────────────────────────── */}
+      {/* ── TEAR: Wrapper halves split ───────────────────────────────────── */}
       {phase === "tear" && (
         <div
           style={{
             position: "relative",
-            width: "220px",
-            aspectRatio: "4/5",
+            width: "240px",
+            aspectRatio: "3/4",
             flexShrink: 0,
           }}
         >
@@ -591,10 +537,10 @@ export function PackOpeningOverlay({
               position: "absolute",
               top: 0,
               left: 0,
-              width: "220px",
+              width: "240px",
               height: "50%",
               overflow: "hidden",
-              borderRadius: "18px 18px 0 0",
+              borderRadius: "16px 16px 0 0",
               animation: "halfTearTop 700ms cubic-bezier(0.4,0,0.2,1) forwards",
             }}
           >
@@ -603,8 +549,8 @@ export function PackOpeningOverlay({
               alt=""
               aria-hidden="true"
               style={{
-                width: "220px",
-                height: "calc(220px * 5 / 4)",
+                width: "240px",
+                height: "calc(240px * 4 / 3)",
                 objectFit: "cover",
                 objectPosition: "top",
                 display: "block",
@@ -618,10 +564,10 @@ export function PackOpeningOverlay({
               position: "absolute",
               bottom: 0,
               left: 0,
-              width: "220px",
+              width: "240px",
               height: "50%",
               overflow: "hidden",
-              borderRadius: "0 0 18px 18px",
+              borderRadius: "0 0 16px 16px",
               animation:
                 "halfTearBottom 700ms cubic-bezier(0.4,0,0.2,1) forwards",
             }}
@@ -631,8 +577,8 @@ export function PackOpeningOverlay({
               alt=""
               aria-hidden="true"
               style={{
-                width: "220px",
-                height: "calc(220px * 5 / 4)",
+                width: "240px",
+                height: "calc(240px * 4 / 3)",
                 objectFit: "cover",
                 objectPosition: "bottom",
                 display: "block",
@@ -648,11 +594,11 @@ export function PackOpeningOverlay({
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
-              width: "160px",
-              height: "160px",
+              width: "180px",
+              height: "180px",
               borderRadius: "50%",
               background:
-                "radial-gradient(circle, rgba(255,255,255,0.22), rgba(52,211,153,0.18), transparent 70%)",
+                "radial-gradient(circle, rgba(255,255,255,0.24), rgba(52,211,153,0.18), transparent 70%)",
               pointerEvents: "none",
               animation: "lightBurst 700ms ease-out forwards",
             }}
@@ -660,13 +606,13 @@ export function PackOpeningOverlay({
         </div>
       )}
 
-      {/* ── SUSPENSE: Frosted silhouette ──────────────────────────────────── */}
+      {/* ── SUSPENSE: Frosted silhouette ─────────────────────────────────── */}
       {phase === "suspense" && (
         <div
           aria-hidden="true"
           style={{
-            width: "220px",
-            aspectRatio: "4/5",
+            width: "240px",
+            aspectRatio: "3/4",
             borderRadius: "18px",
             background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.12)",
@@ -679,7 +625,7 @@ export function PackOpeningOverlay({
         />
       )}
 
-      {/* ── REVEAL + ACTION: NFT card rises, then metadata + buttons ────────── */}
+      {/* ── REVEAL + ACTION: NFT card rises, then metadata + buttons ─────── */}
       {(phase === "reveal" || phase === "action") && (
         <div
           style={{
@@ -712,7 +658,7 @@ export function PackOpeningOverlay({
               marginBottom: phase === "action" ? "16px" : 0,
             }}
           >
-            {/* Cover image — always static (no <video>) */}
+            {/* Cover image */}
             <img
               src={nft.imageUrl}
               alt={nft.title}
@@ -726,7 +672,7 @@ export function PackOpeningOverlay({
               }}
             />
 
-            {/* Video badge — bottom-right, motion cue for video NFTs */}
+            {/* Video badge */}
             {isVideo && (
               <div
                 style={{
@@ -855,7 +801,7 @@ export function PackOpeningOverlay({
                   color: isRare ? "#5de8bb" : "rgba(255,255,255,0.65)",
                   fontWeight: 700,
                   letterSpacing: "0.10em",
-                  textTransform: "uppercase",
+                  textTransform: "uppercase" as const,
                 }}
               >
                 {isRare ? "RARE" : "COMMON"}
@@ -863,10 +809,9 @@ export function PackOpeningOverlay({
             </div>
           </div>
 
-          {/* ── ACTION: Metadata + Buttons ────────────────────────────────── */}
+          {/* ── ACTION: Metadata + Buttons ────────────────────────────── */}
           {phase === "action" && (
             <>
-              {/* Staggered metadata */}
               <div
                 style={{
                   textAlign: "center",
@@ -875,7 +820,6 @@ export function PackOpeningOverlay({
                   maxWidth: "280px",
                 }}
               >
-                {/* Title */}
                 <div
                   style={{
                     fontSize: "15px",
@@ -889,7 +833,6 @@ export function PackOpeningOverlay({
                   {nft.title}
                 </div>
 
-                {/* Rarity pill */}
                 <div
                   style={{
                     display: "inline-block",
@@ -913,7 +856,6 @@ export function PackOpeningOverlay({
                   {isRare ? "✦ Rare" : "Common"}
                 </div>
 
-                {/* Edition */}
                 <div
                   style={{
                     fontSize: "12px",
@@ -927,7 +869,6 @@ export function PackOpeningOverlay({
                   {editionText}
                 </div>
 
-                {/* Creator */}
                 <div
                   style={{
                     fontSize: "11px",
@@ -940,7 +881,6 @@ export function PackOpeningOverlay({
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div
                 style={{
                   width: "100%",
@@ -951,7 +891,6 @@ export function PackOpeningOverlay({
                   animation: "actionSlideUp 380ms ease 280ms both",
                 }}
               >
-                {/* View NFT — primary */}
                 <button
                   type="button"
                   data-ocid="collection.primary_button"
@@ -979,7 +918,6 @@ export function PackOpeningOverlay({
                   View NFT
                 </button>
 
-                {/* Back to Collection — secondary */}
                 <button
                   type="button"
                   data-ocid="collection.secondary_button"
