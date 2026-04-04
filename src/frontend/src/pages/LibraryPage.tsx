@@ -3,106 +3,9 @@ import { useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
+import { MOCK_OWNED_MEDIA, type OwnedMediaItem } from "../store/mockOwnedMedia";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-// ── Collected: Owned Media ────────────────────────────────────────────────────
-
-interface OwnedMediaItem {
-  id: string;
-  type: "photo" | "video";
-  title: string;
-  creator: string;
-  editionNumber: string; // e.g. "12/100"
-  isListed: boolean;
-  price?: number; // only if listed
-  duration?: string; // e.g. "0:07", "0:30", "1:00" — only for videos
-  thumbnailUrl: string;
-}
-
-const MOCK_OWNED_MEDIA: OwnedMediaItem[] = [
-  {
-    id: "1",
-    type: "photo",
-    title: "Mint Sunrise",
-    creator: "lumina.sol",
-    editionNumber: "12/100",
-    isListed: true,
-    price: 25,
-    thumbnailUrl: "https://placehold.co/400x400/e8f5f0/059669?text=Photo",
-  },
-  {
-    id: "2",
-    type: "video",
-    title: "Opening Day",
-    creator: "drophaus",
-    editionNumber: "3/50",
-    isListed: false,
-    duration: "0:07",
-    thumbnailUrl: "https://placehold.co/400x400/f0f9ff/2563eb?text=Video",
-  },
-  {
-    id: "3",
-    type: "photo",
-    title: "Crystal Drop",
-    creator: "nova.art",
-    editionNumber: "8/200",
-    isListed: true,
-    price: 15,
-    thumbnailUrl: "https://placehold.co/400x400/e8f5f0/059669?text=Photo",
-  },
-  {
-    id: "4",
-    type: "video",
-    title: "Drift Season",
-    creator: "kira_frames",
-    editionNumber: "1/25",
-    isListed: true,
-    price: 80,
-    duration: "0:30",
-    thumbnailUrl: "https://placehold.co/400x400/f0f9ff/2563eb?text=Video",
-  },
-  {
-    id: "5",
-    type: "photo",
-    title: "Sage Walk",
-    creator: "earthtones",
-    editionNumber: "44/100",
-    isListed: false,
-    thumbnailUrl: "https://placehold.co/400x400/e8f5f0/059669?text=Photo",
-  },
-  {
-    id: "6",
-    type: "video",
-    title: "Neon Fog",
-    creator: "lumina.sol",
-    editionNumber: "2/10",
-    isListed: false,
-    duration: "1:00",
-    thumbnailUrl: "https://placehold.co/400x400/f0f9ff/2563eb?text=Video",
-  },
-  {
-    id: "7",
-    type: "photo",
-    title: "Mirror Pond",
-    creator: "nova.art",
-    editionNumber: "17/75",
-    isListed: true,
-    price: 40,
-    thumbnailUrl: "https://placehold.co/400x400/e8f5f0/059669?text=Photo",
-  },
-  {
-    id: "8",
-    type: "photo",
-    title: "Frosted Peak",
-    creator: "drophaus",
-    editionNumber: "99/100",
-    isListed: false,
-    thumbnailUrl: "https://placehold.co/400x400/e8f5f0/059669?text=Photo",
-  },
-];
-
-// ── Created mock data (untouched) ─────────────────────────────────────────────
+// ─── Created mock data (unchanged) ───────────────────────────────────────────
 
 const MOCK_CREATED_SETS = [
   {
@@ -195,6 +98,7 @@ interface LibraryPageProps {
   onAlbumClick?: () => void;
   onBrowseReleases?: () => void;
   onCaptureMoment?: () => void;
+  onAssetClick?: (id: string) => void;
 }
 
 // ─── Section Header ───────────────────────────────────────────────────────────
@@ -217,257 +121,314 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-// ─── Media Detail Sheet ───────────────────────────────────────────────────────
+// ─── Rarity color helper ──────────────────────────────────────────────────────
 
-function MediaDetailSheet({
+function rarityStyle(rarity: OwnedMediaItem["rarity"]) {
+  switch (rarity) {
+    case "Legendary":
+      return {
+        bg: "rgba(251,191,36,0.13)",
+        text: "#b45309",
+        border: "rgba(251,191,36,0.35)",
+      };
+    case "Ultra Rare":
+      return {
+        bg: "rgba(139,92,246,0.11)",
+        text: "#7c3aed",
+        border: "rgba(139,92,246,0.30)",
+      };
+    case "Rare":
+      return {
+        bg: "rgba(59,130,246,0.10)",
+        text: "#1d4ed8",
+        border: "rgba(59,130,246,0.25)",
+      };
+    default:
+      return {
+        bg: "rgba(107,114,128,0.08)",
+        text: "#6b7280",
+        border: "rgba(107,114,128,0.18)",
+      };
+  }
+}
+
+// ─── NFT Art Panel gradient ───────────────────────────────────────────────────
+
+function nftGradient(item: OwnedMediaItem): string {
+  if (item.type === "video") {
+    if (item.rarity === "Legendary")
+      return "linear-gradient(135deg, #fef3c7 0%, #fde68a 40%, #f59e0b 100%)";
+    if (item.rarity === "Ultra Rare")
+      return "linear-gradient(135deg, #ede9fe 0%, #c4b5fd 40%, #8b5cf6 100%)";
+    return "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 40%, #93c5fd 100%)";
+  }
+  if (item.rarity === "Legendary")
+    return "linear-gradient(135deg, #fef9c3 0%, #fef08a 40%, #eab308 100%)";
+  if (item.rarity === "Ultra Rare")
+    return "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 40%, #c084fc 100%)";
+  if (item.rarity === "Rare")
+    return "linear-gradient(135deg, #cffafe 0%, #a5f3fc 40%, #22d3ee 100%)";
+  return "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 40%, #6ee7b7 100%)";
+}
+
+// ─── Collected: NFT Tile ──────────────────────────────────────────────────────
+
+function NFTCollectibleTile({
   item,
-  onClose,
+  index,
+  onItemClick,
 }: {
   item: OwnedMediaItem;
-  onClose: () => void;
+  index: number;
+  onItemClick: (item: OwnedMediaItem) => void;
 }) {
-  return (
-    <AnimatePresence>
-      {/* Backdrop */}
-      <motion.div
-        key="backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.45)",
-          zIndex: 200,
-        }}
-      />
+  const rs = item.rarity ? rarityStyle(item.rarity) : null;
+  const gradient = nftGradient(item);
 
-      {/* Sheet */}
-      <motion.div
-        key="sheet"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 32, stiffness: 320 }}
+  return (
+    <motion.button
+      type="button"
+      key={item.id}
+      data-ocid={`library.media.item.${index + 1}`}
+      whileTap={{ scale: 0.96 }}
+      onClick={() => onItemClick(item)}
+      style={{
+        all: "unset",
+        display: "block",
+        borderRadius: "14px",
+        overflow: "hidden",
+        position: "relative",
+        cursor: "pointer",
+        background: "#F7F6F2",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)",
+        aspectRatio: "3/4",
+        border: "1px solid rgba(0,0,0,0.05)",
+      }}
+    >
+      {/* ── Pack Art Panel (top 62%) ── */}
+      <div
         style={{
-          position: "fixed",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: "38%",
+          background: gradient,
+          overflow: "hidden",
+        }}
+      >
+        {/* Shimmer overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.10) 100%)",
+          }}
+        />
+
+        {/* Subtle dot/grid texture */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: 0.12,
+            backgroundImage:
+              "radial-gradient(circle, rgba(0,0,0,0.35) 1px, transparent 1px)",
+            backgroundSize: "12px 12px",
+          }}
+        />
+
+        {/* Centered monogram circle */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.38)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              border: "1.5px solid rgba(255,255,255,0.65)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "22px",
+                fontWeight: 900,
+                color: "rgba(255,255,255,0.85)",
+                letterSpacing: "-0.02em",
+                lineHeight: 1,
+                fontStyle: "italic",
+              }}
+            >
+              M
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Info Area ── */}
+      <div
+        style={{
+          position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 201,
-          background: "#ffffff",
-          borderRadius: "20px 20px 0 0",
-          maxHeight: "90dvh",
-          overflowY: "auto",
-          boxShadow: "0 -8px 40px rgba(0,0,0,0.14)",
+          height: "38%",
+          background: "#F7F6F2",
+          padding: "8px 10px 10px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
         }}
       >
-        {/* Drag handle */}
+        {/* Title */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "12px 0 4px",
+            fontSize: "12px",
+            fontWeight: 700,
+            color: "#111111",
+            lineHeight: 1.3,
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
           }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 4,
-              borderRadius: 99,
-              background: "#e5e7eb",
-            }}
-          />
+          {item.title}
         </div>
 
-        {/* Preview */}
-        <div style={{ position: "relative" }}>
-          <img
-            src={item.thumbnailUrl}
-            alt={item.title}
-            style={{
-              width: "100%",
-              aspectRatio: item.type === "video" ? "16/9" : "1",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-          {item.type === "video" && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.22)",
-                  backdropFilter: "blur(8px)",
-                  border: "1.5px solid rgba(255,255,255,0.50)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span style={{ fontSize: 20, color: "#fff", marginLeft: 3 }}>
-                  ▶
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div style={{ padding: "20px 20px 8px" }}>
-          <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 4 }}>
-            by {item.creator}
-          </div>
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: "#111",
-              marginBottom: 6,
-            }}
-          >
-            {item.title}
-          </div>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#6b7280",
-              background: "#f3f4f6",
-              borderRadius: 99,
-              padding: "4px 12px",
-              marginBottom: 14,
-            }}
-          >
-            <span>Edition</span>
-            <span style={{ fontWeight: 700, color: "#111" }}>
-              {item.editionNumber}
-            </span>
-          </div>
-
-          {item.isListed && item.price !== undefined && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 18,
-                padding: "12px 16px",
-                background: "rgba(16,185,129,0.06)",
-                border: "1px solid rgba(16,185,129,0.18)",
-                borderRadius: 12,
-              }}
-            >
-              <span style={{ fontSize: 13, color: "#059669", fontWeight: 500 }}>
-                Listed for
-              </span>
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#059669" }}>
-                ${item.price}
-              </span>
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "#059669",
-                  background: "rgba(16,185,129,0.12)",
-                  border: "1px solid rgba(16,185,129,0.25)",
-                  borderRadius: 99,
-                  padding: "2px 9px",
-                }}
-              >
-                LISTED
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
+        {/* Creator */}
         <div
           style={{
-            padding: "0 20px 32px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
+            fontSize: "10px",
+            color: "#9ca3af",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          <button
-            data-ocid="library.media_detail.list_button"
-            type="button"
-            style={{
-              width: "100%",
-              padding: "13px 0",
-              borderRadius: 12,
-              fontSize: 15,
-              fontWeight: 600,
-              color: "#ffffff",
-              background: "#111111",
-              border: "none",
-              cursor: "pointer",
-              letterSpacing: "0.01em",
-            }}
-          >
-            {item.isListed ? "Update Listing" : "List for Sale"}
-          </button>
-
-          <div style={{ display: "flex", gap: 10 }}>
-            <button
-              data-ocid="library.media_detail.transfer_button"
-              type="button"
-              style={{
-                flex: 1,
-                padding: "12px 0",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#374151",
-                background: "#f3f4f6",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-              }}
-            >
-              Transfer
-            </button>
-            <button
-              data-ocid="library.media_detail.share_button"
-              type="button"
-              style={{
-                flex: 1,
-                padding: "12px 0",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#374151",
-                background: "#f3f4f6",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-              }}
-            >
-              Share
-            </button>
-          </div>
+          @{item.creator}
         </div>
-      </motion.div>
-    </AnimatePresence>
+
+        {/* Edition strip */}
+        <div
+          style={{
+            background: "rgba(0,0,0,0.06)",
+            borderRadius: 6,
+            padding: "3px 7px",
+            textAlign: "center",
+            fontSize: "11px",
+            fontWeight: 700,
+            color: "#374151",
+            letterSpacing: "0.03em",
+          }}
+        >
+          #{item.editionNumber}
+        </div>
+      </div>
+
+      {/* ── Type badge (top-left) ── */}
+      <div
+        style={{
+          position: "absolute",
+          top: 8,
+          left: 8,
+          background: "rgba(0,0,0,0.52)",
+          color: "#fff",
+          fontSize: 9,
+          fontWeight: 700,
+          padding: "2px 7px",
+          borderRadius: 99,
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          letterSpacing: "0.07em",
+        }}
+      >
+        {item.type === "video" ? "VIDEO" : "PHOTO"}
+      </div>
+
+      {/* ── Rarity badge (top-right) ── */}
+      {item.rarity && rs && (
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: item.isListed ? 20 : 8,
+            background: rs.bg,
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            color: rs.text,
+            fontSize: 9,
+            fontWeight: 700,
+            padding: "2px 7px",
+            borderRadius: 99,
+            border: `1px solid ${rs.border}`,
+            letterSpacing: "0.05em",
+          }}
+        >
+          {item.rarity === "Ultra Rare"
+            ? "UR"
+            : item.rarity === "Legendary"
+              ? "★"
+              : item.rarity.toUpperCase().slice(0, 4)}
+        </div>
+      )}
+
+      {/* ── Listed pulse dot ── */}
+      {item.isListed && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "#10b981",
+            boxShadow:
+              "0 0 0 2.5px rgba(255,255,255,0.9), 0 0 8px rgba(16,185,129,0.60)",
+          }}
+          title="Listed for sale"
+        />
+      )}
+
+      {/* ── Video duration ── */}
+      {item.type === "video" && item.duration && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "40%",
+            right: 8,
+            background: "rgba(0,0,0,0.50)",
+            color: "#fff",
+            fontSize: 9,
+            fontWeight: 600,
+            padding: "2px 6px",
+            borderRadius: 4,
+          }}
+        >
+          {item.duration}
+        </div>
+      )}
+    </motion.button>
   );
 }
 
-// ─── Collected: Media Grid ────────────────────────────────────────────────────
+// ─── Collected: NFT Grid ──────────────────────────────────────────────────────
 
 function CollectedMediaGrid({
   media,
@@ -502,146 +463,12 @@ function CollectedMediaGrid({
       }}
     >
       {media.map((item, idx) => (
-        <motion.div
+        <NFTCollectibleTile
           key={item.id}
-          data-ocid={`library.media.item.${idx + 1}`}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => onItemClick(item)}
-          style={{
-            borderRadius: "14px",
-            overflow: "hidden",
-            position: "relative",
-            cursor: "pointer",
-            background: "#ffffff",
-            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-            aspectRatio: "1",
-          }}
-        >
-          {/* Thumbnail */}
-          <img
-            src={item.thumbnailUrl}
-            alt={item.title}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-
-          {/* Top-left: type badge */}
-          <div
-            style={{
-              position: "absolute",
-              top: 8,
-              left: 8,
-              background:
-                item.type === "video"
-                  ? "rgba(37,99,235,0.82)"
-                  : "rgba(5,150,105,0.82)",
-              color: "#fff",
-              fontSize: 10,
-              fontWeight: 700,
-              padding: "2px 8px",
-              borderRadius: 99,
-              backdropFilter: "blur(4px)",
-              letterSpacing: "0.03em",
-            }}
-          >
-            {item.type === "video" ? "Video" : "Photo"}
-          </div>
-
-          {/* Top-right: listed indicator */}
-          {item.isListed && (
-            <div
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#10b981",
-                boxShadow:
-                  "0 0 0 2.5px rgba(255,255,255,0.85), 0 0 6px rgba(16,185,129,0.60)",
-              }}
-              title="Listed for sale"
-            />
-          )}
-
-          {/* Video: play icon overlay */}
-          {item.type === "video" && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                pointerEvents: "none",
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.22)",
-                  backdropFilter: "blur(6px)",
-                  border: "1.5px solid rgba(255,255,255,0.50)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <span style={{ fontSize: 14, color: "#fff", marginLeft: 2 }}>
-                  ▶
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom overlay: edition + optional duration */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background:
-                "linear-gradient(to top, rgba(0,0,0,0.58) 0%, transparent 100%)",
-              padding: "22px 8px 8px",
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.92)",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {item.editionNumber}
-            </span>
-            {item.type === "video" && item.duration && (
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.88)",
-                  background: "rgba(0,0,0,0.35)",
-                  borderRadius: 4,
-                  padding: "1px 5px",
-                }}
-              >
-                {item.duration}
-              </span>
-            )}
-          </div>
-        </motion.div>
+          item={item}
+          index={idx}
+          onItemClick={onItemClick}
+        />
       ))}
     </div>
   );
@@ -1064,7 +891,10 @@ function MintMomentBanner({
 
 // ─── Main LibraryPage ─────────────────────────────────────────────────────────
 
-export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
+export function LibraryPage({
+  onCaptureMoment,
+  onAssetClick,
+}: LibraryPageProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
   const { hasDraft, startDraft } = useMomentDraft();
@@ -1074,9 +904,6 @@ export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
     useState<CollectedFilterType>("all");
   const [createdFilter, setCreatedFilter] = useState<CreatedFilterType>("all");
   const [showMintModal, setShowMintModal] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<OwnedMediaItem | null>(
-    null,
-  );
 
   const pageBg = isLight ? "#F8F8F8" : "oklch(0.08 0.02 160)";
 
@@ -1122,13 +949,17 @@ export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
     return MOCK_OWNED_MEDIA; // "all"
   }
 
+  function handleItemClick(item: OwnedMediaItem) {
+    if (onAssetClick) onAssetClick(item.id);
+  }
+
   // ─── Collected Content ───────────────────────────────────────────────────
 
   function renderCollectedContent() {
     return (
       <CollectedMediaGrid
         media={getFilteredMedia()}
-        onItemClick={(item) => setSelectedMedia(item)}
+        onItemClick={handleItemClick}
       />
     );
   }
@@ -1331,14 +1162,6 @@ export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
             : renderCreatedContent()}
         </motion.div>
       </AnimatePresence>
-
-      {/* ── Media Detail Sheet ── */}
-      {selectedMedia && (
-        <MediaDetailSheet
-          item={selectedMedia}
-          onClose={() => setSelectedMedia(null)}
-        />
-      )}
 
       {/* ── Mint Moment Modal ── */}
       <MintMomentModal

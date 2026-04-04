@@ -1,44 +1,54 @@
-# Minty – Library Page Collected Tab Refactor
+# Minty — NFT Tile Grid & Asset Detail Page
 
 ## Current State
-LibraryPage.tsx has a `Collected | Created` segmented toggle. The Collected tab shows filter chips: All | Sets | Cards | Media | Listings. Selecting "All" stacks Sets (with progress bars), Cards grid, Media grid, and Listings. Sets and Cards are card/TCG-oriented with collection progress bars and rarity badges.
+
+The `LibraryPage.tsx` has a `Collected` tab that renders a `CollectedMediaGrid` component. Each grid tile directly shows the raw media thumbnail (`thumbnailUrl`) as a full-bleed image, with a minimal overlay showing the edition number and a type badge. Tapping a tile opens a `MediaDetailSheet` (bottom slide-up) that shows the media preview, creator, edition, price, and three action buttons (List for Sale, Transfer, Share).
+
+The `OwnedMediaItem` data shape already has: `id`, `type`, `title`, `creator`, `editionNumber`, `isListed`, `price`, `duration`, `thumbnailUrl`.
+
+The App.tsx view system uses a discriminated union `View` type; new views can be added as additional `{ type: ... }` variants.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New mock data for owned media items with: id, type (photo/video), title, creator, editionNumber (e.g. "12/100"), isListed (boolean), price (optional), duration (optional, for videos), thumbnailUrl
-- Filter chips for Collected tab: `All | Photos | Videos | Listed`
-- Media tile component for 2-column grid showing: thumbnail preview, Photo/Video badge (top-left), edition number (bottom-left), listed indicator dot/badge (top-right if listed), play icon overlay + duration label for videos
-- Media detail view/sheet that slides up on tile tap: large preview, creator name, edition number, price if listed, "List for Sale" button, "Transfer" button, "Share" button
+- **NFT tile visual style** in the Collected grid: each tile should represent the collectible edition as an object (pack-artwork style), NOT show the raw media directly. The tile shows a styled collectible card face with Minty brand visual, a media type badge (Photo/Video), edition number (`#12/100`), optional rarity indicator, soft shadows, rounded corners.
+- **Rarity field** on `OwnedMediaItem` mock data (e.g. "Common", "Rare", "Ultra Rare").
+- **Extended mock data** on `OwnedMediaItem` for the Asset Detail page: `totalSupply`, `minted`, `listed`, `held`, `lastSalePrice`, `floorPrice`, `totalVolume`, `views`, `favorites`, `ownershipHistory` (array of `{ address, date }`), `badges` (array of badge strings like `"#1 Trending"`, `"Top Volume"`, `"Most Viewed"`, `"Creator Featured"`).
+- **Asset Detail Page** (`AssetDetailPage.tsx`) — a new full-page view (not a bottom sheet) navigated to when a tile is tapped:
+  - Large media viewer at top: displays actual photo (img) or playable video (video element with controls)
+  - Back button top-left
+  - Metadata section: title, creator, edition number, media type badge, video duration if applicable
+  - Scarcity section: total supply, minted, currently listed, held
+  - Market data section: last sale price, floor price, total volume traded
+  - Social metrics: views count, favorites/saves count
+  - Ownership history: chronological list of previous owners with shortened wallet addresses (first 6...last 4 chars)
+  - Badges row: display earned badges ("#1 Trending", "Top Volume", "Most Viewed", "Creator Featured") with mint-accented pill styling
+  - Action buttons at bottom: List for Sale, Transfer, Share
+- **New view type** in `App.tsx`: `{ type: "asset-detail"; id: string }` that renders `AssetDetailPage`
+- Navigation: tapping an NFT tile in LibraryPage calls a new `onAssetClick(id)` prop that pushes the `asset-detail` view
 
 ### Modify
-- Collected tab filter chips: replace `All | Sets | Cards | Media | Listings` with `All | Photos | Videos | Listed`
-- Collected tab default view (All): show only the 2-column media grid (photos + videos), no Sets section, no Cards section, no progress bars
-- Photos filter: show only photo items in 2-column grid
-- Videos filter: show only video items in 2-column grid  
-- Listed filter: show only items with isListed=true in 2-column grid
-- Remove `CollectedSetsList`, `CollectedCardsGrid` from Collected tab rendering
-- Remove `MOCK_OWNED_CARDS` and `MOCK_OWNED_SETS` mock data (or keep but unused)
-- Keep `Created` tab fully intact (no changes)
+- `CollectedMediaGrid` → replace the raw thumbnail full-bleed tile with a **NFT collectible tile** design:
+  - Off-white/soft gradient card background (not the raw media image)
+  - Minty collectible artwork area: abstract mint gradient or decorative pattern as the "pack art" visual
+  - Type badge (Photo/Video) — top left
+  - Rarity badge — top right (if present)
+  - Edition number centered at bottom inside tile
+  - Listed indicator (green dot) preserved
+  - No full media preview in the grid
+- `OwnedMediaItem` interface — add `rarity?`, `totalSupply`, `minted`, `listed`, `held`, `lastSalePrice?`, `floorPrice?`, `totalVolume`, `views`, `favorites`, `ownershipHistory`, `badges`
+- `MOCK_OWNED_MEDIA` — populate all new fields with realistic mock values
+- `LibraryPage` — replace `MediaDetailSheet` with navigation to `AssetDetailPage` via `onAssetClick` prop callback; remove the old bottom sheet entirely from LibraryPage
+- `App.tsx` — add `asset-detail` view case; pass `onAssetClick` to LibraryPage
 
 ### Remove
-- Sets section from Collected tab
-- Cards section from Collected tab
-- Collection progress bars from Collected tab
-- `sets` and `cards` filter chips from Collected tab
-- `CollectedSetsList` and `CollectedCardsGrid` usage in Collected tab rendering
+- `MediaDetailSheet` component from `LibraryPage.tsx` (replaced by full Asset Detail page)
+- Full-bleed raw thumbnail rendering inside the collected grid tiles
 
 ## Implementation Plan
-1. Replace `MOCK_OWNED_MEDIA` with richer mock data (6-8 items) including type, creator, editionNumber like "12/100", isListed, price, duration for videos
-2. Update `FilterType` for Collected to `"all" | "photos" | "videos" | "listed"` (keep separate type from Created which still uses old filter set)
-3. Update filter chips rendered for Collected tab to: All | Photos | Videos | Listed
-4. Build new `CollectedMediaGrid` that accepts filtered items and renders 2-column grid with:
-   - Square-ish tiles with thumbnail fill
-   - Photo/Video badge top-left (mint green for Photo, subtle blue-tint for Video)
-   - Edition number bottom-left overlay (e.g. "12/100")
-   - Listed indicator top-right (subtle mint dot or "Listed" pill)
-   - Video tiles: semi-transparent play icon centered, duration label bottom-right
-5. Build `MediaDetailSheet` component: slide-up modal with large preview, creator, edition, price (if listed), three action buttons (List for Sale, Transfer, Share)
-6. Wire tile tap to open detail sheet with selected item
-7. Update `renderCollectedContent()` to use only media grid with new filters
-8. Keep Created tab and all its sub-components completely unchanged
+
+1. Extend `OwnedMediaItem` interface with new fields; update `MOCK_OWNED_MEDIA` with all new data
+2. Redesign `CollectedMediaGrid` tile to show NFT collectible card style (mint gradient art panel, badges, edition, no raw media)
+3. Create `src/frontend/src/pages/AssetDetailPage.tsx` with all sections: media viewer, metadata, scarcity, market data, social, ownership history, badges, action buttons
+4. Remove `MediaDetailSheet` from `LibraryPage`; add `onAssetClick: (id: string) => void` prop; wire tile tap to call it
+5. Add `{ type: "asset-detail"; id: string }` to the `View` union in `App.tsx`; render `<AssetDetailPage>` with back navigation

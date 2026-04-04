@@ -11,6 +11,7 @@ import {
 } from "./context/MomentDraftContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
+import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CardDetailPage } from "./pages/CardDetailPage";
 import { LibraryPage } from "./pages/LibraryPage";
@@ -27,6 +28,7 @@ type View =
   | { type: "set-detail"; slug: string }
   | { type: "market-detail"; id: string }
   | { type: "card-detail"; id: string }
+  | { type: "asset-detail"; id: string }
   | { type: "upload" }
   | { type: "admin" }
   | { type: "capture-moment" };
@@ -79,6 +81,7 @@ function AppContent() {
           <LibraryPage
             onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
             onCaptureMoment={handleCaptureMoment}
+            onAssetClick={(id) => setView({ type: "asset-detail", id })}
           />
         )}
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
@@ -124,6 +127,12 @@ function AppContent() {
           <MarketDetailPage
             id={view.id}
             onBack={() => setView({ type: "tab", tab: "market" })}
+          />
+        )}
+        {view.type === "asset-detail" && (
+          <AssetDetailPage
+            id={view.id}
+            onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}
         {view.type === "upload" && (
