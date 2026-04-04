@@ -39,22 +39,6 @@ const OVERLAY_KEYFRAMES = `
     0%   { transform: translateX(-120%) skewX(-16deg); }
     100% { transform: translateX(260%) skewX(-16deg); }
   }
-  @keyframes cardRise {
-    0%   { opacity: 0; transform: translateY(50px) scale(0.90); }
-    100% { opacity: 1; transform: translateY(0px) scale(1.0); }
-  }
-  @keyframes metaFadeIn {
-    0%   { opacity: 0; transform: translateY(10px); }
-    100% { opacity: 1; transform: translateY(0px); }
-  }
-  @keyframes actionSlideUp {
-    0%   { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0px); }
-  }
-  @keyframes overlayFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
   @keyframes lightBurst {
     0%   { transform: scale(0); opacity: 0; }
     40%  { transform: scale(1); opacity: 1; }
@@ -67,6 +51,34 @@ const OVERLAY_KEYFRAMES = `
   @keyframes halfTearBottom {
     0%   { transform: translateY(0px) rotate(0deg); opacity: 1; }
     100% { transform: translateY(60px) rotate(3deg); opacity: 0; }
+  }
+  @keyframes nftRevealFade {
+    0%   { opacity: 0; transform: scale(0.96); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes nftRevealFadeVideo {
+    0%   { opacity: 0; transform: scale(0.97); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes uiOverlayIn {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0px); }
+  }
+  @keyframes metaFadeIn {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0px); }
+  }
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes cardRise {
+    0%   { opacity: 0; transform: translateY(50px) scale(0.90); }
+    100% { opacity: 1; transform: translateY(0px) scale(1.0); }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
   }
   /* Reset native <dialog> styling */
   dialog.pack-opening-dialog {
@@ -84,7 +96,7 @@ const OVERLAY_KEYFRAMES = `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow-y: auto;
+    overflow: hidden;
     box-sizing: border-box;
   }
   dialog.pack-opening-dialog::backdrop {
@@ -103,9 +115,10 @@ function ensureOverlayStyles() {
 
 export interface PackOpeningOverlayProps {
   pack: SealedPack;
-  nft: CollectionNFT;
+  nft: CollectionNFT | null;
   onComplete: (nft: CollectionNFT) => void;
   onClose: () => void;
+  isLoading?: boolean;
 }
 
 type Phase =
@@ -113,8 +126,7 @@ type Phase =
   | "anticipation" // Pack shakes + inner glow
   | "tear" // Pack halves split apart
   | "suspense" // Silhouette card
-  | "reveal" // NFT card rises
-  | "action"; // Metadata + buttons
+  | "reveal"; // Fullscreen NFT reveal
 
 const KNOB_SIZE = 54;
 
@@ -122,12 +134,14 @@ export function PackOpeningOverlay({
   pack: _pack,
   nft,
   onComplete,
-  onClose: _onClose,
+  onClose,
+  isLoading = false,
 }: PackOpeningOverlayProps) {
   ensureOverlayStyles();
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [shineActive, setShineActive] = useState(false);
+  const [uiVisible, setUiVisible] = useState(true);
   const completedRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -163,30 +177,16 @@ export function PackOpeningOverlay({
       return () => clearTimeout(t);
     }
     if (phase === "reveal") {
-      const t1 = setTimeout(() => setPhase("action"), 600);
-      const t2 = setTimeout(() => {
-        if (nft.rarity === "Rare") setShineActive(true);
+      const t = setTimeout(() => {
+        if (nft?.rarity === "Rare") setShineActive(true);
       }, 300);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      return () => clearTimeout(t);
     }
     return undefined;
-  }, [phase, nft.rarity]);
-
-  // Keyboard dismiss in action phase
-  useEffect(() => {
-    if (phase !== "action") return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleComplete();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  });
+  }, [phase, nft?.rarity]);
 
   const handleComplete = useCallback(() => {
-    if (completedRef.current) return;
+    if (completedRef.current || !nft) return;
     completedRef.current = true;
     onComplete(nft);
   }, [nft, onComplete]);
@@ -222,7 +222,7 @@ export function PackOpeningOverlay({
 
   // Pointer events (unified touch + mouse)
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (sliderTriggered) return;
+    if (sliderTriggered || isLoading || !nft) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     dragStartXRef.current = e.clientX;
@@ -242,7 +242,7 @@ export function PackOpeningOverlay({
 
   // Touch fallback for iOS Safari
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (sliderTriggered) return;
+    if (sliderTriggered || isLoading || !nft) return;
     const touch = e.touches[0];
     setIsDragging(true);
     dragStartXRef.current = touch.clientX;
@@ -263,16 +263,19 @@ export function PackOpeningOverlay({
   };
 
   // ─── Derived values ──────────────────────────────────────────────────────────
-  const isVideo = nft.mediaType === "video";
-  const isRare = nft.rarity === "Rare";
+  const isVideo = nft?.mediaType === "video";
+  const isRare = nft?.rarity === "Rare";
+  const isSlideDisabled = isLoading || !nft;
 
   const labelOpacity = Math.max(0, 1 - sliderProgress * 2.5);
 
   const inIdleOrSliding = phase === "idle";
 
-  const editionText = isVideo
-    ? `Video #${nft.editionNumber} of ${nft.totalSupply}`
-    : `Photo #${nft.editionNumber} of ${nft.totalSupply}`;
+  const editionText = nft
+    ? isVideo
+      ? `Video #${nft.editionNumber} of ${nft.totalSupply}`
+      : `Photo #${nft.editionNumber} of ${nft.totalSupply}`
+    : "";
 
   const overlay = (
     <dialog
@@ -283,12 +286,43 @@ export function PackOpeningOverlay({
       style={{
         zIndex: 9999,
         padding: "24px 20px 48px",
-        background: "rgba(4,12,8,0.92)",
+        background: "rgba(4,12,8,0.97)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         animation: "overlayFadeIn 0.32s ease",
       }}
     >
+      {/* ── Persistent X close button (always visible) ──────────────────────── */}
+      <button
+        type="button"
+        data-ocid="collection.close_button"
+        onClick={onClose}
+        aria-label="Close"
+        style={{
+          position: "absolute",
+          top: "16px",
+          right: "16px",
+          zIndex: 10,
+          width: "32px",
+          height: "32px",
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.18)",
+          color: "rgba(255,255,255,0.80)",
+          fontSize: "18px",
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          padding: 0,
+          touchAction: "manipulation",
+          flexShrink: 0,
+        }}
+      >
+        ×
+      </button>
+
       {/* ── IDLE: Pack wrapper only + Slide to Open ─────────────────────── */}
       {inIdleOrSliding && (
         <>
@@ -350,7 +384,7 @@ export function PackOpeningOverlay({
               style={{
                 textAlign: "center",
                 marginBottom: "14px",
-                opacity: labelOpacity,
+                opacity: isSlideDisabled ? 0.45 : labelOpacity,
                 transition: isDragging ? "none" : "opacity 0.25s ease",
               }}
             >
@@ -363,7 +397,7 @@ export function PackOpeningOverlay({
                   textTransform: "uppercase",
                 }}
               >
-                Slide to Open
+                {isLoading ? "Preparing your pack…" : "Slide to open pack"}
               </span>
             </div>
 
@@ -371,23 +405,30 @@ export function PackOpeningOverlay({
             <div
               ref={trackRef}
               data-ocid="collection.drag_handle"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={onPointerUp}
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
+              onPointerDown={isSlideDisabled ? undefined : onPointerDown}
+              onPointerMove={isSlideDisabled ? undefined : onPointerMove}
+              onPointerUp={isSlideDisabled ? undefined : onPointerUp}
+              onPointerCancel={isSlideDisabled ? undefined : onPointerUp}
+              onTouchStart={isSlideDisabled ? undefined : onTouchStart}
+              onTouchMove={isSlideDisabled ? undefined : onTouchMove}
+              onTouchEnd={isSlideDisabled ? undefined : onTouchEnd}
               style={{
                 position: "relative",
                 width: "100%",
                 height: "64px",
                 borderRadius: "32px",
-                background: "rgba(52,211,153,0.10)",
-                border: "1px solid rgba(52,211,153,0.22)",
-                cursor: isDragging ? "grabbing" : "grab",
+                background: isSlideDisabled
+                  ? "rgba(52,211,153,0.05)"
+                  : "rgba(52,211,153,0.10)",
+                border: `1px solid rgba(52,211,153,${isSlideDisabled ? 0.1 : 0.22})`,
+                cursor: isSlideDisabled
+                  ? "not-allowed"
+                  : isDragging
+                    ? "grabbing"
+                    : "grab",
                 touchAction: "none",
                 overflow: "hidden",
+                transition: "background 0.3s ease, border-color 0.3s ease",
               }}
             >
               {/* Fill bar */}
@@ -418,7 +459,9 @@ export function PackOpeningOverlay({
                   width: `${KNOB_SIZE}px`,
                   height: `${KNOB_SIZE}px`,
                   borderRadius: "50%",
-                  background: "#ffffff",
+                  background: isSlideDisabled
+                    ? "rgba(255,255,255,0.25)"
+                    : "#ffffff",
                   boxShadow:
                     "0 2px 12px rgba(0,0,0,0.25), 0 0 0 2px rgba(52,211,153,0.25)",
                   display: "flex",
@@ -431,58 +474,73 @@ export function PackOpeningOverlay({
                   flexShrink: 0,
                 }}
               >
-                <svg
-                  aria-hidden="true"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  fill="none"
-                  style={{ opacity: 0.55 }}
-                >
-                  <path
-                    d="M6 4l5 5-5 5"
-                    stroke="#040c08"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                {isLoading ? (
+                  <div
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      border: "2px solid rgba(4,12,8,0.15)",
+                      borderTop: "2px solid rgba(52,168,132,0.8)",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                    }}
                   />
-                </svg>
+                ) : (
+                  <svg
+                    aria-hidden="true"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 18 18"
+                    fill="none"
+                    style={{ opacity: 0.55 }}
+                  >
+                    <path
+                      d="M6 4l5 5-5 5"
+                      stroke="#040c08"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
               </div>
 
               {/* Chevron hint on right */}
-              <div
-                style={{
-                  position: "absolute",
-                  right: "18px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  opacity: Math.max(0, 1 - sliderProgress * 3) * 0.35,
-                  pointerEvents: "none",
-                  transition: isDragging ? "none" : "opacity 0.2s",
-                }}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 18 18"
-                  fill="none"
+              {!isSlideDisabled && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "18px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    opacity: Math.max(0, 1 - sliderProgress * 3) * 0.35,
+                    pointerEvents: "none",
+                    transition: isDragging ? "none" : "opacity 0.2s",
+                  }}
                 >
-                  <path
-                    d="M6 4l5 5-5 5"
-                    stroke="rgba(52,211,153,0.8)"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
+                  <svg
+                    aria-hidden="true"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 18 18"
+                    fill="none"
+                  >
+                    <path
+                      d="M6 4l5 5-5 5"
+                      stroke="rgba(52,211,153,0.8)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
         </>
       )}
 
-      {/* ── ANTICIPATION: Wrapper shakes + glows, no cover art ───────────── */}
+      {/* ── ANTICIPATION: Wrapper shakes + glows ────────────────────────── */}
       {phase === "anticipation" && (
         <div
           style={{
@@ -506,7 +564,6 @@ export function PackOpeningOverlay({
               borderRadius: "16px",
             }}
           />
-          {/* Inner glow at peak */}
           <div
             aria-hidden="true"
             style={{
@@ -625,40 +682,65 @@ export function PackOpeningOverlay({
         />
       )}
 
-      {/* ── REVEAL + ACTION: NFT card rises, then metadata + buttons ─────── */}
-      {(phase === "reveal" || phase === "action") && (
+      {/* ── REVEAL: Fullscreen immersive NFT reveal ───────────────────────── */}
+      {phase === "reveal" && nft && (
         <div
+          role={isVideo ? "button" : undefined}
+          tabIndex={isVideo ? 0 : undefined}
+          aria-label={isVideo ? "Toggle controls" : undefined}
+          onClick={isVideo ? () => setUiVisible((v) => !v) : undefined}
+          onKeyDown={
+            isVideo
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    setUiVisible((v) => !v);
+                }
+              : undefined
+          }
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+            position: "absolute",
+            inset: 0,
             width: "100%",
-            maxWidth: "320px",
+            height: "100%",
+            cursor: isVideo ? "pointer" : "default",
           }}
         >
-          {/* NFT Card */}
-          <div
-            style={{
-              width: "260px",
-              aspectRatio: "4/5",
-              borderRadius: "18px",
-              overflow: "hidden",
-              border: isRare
-                ? "1.5px solid rgba(52,211,153,0.55)"
-                : "1px solid rgba(52,211,153,0.20)",
-              boxShadow: isRare
-                ? "0 0 50px rgba(52,211,153,0.30), 0 16px 50px rgba(0,0,0,0.55)"
-                : "0 0 20px rgba(52,211,153,0.10), 0 16px 40px rgba(0,0,0,0.50)",
-              position: "relative",
-              animation:
-                phase === "reveal"
-                  ? "cardRise 600ms cubic-bezier(0.22,1,0.36,1) forwards"
-                  : undefined,
-              flexShrink: 0,
-              marginBottom: phase === "action" ? "16px" : 0,
-            }}
-          >
-            {/* Cover image */}
+          {/* Full-viewport media */}
+          {isVideo ? (
+            <>
+              {/* Ambient glow behind video for rare feel */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.10) 0%, transparent 65%)",
+                  pointerEvents: "none",
+                  zIndex: 0,
+                }}
+              />
+              <video
+                src={nft.imageUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls={false}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  animation: "nftRevealFadeVideo 900ms ease forwards",
+                  zIndex: 1,
+                  boxShadow: "0 0 120px rgba(52,211,153,0.25)",
+                }}
+              />
+            </>
+          ) : (
             <img
               src={nft.imageUrl}
               alt={nft.title}
@@ -669,188 +751,101 @@ export function PackOpeningOverlay({
                 height: "100%",
                 objectFit: "cover",
                 display: "block",
+                animation: "nftRevealFade 600ms ease forwards",
+                zIndex: 1,
               }}
             />
+          )}
 
-            {/* Video badge */}
-            {isVideo && (
+          {/* Rare shine sweep */}
+          {isRare && shineActive && (
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                overflow: "hidden",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            >
               <div
                 style={{
                   position: "absolute",
-                  bottom: "10px",
-                  right: "10px",
-                  background: "rgba(4,12,8,0.75)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  borderRadius: "20px",
-                  padding: "4px 10px",
-                  border: "1px solid rgba(52,211,153,0.35)",
+                  top: 0,
+                  left: 0,
+                  width: "50%",
+                  height: "100%",
+                  background:
+                    "linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent)",
+                  animation:
+                    "shineSweep 0.80s cubic-bezier(0.4,0,0.6,1) forwards",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Bottom UI overlay — fades in, tapping video toggles this */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 3,
+              opacity: uiVisible ? 1 : 0,
+              transition: "opacity 0.3s ease",
+              pointerEvents: uiVisible ? "auto" : "none",
+              background:
+                "linear-gradient(to top, rgba(4,12,8,0.92) 0%, rgba(4,12,8,0.60) 60%, transparent 100%)",
+              padding: "40px 20px 48px",
+              animation: "uiOverlayIn 500ms ease 400ms both",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {/* Metadata */}
+            <div style={{ marginBottom: "20px" }}>
+              <div
+                style={{
+                  fontSize: "16px",
+                  color: "rgba(255,255,255,0.92)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.01em",
+                  marginBottom: "8px",
+                  animation: "metaFadeIn 350ms ease 450ms both",
+                }}
+              >
+                {nft.title}
+              </div>
+
+              <div
+                style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "5px",
-                  animation: "metaFadeIn 0.35s ease 0.30s both",
-                }}
-              >
-                <svg
-                  aria-hidden="true"
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                >
-                  <polygon points="2,1 9,5 2,9" fill="rgba(52,211,153,0.9)" />
-                </svg>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: "rgba(255,255,255,0.90)",
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  VIDEO
-                </span>
-              </div>
-            )}
-
-            {/* Shine sweep — Rare only */}
-            {isRare && shineActive && (
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  overflow: "hidden",
-                  borderRadius: "18px",
-                  pointerEvents: "none",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  marginBottom: "6px",
                 }}
               >
                 <div
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "50%",
-                    height: "100%",
-                    background:
-                      "linear-gradient(to right, transparent, rgba(255,255,255,0.18), transparent)",
-                    animation:
-                      "shineSweep 0.65s cubic-bezier(0.4,0,0.6,1) forwards",
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Media type badge — top-left */}
-            <div
-              style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                background: "rgba(4,12,8,0.78)",
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
-                borderRadius: "20px",
-                padding: "4px 10px",
-                border: "1px solid rgba(52,211,153,0.28)",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                animation: "metaFadeIn 0.35s ease 0.30s both",
-              }}
-            >
-              <span aria-hidden="true" style={{ fontSize: "11px" }}>
-                {isVideo ? "▶" : "📷"}
-              </span>
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: "rgba(255,255,255,0.90)",
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {isVideo ? "Video" : "Photo"}
-              </span>
-            </div>
-
-            {/* Rarity badge — top-right */}
-            <div
-              style={{
-                position: "absolute",
-                top: "10px",
-                right: "10px",
-                background: isRare
-                  ? "rgba(52,168,132,0.22)"
-                  : "rgba(0,0,0,0.52)",
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
-                borderRadius: "20px",
-                padding: "4px 10px",
-                border: isRare
-                  ? "1px solid rgba(52,211,153,0.55)"
-                  : "1px solid rgba(255,255,255,0.15)",
-                animation: "metaFadeIn 0.35s ease 0.40s both",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: isRare ? "#5de8bb" : "rgba(255,255,255,0.65)",
-                  fontWeight: 700,
-                  letterSpacing: "0.10em",
-                  textTransform: "uppercase" as const,
-                }}
-              >
-                {isRare ? "RARE" : "COMMON"}
-              </span>
-            </div>
-          </div>
-
-          {/* ── ACTION: Metadata + Buttons ────────────────────────────── */}
-          {phase === "action" && (
-            <>
-              <div
-                style={{
-                  textAlign: "center",
-                  marginBottom: "20px",
-                  width: "100%",
-                  maxWidth: "280px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "15px",
-                    color: "rgba(255,255,255,0.95)",
-                    fontWeight: 700,
-                    letterSpacing: "-0.01em",
-                    marginBottom: "8px",
-                    animation: "metaFadeIn 350ms ease 0ms both",
-                  }}
-                >
-                  {nft.title}
-                </div>
-
-                <div
-                  style={{
-                    display: "inline-block",
+                    display: "inline-flex",
+                    alignItems: "center",
                     padding: "3px 12px",
                     borderRadius: "20px",
                     background: isRare
-                      ? "rgba(52,168,132,0.18)"
-                      : "rgba(255,255,255,0.08)",
+                      ? "rgba(52,168,132,0.22)"
+                      : "rgba(255,255,255,0.10)",
                     border: isRare
-                      ? "1px solid rgba(52,211,153,0.40)"
-                      : "1px solid rgba(255,255,255,0.15)",
+                      ? "1px solid rgba(52,211,153,0.45)"
+                      : "1px solid rgba(255,255,255,0.18)",
                     fontSize: "11px",
-                    color: isRare ? "#5de8bb" : "rgba(255,255,255,0.60)",
+                    color: isRare ? "#5de8bb" : "rgba(255,255,255,0.65)",
                     fontWeight: 700,
                     letterSpacing: "0.09em",
                     textTransform: "uppercase" as const,
-                    marginBottom: "8px",
-                    animation: "metaFadeIn 350ms ease 80ms both",
+                    animation: "metaFadeIn 350ms ease 510ms both",
                   }}
                 >
                   {isRare ? "✦ Rare" : "Common"}
@@ -861,86 +856,98 @@ export function PackOpeningOverlay({
                     fontSize: "12px",
                     color: "rgba(52,211,153,0.85)",
                     fontWeight: 600,
-                    marginBottom: "5px",
-                    animation: "metaFadeIn 350ms ease 140ms both",
-                    display: "block",
+                    animation: "metaFadeIn 350ms ease 570ms both",
                   }}
                 >
                   {editionText}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "rgba(255,255,255,0.40)",
-                    fontWeight: 500,
-                    animation: "metaFadeIn 350ms ease 200ms both",
-                  }}
-                >
-                  by {nft.creator}
                 </div>
               </div>
 
               <div
                 style={{
-                  width: "100%",
-                  maxWidth: "280px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  animation: "actionSlideUp 380ms ease 280ms both",
+                  fontSize: "11px",
+                  color: "rgba(255,255,255,0.40)",
+                  fontWeight: 500,
+                  animation: "metaFadeIn 350ms ease 630ms both",
                 }}
               >
-                <button
-                  type="button"
-                  data-ocid="collection.primary_button"
-                  onClick={handleComplete}
-                  style={{
-                    width: "100%",
-                    height: "52px",
-                    borderRadius: "14px",
-                    border: "none",
-                    background: "linear-gradient(160deg, #34A884, #2a9070)",
-                    color: "#fff",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    letterSpacing: "0.01em",
-                    boxShadow:
-                      "0 0 28px rgba(52,168,132,0.32), 0 4px 16px rgba(0,0,0,0.30)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    touchAction: "manipulation",
-                  }}
-                >
-                  View NFT
-                </button>
-
-                <button
-                  type="button"
-                  data-ocid="collection.secondary_button"
-                  onClick={handleComplete}
-                  style={{
-                    width: "100%",
-                    height: "48px",
-                    borderRadius: "14px",
-                    border: "1px solid rgba(52,211,153,0.32)",
-                    background: "transparent",
-                    color: "rgba(255,255,255,0.68)",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    letterSpacing: "0.01em",
-                    touchAction: "manipulation",
-                  }}
-                >
-                  Back to Collection
-                </button>
+                by {nft.creator}
               </div>
-            </>
-          )}
+
+              {isVideo && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "10px",
+                    color: "rgba(255,255,255,0.30)",
+                    fontWeight: 500,
+                    letterSpacing: "0.04em",
+                    animation: "metaFadeIn 350ms ease 700ms both",
+                  }}
+                >
+                  Tap to toggle controls
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                animation: "uiOverlayIn 380ms ease 600ms both",
+              }}
+            >
+              <button
+                type="button"
+                data-ocid="collection.primary_button"
+                onClick={handleComplete}
+                style={{
+                  width: "100%",
+                  height: "52px",
+                  borderRadius: "14px",
+                  border: "none",
+                  background: "linear-gradient(160deg, #34A884, #2a9070)",
+                  color: "#fff",
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                  boxShadow:
+                    "0 0 28px rgba(52,168,132,0.32), 0 4px 16px rgba(0,0,0,0.30)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  touchAction: "manipulation",
+                }}
+              >
+                View NFT
+              </button>
+
+              <button
+                type="button"
+                data-ocid="collection.secondary_button"
+                onClick={onClose}
+                style={{
+                  width: "100%",
+                  height: "48px",
+                  borderRadius: "14px",
+                  border: "1px solid rgba(52,211,153,0.28)",
+                  background: "transparent",
+                  color: "rgba(255,255,255,0.60)",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                  touchAction: "manipulation",
+                }}
+              >
+                Back to Collection
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </dialog>
