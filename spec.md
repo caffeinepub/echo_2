@@ -1,48 +1,80 @@
-# Minty — TCG Pack Backside Redesign
+# Minty — Sealed Pack Lifecycle
 
 ## Current State
-The Library page has a flip card with two faces:
-- **Front face**: `PackCard` component — Minty Pack product display with green pack image, floating animation, title, price, supply text, and Mint Moment button.
-- **Back face**: `NftShelfBack` component — shows a "YOUR SHELF" header with a 2-column grid of NFT pack tiles (MOCK_NFTS), plus a "flip back" button and empty state.
 
-The flip interaction (tap or swipe) is retained and working.
+- `CollectionContext.tsx` manages `CollectionNFT[]` in localStorage. NFTs are added immediately when a Moment is minted (in `App.tsx` `handleMintComplete`).
+- `CollectionPage.tsx` displays a 2-column NFT grid; tapping opens a detail sheet with metadata and a placeholder "List on Marketplace" button.
+- `LibraryPage.tsx` has the flippable Minty Pack card with Mint Moment flow.
+- `CaptureMomentPage.tsx` fires `onMintComplete(draft)` which calls `addNFTs()` directly in `App.tsx` — each photo/video becomes an NFT immediately.
+- There is no concept of a "sealed pack" state; NFTs go straight into Collection as opened collectibles.
+- Collection shows no separation between sealed packs and opened NFTs.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new `PackBackside` component to replace `NftShelfBack`
-- TCG booster pack backside layout with:
-  - Small centered label: "MINTY PACK" (spaced caps, small)
-  - Short description paragraph
-  - Divider lines (thin, mint-tinted)
-  - CONTENTS section with bullet list
-  - COLLECTIBLE STRUCTURE section with bullet list
-  - FOOTER section with small centered text and URL
-  - Micro details: barcode-style SVG graphic near bottom, small recycling icon, tiny "web3 collectible" text
-- Background: soft mint-tinted white with very subtle noise/grain texture (CSS or SVG filter)
-- Subtle plastic/gloss sheen at top using a linear gradient overlay
+
+- **`SealedPack` type** in `CollectionContext.tsx`:
+  ```ts
+  interface SealedPack {
+    id: string;
+    setName: string;
+    editionNumber: number;   // e.g. 1
+    totalSupply: number;     // e.g. 5
+    collectibleType: 'photo' | 'video';
+    // the NFT inside, revealed only after opening
+    pendingNFT: CollectionNFT;
+    createdAt: number;
+  }
+  ```
+- **`sealedPacks`, `addSealedPacks`, `openPack`** to `CollectionContext` — `openPack(packId)` removes the sealed pack and inserts its `pendingNFT` into `nfts`.
+- **`SealedPackTile`** component in `CollectionPage.tsx`: visually looks like an unopened Minty Pack. Shows:
+  - Minty pack artwork (same green pack image used in LibraryPage)
+  - Set name
+  - Edition count (1 of N)
+  - "SEALED" badge label
+  - "1 collectible inside" indicator
+- **Pack Detail screen** (inline sheet or full-screen overlay) shown when tapping a sealed pack:
+  - Larger pack artwork
+  - Set name, edition
+  - "Open Pack" primary button
+  - On press: plays a short scale/fade animation (~600ms), then reveals NFT, removes pack from list, adds NFT to collection
+- **Send to Wallet modal** on opened NFT detail sheet:
+  - Text input: "Enter wallet address"
+  - Confirm transfer button
+  - On confirm: NFT removed from sender collection (localStorage)
+  - Shows a brief success state
+- **"Sell" and "Send" action buttons** on NFT detail sheet (Sell = placeholder disabled "Coming Soon", Send = opens wallet modal)
+- **"List for Sale" reserved space** (disabled button) on NFT detail — already exists as "List on Marketplace · Coming Soon", rename to "List for Sale · Coming Soon"
+- **Section headers** in CollectionPage grid to visually group sealed packs (top) and opened NFTs (bottom), with a subtle separator label
 
 ### Modify
-- Replace `NftShelfBack` usage in the BACK FACE of the flip card with the new `PackBackside` component
-- Remove all NFT grid UI (MOCK_NFTS, NftPackTileComponent, NftShelfBack) from the back face rendering
-- Keep all flip interaction logic unchanged (tap, swipe, aria labels, perspective 3D)
-- Keep the "flip back" small button in the corner of the backside (can be very subtle)
+
+- **`App.tsx` `handleMintComplete`**: Instead of calling `addNFTs()` directly, generate sealed packs and call `addSealedPacks()`. Each photo/video in the draft becomes one `SealedPack` with a `pendingNFT` embedded.
+- **`CollectionPage.tsx`**: Render sealed packs first (newest → oldest), then opened NFTs. Empty state only if both lists are empty.
+- **NFT detail sheet**: Add Sell (disabled) and Send (opens modal) action buttons above the existing "List for Sale" button.
 
 ### Remove
-- `NftShelfBack` component (replaced by `PackBackside`)
-- NFT grid rendering on the back face
-- "YOUR SHELF" header on the back face
-- `NftPackTileComponent` is only used in the shelf back — remove or leave unused (can be kept for future use but not rendered on back face)
+
+- Direct `addNFTs()` call for minting in `App.tsx` (replaced by `addSealedPacks()`).
 
 ## Implementation Plan
-1. Build `PackBackside` component inside `LibraryPage.tsx`:
-   - Same outer card dimensions as `PackCard`: width 280px, minHeight 380px (but taller to fit content), borderRadius 20px, boxShadow consistent
-   - Background: `#F0F7F4` (soft mint-tinted white) with a subtle SVG noise filter or CSS repeating grain pattern at very low opacity
-   - Thin gloss sheen div at top (linear-gradient white to transparent, ~35% height)
-   - Scrollable inner content area with padding for dense TCG layout
-   - All sections separated by thin divider lines (1px, rgba mint)
-   - Typography: system sans-serif, clean, slightly condensed feel via letter-spacing and font-size
-   - Micro details row at bottom: barcode SVG, recycling icon, "web3 collectible" text
-   - Subtle "flip" icon button in top-right corner to return to front
-2. Replace `<NftShelfBack onFlipBack=... />` with `<PackBackside onFlipBack=... />` in the BACK FACE div
-3. Validate and build
+
+1. **Extend `CollectionContext.tsx`**:
+   - Add `SealedPack` interface and `pendingNFT: CollectionNFT` field.
+   - Add `sealedPacks: SealedPack[]` state, persisted to localStorage key `minty_sealed_packs`.
+   - Add `addSealedPacks(packs: SealedPack[])` and `openPack(packId: string)` — openPack removes from sealedPacks and appends pendingNFT to nfts.
+   - Expose all via context.
+
+2. **Update `App.tsx` `handleMintComplete`**:
+   - For each photo and video in the draft, build a `SealedPack` with embedded `pendingNFT`.
+   - Call `addSealedPacks()` instead of `addNFTs()`.
+
+3. **Update `CollectionPage.tsx`**:
+   - Import `sealedPacks` and `openPack` from context.
+   - Add `SealedPackTile` component: Minty pack visual, set name, edition badge, SEALED label.
+   - Add `PackDetailSheet` overlay: large pack image, set/edition info, Open Pack button, scale/fade animation on open, reveals NFT card view inside same sheet, then closes after 1.2s.
+   - Section headers: "Sealed Packs" and "Collectibles" with mint-tinted text, only shown if both sections have items.
+   - Add Send to Wallet modal + Sell/Send buttons on NFT detail sheet.
+   - Rename "List on Marketplace · Coming Soon" → "List for Sale · Coming Soon".
+
+4. **Seed data**: Update mock sealed packs (2–3 examples) so Collection shows content immediately on first load for UI testing. These mirror the existing mock NFTs pattern.

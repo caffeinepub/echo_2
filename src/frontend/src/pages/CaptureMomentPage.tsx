@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMomentDraft } from "../context/MomentDraftContext";
+import {
+  type MomentDraft,
+  useMomentDraft,
+} from "../context/MomentDraftContext";
 
 interface CaptureMomentPageProps {
   onBack: () => void;
+  onMintComplete?: (draft: MomentDraft) => void;
 }
 
 const MINT_GREEN = "rgba(52,168,132,1)";
@@ -11,7 +15,10 @@ const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 const PHOTO_SLOT_IDS = ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"];
 
-export function CaptureMomentPage({ onBack }: CaptureMomentPageProps) {
+export function CaptureMomentPage({
+  onBack,
+  onMintComplete,
+}: CaptureMomentPageProps) {
   const {
     activeDraft,
     hasDraft,
@@ -100,9 +107,14 @@ export function CaptureMomentPage({ onBack }: CaptureMomentPageProps) {
     setIsPrinting(true);
     // Simulate async print/mint
     setTimeout(() => {
+      const draftSnapshot = activeDraft;
       completeDraft();
       setIsPrinting(false);
       setPrintDone(true);
+      // Fire mint complete callback with snapshot of the draft
+      if (draftSnapshot) {
+        onMintComplete?.(draftSnapshot);
+      }
       // Return to library after a brief success moment
       setTimeout(() => {
         onBack();

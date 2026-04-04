@@ -1,6 +1,6 @@
-import { BookOpen, Compass, Sparkles } from "lucide-react";
+import { BookOpen, Compass, LayoutGrid, Sparkles } from "lucide-react";
 
-export type Tab = "library" | "releases" | "market";
+export type Tab = "library" | "releases" | "market" | "collection";
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -11,6 +11,7 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "library", label: "Library", Icon: BookOpen },
   { id: "releases", label: "Releases", Icon: Sparkles },
   { id: "market", label: "Discover", Icon: Compass },
+  { id: "collection", label: "Collection", Icon: LayoutGrid },
 ];
 
 const MINT = "oklch(0.70 0.18 160)";
