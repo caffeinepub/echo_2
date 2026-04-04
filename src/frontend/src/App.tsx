@@ -5,14 +5,17 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
-import { CollectionProvider, useCollection } from "./context/CollectionContext";
-import type { SealedPack } from "./context/CollectionContext";
+import { CollectionProvider } from "./context/CollectionContext";
 import {
   MomentDraftProvider,
   useMomentDraft,
 } from "./context/MomentDraftContext";
 import type { MomentDraft } from "./context/MomentDraftContext";
-import { ReleasesMarketProvider } from "./context/ReleasesMarketContext";
+import {
+  ReleasesMarketProvider,
+  useReleasesMarket,
+} from "./context/ReleasesMarketContext";
+import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
@@ -42,7 +45,7 @@ function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
   const { startDraft } = useMomentDraft();
-  const { addSealedPacks } = useCollection();
+  const { addRelease } = useReleasesMarket();
 
   useEffect(() => {
     seedMockData();
@@ -69,70 +72,50 @@ function AppContent() {
     setView({ type: "capture-moment" });
   }
 
+  // When a creator completes a Mint Moment, all generated packs are
+  // automatically listed in Releases — not stored in the creator's Collection.
+  // The creator is the origin of the set but not the holder of the packs.
   function handleMintComplete(draft: MomentDraft) {
     const now = Date.now();
-    const newPacks: SealedPack[] = [];
+    const totalPacks = draft.photos.length + (draft.video ? 1 : 0);
+    if (totalPacks === 0) return;
 
-    draft.photos.forEach((photoUrl, idx) => {
-      const nftId = `nft_${draft.id}_photo_${idx}`;
-      newPacks.push({
-        id: `pack_${draft.id}_photo_${idx}`,
-        setName: "My Mint Moment",
-        editionNumber: idx + 1,
-        totalSupply: draft.photos.length + (draft.video ? 1 : 0),
-        collectibleType: "photo",
-        pendingNFT: {
-          id: nftId,
-          title: `Moment Photo ${idx + 1}`,
-          setName: "My Mint Moment",
-          editionNumber: idx + 1,
-          totalSupply: draft.photos.length + (draft.video ? 1 : 0),
-          mediaType: "photo",
-          imageUrl: photoUrl,
-          rarity: "Common",
-          mintDate: new Date(now).toISOString(),
-          creator: "You",
-          owners: ["you"],
-          views: 0,
-          isLeader: false,
-          hasOwnershipHistory: false,
-          addedAt: now + idx,
-        },
-        createdAt: now + idx,
-      });
-    });
+    // Use the first captured photo as the cover image for the release
+    const coverImageUrl =
+      draft.photos.length > 0
+        ? draft.photos[0]
+        : "https://images.pokemontcg.io/sv1/025_hires.png";
 
+    const collectibleType: "photo" | "video" = draft.video ? "video" : "photo";
+
+    // Build a pack-id list for tracking (one entry per collectible in the set)
+    const packIds: string[] = draft.photos.map(
+      (_, idx) => `pack_${draft.id}_photo_${idx}`,
+    );
     if (draft.video) {
-      newPacks.push({
-        id: `pack_${draft.id}_video`,
-        setName: "My Mint Moment",
-        editionNumber: draft.photos.length + 1,
-        totalSupply: draft.photos.length + 1,
-        collectibleType: "video",
-        pendingNFT: {
-          id: `nft_${draft.id}_video`,
-          title: "Moment Video",
-          setName: "My Mint Moment",
-          editionNumber: draft.photos.length + 1,
-          totalSupply: draft.photos.length + 1,
-          mediaType: "video",
-          imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-          rarity: "Rare",
-          mintDate: new Date(now).toISOString(),
-          creator: "You",
-          owners: ["you"],
-          views: 0,
-          isLeader: false,
-          hasOwnershipHistory: false,
-          addedAt: now + draft.photos.length,
-        },
-        createdAt: now + draft.photos.length,
-      });
+      packIds.push(`pack_${draft.id}_video`);
     }
 
-    if (newPacks.length > 0) {
-      addSealedPacks(newPacks);
-    }
+    const release: MarketRelease = {
+      id: `release_mint_${draft.id}`,
+      creatorName: "You",
+      coverImageUrl,
+      previewClipUrl: draft.video ?? undefined,
+      title: "My Mint Moment",
+      caption: `${draft.photos.length} photo${draft.photos.length !== 1 ? "s" : ""}${
+        draft.video ? " + 1 video" : ""
+      } · just minted`,
+      setName: "My Mint Moment",
+      packsAvailable: totalPacks,
+      packIds,
+      priceUsd: 3.0,
+      listedAt: now,
+      expiresAt: now + 24 * 3600000, // 24-hour burn window
+      status: "active",
+      collectibleType,
+    };
+
+    addRelease(release);
   }
 
   return (

@@ -194,7 +194,7 @@ function VaultTile({
       data-ocid={`collection.item.${ocidIndex}`}
       onClick={handleTap}
       style={{
-        aspectRatio: "3/4",
+        aspectRatio: "4/5",
         borderRadius: "10px",
         overflow: "hidden",
         border: `1.5px solid ${isSelected ? "rgba(52,168,132,0.6)" : "rgba(0,0,0,0.07)"}`,
@@ -232,7 +232,8 @@ function VaultTile({
             src={PACK_IMAGE}
             alt="Sealed Pack"
             style={{
-              width: "65%",
+              width: "100%",
+              height: "100%",
               objectFit: "contain",
               filter: "drop-shadow(0 3px 8px rgba(52,168,132,0.22))",
             }}
@@ -1719,7 +1720,7 @@ function PackDetailSheet({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  padding: "32px 0",
+                  aspectRatio: "4/5",
                   marginBottom: "20px",
                   position: "relative",
                 }}
@@ -1728,7 +1729,7 @@ function PackDetailSheet({
                   src={PACK_IMAGE}
                   alt="Sealed Pack"
                   style={{
-                    width: "55%",
+                    width: "70%",
                     objectFit: "contain",
                     display: "block",
                     filter: "drop-shadow(0 8px 24px rgba(52,168,132,0.30))",
