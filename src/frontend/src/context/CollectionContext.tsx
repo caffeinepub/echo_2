@@ -31,6 +31,10 @@ export interface CollectionNFT {
   hasOwnershipHistory: boolean;
   addedAt: number;
   burnedCount?: number;
+  /** ISO timestamp of capture, e.g. "2026-04-03T23:42:00Z" */
+  capturedAt?: string;
+  /** Human-readable location, e.g. "New York, NY" */
+  location?: string;
 }
 
 export interface SealedPack {
@@ -83,6 +87,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     isLeader: true,
     hasOwnershipHistory: true,
     addedAt: Date.now() - 86400000 * 5,
+    capturedAt: "2026-04-03T23:42:00Z",
+    location: "New York, NY",
   },
   {
     id: "nft_mock_2",
@@ -100,6 +106,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     isLeader: false,
     hasOwnershipHistory: false,
     addedAt: Date.now() - 86400000 * 12,
+    capturedAt: "2026-04-02T14:15:00Z",
+    location: "Los Angeles, CA",
   },
   {
     id: "nft_mock_3",
@@ -117,6 +125,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     isLeader: false,
     hasOwnershipHistory: true,
     addedAt: Date.now() - 86400000 * 20,
+    capturedAt: "2026-04-01T09:30:00Z",
+    location: "Tokyo, JP",
   },
   {
     id: "nft_mock_4",
@@ -134,6 +144,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     isLeader: false,
     hasOwnershipHistory: false,
     addedAt: Date.now() - 86400000 * 30,
+    capturedAt: "2026-03-05T18:00:00Z",
+    location: "Miami, FL",
   },
 ];
 
@@ -175,7 +187,7 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
     typeSupply: 5,
     pendingNFT: {
       id: "nft_from_pack_2",
-      title: "Frozen Drift — Video Moment",
+      title: "Frozen Drift \u2014 Video Moment",
       setName: "Arctic Series",
       editionNumber: 2,
       totalSupply: 50,
@@ -343,7 +355,7 @@ export function CollectionProvider({
 
   const openPack = useCallback(
     async (packId: string): Promise<CollectionNFT> => {
-      // Atomicity guard — prevent double-open
+      // Atomicity guard \u2014 prevent double-open
       if (isPackOpening(packId)) {
         return Promise.reject(new Error("Pack is already being opened"));
       }
@@ -361,7 +373,7 @@ export function CollectionProvider({
 
           // Try backend call if pack has releaseId
           const tryBackend = async (): Promise<CollectionNFT> => {
-            // Backend not yet wired for pack opening — fall through to local
+            // Backend not yet wired for pack opening \u2014 fall through to local
             // When backend is ready, call actor.openPack(packId) here
             throw new Error("backend_not_available");
           };

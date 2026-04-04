@@ -1,51 +1,68 @@
-# Minty — Pack Opening Slide Gesture Overhaul
+# Minty — Collectible Card Component (Collections)
 
 ## Current State
-- Tapping a sealed pack in Collection shows an inline panel (first tap), then a second tap opens `PackDetailSheet` (bottom sheet)
-- `PackDetailSheet` has an "Open Pack" button that calls the backend and then shows `PackOpeningOverlay`
-- `PackOpeningOverlay` already has a slide-to-open control in the idle phase
-- After the tear/reveal animation, the NFT is shown as a small 260px card with metadata and two buttons (View NFT / Back to Collection)
-- Video NFTs show a static cover image with a VIDEO badge, not an actual fullscreen video
+
+The Collection tab renders opened collectibles via `VaultTile` — a compact 3-column grid tile with a full-bleed image, rarity pill, edition number pill, and a video badge. Tapping once reveals an `InlineDescPanel` below the row with title, set, and a stats grid. Tapping again opens a full media viewer or `NFTDetailSheet`.
+
+`CollectionNFT` has: `id`, `title`, `setName`, `editionNumber`, `totalSupply`, `mediaType`, `imageUrl`, `rarity`, `mintDate`, `creator`, `owners`, `views`, `isLeader`, `hasOwnershipHistory`, `addedAt`, `burnedCount?`.
+
+**Missing fields for the new card:** `capturedAt` (capture timestamp), `location` (capture location string).
 
 ## Requested Changes (Diff)
 
 ### Add
-- Fullscreen NFT reveal: after the tear animation, show the NFT media full-screen (entire viewport)
-- Photo reveal: full-screen image, fade/scale in animation, dark immersive background
-- Video reveal: full-screen autoplay looping video, no timeline, no scrub bar, no controls chrome — tapping once toggles minimal UI visibility
-- Ambient glow behind video NFT (slightly slower reveal for rare feel)
-- Minimal X close button always visible in top-right corner of the overlay
-- Direct tap-to-open-overlay flow: tapping a sealed pack should go directly to `PackOpeningOverlay` without the intermediate `PackDetailSheet` bottom sheet
+- `capturedAt?: string` and `location?: string` fields to `CollectionNFT` interface in `CollectionContext.tsx`
+- Seed mock collectibles with sample `capturedAt` timestamps and `location` strings
+- New `CollectibleCard` component at `src/frontend/src/components/CollectibleCard.tsx`
+  - 4:5 portrait aspect ratio, generously rounded corners (16–20px)
+  - Full-bleed cover image (photo) or video thumbnail (video) as card background
+  - All metadata rendered as UI overlays — never baked into the media
+  - **Overlay slots:**
+    - Top-left: captured date/time (e.g. "Apr 3 · 11:42 PM")
+    - Top-right: rarity pill (RARE / COMMON)
+    - Bottom-left: location string (e.g. "New York, NY") with map-pin icon
+    - Bottom-right: mint number out of total supply (e.g. "#3 / 90")
+    - Video badge: small ▷ icon top-center or top-left alongside date
+  - Overlays use frosted-glass pill styling (dark semi-transparent bg, soft white text, backdrop blur)
+  - Subtle gradient scrim at top and bottom to ensure overlay legibility
+  - Premium feel: soft mint-tinted border, subtle drop shadow, smooth rounded card
+- **Tap-to-expand behavior:**
+  - First tap: card smoothly scales up (e.g. 1.0 → 1.6x) in-place with a spring/ease animation, preserving layout in the grid (use `transform: scale`, not layout shift)
+  - Expanded state shows the same overlays at proportionally larger size — layout is identical, just bigger
+  - A second tap (or tap outside) scales back to normal
+  - From expanded state, a "View" button or tap-hold gesture opens the full media viewer (existing `MediaViewerModal` for video, `NFTDetailSheet` for photo)
+- Replace the current `VaultTile` rendering for opened collectibles (isPack=false) in `CollectionPage.tsx` with `CollectibleCard`
+- Keep `VaultTile` unchanged for sealed packs (isPack=true)
+- Remove `InlineDescPanel` as the primary detail trigger — the expanded card state replaces it. Keep `InlineDescPanel` if it provides additional data not shown on card.
 
 ### Modify
-- `PackOpeningOverlay`: replace the small card reveal with a full-screen immersive reveal
-  - `reveal` + `action` phase: content fills the full viewport instead of being a 260px card
-  - Photo phase: `<img>` fills viewport with object-fit cover, fade+scale in animation
-  - Video phase: `<video autoPlay loop muted playsInline>` fills viewport, no controls, tap toggles UI
-  - Metadata (title, rarity, edition, creator) fades in as minimal overlay — bottom of screen
-  - "View NFT" and "Back to Collection" become slim floating buttons at bottom
-  - The slide control label should read "Slide to open pack" (lowercase "pack")
-- `PackDetailSheet`: remove entirely (or bypass it); on second tap of a sealed pack, directly trigger the opening flow
-- `CollectionPage`: wire second-tap on sealed pack to immediately call `openPack(packId)` and show `PackOpeningOverlay` — no more `PackDetailSheet` intermediary
+- `CollectionNFT` interface — add optional `capturedAt` and `location` fields
+- Mock NFT seed data in `CollectionContext.tsx` — add sample captured timestamps and locations
+- `CollectionPage.tsx` — swap `VaultTile` for `CollectibleCard` for opened NFTs; wire tap-expand → full media viewer
 
 ### Remove
-- `PackDetailSheet` intermediary bottom sheet for sealed packs
-- "Open Pack" button
-- Small card reveal layout (260px card with side padding)
-- Visible video playback controls, timeline, and progress bar in video NFT reveal
+- Nothing removed permanently. `VaultTile` stays for sealed packs. `InlineDescPanel` can remain as a secondary detail layer or be removed if the expanded card fully replaces it.
 
 ## Implementation Plan
-1. Update `PackOpeningOverlay.tsx`:
-   - Add a persistent X close button (top-right, always visible)
-   - Update idle phase label to "Slide to open pack"
-   - Replace `reveal`/`action` phases with a fullscreen reveal layout
-   - Photo: full-viewport `<img>` with fade+scale animation, dark bg
-   - Video: full-viewport `<video autoPlay loop muted playsInline>` with no controls; tap body toggles a UI layer; ambient glow behind video; slightly slower animation timing
-   - Metadata overlay at bottom: title, rarity, edition, creator — fades in
-   - Two floating action buttons at very bottom (View NFT / Back to Collection)
-   - New keyframes: `nftFadeIn`, `nftScaleIn`, `videoGlow`, `uiToggleFade`
-2. Update `CollectionPage.tsx`:
-   - Remove `PackDetailSheet` import and usage
-   - On second tap of a sealed pack: call `openPack(packId)`, store result in `openingPackNFT` state, show `PackOpeningOverlay` directly
-   - Handle loading state (e.g. brief spinner or the pack can float while async resolves)
-   - On overlay complete/close: clear state and refresh collection view
+
+1. **Update `CollectionNFT` interface** in `CollectionContext.tsx`: add `capturedAt?: string` (ISO string) and `location?: string`. Update the 3–5 mock NFTs with sample values like `capturedAt: "2026-04-03T23:42:00Z"` and `location: "New York, NY"`.
+
+2. **Build `CollectibleCard` component** (`src/frontend/src/components/CollectibleCard.tsx`):
+   - Props: `nft: CollectionNFT`, `onExpand?: () => void`, `onViewMedia?: () => void`
+   - Internal `isExpanded` state; on tap, toggle between normal and scaled-up states using CSS `transform: scale()` + `transition` (spring-like cubic-bezier)
+   - Use `position: relative` for the card container; overlays are `position: absolute`
+   - Top scrim: linear-gradient from `rgba(0,0,0,0.45)` to transparent, ~40% height
+   - Bottom scrim: linear-gradient from transparent to `rgba(0,0,0,0.55)`, ~35% height
+   - Overlay pills: `backdrop-filter: blur(8px)`, `background: rgba(0,0,0,0.45)`, white text, `border-radius: 999px`, 4px vertical / 8px horizontal padding
+   - Card border: `1px solid rgba(0, 200, 160, 0.25)` (mint tint)
+   - Card shadow: `0 4px 20px rgba(0,0,0,0.35)`
+   - Expanded scale: `1.62` with `z-index: 50` so card lifts above siblings; `transform-origin: center center`
+   - When expanded, show a small "View" pill button at bottom-center that triggers full media viewer
+   - When expanded, also show a subtle close affordance (small ✕ or tap-outside handler)
+
+3. **Update `CollectionPage.tsx`**:
+   - In `VaultTile` or the SetSection render loop: when `isPack === false`, render `<CollectibleCard nft={nft} onViewMedia={() => openMediaViewer(nft)} />` instead of the current `VaultTile` path
+   - Wire `onViewMedia` to open the existing `MediaViewerModal` (video) or `NFTDetailSheet` (photo)
+   - Grid stays 3 columns; expanded cards overlap via `z-index` without reflowing the grid
+
+4. **Validate** — typecheck + build clean.

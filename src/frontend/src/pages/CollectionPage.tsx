@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CollectibleCard } from "../components/CollectibleCard";
 import { PackOpeningOverlay } from "../components/PackOpeningOverlay";
 import { ReleaseFlowModal } from "../components/ReleaseFlowModal";
 import {
@@ -734,17 +735,30 @@ function TileRows({
 
         return (
           <div key={row[0]?.id ?? `row-${rowIdx}`}>
-            {/* Tile grid row */}
+            {/* Tile grid row — position:relative so expanded CollectibleCards (z-50) display above siblings */}
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
                 gap: "8px",
                 marginBottom: rowHasSelected ? "0" : "8px",
+                position: "relative",
               }}
             >
               {row.map((item, tileIdx) => {
                 const globalIdx = rowIdx * 3 + tileIdx;
+                // Opened collectibles use the premium CollectibleCard
+                if (!item.isPack && item.nft) {
+                  return (
+                    <CollectibleCard
+                      key={item.id}
+                      nft={item.nft}
+                      ocidIndex={ocidOffset + globalIdx + 1}
+                      onViewMedia={() => onSecondTap(item.id)}
+                    />
+                  );
+                }
+                // Sealed packs keep the original VaultTile
                 return (
                   <VaultTile
                     key={item.id}
