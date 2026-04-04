@@ -85,7 +85,7 @@ const BUTTON_BASE = {
   transition: "background 0.15s ease, transform 0.1s ease",
 } as const;
 
-function PackCard() {
+function PackCard({ previewImage }: { previewImage?: string }) {
   const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -93,6 +93,13 @@ function PackCard() {
     const t = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  // The image shown inside the display window:
+  // — if a first captured photo exists, use it
+  // — otherwise fall back to the green pack artwork
+  const displaySrc = previewImage
+    ? previewImage
+    : "/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png";
 
   return (
     <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
@@ -230,7 +237,7 @@ function PackCard() {
             overflow: "hidden",
           }}
         >
-          {/* Pack image with float + 3D animate */}
+          {/* Display image — either first captured photo or fallback pack art */}
           <div
             style={{
               position: "absolute",
@@ -243,23 +250,56 @@ function PackCard() {
               transition: "opacity 0.6s ease, transform 0.6s ease",
             }}
           >
-            <img
-              src="/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png"
-              alt="Minty Pack"
-              className={`pack-hero-animate${isHovered ? " pack-hero-hover" : ""}`}
-              style={{
-                width: "75%",
-                height: "75%",
-                objectFit: "contain",
-                display: "block",
-                filter:
-                  "drop-shadow(0 0 12px rgba(150,240,200,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))",
-              }}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              onTouchStart={() => setIsHovered(true)}
-              onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
-            />
+            {previewImage ? (
+              // Captured photo: fill the window in 4:5 portrait crop
+              // Animated: float + glow pulse + breathing scale
+              <div
+                className="pack-preview-animate"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "inherit",
+                  overflow: "hidden",
+                  animation: isHovered ? undefined : undefined, // animation controlled via CSS class
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                onTouchStart={() => setIsHovered(true)}
+                onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
+              >
+                <img
+                  src={displaySrc}
+                  alt="Mint Moment preview"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center top",
+                    display: "block",
+                    borderRadius: "inherit",
+                  }}
+                />
+              </div>
+            ) : (
+              // Fallback: green pack artwork (existing behavior)
+              <img
+                src={displaySrc}
+                alt="Minty Pack"
+                className={`pack-hero-animate${isHovered ? " pack-hero-hover" : ""}`}
+                style={{
+                  width: "75%",
+                  height: "75%",
+                  objectFit: "contain",
+                  display: "block",
+                  filter:
+                    "drop-shadow(0 0 12px rgba(150,240,200,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))",
+                }}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
+                onTouchStart={() => setIsHovered(true)}
+                onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
+              />
+            )}
           </div>
 
           {/* Ambient mint glow behind pack */}
@@ -918,7 +958,10 @@ export function LibraryPage({
   const [showMintModal, setShowMintModal] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const { hasDraft, startDraft } = useMomentDraft();
+  const { hasDraft, startDraft, activeDraft } = useMomentDraft();
+
+  // First captured photo from any active or completed draft
+  const firstPhoto: string | undefined = activeDraft?.photos[0] ?? undefined;
 
   // Track touch start position for swipe detection
   const touchStartX = useRef<number | null>(null);
@@ -934,8 +977,33 @@ export function LibraryPage({
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50%       { opacity: 1;   transform: scale(1.25); }
       }
+      /* ── Pack preview image animations ─────────────────────────────── */
+      /* Gentle float: 6px vertical travel over 5s */
+      @keyframes packPreviewFloat {
+        0%, 100% { transform: translateY(0px) scale(1); }
+        50%       { transform: translateY(-5px) scale(1.012); }
+      }
+      /* Soft glow pulse on the wrapper */
+      @keyframes packPreviewGlow {
+        0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
+                               0 6px 24px rgba(0,0,0,0.08),
+                               0 2px 8px rgba(0,0,0,0.05),
+                               0 0 0px rgba(120,230,190,0); }
+        50%       { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
+                               0 6px 24px rgba(0,0,0,0.08),
+                               0 2px 8px rgba(0,0,0,0.05),
+                               0 0 18px rgba(120,230,190,0.32); }
+      }
+      .pack-preview-animate {
+        animation:
+          packPreviewFloat 5s ease-in-out infinite,
+          packPreviewGlow  4s ease-in-out infinite;
+        will-change: transform;
+        transform-origin: center center;
+      }
       @media (prefers-reduced-motion: reduce) {
-        .pack-hero-animate { animation: none !important; }
+        .pack-hero-animate  { animation: none !important; }
+        .pack-preview-animate { animation: none !important; }
       }
     `;
     document.head.appendChild(style);
@@ -1075,7 +1143,8 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              <PackCard />
+              {/* Show pack card with first captured photo as preview */}
+              <PackCard previewImage={firstPhoto} />
               <div style={{ height: "20px" }} />
               <DraftLockedState onFinish={() => onCaptureMoment?.()} />
             </motion.div>
@@ -1177,7 +1246,8 @@ export function LibraryPage({
                           transform: "rotateY(0deg)",
                         }}
                       >
-                        <PackCard />
+                        {/* Pass first captured photo (if any) as the preview */}
+                        <PackCard previewImage={firstPhoto} />
                       </div>
 
                       {/* Layer 4b — BACK FACE */}

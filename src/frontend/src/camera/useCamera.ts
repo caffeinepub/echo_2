@@ -16,6 +16,8 @@ export interface CameraError {
 export const useCamera = (config: CameraConfig = {}) => {
   const {
     facingMode = "environment",
+    width = 1920,
+    height = 1080,
     quality = 0.8,
     format = "image/jpeg",
   } = config;
@@ -66,8 +68,8 @@ export const useCamera = (config: CameraConfig = {}) => {
         const constraints = {
           video: {
             facingMode: facing,
-            width: { ideal: 1080 },
-            height: { ideal: 1350 },
+            width: { ideal: width },
+            height: { ideal: height },
           },
         };
 
@@ -99,7 +101,7 @@ export const useCamera = (config: CameraConfig = {}) => {
         throw { type: errorType, message: errorMessage };
       }
     },
-    [],
+    [width, height],
   );
 
   const setupVideo = useCallback(async (stream: MediaStream) => {
@@ -277,11 +279,9 @@ export const useCamera = (config: CameraConfig = {}) => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Set canvas to exact 4:5 portrait (1080x1350)
-      const targetW = 1080;
-      const targetH = 1350;
-      canvas.width = targetW;
-      canvas.height = targetH;
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) {
@@ -289,43 +289,12 @@ export const useCamera = (config: CameraConfig = {}) => {
         return;
       }
 
-      const videoW = video.videoWidth;
-      const videoH = video.videoHeight;
-
-      // Center-crop video to 4:5 ratio
-      const targetRatio = targetW / targetH; // 0.8
-      const videoRatio = videoW / videoH;
-
-      let srcX = 0;
-      let srcY = 0;
-      let srcW = videoW;
-      let srcH = videoH;
-      if (videoRatio > targetRatio) {
-        // video is wider — crop width
-        srcW = videoH * targetRatio;
-        srcX = (videoW - srcW) / 2;
-      } else {
-        // video is taller — crop height
-        srcH = videoW / targetRatio;
-        srcY = (videoH - srcH) / 2;
-      }
-
-      // Mirror front camera and draw cropped region
+      // Mirror front camera image
       if (currentFacingMode === "user") {
         ctx.scale(-1, 1);
-        ctx.drawImage(
-          video,
-          srcX,
-          srcY,
-          srcW,
-          srcH,
-          -targetW,
-          0,
-          targetW,
-          targetH,
-        );
+        ctx.drawImage(video, -canvas.width, 0);
       } else {
-        ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, targetW, targetH);
+        ctx.drawImage(video, 0, 0);
       }
 
       canvas.toBlob(
