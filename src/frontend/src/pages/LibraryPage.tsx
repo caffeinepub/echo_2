@@ -356,29 +356,31 @@ function PackView({
   onMintClick: () => void;
   onFinishMoment: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <>
-      {/* Keyframe animation injected once */}
+      {/* Keyframe animations */}
       <style>{`
-        @keyframes packFloat {
-          0%   { transform: rotateY(-7deg) rotateX(3deg) translateY(0px); }
-          50%  { transform: rotateY(7deg)  rotateX(2deg) translateY(-7px); }
-          100% { transform: rotateY(-7deg) rotateX(3deg) translateY(0px); }
+        @keyframes packWrapFloat {
+          0%   { transform: translateY(0px) rotateY(-3deg) rotateX(1deg); }
+          50%  { transform: translateY(-6px) rotateY(3deg) rotateX(2deg); }
+          100% { transform: translateY(0px) rotateY(-3deg) rotateX(1deg); }
         }
-        @keyframes packGlow {
-          0%   { opacity: 0.45; }
-          50%  { opacity: 0.65; }
-          100% { opacity: 0.45; }
+        @keyframes packWrapSweep {
+          0%   { transform: translateX(-130%) skewX(-18deg); opacity: 0; }
+          8%   { opacity: 0.7; }
+          92%  { opacity: 0.7; }
+          100% { transform: translateX(230%) skewX(-18deg); opacity: 0; }
         }
-        @keyframes packSweep {
-          0%   { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
-          10%  { opacity: 1; }
-          90%  { opacity: 1; }
-          100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+        @keyframes packWrapGlow {
+          0%   { opacity: 0.5; }
+          50%  { opacity: 0.75; }
+          100% { opacity: 0.5; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .pack-float-anim { animation: none !important; }
-          .pack-sweep-anim { display: none !important; }
+          .pack-wrap-float { animation: none !important; }
+          .pack-wrap-sweep { display: none !important; }
         }
       `}</style>
 
@@ -388,375 +390,342 @@ function PackView({
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          padding: "24px 24px 32px",
-          gap: "24px",
+          padding: "20px 20px 32px",
+          gap: 0,
         }}
       >
-        {/* ── Large Pack Card ── */}
+        {/* ── Outer card container ── */}
         <div
           style={{
             width: "100%",
-            maxWidth: "340px",
-            background: "#F7F6F2",
-            borderRadius: "22px",
+            maxWidth: "360px",
+            background: "#F7F6F4",
+            borderRadius: "24px",
             boxShadow:
-              "0 8px 40px rgba(0,0,0,0.10), 0 2px 10px rgba(0,0,0,0.06)",
-            overflow: "hidden",
-            border: "1px solid rgba(0,0,0,0.06)",
-            position: "relative",
+              "0 4px 32px rgba(0,0,0,0.10), 0 1px 6px rgba(0,0,0,0.06)",
+            padding: "28px 24px 28px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 0,
           }}
         >
-          {/* Inner gradient background */}
+          {/* Top small label */}
           <div
             style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(160deg, rgba(209,250,229,0.55) 0%, rgba(255,255,255,0) 55%, rgba(167,243,208,0.28) 100%)",
-              pointerEvents: "none",
-            }}
-          />
-
-          {/* Pack artwork area */}
-          <div
-            style={{
-              padding: "32px 24px 20px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "20px",
-              position: "relative",
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              color: "#9ca3af",
+              fontWeight: 600,
+              marginBottom: 20,
+              textTransform: "uppercase",
             }}
           >
-            {/* Glass pedestal with floating pack */}
+            MINTY PACK
+          </div>
+
+          {/* ── Pack wrapper area ── */}
+          <div
+            style={{
+              position: "relative",
+              width: 170,
+              height: 240,
+              marginBottom: 20,
+              perspective: "800px",
+            }}
+          >
+            {/* Ambient glow behind wrapper */}
             <div
               style={{
+                position: "absolute",
+                top: "-25px",
+                left: "-25px",
+                right: "-25px",
+                bottom: "-25px",
+                zIndex: 0,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(ellipse, rgba(52,211,153,0.20) 0%, rgba(52,211,153,0) 70%)",
+                animation: "packWrapGlow 5s ease-in-out infinite",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* Wrapper body — the glossy pack */}
+            <div
+              className="pack-wrap-float"
+              style={{
                 position: "relative",
-                width: "160px",
-                height: "160px",
-                perspective: "600px",
+                zIndex: 1,
+                width: "100%",
+                height: "100%",
+                borderRadius: 16,
+                background:
+                  "linear-gradient(160deg, #c6f6e4 0%, #86efca 30%, #4ade9e 55%, #34d399 80%, #059669 100%)",
+                boxShadow:
+                  "0 12px 40px rgba(5,150,105,0.30), 0 4px 16px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(0,0,0,0.10)",
+                transformStyle: "preserve-3d",
+                animation: "packWrapFloat 7s ease-in-out infinite",
+                overflow: "hidden",
               }}
             >
-              {/* Ambient glow */}
-              <div
-                className="pack-float-anim"
-                style={{
-                  position: "absolute",
-                  inset: "-20px",
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 70%)",
-                  animation: "packGlow 6s ease-in-out infinite",
-                  pointerEvents: "none",
-                }}
-              />
-
-              {/* Glass pedestal square */}
+              {/* Gloss highlight at top */}
               <div
                 style={{
                   position: "absolute",
                   inset: 0,
-                  borderRadius: "20px",
-                  background: "rgba(255,255,255,0.72)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1.5px solid rgba(255,255,255,0.85)",
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.10) 35%, rgba(255,255,255,0) 60%)",
+                  borderRadius: "inherit",
+                  pointerEvents: "none",
+                  zIndex: 1,
+                }}
+              />
+
+              {/* Inner shadow at edges */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  boxShadow: "inset 0 0 18px rgba(0,0,0,0.12)",
+                  borderRadius: "inherit",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                }}
+              />
+
+              {/* Diagonal foil shimmer */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(115deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0) 70%)",
+                  pointerEvents: "none",
+                  zIndex: 3,
+                }}
+              />
+
+              {/* Light sweep — rare, slow */}
+              <div
+                className="pack-wrap-sweep"
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  width: "45%",
+                  background:
+                    "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%)",
+                  animation: "packWrapSweep 14s ease-in-out infinite 6s",
+                  pointerEvents: "none",
+                  zIndex: 4,
+                }}
+              />
+
+              {/* ── Inner tile — floating centered card ── */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: 116,
+                  height: 160,
+                  background: "#FAFAFA",
+                  borderRadius: 10,
                   boxShadow:
-                    "0 4px 20px rgba(16,185,129,0.08), 0 1px 6px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                    "0 4px 20px rgba(0,0,0,0.18), 0 1px 6px rgba(0,0,0,0.10)",
+                  border: "1px solid rgba(255,255,255,0.90)",
                   overflow: "hidden",
+                  zIndex: 5,
                 }}
               >
-                {/* Floating pack monogram */}
-                <div
-                  className="pack-float-anim"
-                  style={{
-                    position: "relative",
-                    width: "110px",
-                    height: "110px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    animation: "packFloat 7s ease-in-out infinite",
-                    transformStyle: "preserve-3d",
-                  }}
-                >
-                  {/* Pack body */}
+                {!imgError ? (
+                  <img
+                    src="/assets/img_4745-019d55f7-8e43-700c-8e61-2a4442d9b58b.png"
+                    onError={() => setImgError(true)}
+                    alt="Minty Pack preview"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: "center top",
+                      display: "block",
+                    }}
+                  />
+                ) : (
                   <div
                     style={{
-                      width: "90px",
-                      height: "110px",
-                      borderRadius: "12px",
+                      width: "100%",
+                      height: "100%",
                       background:
-                        "linear-gradient(145deg, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%)",
-                      boxShadow:
-                        "0 6px 24px rgba(16,185,129,0.25), 0 2px 8px rgba(0,0,0,0.10)",
+                        "linear-gradient(160deg, #d1fae5 0%, #a7f3d0 100%)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      flexDirection: "column",
-                      gap: "4px",
-                      position: "relative",
-                      overflow: "hidden",
-                      border: "1.5px solid rgba(255,255,255,0.6)",
                     }}
                   >
-                    {/* Foil shimmer line */}
                     <div
                       style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                          "linear-gradient(135deg, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%)",
-                      }}
-                    />
-                    {/* Rare sweep effect */}
-                    <div
-                      className="pack-sweep-anim"
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        bottom: 0,
-                        width: "40%",
-                        background:
-                          "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.40) 50%, rgba(255,255,255,0) 100%)",
-                        animation: "packSweep 12s ease-in-out infinite 4s",
-                        pointerEvents: "none",
-                      }}
-                    />
-                    {/* M monogram */}
-                    <div
-                      style={{
-                        fontSize: "32px",
+                        fontSize: "28px",
                         fontWeight: 800,
-                        color: "rgba(5,150,105,0.85)",
+                        color: "rgba(5,150,105,0.50)",
                         fontFamily: "Georgia, serif",
                         letterSpacing: "-0.04em",
-                        textShadow: "0 1px 3px rgba(255,255,255,0.6)",
-                        position: "relative",
-                        zIndex: 1,
                       }}
                     >
                       M
                     </div>
-                    <div
-                      style={{
-                        fontSize: "8px",
-                        fontWeight: 700,
-                        color: "rgba(5,150,105,0.70)",
-                        letterSpacing: "0.14em",
-                        textTransform: "uppercase",
-                        position: "relative",
-                        zIndex: 1,
-                      }}
-                    >
-                      MINTY
-                    </div>
                   </div>
-                </div>
-
-                {/* Inner highlight at top */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "50%",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0) 100%)",
-                    borderRadius: "20px 20px 0 0",
-                    pointerEvents: "none",
-                  }}
-                />
-              </div>
-
-              {/* Pedestal shadow */}
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "-12px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: "100px",
-                  height: "12px",
-                  background:
-                    "radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 70%)",
-                  pointerEvents: "none",
-                }}
-              />
-            </div>
-
-            {/* Pack info text */}
-            <div
-              style={{
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                gap: "6px",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "20px",
-                  fontWeight: 700,
-                  color: "#111111",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Minty Pack
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "#6b7280",
-                  fontWeight: 400,
-                }}
-              >
-                Contains 1 collectible
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Price */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                gap: "4px",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 800,
-                  color: "#111111",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                $1
-              </span>
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  color: "#6b7280",
-                }}
-              >
-                per pack
-              </span>
-            </div>
+          {/* Main title */}
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#111",
+              letterSpacing: "-0.01em",
+              textAlign: "center",
+              marginBottom: 6,
+            }}
+          >
+            Minty Pack
+          </div>
 
-            {/* Supply */}
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              Supply remaining: 50,000
-            </div>
+          {/* Subtitle */}
+          <div
+            style={{
+              fontSize: 14,
+              color: "#6b7280",
+              fontWeight: 400,
+              textAlign: "center",
+              marginBottom: 8,
+            }}
+          >
+            Contains 1 collectible
+          </div>
+
+          {/* Price */}
+          <div
+            style={{
+              fontSize: 14,
+              color: "#374151",
+              fontWeight: 500,
+              textAlign: "center",
+            }}
+          >
+            $1 per pack
           </div>
         </div>
 
-        {/* ── CTA area ── */}
-        {hasDraft ? (
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "340px",
-              background: "rgba(16,185,129,0.06)",
-              border: "1px solid rgba(16,185,129,0.18)",
-              borderRadius: "16px",
-              padding: "18px 20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: "#059669",
-                lineHeight: 1.4,
-              }}
-            >
-              Your Moment is in progress.
-            </div>
-            <div
-              style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}
-            >
-              Complete capture and print to unlock your next Moment.
-            </div>
+        {/* ── Supply remaining (below card) ── */}
+        <div
+          style={{
+            fontSize: 12,
+            color: "#9ca3af",
+            marginTop: 14,
+            textAlign: "center",
+          }}
+        >
+          Supply remaining: 50,000
+        </div>
+
+        {/* ── CTA button ── */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "360px",
+            marginTop: 16,
+          }}
+        >
+          {hasDraft ? (
+            <>
+              <div
+                style={{
+                  background: "rgba(16,185,129,0.06)",
+                  border: "1px solid rgba(16,185,129,0.18)",
+                  borderRadius: "16px",
+                  padding: "14px 20px",
+                  marginBottom: 10,
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#059669",
+                    marginBottom: 4,
+                  }}
+                >
+                  Your Moment is in progress.
+                </div>
+                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  Complete capture and print to unlock your next Moment.
+                </div>
+              </div>
+              <button
+                data-ocid="library.pack.finish_moment.button"
+                type="button"
+                onClick={onFinishMoment}
+                style={{
+                  width: "100%",
+                  background: "#EBEBEA",
+                  color: "#111111",
+                  borderRadius: "14px",
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  padding: "14px 0",
+                  border: "none",
+                  cursor: "pointer",
+                  letterSpacing: "0.01em",
+                  transition: "opacity 0.15s ease",
+                  textAlign: "center",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.82";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                }}
+              >
+                Finish Current Moment →
+              </button>
+            </>
+          ) : (
             <button
-              data-ocid="library.pack.finish_moment.button"
+              data-ocid="library.pack.mint_moment.button"
               type="button"
-              onClick={onFinishMoment}
+              onClick={onMintClick}
               style={{
-                marginTop: "4px",
-                fontSize: "14px",
+                width: "100%",
+                background: "#EBEBEA",
+                color: "#111111",
+                borderRadius: "14px",
+                fontSize: "15px",
                 fontWeight: 600,
-                color: "#059669",
-                background: "rgba(16,185,129,0.10)",
-                border: "1px solid rgba(16,185,129,0.28)",
-                borderRadius: "10px",
-                padding: "11px 20px",
+                padding: "14px 0",
+                border: "none",
                 cursor: "pointer",
-                transition: "opacity 0.15s ease",
                 letterSpacing: "0.01em",
+                transition: "opacity 0.15s ease",
                 textAlign: "center",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "0.80";
+                (e.currentTarget as HTMLButtonElement).style.opacity = "0.82";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.opacity = "1";
               }}
             >
-              Finish Current Moment →
+              Mint Moment
             </button>
-          </div>
-        ) : (
-          <button
-            data-ocid="library.pack.mint_moment.button"
-            type="button"
-            onClick={onMintClick}
-            style={{
-              width: "100%",
-              maxWidth: "340px",
-              background: "#111111",
-              color: "#ffffff",
-              borderRadius: "14px",
-              fontSize: "15px",
-              fontWeight: 600,
-              padding: "15px 24px",
-              border: "none",
-              cursor: "pointer",
-              letterSpacing: "0.02em",
-              transition: "opacity 0.15s ease",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-            }}
-          >
-            <span style={{ fontSize: "16px" }}>✦</span> Mint Moment
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </>
   );
