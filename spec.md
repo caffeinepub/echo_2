@@ -1,42 +1,44 @@
-# Minty — 4:5 Portrait Aspect Ratio Enforcement
+# Minty — Collection Tab Vault Redesign
 
 ## Current State
-Media is displayed at inconsistent aspect ratios across the app:
-- Camera viewfinder: `3/4` aspect ratio
-- Photo/video previews in capture flow: `3/4`
-- Review thumbnails: `1` (square)
-- Collection NFT tiles: `3/4`
-- Collection compact pack tiles: `3/4`
-- Collection set banner: `3/2` (landscape)
-- Collection detail sheet images: `maxHeight: 260px` (no ratio)
-- Pack reveal image: `maxHeight: 220px` (no ratio)
-- Release cards: `height: 180px` (fixed px, no ratio)
-- Release detail sheet cover: `height: 220px` (fixed px)
-- Library pack flip card: `280x460` (~3:5 ratio)
-- `useCamera.ts`: captures at `1920x1080` landscape by default; canvas outputs raw video dimensions
+CollectionPage.tsx (~1975 lines) renders:
+- A main page showing SetGroupCard items in a vertical list (large cards with 4:5 image + stats below)
+- Tapping a set opens SetDetailView (full-screen overlay) showing CompactPackTile (3-col) and NFTTile (2-col) grids
+- Tapping a pack/NFT opens PackDetailSheet or NFTDetailSheet (bottom sheets)
+- CollectionContext holds nfts[], sealedPacks[], and CRUD methods — must not change
+
+Problems: Set cards are large and card-like (ecommerce feel), the two-level navigation (set → detail overlay → bottom sheet) feels clunky, tiles inside SetDetailView are still fairly large, and there's no inline expand behavior.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MEDIA_ASPECT` constant (`4/5`) shared across components for consistency
-- 4:5 crop logic in `useCamera.ts` `capturePhoto()` to output 1080x1350
-- Camera constraints requesting portrait 1080x1350 resolution
+- **Vault layout**: All sets rendered inline on the main page (no full-screen overlay). Each set has a compact sticky-style section header showing set title, total/sealed/opened counts.
+- **Compact tile grid**: 3-column grid for sealed packs, 3-column grid for opened collectibles — small Pokédex-style tiles (~square, not tall cards)
+- **Bubble/pop animation on first tap**: CSS spring scale animation on tile tap
+- **Inline description panel**: First tap reveals a metadata panel expanding inline directly under the tapped tile row (Pokédex entry feel). Panel shows: title, type, print #/total, set name, sealed status, minted date, creator, rarity, origin (self-minted / purchased)
+- **Second tap behavior**: If same tile is tapped again, open a media modal (photo: clean fullscreen image overlay; video: video player modal muted by default with unmute toggle; pack: opens existing PackDetailSheet)
+- **Media viewer modal**: Full-screen centered overlay for photos/videos, premium minimal styling, close button
+- **Release button**: Stays at set-header level, compact pill
 
 ### Modify
-- `useCamera.ts`: change default width/height to `1080x1350`, update `capturePhoto` to center-crop to exactly 1080x1350 at 4:5 ratio
-- `CaptureMomentPage.tsx`: all viewfinder/preview/thumbnail containers → `aspectRatio: "4/5"`; remove `3/4`; review grid thumbnails `1` → `4/5`
-- `CollectionPage.tsx`: NFTTile image area `3/4` → `4/5`; CompactPackTile `3/4` → `4/5`; NFT detail sheet image wrapper → `aspectRatio: "4/5"` (remove maxHeight); pack reveal image wrapper → `aspectRatio: "4/5"` (remove maxHeight); SetGroupCard banner `3/2` → `4/5`
-- `ReleasesPage.tsx`: ReleaseCard cover area `height: 180` → `aspectRatio: "4/5"`; ReleaseDetailSheet cover `height: 220` → `aspectRatio: "4/5"`; VideoPreviewModal → `aspectRatio: "4/5"` with `objectFit: cover`
-- `LibraryPage.tsx`: flip card dimensions `280x460` → `280x350` (4:5 ratio)
+- **SetGroupCard**: Replace large card with compact inline section header (no image thumbnail in header, just text stats + mint accent bar)
+- **NFTTile**: Shrink to compact ~square tile (3-column), remove large info footer — just image + tiny badges on corners
+- **CompactPackTile**: Keep similar but ensure consistent with new tile system
+- **SetDetailView overlay**: Remove entirely — inline expand replaces it
+- Main page layout: single scrollable vault, sets stacked vertically with section separators
 
 ### Remove
-- All fixed-pixel `height` values on media containers in Releases cards
-- All `maxHeight` constraints on image/video in detail sheets
-- `aspectRatio: "3/4"` everywhere — replace with `"4/5"`
+- SetDetailView full-screen overlay (replaced by inline vault layout)
+- SetGroupCard large image card format
+- Separate selectedSet state driving full-screen navigation
 
 ## Implementation Plan
-1. Update `useCamera.ts` — set default `width: 1080, height: 1350`, and in `capturePhoto`, center-crop the canvas to 1080x1350 (4:5) from whatever the live video frame dimensions are
-2. Update `CaptureMomentPage.tsx` — all aspect ratio values `3/4` → `4/5`, review thumbnails `1` → `4/5`
-3. Update `CollectionPage.tsx` — all `3/4` containers to `4/5`, SetGroupCard banner to `4/5`, detail sheet images use `aspectRatio: "4/5"` wrapper instead of maxHeight
-4. Update `ReleasesPage.tsx` — replace fixed-height media containers with `aspectRatio: "4/5"`, fix VideoPreviewModal
-5. Update `LibraryPage.tsx` — flip card to 280x350
+1. Keep CollectionContext and all data types exactly as-is
+2. Keep PackDetailSheet, NFTDetailSheet, SendToWalletModal components as-is (they're bottom sheets that still work for second-tap)
+3. Rewrite main page layout: iterate setGroups, render each inline with a compact section header + tile grids
+4. New VaultTile component: 3-col square tile with image, sealed badge, media type badge, rarity dot — no text below
+5. New InlineDescPanel component: expands under the row containing the selected tile, smooth CSS height animation
+6. Track selectedTileId (first tap) and secondTapId (second tap → opens modal/sheet)
+7. New MediaViewerModal: handles photo fullscreen + video player
+8. Bubble pop: CSS keyframe on tile press (scale 1 → 1.06 → 0.97 → 1)
+9. Keep ReleaseFlowModal integration unchanged
