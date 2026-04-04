@@ -1,8 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import { MintMomentModal } from "../components/MintMomentModal";
-import { useMomentDraft } from "../context/MomentDraftContext";
 import { MOCK_OWNED_MEDIA, type OwnedMediaItem } from "../store/mockOwnedMedia";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -114,7 +112,6 @@ function NFTCollectibleTile({
           overflow: "hidden",
         }}
       >
-        {/* Shimmer overlay */}
         <div
           style={{
             position: "absolute",
@@ -123,8 +120,6 @@ function NFTCollectibleTile({
               "linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.10) 100%)",
           }}
         />
-
-        {/* Stylized Monogram */}
         <div
           style={{
             position: "absolute",
@@ -166,7 +161,6 @@ function NFTCollectibleTile({
           gap: 2,
         }}
       >
-        {/* Title */}
         <div
           style={{
             fontSize: "12px",
@@ -181,8 +175,6 @@ function NFTCollectibleTile({
         >
           {item.title}
         </div>
-
-        {/* Creator */}
         <div
           style={{
             fontSize: "10px",
@@ -194,8 +186,6 @@ function NFTCollectibleTile({
         >
           @{item.creator}
         </div>
-
-        {/* Edition strip */}
         <div
           style={{
             background: "rgba(0,0,0,0.06)",
@@ -212,7 +202,7 @@ function NFTCollectibleTile({
         </div>
       </div>
 
-      {/* ── Type badge (top-left) ── */}
+      {/* ── Type badge ── */}
       <div
         style={{
           position: "absolute",
@@ -232,7 +222,7 @@ function NFTCollectibleTile({
         {item.type === "video" ? "VIDEO" : "PHOTO"}
       </div>
 
-      {/* ── Rarity badge (top-right) ── */}
+      {/* ── Rarity badge ── */}
       {item.rarity && rs && (
         <div
           style={{
@@ -346,68 +336,31 @@ function CollectedMediaGrid({
 }
 
 // ─── Pack View ────────────────────────────────────────────────────────────────
-// The green CSS gradient wrapper IS the outer pack shell (like a real TCG booster).
-// The uploaded image shows as a collectible card peeking out from the top seal.
 
-const CARD_IMAGE =
-  "/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png";
-
-// Pack dimensions — tall portrait TCG booster proportions
-const PACK_W = 170;
-const PACK_H = 256;
-// Card peeking out from the top of the pack
-const PEEK_W = 116;
-const PEEK_H = 88; // total card height rendered
-const PEEK_VISIBLE = 54; // how many px of the card stick above the pack top
-
-function PackView({
-  hasDraft,
-  onMintClick,
-  onFinishMoment,
-}: {
-  hasDraft: boolean;
-  onMintClick: () => void;
-  onFinishMoment: () => void;
-}) {
-  const [cardImgError, setCardImgError] = useState(false);
-
-  // Total stage height = visible card above + full pack
-  const STAGE_H = PEEK_VISIBLE + PACK_H;
-  const STAGE_W = PACK_W + 24;
-
+function PackView() {
   return (
     <>
       <style>{`
         @keyframes mintPackFloat {
-          0%   { transform: translateY(0px)   rotateY(-5deg) rotateX(2deg)  scale(1);    }
-          33%  { transform: translateY(-5px)  rotateY(2deg)  rotateX(3deg)  scale(1.01); }
-          66%  { transform: translateY(-9px)  rotateY(5deg)  rotateX(1deg)  scale(1.01); }
-          100% { transform: translateY(0px)   rotateY(-5deg) rotateX(2deg)  scale(1);    }
-        }
-        @keyframes mintPackGlow {
-          0%,100% { opacity: 0.45; transform: translate(-50%,-50%) scale(1);    }
-          50%     { opacity: 0.70; transform: translate(-50%,-50%) scale(1.07); }
+          0%   { transform: translateY(0px)   rotateY(-5deg) rotateX(2deg); }
+          33%  { transform: translateY(-6px)  rotateY(2deg)  rotateX(3deg); }
+          66%  { transform: translateY(-10px) rotateY(5deg)  rotateX(1deg); }
+          100% { transform: translateY(0px)   rotateY(-5deg) rotateX(2deg); }
         }
         @keyframes mintTopSheen {
           0%,100% { opacity: 0.55; }
-          50%     { opacity: 0.75; }
+          50%     { opacity: 0.80; }
         }
         @keyframes mintSweep {
           0%,4%    { transform: translateX(-180%) skewX(-22deg); opacity: 0; }
-          10%      { opacity: 0.42; }
-          90%      { opacity: 0.42; }
+          10%      { opacity: 0.38; }
+          90%      { opacity: 0.38; }
           96%,100% { transform: translateX(280%) skewX(-22deg); opacity: 0; }
         }
-        @keyframes mintCardFloat {
-          0%,100% { transform: translateX(-50%) translateY(0px) rotate(-0.8deg); }
-          50%     { transform: translateX(-50%) translateY(-3px) rotate(0.6deg); }
-        }
         @media (prefers-reduced-motion: reduce) {
-          .mint-pack-float  { animation: none !important; }
-          .mint-pack-sweep  { display: none !important; }
-          .mint-pack-glow   { animation: none !important; }
-          .mint-top-sheen   { animation: none !important; }
-          .mint-card-float  { animation: none !important; }
+          .mint-pack-float { animation: none !important; }
+          .mint-pack-sweep { display: none !important; }
+          .mint-top-sheen  { animation: none !important; }
         }
       `}</style>
 
@@ -415,517 +368,110 @@ function PackView({
         data-ocid="library.pack.section"
         style={{
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
-          padding: "24px 20px 36px",
+          justifyContent: "center",
+          minHeight: "60vh",
         }}
       >
-        {/* Outer product card */}
         <div
+          className="mint-pack-float"
           style={{
-            width: "100%",
-            maxWidth: "340px",
-            background: "#F8F7F4",
-            borderRadius: "26px",
-            border: "1px solid rgba(0,0,0,0.06)",
+            width: 170,
+            height: 256,
+            borderRadius: 18,
+            background:
+              "linear-gradient(168deg, #c8f5e5 0%, #7ee8bc 16%, #3dd4a0 34%, #22c98d 52%, #15b87a 70%, #0a9e65 88%, #077d52 100%)",
             boxShadow:
-              "0 1px 3px rgba(0,0,0,0.06), 0 6px 24px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.90)",
-            padding: "28px 24px 28px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
+              "0 24px 56px rgba(5,120,75,0.32), " +
+              "0 8px 20px rgba(0,0,0,0.18), " +
+              "inset 1.5px 1.5px 0 rgba(255,255,255,0.70), " +
+              "inset -1.5px -1.5px 0 rgba(0,0,0,0.10), " +
+              "inset 0 0 26px rgba(0,55,35,0.16)",
+            position: "relative",
+            overflow: "hidden",
+            animation: "mintPackFloat 8s ease-in-out infinite",
           }}
         >
-          {/* Eyebrow label */}
+          {/* Top gloss sheen */}
+          <div
+            className="mint-top-sheen"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "44%",
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.20) 50%, rgba(255,255,255,0) 100%)",
+              borderRadius: "18px 18px 0 0",
+              animation: "mintTopSheen 5s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Left edge highlight */}
           <div
             style={{
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.24em",
-              color: "#b0bab5",
-              textTransform: "uppercase" as const,
-              marginBottom: 22,
-              fontFamily: "system-ui, -apple-system, sans-serif",
+              position: "absolute",
+              top: "8%",
+              bottom: "8%",
+              left: 4,
+              width: 5,
+              background:
+                "linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.38) 100%)",
+              borderRadius: 4,
+              pointerEvents: "none",
             }}
-          >
-            MINTY PACK
-          </div>
-
-          {/* 3D pack stage */}
+          />
+          {/* Right edge shadow */}
           <div
             style={{
-              position: "relative",
-              width: STAGE_W,
-              height: STAGE_H,
-              marginBottom: 26,
-              perspective: "900px",
-              perspectiveOrigin: "50% 40%",
+              position: "absolute",
+              top: "8%",
+              bottom: "8%",
+              right: 4,
+              width: 5,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.07) 100%)",
+              borderRadius: 4,
+              pointerEvents: "none",
             }}
-          >
-            {/* Ambient mint bloom */}
-            <div
-              className="mint-pack-glow"
-              style={{
-                position: "absolute",
-                top: "55%",
-                left: "50%",
-                width: "260%",
-                height: "260%",
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(ellipse at center, rgba(52,211,153,0.22) 0%, rgba(110,231,183,0.10) 40%, transparent 65%)",
-                animation: "mintPackGlow 6s ease-in-out infinite",
-                pointerEvents: "none",
-                zIndex: 0,
-              }}
-            />
-
-            {/* Floating pack wrapper — green CSS gradient = the outer pack shell */}
-            <div
-              className="mint-pack-float"
-              style={{
-                position: "absolute",
-                left: "50%",
-                top: 0,
-                transform: "translateX(-50%)",
-                width: PACK_W,
-                height: STAGE_H,
-                transformStyle: "preserve-3d" as const,
-                animation: "mintPackFloat 8s ease-in-out infinite",
-                zIndex: 1,
-              }}
-            >
-              {/* ── Card peeking out from the top seal ── */}
-              {/* Sits in front of the pack at the top, half-tucked inside */}
-              <div
-                className="mint-card-float"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: PEEK_W,
-                  height: PEEK_H,
-                  borderRadius: "10px 10px 4px 4px",
-                  overflow: "hidden",
-                  // Card floats IN FRONT of the pack (higher z-index)
-                  zIndex: 4,
-                  boxShadow:
-                    "0 -2px 10px rgba(0,0,0,0.14), " +
-                    "0 6px 20px rgba(0,0,0,0.28), " +
-                    "0 0 0 1px rgba(255,255,255,0.70)",
-                  animation: "mintCardFloat 7s ease-in-out infinite 1.2s",
-                }}
-              >
-                {!cardImgError ? (
-                  <img
-                    src={CARD_IMAGE}
-                    onError={() => setCardImgError(true)}
-                    alt="Collectible card"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: "center top",
-                      display: "block",
-                    }}
-                  />
-                ) : (
-                  <>
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background:
-                          "linear-gradient(160deg, #e8fdf5 0%, #c6f6e5 40%, #86efca 100%)",
-                      }}
-                    />
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 22,
-                        fontWeight: 800,
-                        color: "rgba(5,150,90,0.30)",
-                        fontFamily: "Georgia, serif",
-                        letterSpacing: "-0.04em",
-                        userSelect: "none" as const,
-                      }}
-                    >
-                      M
-                    </div>
-                  </>
-                )}
-                {/* Shimmer over the card */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(135deg, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0) 55%, rgba(255,255,255,0.10) 100%)",
-                    pointerEvents: "none",
-                  }}
-                />
-                {/* Bottom fade — blends into the pack opening */}
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: "38%",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(180,240,210,0.65) 100%)",
-                    pointerEvents: "none",
-                  }}
-                />
-              </div>
-
-              {/* ── Green CSS gradient pack — the outer wrapper ── */}
-              {/* Covers the bottom portion of the peeking card, so it looks inside */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: PEEK_VISIBLE, // starts where the card disappears inside
-                  left: 0,
-                  width: PACK_W,
-                  height: PACK_H,
-                  borderRadius: 18,
-                  background:
-                    "linear-gradient(168deg, #c8f5e5 0%, #7ee8bc 16%, #3dd4a0 34%, #22c98d 52%, #15b87a 70%, #0a9e65 88%, #077d52 100%)",
-                  boxShadow:
-                    "0 20px 48px rgba(5,120,75,0.30), " +
-                    "0 6px 18px rgba(0,0,0,0.18), " +
-                    "inset 1.5px 1.5px 0 rgba(255,255,255,0.70), " +
-                    "inset -1.5px -1.5px 0 rgba(0,0,0,0.10), " +
-                    "inset 0 0 26px rgba(0,55,35,0.16)",
-                  overflow: "hidden",
-                  // Pack sits behind the peeking card
-                  zIndex: 3,
-                }}
-              >
-                {/* Top gloss sheen */}
-                <div
-                  className="mint-top-sheen"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "44%",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.20) 50%, rgba(255,255,255,0) 100%)",
-                    borderRadius: "18px 18px 0 0",
-                    animation: "mintTopSheen 5s ease-in-out infinite",
-                    pointerEvents: "none",
-                    zIndex: 1,
-                  }}
-                />
-
-                {/* Left edge highlight — plastic rim */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "8%",
-                    bottom: "8%",
-                    left: 4,
-                    width: 5,
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.60) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.38) 100%)",
-                    borderRadius: 4,
-                    pointerEvents: "none",
-                    zIndex: 2,
-                  }}
-                />
-
-                {/* Right edge shadow — plastic rim */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "8%",
-                    bottom: "8%",
-                    right: 4,
-                    width: 5,
-                    background:
-                      "linear-gradient(180deg, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.07) 100%)",
-                    borderRadius: 4,
-                    pointerEvents: "none",
-                    zIndex: 2,
-                  }}
-                />
-
-                {/* Inset depth shadow */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    boxShadow:
-                      "inset 0 0 30px rgba(0,50,28,0.20), inset 0 3px 8px rgba(0,0,0,0.08)",
-                    borderRadius: "inherit",
-                    pointerEvents: "none",
-                    zIndex: 3,
-                  }}
-                />
-
-                {/* Diagonal foil shimmer */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(116deg, rgba(255,255,255,0) 22%, rgba(255,255,255,0.26) 44%, rgba(210,255,235,0.14) 50%, rgba(255,255,255,0) 66%)",
-                    pointerEvents: "none",
-                    zIndex: 4,
-                  }}
-                />
-
-                {/* Tear-notch seal line at top */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 14,
-                    left: 14,
-                    right: 14,
-                    height: 1,
-                    background:
-                      "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 25%, rgba(255,255,255,0.38) 75%, transparent 100%)",
-                    pointerEvents: "none",
-                    zIndex: 5,
-                  }}
-                />
-
-                {/* Rare light sweep */}
-                <div
-                  className="mint-pack-sweep"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: "48%",
-                    background:
-                      "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.34) 50%, rgba(255,255,255,0) 100%)",
-                    animation: "mintSweep 18s ease-in-out infinite 9s",
-                    pointerEvents: "none",
-                    zIndex: 6,
-                  }}
-                />
-
-                {/* Minty logo label on pack face */}
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 28,
-                    left: 0,
-                    right: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 4,
-                    pointerEvents: "none",
-                    zIndex: 7,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 800,
-                      color: "rgba(255,255,255,0.82)",
-                      letterSpacing: "0.22em",
-                      textTransform: "uppercase" as const,
-                      fontFamily: "system-ui, -apple-system, sans-serif",
-                      textShadow: "0 1px 4px rgba(0,0,0,0.20)",
-                    }}
-                  >
-                    MINTY
-                  </div>
-                  <div
-                    style={{
-                      width: 28,
-                      height: 1,
-                      background: "rgba(255,255,255,0.35)",
-                      borderRadius: 1,
-                    }}
-                  />
-                  <div
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.55)",
-                      letterSpacing: "0.18em",
-                      textTransform: "uppercase" as const,
-                      fontFamily: "system-ui, -apple-system, sans-serif",
-                    }}
-                  >
-                    PACK
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Typography block */}
+          />
+          {/* Inset depth shadow */}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              width: "100%",
+              position: "absolute",
+              inset: 0,
+              boxShadow:
+                "inset 0 0 30px rgba(0,50,28,0.20), inset 0 3px 8px rgba(0,0,0,0.08)",
+              borderRadius: "inherit",
+              pointerEvents: "none",
             }}
-          >
-            <div
-              style={{
-                fontSize: 20,
-                fontWeight: 700,
-                color: "#111111",
-                letterSpacing: "-0.025em",
-                textAlign: "center",
-                marginBottom: 6,
-                fontFamily: "system-ui, -apple-system, sans-serif",
-                lineHeight: 1.2,
-              }}
-            >
-              Minty Pack
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 400,
-                color: "#7d8a84",
-                textAlign: "center",
-                marginBottom: 8,
-                letterSpacing: "0.005em",
-                fontFamily: "system-ui, -apple-system, sans-serif",
-              }}
-            >
-              Contains 1 collectible
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#3a4742",
-                textAlign: "center",
-                letterSpacing: "0.01em",
-                fontFamily: "system-ui, -apple-system, sans-serif",
-              }}
-            >
-              $1 per pack
-            </div>
-          </div>
-        </div>
-
-        {/* Supply remaining */}
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: "#b0bab5",
-            marginTop: 12,
-            textAlign: "center",
-            letterSpacing: "0.04em",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-          }}
-        >
-          Supply remaining: 50,000
-        </div>
-
-        {/* CTA button */}
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "340px",
-            marginTop: 16,
-          }}
-        >
-          {hasDraft ? (
-            <>
-              <div
-                style={{
-                  background: "rgba(16,185,129,0.06)",
-                  border: "1px solid rgba(16,185,129,0.18)",
-                  borderRadius: "16px",
-                  padding: "14px 20px",
-                  marginBottom: 10,
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#059669",
-                    marginBottom: 4,
-                  }}
-                >
-                  Your Moment is in progress.
-                </div>
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
-                  Complete capture and print to unlock your next Moment.
-                </div>
-              </div>
-              <button
-                data-ocid="library.pack.finish_moment.button"
-                type="button"
-                onClick={onFinishMoment}
-                style={{
-                  width: "100%",
-                  background: "#EBEBEA",
-                  color: "#111111",
-                  borderRadius: "14px",
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  padding: "14px 0",
-                  border: "none",
-                  cursor: "pointer",
-                  letterSpacing: "0.01em",
-                  transition: "opacity 0.15s ease",
-                  textAlign: "center",
-                  fontFamily: "system-ui, -apple-system, sans-serif",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.82";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-                }}
-              >
-                Finish Current Moment →
-              </button>
-            </>
-          ) : (
-            <button
-              data-ocid="library.pack.mint_moment.button"
-              type="button"
-              onClick={onMintClick}
-              style={{
-                width: "100%",
-                background: "#EBEBEA",
-                color: "#111111",
-                borderRadius: "14px",
-                fontSize: "15px",
-                fontWeight: 600,
-                padding: "14px 0",
-                border: "none",
-                cursor: "pointer",
-                letterSpacing: "0.01em",
-                transition: "opacity 0.15s ease",
-                textAlign: "center",
-                fontFamily: "system-ui, -apple-system, sans-serif",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "0.82";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-              }}
-            >
-              Mint Moment
-            </button>
-          )}
+          />
+          {/* Diagonal foil shimmer */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(116deg, rgba(255,255,255,0) 22%, rgba(255,255,255,0.22) 44%, rgba(210,255,235,0.12) 50%, rgba(255,255,255,0) 66%)",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Rare light sweep */}
+          <div
+            className="mint-pack-sweep"
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: "48%",
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.32) 50%, rgba(255,255,255,0) 100%)",
+              animation: "mintSweep 18s ease-in-out infinite 9s",
+              pointerEvents: "none",
+            }}
+          />
         </div>
       </div>
     </>
@@ -934,18 +480,13 @@ function PackView({
 
 // ─── Main LibraryPage ─────────────────────────────────────────────────────────
 
-export function LibraryPage({
-  onCaptureMoment,
-  onAssetClick,
-}: LibraryPageProps) {
+export function LibraryPage({ onAssetClick }: LibraryPageProps) {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  const { hasDraft, startDraft } = useMomentDraft();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("collected");
   const [collectedFilter, setCollectedFilter] =
     useState<CollectedFilterType>("all");
-  const [showMintModal, setShowMintModal] = useState(false);
 
   const pageBg = isLight ? "#F8F8F8" : "oklch(0.08 0.02 160)";
 
@@ -955,20 +496,6 @@ export function LibraryPage({
     { key: "videos", label: "Videos" },
     { key: "listed", label: "Listed" },
   ];
-
-  function handleMintClick() {
-    if (!hasDraft) {
-      setShowMintModal(true);
-    } else if (onCaptureMoment) {
-      onCaptureMoment();
-    }
-  }
-
-  function handleMintConfirm() {
-    startDraft();
-    setShowMintModal(false);
-    if (onCaptureMoment) onCaptureMoment();
-  }
 
   function getFilteredMedia(): OwnedMediaItem[] {
     if (collectedFilter === "photos")
@@ -1144,23 +671,11 @@ export function LibraryPage({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            style={{ paddingTop: "20px" }}
           >
-            <PackView
-              hasDraft={hasDraft}
-              onMintClick={handleMintClick}
-              onFinishMoment={() => onCaptureMoment?.()}
-            />
+            <PackView />
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── Mint Moment Modal ── */}
-      <MintMomentModal
-        open={showMintModal}
-        onClose={() => setShowMintModal(false)}
-        onConfirm={handleMintConfirm}
-      />
     </div>
   );
 }
