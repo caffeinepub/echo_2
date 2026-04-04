@@ -215,13 +215,11 @@ function VaultTile({
         aspectRatio: "4/5",
         borderRadius: "10px",
         overflow: "hidden",
-        border: `1.5px solid ${isSelected ? "rgba(52,168,132,0.6)" : "rgba(0,0,0,0.07)"}`,
+        border: `1.5px solid ${isSelected ? "rgba(52,168,132,0.6)" : isPack ? "rgba(52,168,132,0.20)" : "rgba(0,0,0,0.07)"}`,
         boxShadow: isSelected
           ? "0 0 0 2px rgba(52,168,132,0.25), 0 4px 16px rgba(0,0,0,0.10)"
           : "0 1px 4px rgba(0,0,0,0.06)",
-        background: isPack
-          ? "linear-gradient(135deg, rgba(52,168,132,0.15), rgba(42,144,112,0.08))"
-          : "#fff",
+        background: isPack ? "#0d1810" : "#fff",
         position: "relative",
         padding: 0,
         cursor: "pointer",
@@ -235,28 +233,63 @@ function VaultTile({
     >
       {/* Image */}
       {isPack ? (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "absolute",
-            inset: 0,
-          }}
-        >
+        <>
+          {/* Layer 0 — pack wrapper background */}
           <img
-            src={imageUrl || PACK_IMAGE}
-            alt="Sealed Pack"
+            src="/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png"
+            alt=""
+            aria-hidden="true"
             style={{
+              position: "absolute",
+              inset: 0,
               width: "100%",
               height: "100%",
-              objectFit: "contain",
-              filter: "drop-shadow(0 3px 8px rgba(52,168,132,0.22))",
+              objectFit: "cover",
+              zIndex: 0,
             }}
           />
-        </div>
+          {/* Layer 1 — small centered cover label insert (38–48% of tile width) */}
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              /* Sealed-pack insert: use wrapper window bounds, not card proportions */
+              width: "70%",
+              height: "60%",
+              borderRadius: "5px",
+              overflow: "hidden",
+              boxShadow:
+                "0 2px 8px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.18)",
+              border: "1.5px solid rgba(255,255,255,0.22)",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src={imageUrl || PACK_IMAGE}
+              alt="Sealed Pack Cover"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          </div>
+          {/* Layer 2 — vignette overlay (lighter so wrapper texture dominates) */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.38) 100%)",
+              pointerEvents: "none",
+              zIndex: 2,
+            }}
+          />
+        </>
       ) : (
         imageUrl && (
           <img
@@ -284,6 +317,7 @@ function VaultTile({
             borderRadius: "20px",
             padding: "2px 6px",
             border: "1px solid rgba(52,168,132,0.25)",
+            zIndex: 10,
           }}
         >
           <span
@@ -375,6 +409,7 @@ function VaultTile({
             background: "rgba(0,0,0,0.45)",
             borderRadius: "20px",
             padding: "2px 5px",
+            zIndex: 10,
           }}
         >
           <span
