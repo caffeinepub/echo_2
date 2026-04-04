@@ -1,48 +1,49 @@
-# Minty — Moment Draft Blocking Flow
+# Minty — Releases Page Media Mode Redesign
 
 ## Current State
 
-- `LibraryPage` shows a pack card with a "Mint Moment" button that opens `MintMomentModal`.
-- `MintMomentModal` has a slide-to-start control; completing it calls `onConfirm` which navigates to `CaptureMomentPage` via `App.tsx`.
-- `CaptureMomentPage` is a static placeholder with 9 photo slots and 1 video slot, no state tracking.
-- No draft state exists; users can re-open the mint modal and start a new Moment at any time.
-- `App.tsx` manages navigation via a `View` union type.
+The `ReleasesPage.tsx` is a single-mode marketplace feed showing collectible slab listing cards. It has:
+- Filter tabs: Most Viewed / New / Minted
+- Horizontal ticker showing recent transactions
+- Listing cards with TAG grade, price, Buy/Offers buttons, preferred payment badge
+- Buy/Offer modal with payment rail selection
+- Light/dark theme support
+- No media content modes
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MomentDraftContext` (new file: `src/frontend/src/context/MomentDraftContext.tsx`)
-  - Persists draft state in `localStorage` under key `minty_active_draft`
-  - Shape: `{ id, photos: string[], video: string | null, completed: boolean, createdAt: number }`
-  - Exposes: `activeDraft`, `startDraft()`, `addPhoto(url)`, `addVideo(url)`, `removePhoto(index)`, `removeVideo()`, `completeDraft()`, `clearDraft()`
-  - `hasDraft`: boolean — true if activeDraft exists and `!completed`
-- Progress display on `CaptureMomentPage`
-  - Live `X/9 photos · X/1 video` counter
-  - Photo slots become filled (show image preview) when photos are added
-  - Video slot shows filled state when video is added
-  - "Print Moment" / final action button disabled until 9 photos AND 1 video are present
-  - On final button press: calls `completeDraft()`, then navigates back
-- Locked state for `LibraryPage` Mint Moment button
-  - When `hasDraft === true`: button text = "Finish Current Moment", tapping navigates to capture
-  - Soft status message above button: "Your Moment is in progress."
-  - Sub-message: "Complete capture and print to unlock your next Moment."
-  - The `MintMomentModal` does NOT open in locked state
-- Draft status banner on `CaptureMomentPage`
-  - Small banner at top: "Moment In Progress — 3/9 photos · 0/1 video"
+- Top-level segmented toggle: **Market** | **Media** (pill-style, rounded, soft shadow)
+- **Media** mode with a secondary sub-toggle: **Photos** | **Videos**
+- **Photos** sub-mode: 2-column masonry/grid feed of photo post cards
+  - Each card: large image preview (dominant), creator name, price badge, media type badge (PHOTO), subtle Buy button, optional stats (views/likes)
+  - Mock data: 12 photo posts with varied aspect ratios for masonry effect
+- **Videos** sub-mode: vertical immersive swipe feed (TikTok/Reels style)
+  - Each video fills most of the screen height
+  - Bottom overlay with: creator name, caption/title, price, edition/supply info, Buy + Offer action buttons
+  - Swipe-up/down to navigate between videos (touch events or scroll snapping)
+  - Mock data: 6 video posts
+- Smooth CSS transitions when switching between Market/Media and Photos/Videos toggles
+- Mock data types: `PhotoPost` and `VideoPost` interfaces
 
 ### Modify
-- `App.tsx`: wrap `AppContent` in `MomentDraftProvider`; pass `onCaptureMoment` from draft context
-- `LibraryPage`: consume `useMomentDraft` to check `hasDraft`; show locked/unlocked state for Mint button
-- `CaptureMomentPage`: consume `useMomentDraft`; implement real photo/video slot interaction and progress
-- `MintMomentModal`: `onConfirm` callback triggers `startDraft()` before navigation
+- `ReleasesPage.tsx`: Wrap existing content in a `Market` mode container; add `Media` mode alongside it
+- The top area of the page gets the new segmented toggle inserted above the ticker/filters
+- Page state: `activeMode: 'market' | 'media'` and `mediaSubMode: 'photos' | 'videos'`
 
 ### Remove
-- Nothing removed; existing structure preserved
+- Nothing is removed; Market mode is preserved completely
 
 ## Implementation Plan
 
-1. Create `MomentDraftContext.tsx` with full draft state, localStorage sync, and exported hook `useMomentDraft`
-2. Wrap `App.tsx` with `MomentDraftProvider`; pass `onCaptureMoment` that also calls `startDraft` if no active draft
-3. Update `LibraryPage` to read `hasDraft`; render locked button state when draft is active
-4. Update `MintMomentModal`: `onConfirm` now calls `startDraft()` through context before navigating
-5. Rewrite `CaptureMomentPage` to show live photo/video grid with upload interactivity, progress counter, and a Print Moment button that only enables at 9+1; on press calls `completeDraft()` and navigates back
+1. Add `activeMode` and `mediaSubMode` state to `ReleasesPage`
+2. Add `ModeToggle` component: pill segmented control for Market/Media, styled with rounded container, soft shadow, smooth active indicator
+3. Add `MediaSubToggle` component: Photos/Videos secondary toggle, shown only when Media is active
+4. Add `PhotoPost` interface and `MOCK_PHOTOS` array (12 items, varied heights for masonry)
+5. Add `PhotosGrid` component: 2-column CSS masonry-style grid using `columns` CSS property or two flex columns; each card shows image, creator, price, badge, buy button, stats
+6. Add `VideoPost` interface and `MOCK_VIDEOS` array (6 items)
+7. Add `VideosSwipeFeed` component: full-height scroll-snap container; each video slide fills screen height with a video element (or colored placeholder) plus bottom overlay
+8. Wire toggle state to conditionally render: Market content OR (Photos/Videos based on submode)
+9. Apply smooth `opacity` + `translateY` transitions on mode switch using CSS transitions
+10. Ensure bottom nav and header are not affected (they live outside this component)
+11. All new components use Minty visual language: off-white backgrounds, mint accents (#10b981 / oklch mint), rounded corners, soft shadows, clean typography
