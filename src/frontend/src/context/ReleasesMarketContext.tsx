@@ -30,6 +30,7 @@ interface ReleasesMarketCtx {
   releases: MarketRelease[];
   addRelease: (r: MarketRelease) => void;
   buyPack: (releaseId: string) => void;
+  buyPacks: (releaseId: string, qty: number) => void;
   burnExpired: () => void;
 }
 
@@ -147,6 +148,20 @@ export function ReleasesMarketProvider({
     );
   }, []);
 
+  const buyPacks = useCallback((releaseId: string, qty: number) => {
+    setReleases((prev) =>
+      prev.map((r) => {
+        if (r.id !== releaseId) return r;
+        const newCount = r.packsAvailable - qty;
+        return {
+          ...r,
+          packsAvailable: Math.max(0, newCount),
+          status: newCount <= 0 ? "sold_out" : r.status,
+        };
+      }),
+    );
+  }, []);
+
   const burnExpired = useCallback(() => {
     const now = Date.now();
     setReleases((prev) =>
@@ -161,7 +176,7 @@ export function ReleasesMarketProvider({
 
   return (
     <ReleasesMarketContext.Provider
-      value={{ releases, addRelease, buyPack, burnExpired }}
+      value={{ releases, addRelease, buyPack, buyPacks, burnExpired }}
     >
       {children}
     </ReleasesMarketContext.Provider>
