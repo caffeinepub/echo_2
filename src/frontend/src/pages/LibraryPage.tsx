@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 
@@ -33,6 +33,32 @@ const RARITY_COLOR: Record<string, string> = {
   Rare: "#7B6CF6",
   "Ultra Rare": "#C9A84C",
 };
+
+// Barcode bar data: [x position, bar width]
+const BARCODE_BARS: [number, number][] = [
+  [0, 1.5],
+  [2, 1],
+  [4, 2],
+  [7, 1],
+  [9, 1.5],
+  [11, 1],
+  [13, 2],
+  [16, 1],
+  [18, 1.5],
+  [20, 1],
+  [22, 2],
+  [25, 1],
+  [27, 1.5],
+  [29, 1],
+  [31, 2],
+  [34, 1],
+  [36, 1.5],
+  [38, 1],
+  [40, 2],
+  [43, 1],
+  [45, 1.5],
+  [47, 1],
+];
 
 const CARD_OUTER_STYLE = {
   width: "280px",
@@ -69,7 +95,7 @@ function PackCard() {
   }, []);
 
   return (
-    <div style={CARD_OUTER_STYLE}>
+    <div style={{ ...CARD_OUTER_STYLE, minHeight: "380px" }}>
       {/* Background image layer — muted/desaturated */}
       <div
         style={{
@@ -107,6 +133,44 @@ function PackCard() {
           overflow: "hidden",
         }}
       />
+
+      {/* Flip hint — top right corner */}
+      <div
+        style={{
+          position: "absolute",
+          top: "14px",
+          right: "14px",
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          opacity: 0.45,
+          pointerEvents: "none",
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M2 8c0-3.31 2.69-6 6-6s6 2.69 6 6"
+            stroke="#4a5a52"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M14 5.5L14 8M14 8L11.5 8"
+            stroke="#4a5a52"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
 
       {/* Content layer */}
       <div
@@ -370,6 +434,343 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
   );
 }
 
+// ── Pack Backside — Premium TCG Booster Pack Information Back ─────────────────
+function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
+  const dividerStyle = {
+    height: "1px",
+    background: "rgba(52,168,132,0.18)",
+    margin: "0 0 14px",
+  };
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: "9px",
+    letterSpacing: "0.18em",
+    color: "#3d6b58",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    margin: "0 0 8px",
+    display: "block",
+  };
+
+  const bulletStyle: React.CSSProperties = {
+    margin: "2px 0",
+    fontSize: "10px",
+    color: "#3d4a42",
+    lineHeight: 1.5,
+  };
+
+  return (
+    <div
+      style={{
+        width: "280px",
+        minHeight: "420px",
+        borderRadius: "20px",
+        boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
+        border: "1px solid rgba(0,0,0,0.06)",
+        overflow: "hidden",
+        background: "#EFF8F3",
+        position: "relative",
+      }}
+    >
+      {/* Noise/grain texture overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
+          opacity: 0.035,
+          mixBlendMode: "multiply",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
+
+      {/* Gloss sheen at top */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "38%",
+          background:
+            "linear-gradient(to bottom, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.0) 100%)",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      />
+
+      {/* Flip back button — top-right corner */}
+      <button
+        type="button"
+        data-ocid="library.secondary_button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onFlipBack();
+        }}
+        style={{
+          position: "absolute",
+          top: "12px",
+          right: "12px",
+          zIndex: 10,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "4px",
+          opacity: 0.4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "50%",
+        }}
+        aria-label="Flip back to pack front"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M14 8c0 3.31-2.69 6-6 6s-6-2.69-6-6"
+            stroke="#3d6b58"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M2 10.5L2 8M2 8L4.5 8"
+            stroke="#3d6b58"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {/* Scrollable content area */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 3,
+          padding: "22px 20px",
+          fontSize: "11px",
+          overflowY: "auto",
+          maxHeight: "100%",
+        }}
+      >
+        {/* 1. Top label */}
+        <p
+          style={{
+            fontSize: "10px",
+            letterSpacing: "0.2em",
+            color: "#3d6b58",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            textAlign: "center",
+            marginBottom: "12px",
+            marginTop: 0,
+          }}
+        >
+          MINTY PACK
+        </p>
+
+        {/* 2. Description */}
+        <p
+          style={{
+            fontSize: "10px",
+            color: "#5a7a6a",
+            lineHeight: 1.55,
+            textAlign: "center",
+            margin: "0 0 14px",
+          }}
+        >
+          This pack contains 1 collectible from a Mint Moment set. Each Mint
+          Moment is created from real photos and video captured by the creator.
+        </p>
+
+        {/* 3. Divider */}
+        <div style={dividerStyle} />
+
+        {/* 4. Contents section */}
+        <div style={{ margin: "0 0 14px" }}>
+          <span style={sectionTitleStyle}>CONTENTS</span>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+            }}
+          >
+            {[
+              "1 collectible card",
+              "photo or video moment",
+              "web3 verified ownership",
+              "limited supply",
+              "part of a creator set",
+            ].map((item) => (
+              <li key={item} style={bulletStyle}>
+                • {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* 5. Divider */}
+        <div style={dividerStyle} />
+
+        {/* 6. Collectible Structure section */}
+        <div style={{ margin: "0 0 14px" }}>
+          <span style={sectionTitleStyle}>COLLECTIBLE STRUCTURE</span>
+          <p
+            style={{
+              fontSize: "10px",
+              color: "#3d4a42",
+              lineHeight: 1.55,
+              margin: "0 0 8px",
+            }}
+          >
+            Each Mint Moment produces a limited number of collectibles.
+          </p>
+          <p
+            style={{
+              fontSize: "9px",
+              color: "#5a7a6a",
+              fontWeight: 600,
+              margin: "8px 0 4px",
+            }}
+          >
+            Possible content types:
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+            }}
+          >
+            {["Photo Moments", "Video Moments"].map((item) => (
+              <li key={item} style={bulletStyle}>
+                • {item}
+              </li>
+            ))}
+          </ul>
+          <p
+            style={{
+              fontSize: "9.5px",
+              color: "#6a8a7a",
+              fontStyle: "italic",
+              margin: "8px 0 0",
+            }}
+          >
+            Some collectibles may be more limited than others.
+          </p>
+        </div>
+
+        {/* 7. Divider */}
+        <div style={dividerStyle} />
+
+        {/* 8. Footer */}
+        <div>
+          <p
+            style={{
+              fontSize: "9px",
+              color: "#6a8a7a",
+              textAlign: "center",
+              lineHeight: 1.55,
+              margin: "0 0 6px",
+            }}
+          >
+            Minty Moments are creator-generated collectibles stored with
+            verifiable ownership.
+          </p>
+          <p
+            style={{
+              fontSize: "9px",
+              fontWeight: 600,
+              color: "#34a884",
+              textAlign: "center",
+              margin: 0,
+            }}
+          >
+            minty.xyz
+          </p>
+        </div>
+
+        {/* 9. Micro details row */}
+        <div
+          style={{
+            marginTop: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            opacity: 0.5,
+          }}
+        >
+          {/* Barcode SVG — using x position as stable key */}
+          <svg
+            width="48"
+            height="14"
+            viewBox="0 0 48 14"
+            fill="none"
+            aria-hidden="true"
+          >
+            {BARCODE_BARS.map(([x, w]) => (
+              <rect
+                key={`bar-${x}`}
+                x={x}
+                y="0"
+                width={w}
+                height="12"
+                fill="#3d6b58"
+              />
+            ))}
+          </svg>
+
+          {/* Recycling icon SVG */}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M6 1.5L8 4H7v2.5H5V4H4L6 1.5Z"
+              fill="#3d6b58"
+              opacity="0.8"
+            />
+            <path
+              d="M9.5 7.5L7 9.5v-1.2H5v-1.8h2V5.2L9.5 7.5Z"
+              fill="#3d6b58"
+              opacity="0.8"
+            />
+            <path
+              d="M2.5 7.5L4 5l.7 1.2L6 5.5l.9 1.5L5.5 9H4.3L2.5 7.5Z"
+              fill="#3d6b58"
+              opacity="0.8"
+            />
+          </svg>
+
+          {/* web3 collectible text */}
+          <span
+            style={{
+              fontSize: "8px",
+              color: "#5a7a6a",
+              letterSpacing: "0.08em",
+            }}
+          >
+            web3 collectible
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Locked state shown when a draft is in progress ───────────────────────────
 function DraftLockedState({ onFinish }: { onFinish: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -515,12 +916,16 @@ export function LibraryPage({
   const [isButtonActive, setIsButtonActive] = useState(false);
   const [isAltButtonHovered, setIsAltButtonHovered] = useState(false);
   const [showMintModal, setShowMintModal] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
 
   const { hasDraft, startDraft } = useMomentDraft();
 
-  // Inject pulse animation once
+  // Track touch start position for swipe detection
+  const touchStartX = useRef<number | null>(null);
+
+  // Inject keyframes once
   useEffect(() => {
-    const id = "draft-dot-pulse-style";
+    const id = "library-keyframes-style";
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
@@ -528,6 +933,9 @@ export function LibraryPage({
       @keyframes draftDotPulse {
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50%       { opacity: 1;   transform: scale(1.25); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pack-hero-animate { animation: none !important; }
       }
     `;
     document.head.appendChild(style);
@@ -540,6 +948,7 @@ export function LibraryPage({
   function handleOpenAnother() {
     setPackState("idle");
     setCurrentCollectible(null);
+    setIsFlipped(false);
   }
 
   function handleViewLibrary() {
@@ -548,10 +957,10 @@ export function LibraryPage({
     } else {
       setPackState("idle");
       setCurrentCollectible(null);
+      setIsFlipped(false);
     }
   }
 
-  // pickRandomCollectible used in revealed flow when opening another
   const handleRevealRandom = useCallback(() => {
     setPackState("opening");
     const picked = pickRandomCollectible();
@@ -560,6 +969,31 @@ export function LibraryPage({
       setPackState("revealed");
     }, 300);
   }, [pickRandomCollectible]);
+
+  // Handle swipe to flip
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(deltaX) > 40) {
+      setIsFlipped((f) => !f);
+    }
+    touchStartX.current = null;
+  }
+
+  function handleFlipClick(e: React.MouseEvent) {
+    // Only flip if the click target is the flip container itself (not child interactive elements)
+    if (
+      (e.target as HTMLElement).closest("button") ||
+      (e.target as HTMLElement).closest("a")
+    ) {
+      return;
+    }
+    setIsFlipped((f) => !f);
+  }
 
   const primaryButtonStyle = {
     ...BUTTON_BASE,
@@ -577,6 +1011,9 @@ export function LibraryPage({
     background: isAltButtonHovered ? "#E6E4E2" : "#F0EEEC",
     color: "#6B6B6B",
   };
+
+  // Determine if we show the flippable pack or the revealed card / draft locked
+  const showFlippable = !hasDraft && packState === "idle";
 
   return (
     <div
@@ -644,8 +1081,8 @@ export function LibraryPage({
             </motion.div>
           )}
 
-          {/* IDLE — normal pack card + mint moment button */}
-          {!hasDraft && packState === "idle" && (
+          {/* IDLE with FLIP — normal flippable pack card */}
+          {showFlippable && (
             <motion.div
               key="pack"
               initial={{ opacity: 0, y: 12 }}
@@ -658,36 +1095,116 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              <PackCard />
-
-              {/* Supply text */}
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#9B9B9B",
-                  marginTop: "16px",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Supply remaining: 50,000
-              </p>
-
-              {/* Mint Moment button */}
+              {/* 3D Flip Container */}
               <button
                 type="button"
-                data-ocid="library.primary_button"
-                style={{ ...primaryButtonStyle, marginTop: "32px" }}
-                onMouseEnter={() => setIsButtonHovered(true)}
-                onMouseLeave={() => {
-                  setIsButtonHovered(false);
-                  setIsButtonActive(false);
+                data-ocid="library.card"
+                style={{
+                  perspective: "1200px",
+                  width: "280px",
+                  minHeight: "420px",
+                  cursor: "pointer",
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  margin: 0,
+                  display: "block",
                 }}
-                onMouseDown={() => setIsButtonActive(true)}
-                onMouseUp={() => setIsButtonActive(false)}
-                onClick={() => setShowMintModal(true)}
+                onClick={handleFlipClick}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                aria-label={
+                  isFlipped ? "Flip to pack front" : "Flip to pack information"
+                }
+                aria-pressed={isFlipped}
               >
-                Mint Moment
+                <div
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    minHeight: "420px",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 450ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                  }}
+                >
+                  {/* FRONT FACE */}
+                  <div
+                    style={{
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                    }}
+                  >
+                    <PackCard />
+                  </div>
+
+                  {/* BACK FACE — Premium TCG Booster Pack Backside */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      minHeight: "420px",
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                    }}
+                  >
+                    <PackBackside onFlipBack={() => setIsFlipped(false)} />
+                  </div>
+                </div>
               </button>
+
+              {/* Supply + Mint Moment button — only when NOT flipped */}
+              <AnimatePresence>
+                {!isFlipped && (
+                  <motion.div
+                    key="actions"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Supply text */}
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#9B9B9B",
+                        marginTop: "16px",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      Supply remaining: 50,000
+                    </p>
+
+                    {/* Mint Moment button */}
+                    <button
+                      type="button"
+                      data-ocid="library.primary_button"
+                      style={{ ...primaryButtonStyle, marginTop: "32px" }}
+                      onMouseEnter={() => setIsButtonHovered(true)}
+                      onMouseLeave={() => {
+                        setIsButtonHovered(false);
+                        setIsButtonActive(false);
+                      }}
+                      onMouseDown={() => setIsButtonActive(true)}
+                      onMouseUp={() => setIsButtonActive(false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMintModal(true);
+                      }}
+                    >
+                      Mint Moment
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -774,7 +1291,6 @@ export function LibraryPage({
             setShowMintModal(false);
             startDraft();
             onCaptureMoment?.();
-            // If no navigation handler, fall back to the pack reveal experience
             if (!onCaptureMoment) {
               handleRevealRandom();
             }

@@ -1,48 +1,48 @@
-# Minty — Moment Draft Blocking Flow
+# Minty — TCG Pack Backside Redesign
 
 ## Current State
+The Library page has a flip card with two faces:
+- **Front face**: `PackCard` component — Minty Pack product display with green pack image, floating animation, title, price, supply text, and Mint Moment button.
+- **Back face**: `NftShelfBack` component — shows a "YOUR SHELF" header with a 2-column grid of NFT pack tiles (MOCK_NFTS), plus a "flip back" button and empty state.
 
-- `LibraryPage` shows a pack card with a "Mint Moment" button that opens `MintMomentModal`.
-- `MintMomentModal` has a slide-to-start control; completing it calls `onConfirm` which navigates to `CaptureMomentPage` via `App.tsx`.
-- `CaptureMomentPage` is a static placeholder with 9 photo slots and 1 video slot, no state tracking.
-- No draft state exists; users can re-open the mint modal and start a new Moment at any time.
-- `App.tsx` manages navigation via a `View` union type.
+The flip interaction (tap or swipe) is retained and working.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MomentDraftContext` (new file: `src/frontend/src/context/MomentDraftContext.tsx`)
-  - Persists draft state in `localStorage` under key `minty_active_draft`
-  - Shape: `{ id, photos: string[], video: string | null, completed: boolean, createdAt: number }`
-  - Exposes: `activeDraft`, `startDraft()`, `addPhoto(url)`, `addVideo(url)`, `removePhoto(index)`, `removeVideo()`, `completeDraft()`, `clearDraft()`
-  - `hasDraft`: boolean — true if activeDraft exists and `!completed`
-- Progress display on `CaptureMomentPage`
-  - Live `X/9 photos · X/1 video` counter
-  - Photo slots become filled (show image preview) when photos are added
-  - Video slot shows filled state when video is added
-  - "Print Moment" / final action button disabled until 9 photos AND 1 video are present
-  - On final button press: calls `completeDraft()`, then navigates back
-- Locked state for `LibraryPage` Mint Moment button
-  - When `hasDraft === true`: button text = "Finish Current Moment", tapping navigates to capture
-  - Soft status message above button: "Your Moment is in progress."
-  - Sub-message: "Complete capture and print to unlock your next Moment."
-  - The `MintMomentModal` does NOT open in locked state
-- Draft status banner on `CaptureMomentPage`
-  - Small banner at top: "Moment In Progress — 3/9 photos · 0/1 video"
+- A new `PackBackside` component to replace `NftShelfBack`
+- TCG booster pack backside layout with:
+  - Small centered label: "MINTY PACK" (spaced caps, small)
+  - Short description paragraph
+  - Divider lines (thin, mint-tinted)
+  - CONTENTS section with bullet list
+  - COLLECTIBLE STRUCTURE section with bullet list
+  - FOOTER section with small centered text and URL
+  - Micro details: barcode-style SVG graphic near bottom, small recycling icon, tiny "web3 collectible" text
+- Background: soft mint-tinted white with very subtle noise/grain texture (CSS or SVG filter)
+- Subtle plastic/gloss sheen at top using a linear gradient overlay
 
 ### Modify
-- `App.tsx`: wrap `AppContent` in `MomentDraftProvider`; pass `onCaptureMoment` from draft context
-- `LibraryPage`: consume `useMomentDraft` to check `hasDraft`; show locked/unlocked state for Mint button
-- `CaptureMomentPage`: consume `useMomentDraft`; implement real photo/video slot interaction and progress
-- `MintMomentModal`: `onConfirm` callback triggers `startDraft()` before navigation
+- Replace `NftShelfBack` usage in the BACK FACE of the flip card with the new `PackBackside` component
+- Remove all NFT grid UI (MOCK_NFTS, NftPackTileComponent, NftShelfBack) from the back face rendering
+- Keep all flip interaction logic unchanged (tap, swipe, aria labels, perspective 3D)
+- Keep the "flip back" small button in the corner of the backside (can be very subtle)
 
 ### Remove
-- Nothing removed; existing structure preserved
+- `NftShelfBack` component (replaced by `PackBackside`)
+- NFT grid rendering on the back face
+- "YOUR SHELF" header on the back face
+- `NftPackTileComponent` is only used in the shelf back — remove or leave unused (can be kept for future use but not rendered on back face)
 
 ## Implementation Plan
-
-1. Create `MomentDraftContext.tsx` with full draft state, localStorage sync, and exported hook `useMomentDraft`
-2. Wrap `App.tsx` with `MomentDraftProvider`; pass `onCaptureMoment` that also calls `startDraft` if no active draft
-3. Update `LibraryPage` to read `hasDraft`; render locked button state when draft is active
-4. Update `MintMomentModal`: `onConfirm` now calls `startDraft()` through context before navigating
-5. Rewrite `CaptureMomentPage` to show live photo/video grid with upload interactivity, progress counter, and a Print Moment button that only enables at 9+1; on press calls `completeDraft()` and navigates back
+1. Build `PackBackside` component inside `LibraryPage.tsx`:
+   - Same outer card dimensions as `PackCard`: width 280px, minHeight 380px (but taller to fit content), borderRadius 20px, boxShadow consistent
+   - Background: `#F0F7F4` (soft mint-tinted white) with a subtle SVG noise filter or CSS repeating grain pattern at very low opacity
+   - Thin gloss sheen div at top (linear-gradient white to transparent, ~35% height)
+   - Scrollable inner content area with padding for dense TCG layout
+   - All sections separated by thin divider lines (1px, rgba mint)
+   - Typography: system sans-serif, clean, slightly condensed feel via letter-spacing and font-size
+   - Micro details row at bottom: barcode SVG, recycling icon, "web3 collectible" text
+   - Subtle "flip" icon button in top-right corner to return to front
+2. Replace `<NftShelfBack onFlipBack=... />` with `<PackBackside onFlipBack=... />` in the BACK FACE div
+3. Validate and build
