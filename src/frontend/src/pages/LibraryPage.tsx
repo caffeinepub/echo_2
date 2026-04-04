@@ -984,8 +984,8 @@ export function LibraryPage({
     touchStartX.current = null;
   }
 
-  function handleFlipClick(e: React.MouseEvent) {
-    // Only flip if the click target is the flip container itself (not child interactive elements)
+  function handleCardAreaClick(e: React.MouseEvent) {
+    // Only flip if the click target is NOT a button or anchor
     if (
       (e.target as HTMLElement).closest("button") ||
       (e.target as HTMLElement).closest("a")
@@ -1095,71 +1095,110 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              {/* 3D Flip Container */}
-              <button
-                type="button"
-                data-ocid="library.card"
+              {/*
+               * 3D FLIP — correct two-layer structure:
+               *
+               * Layer 1 (perspective wrapper): sets the perspective depth.
+               *   — NO overflow:hidden here; that would flatten the 3D context.
+               *
+               * Layer 2 (overflow clip): clips visual bleed at card edges.
+               *   — border-radius + overflow:hidden, but NOT a transform context.
+               *
+               * Layer 3 (inner rotating card): transform-style:preserve-3d,
+               *   rotates on Y axis, carries both faces.
+               *
+               * Layer 4a/4b (faces): absolute, backface-visibility:hidden,
+               *   explicit rotateY(0deg) / rotateY(180deg).
+               */}
+
+              {/* Layer 1 — perspective only, no overflow */}
+              <div
                 style={{
                   perspective: "1200px",
                   width: "280px",
                   height: "460px",
-                  cursor: "pointer",
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "block",
                 }}
-                onClick={handleFlipClick}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                aria-label={
-                  isFlipped ? "Flip to pack front" : "Flip to pack information"
-                }
-                aria-pressed={isFlipped}
               >
-                <div
+                {/* Layer 2 — click/keyboard handler (no overflow, no transform context) */}
+                <button
+                  type="button"
                   style={{
-                    position: "relative",
                     width: "100%",
                     height: "100%",
-                    transformStyle: "preserve-3d",
-                    transition: "transform 0.6s ease",
-                    transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "block",
+                    cursor: "pointer",
                   }}
+                  onClick={handleCardAreaClick}
+                  aria-label={
+                    isFlipped
+                      ? "Flip to pack front"
+                      : "Flip to pack information"
+                  }
+                  aria-pressed={isFlipped}
                 >
-                  {/* FRONT FACE */}
+                  {/* Layer 2.5 — overflow clip (child of button, separate from perspective) */}
                   <div
                     style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
                       width: "100%",
                       height: "100%",
-                      backfaceVisibility: "hidden",
-                      WebkitBackfaceVisibility: "hidden",
+                      borderRadius: "20px",
+                      overflow: "hidden",
                     }}
                   >
-                    <PackCard />
-                  </div>
+                    {/* Layer 3 — rotating inner card */}
+                    <div
+                      style={{
+                        position: "relative",
+                        width: "100%",
+                        height: "100%",
+                        transformStyle: "preserve-3d",
+                        transition: "transform 0.6s ease",
+                        transform: isFlipped
+                          ? "rotateY(180deg)"
+                          : "rotateY(0deg)",
+                      }}
+                    >
+                      {/* Layer 4a — FRONT FACE */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          backfaceVisibility: "hidden",
+                          WebkitBackfaceVisibility: "hidden",
+                          transform: "rotateY(0deg)",
+                        }}
+                      >
+                        <PackCard />
+                      </div>
 
-                  {/* BACK FACE — Premium TCG Booster Pack Backside */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      height: "100%",
-                      backfaceVisibility: "hidden",
-                      WebkitBackfaceVisibility: "hidden",
-                      transform: "rotateY(180deg)",
-                    }}
-                  >
-                    <PackBackside onFlipBack={() => setIsFlipped(false)} />
+                      {/* Layer 4b — BACK FACE */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          backfaceVisibility: "hidden",
+                          WebkitBackfaceVisibility: "hidden",
+                          transform: "rotateY(180deg)",
+                        }}
+                      >
+                        <PackBackside onFlipBack={() => setIsFlipped(false)} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+              </div>
 
               {/* Supply + Mint Moment button — only when NOT flipped */}
               <AnimatePresence>
