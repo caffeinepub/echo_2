@@ -5,120 +5,17 @@ import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 import { MOCK_OWNED_MEDIA, type OwnedMediaItem } from "../store/mockOwnedMedia";
 
-// ─── Created mock data (unchanged) ───────────────────────────────────────────
-
-const MOCK_CREATED_SETS = [
-  {
-    id: "1",
-    name: "My First Moment",
-    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
-    assetCount: 10,
-    supply: 100,
-    sold: 34,
-    remaining: 66,
-    status: "Active",
-  },
-  {
-    id: "2",
-    name: "Summer Drop",
-    imageUrl: "https://placehold.co/400x225/e8f5f0/1db98a?text=Set",
-    assetCount: 5,
-    supply: 50,
-    sold: 0,
-    remaining: 50,
-    status: "Draft",
-  },
-];
-
-const MOCK_CREATED_CARDS = [
-  {
-    id: "1",
-    name: "Golden Hour",
-    setName: "My First Moment",
-    editionNumber: "#001",
-    listingStatus: "Listed",
-    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
-  },
-  {
-    id: "2",
-    name: "Crystal Light",
-    setName: "My First Moment",
-    editionNumber: "#002",
-    listingStatus: "Unlisted",
-    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
-  },
-  {
-    id: "3",
-    name: "Mint Dew",
-    setName: "My First Moment",
-    editionNumber: "#003",
-    listingStatus: "Listed",
-    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
-  },
-  {
-    id: "4",
-    name: "Frosted Peak",
-    setName: "Summer Drop",
-    editionNumber: "#001",
-    listingStatus: "Unlisted",
-    imageUrl: "https://placehold.co/200x270/e8f5f0/1db98a?text=Card",
-  },
-];
-
-const MOCK_CREATED_LISTINGS = [
-  {
-    id: "1",
-    name: "Golden Hour #001",
-    setName: "My First Moment",
-    price: 85,
-    currency: "USDC",
-    views: 312,
-    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
-  },
-  {
-    id: "2",
-    name: "Mint Dew #003",
-    setName: "My First Moment",
-    price: 60,
-    currency: "USDC",
-    views: 148,
-    imageUrl: "https://placehold.co/100x100/e8f5f0/1db98a?text=Item",
-  },
-];
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ActiveTab = "collected" | "created";
+type ActiveTab = "collected" | "pack";
 type CollectedFilterType = "all" | "photos" | "videos" | "listed";
-type CreatedFilterType = "all" | "sets" | "cards" | "listings";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface LibraryPageProps {
-  onAlbumClick?: () => void;
   onBrowseReleases?: () => void;
   onCaptureMoment?: () => void;
   onAssetClick?: (id: string) => void;
-}
-
-// ─── Section Header ───────────────────────────────────────────────────────────
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        fontSize: "11px",
-        fontWeight: 600,
-        color: "#9ca3af",
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        padding: "4px 16px 8px",
-        marginTop: "8px",
-      }}
-    >
-      {label}
-    </div>
-  );
 }
 
 // ─── Rarity color helper ──────────────────────────────────────────────────────
@@ -227,19 +124,7 @@ function NFTCollectibleTile({
           }}
         />
 
-        {/* Subtle dot/grid texture */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.12,
-            backgroundImage:
-              "radial-gradient(circle, rgba(0,0,0,0.35) 1px, transparent 1px)",
-            backgroundSize: "12px 12px",
-          }}
-        />
-
-        {/* Centered monogram circle */}
+        {/* Stylized Monogram */}
         <div
           style={{
             position: "absolute",
@@ -251,36 +136,21 @@ function NFTCollectibleTile({
         >
           <div
             style={{
-              width: 52,
-              height: 52,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.38)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1.5px solid rgba(255,255,255,0.65)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
+              fontSize: "36px",
+              fontWeight: 800,
+              color: "rgba(255,255,255,0.55)",
+              letterSpacing: "-0.04em",
+              fontFamily: "Georgia, serif",
+              userSelect: "none",
+              textShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
           >
-            <span
-              style={{
-                fontSize: "22px",
-                fontWeight: 900,
-                color: "rgba(255,255,255,0.85)",
-                letterSpacing: "-0.02em",
-                lineHeight: 1,
-                fontStyle: "italic",
-              }}
-            >
-              M
-            </span>
+            M
           </div>
         </div>
       </div>
 
-      {/* ── Bottom Info Area ── */}
+      {/* ── Info row (bottom 38%) ── */}
       <div
         style={{
           position: "absolute",
@@ -288,11 +158,12 @@ function NFTCollectibleTile({
           left: 0,
           right: 0,
           height: "38%",
-          background: "#F7F6F2",
-          padding: "8px 10px 10px",
+          background: "#ffffff",
+          padding: "8px 9px 9px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          gap: 2,
         }}
       >
         {/* Title */}
@@ -474,418 +345,420 @@ function CollectedMediaGrid({
   );
 }
 
-// ─── Created: Sets List ───────────────────────────────────────────────────────
+// ─── Pack View ────────────────────────────────────────────────────────────────
 
-function CreatedSetsList({ sets }: { sets: typeof MOCK_CREATED_SETS }) {
+function PackView({
+  hasDraft,
+  onMintClick,
+  onFinishMoment,
+}: {
+  hasDraft: boolean;
+  onMintClick: () => void;
+  onFinishMoment: () => void;
+}) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "16px",
-        padding: "0 16px 16px",
-      }}
-    >
-      {sets.map((set) => (
+    <>
+      {/* Keyframe animation injected once */}
+      <style>{`
+        @keyframes packFloat {
+          0%   { transform: rotateY(-7deg) rotateX(3deg) translateY(0px); }
+          50%  { transform: rotateY(7deg)  rotateX(2deg) translateY(-7px); }
+          100% { transform: rotateY(-7deg) rotateX(3deg) translateY(0px); }
+        }
+        @keyframes packGlow {
+          0%   { opacity: 0.45; }
+          50%  { opacity: 0.65; }
+          100% { opacity: 0.45; }
+        }
+        @keyframes packSweep {
+          0%   { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+          10%  { opacity: 1; }
+          90%  { opacity: 1; }
+          100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pack-float-anim { animation: none !important; }
+          .pack-sweep-anim { display: none !important; }
+        }
+      `}</style>
+
+      <div
+        data-ocid="library.pack.section"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: "24px 24px 32px",
+          gap: "24px",
+        }}
+      >
+        {/* ── Large Pack Card ── */}
         <div
-          key={set.id}
-          data-ocid="library.created_sets.item"
           style={{
-            background: "#ffffff",
-            borderRadius: "16px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+            width: "100%",
+            maxWidth: "340px",
+            background: "#F7F6F2",
+            borderRadius: "22px",
+            boxShadow:
+              "0 8px 40px rgba(0,0,0,0.10), 0 2px 10px rgba(0,0,0,0.06)",
             overflow: "hidden",
+            border: "1px solid rgba(0,0,0,0.06)",
+            position: "relative",
           }}
         >
-          <img
-            src={set.imageUrl}
-            alt={set.name}
+          {/* Inner gradient background */}
+          <div
             style={{
-              width: "100%",
-              aspectRatio: "16/9",
-              objectFit: "cover",
-              display: "block",
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(160deg, rgba(209,250,229,0.55) 0%, rgba(255,255,255,0) 55%, rgba(167,243,208,0.28) 100%)",
+              pointerEvents: "none",
             }}
           />
-          <div style={{ padding: "14px 16px 16px" }}>
+
+          {/* Pack artwork area */}
+          <div
+            style={{
+              padding: "32px 24px 20px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "20px",
+              position: "relative",
+            }}
+          >
+            {/* Glass pedestal with floating pack */}
+            <div
+              style={{
+                position: "relative",
+                width: "160px",
+                height: "160px",
+                perspective: "600px",
+              }}
+            >
+              {/* Ambient glow */}
+              <div
+                className="pack-float-anim"
+                style={{
+                  position: "absolute",
+                  inset: "-20px",
+                  borderRadius: "50%",
+                  background:
+                    "radial-gradient(circle, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0) 70%)",
+                  animation: "packGlow 6s ease-in-out infinite",
+                  pointerEvents: "none",
+                }}
+              />
+
+              {/* Glass pedestal square */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: "20px",
+                  background: "rgba(255,255,255,0.72)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1.5px solid rgba(255,255,255,0.85)",
+                  boxShadow:
+                    "0 4px 20px rgba(16,185,129,0.08), 0 1px 6px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                }}
+              >
+                {/* Floating pack monogram */}
+                <div
+                  className="pack-float-anim"
+                  style={{
+                    position: "relative",
+                    width: "110px",
+                    height: "110px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    animation: "packFloat 7s ease-in-out infinite",
+                    transformStyle: "preserve-3d",
+                  }}
+                >
+                  {/* Pack body */}
+                  <div
+                    style={{
+                      width: "90px",
+                      height: "110px",
+                      borderRadius: "12px",
+                      background:
+                        "linear-gradient(145deg, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%)",
+                      boxShadow:
+                        "0 6px 24px rgba(16,185,129,0.25), 0 2px 8px rgba(0,0,0,0.10)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexDirection: "column",
+                      gap: "4px",
+                      position: "relative",
+                      overflow: "hidden",
+                      border: "1.5px solid rgba(255,255,255,0.6)",
+                    }}
+                  >
+                    {/* Foil shimmer line */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(135deg, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%)",
+                      }}
+                    />
+                    {/* Rare sweep effect */}
+                    <div
+                      className="pack-sweep-anim"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        width: "40%",
+                        background:
+                          "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.40) 50%, rgba(255,255,255,0) 100%)",
+                        animation: "packSweep 12s ease-in-out infinite 4s",
+                        pointerEvents: "none",
+                      }}
+                    />
+                    {/* M monogram */}
+                    <div
+                      style={{
+                        fontSize: "32px",
+                        fontWeight: 800,
+                        color: "rgba(5,150,105,0.85)",
+                        fontFamily: "Georgia, serif",
+                        letterSpacing: "-0.04em",
+                        textShadow: "0 1px 3px rgba(255,255,255,0.6)",
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                    >
+                      M
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "8px",
+                        fontWeight: 700,
+                        color: "rgba(5,150,105,0.70)",
+                        letterSpacing: "0.14em",
+                        textTransform: "uppercase",
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                    >
+                      MINTY
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inner highlight at top */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "50%",
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0) 100%)",
+                    borderRadius: "20px 20px 0 0",
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+
+              {/* Pedestal shadow */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "-12px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "100px",
+                  height: "12px",
+                  background:
+                    "radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 70%)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
+
+            {/* Pack info text */}
+            <div
+              style={{
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: "#111111",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Minty Pack
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#6b7280",
+                  fontWeight: 400,
+                }}
+              >
+                Contains 1 collectible
+              </div>
+            </div>
+
+            {/* Price */}
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "10px",
+                alignItems: "baseline",
+                gap: "4px",
+                position: "relative",
+                zIndex: 1,
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: 700,
-                    color: "#111",
-                    marginBottom: "3px",
-                  }}
-                >
-                  {set.name}
-                </div>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    padding: "2px 8px",
-                    borderRadius: "99px",
-                    background:
-                      set.status === "Active"
-                        ? "rgba(16,185,129,0.12)"
-                        : "#f3f4f6",
-                    color: set.status === "Active" ? "#059669" : "#6b7280",
-                    border:
-                      set.status === "Active"
-                        ? "1px solid rgba(16,185,129,0.25)"
-                        : "1px solid #e5e7eb",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {set.status}
-                </span>
-              </div>
-              <button
-                data-ocid="library.created_sets.edit_button"
-                type="button"
+              <span
                 style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: "#374151",
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  cursor: "pointer",
+                  fontSize: "28px",
+                  fontWeight: 800,
+                  color: "#111111",
+                  letterSpacing: "-0.02em",
                 }}
               >
-                Manage
-              </button>
+                $1
+              </span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#6b7280",
+                }}
+              >
+                per pack
+              </span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {[
-                { label: `${set.assetCount} assets`, mint: false },
-                { label: `${set.supply} editions`, mint: false },
-                { label: `${set.sold} sold`, mint: true },
-                { label: `${set.remaining} remaining`, mint: false },
-              ].map(({ label, mint }) => (
-                <span
-                  key={label}
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    padding: "3px 10px",
-                    borderRadius: "99px",
-                    background: mint ? "rgba(16,185,129,0.10)" : "#f3f4f6",
-                    color: mint ? "#059669" : "#6b7280",
-                    border: mint
-                      ? "1px solid rgba(16,185,129,0.20)"
-                      : "1px solid transparent",
-                  }}
-                >
-                  {label}
-                </span>
-              ))}
+
+            {/* Supply */}
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#9ca3af",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              Supply remaining: 50,000
             </div>
           </div>
         </div>
-      ))}
-    </div>
-  );
-}
 
-// ─── Created: Cards Grid ──────────────────────────────────────────────────────
-
-function CreatedCardsGrid({ cards }: { cards: typeof MOCK_CREATED_CARDS }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "12px",
-        padding: "0 16px 16px",
-      }}
-    >
-      {cards.map((card) => (
-        <div
-          key={card.id}
-          data-ocid="library.created_cards.item"
-          style={{
-            background: "#ffffff",
-            borderRadius: "14px",
-            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-            overflow: "hidden",
-            cursor: "pointer",
-          }}
-        >
-          <img
-            src={card.imageUrl}
-            alt={card.name}
+        {/* ── CTA area ── */}
+        {hasDraft ? (
+          <div
             style={{
               width: "100%",
-              aspectRatio: "3/4",
-              objectFit: "cover",
-              display: "block",
+              maxWidth: "340px",
+              background: "rgba(16,185,129,0.06)",
+              border: "1px solid rgba(16,185,129,0.18)",
+              borderRadius: "16px",
+              padding: "18px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
             }}
-          />
-          <div style={{ padding: "8px 10px 10px" }}>
-            <div
-              style={{
-                fontSize: "10px",
-                color: "#9ca3af",
-                marginBottom: "3px",
-              }}
-            >
-              {card.editionNumber}
-            </div>
-            <div
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#111",
-                marginBottom: "5px",
-                lineHeight: "1.3",
-              }}
-            >
-              {card.name}
-            </div>
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                padding: "2px 7px",
-                borderRadius: "99px",
-                background:
-                  card.listingStatus === "Listed"
-                    ? "rgba(16,185,129,0.12)"
-                    : "#f3f4f6",
-                color: card.listingStatus === "Listed" ? "#059669" : "#6b7280",
-              }}
-            >
-              {card.listingStatus}
-            </span>
-            <div
-              style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}
-            >
-              {card.setName}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Created: Listings List ───────────────────────────────────────────────────
-
-function CreatedListingsList({
-  listings,
-}: { listings: typeof MOCK_CREATED_LISTINGS }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        padding: "0 16px 16px",
-      }}
-    >
-      {listings.map((listing) => (
-        <div
-          key={listing.id}
-          data-ocid="library.created_listings.item"
-          style={{
-            background: "#ffffff",
-            borderRadius: "14px",
-            boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-            padding: "12px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <img
-            src={listing.imageUrl}
-            alt={listing.name}
-            style={{
-              width: "50px",
-              height: "50px",
-              borderRadius: "10px",
-              objectFit: "cover",
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          >
             <div
               style={{
                 fontSize: "14px",
                 fontWeight: 600,
-                color: "#111",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                marginBottom: "2px",
-              }}
-            >
-              {listing.name}
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-                marginBottom: "4px",
-              }}
-            >
-              {listing.setName}
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#9ca3af",
-              }}
-            >
-              {listing.views.toLocaleString()} views
-            </div>
-          </div>
-          <div
-            style={{
-              textAlign: "right",
-              flexShrink: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: "6px",
-            }}
-          >
-            <div style={{ fontSize: "16px", fontWeight: 700, color: "#111" }}>
-              ${listing.price}
-            </div>
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 500,
                 color: "#059669",
-                background: "rgba(16,185,129,0.08)",
-                padding: "2px 7px",
-                borderRadius: "99px",
+                lineHeight: 1.4,
               }}
             >
-              {listing.currency}
-            </span>
+              Your Moment is in progress.
+            </div>
+            <div
+              style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}
+            >
+              Complete capture and print to unlock your next Moment.
+            </div>
             <button
-              data-ocid="library.created_listings.edit_button"
+              data-ocid="library.pack.finish_moment.button"
               type="button"
+              onClick={onFinishMoment}
               style={{
-                fontSize: "12px",
-                fontWeight: 500,
-                color: "#374151",
-                background: "transparent",
-                border: "1px solid rgba(0,0,0,0.12)",
-                borderRadius: "99px",
-                padding: "4px 10px",
+                marginTop: "4px",
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "#059669",
+                background: "rgba(16,185,129,0.10)",
+                border: "1px solid rgba(16,185,129,0.28)",
+                borderRadius: "10px",
+                padding: "11px 20px",
                 cursor: "pointer",
-                whiteSpace: "nowrap",
+                transition: "opacity 0.15s ease",
+                letterSpacing: "0.01em",
+                textAlign: "center",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = "0.80";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
               }}
             >
-              Edit Listing
+              Finish Current Moment →
             </button>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Mint Moment Banner (Created tab) ─────────────────────────────────────────
-
-function MintMomentBanner({
-  hasDraft,
-  onMint,
-  onFinish,
-}: {
-  hasDraft: boolean;
-  onMint: () => void;
-  onFinish: () => void;
-}) {
-  if (hasDraft) {
-    return (
-      <div
-        style={{
-          background: "rgba(16,185,129,0.06)",
-          border: "1px solid rgba(16,185,129,0.15)",
-          borderRadius: "14px",
-          padding: "16px",
-          margin: "0 16px 16px",
-        }}
-      >
-        <div
-          style={{
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "#059669",
-            marginBottom: "4px",
-          }}
-        >
-          Your Moment is in progress
-        </div>
-        <div
-          style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}
-        >
-          Complete capture and print to unlock your next Moment.
-        </div>
-        <button
-          data-ocid="library.finish_moment.button"
-          type="button"
-          onClick={onFinish}
-          style={{
-            fontSize: "13px",
-            fontWeight: 600,
-            color: "#059669",
-            background: "rgba(16,185,129,0.10)",
-            border: "1px solid rgba(16,185,129,0.25)",
-            borderRadius: "8px",
-            padding: "8px 16px",
-            cursor: "pointer",
-          }}
-        >
-          Finish Current Moment →
-        </button>
+        ) : (
+          <button
+            data-ocid="library.pack.mint_moment.button"
+            type="button"
+            onClick={onMintClick}
+            style={{
+              width: "100%",
+              maxWidth: "340px",
+              background: "#111111",
+              color: "#ffffff",
+              borderRadius: "14px",
+              fontSize: "15px",
+              fontWeight: 600,
+              padding: "15px 24px",
+              border: "none",
+              cursor: "pointer",
+              letterSpacing: "0.02em",
+              transition: "opacity 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>✦</span> Mint Moment
+          </button>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <button
-      data-ocid="library.mint_moment.button"
-      type="button"
-      onClick={onMint}
-      style={{
-        display: "block",
-        width: "calc(100% - 32px)",
-        margin: "0 16px 16px",
-        background: "#111",
-        color: "#fff",
-        borderRadius: "12px",
-        fontSize: "14px",
-        fontWeight: 600,
-        padding: "13px 24px",
-        border: "none",
-        cursor: "pointer",
-        letterSpacing: "0.01em",
-        transition: "opacity 0.15s ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.opacity = "0.85";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-      }}
-    >
-      ✦ Mint Moment
-    </button>
+    </>
   );
 }
 
@@ -902,25 +775,15 @@ export function LibraryPage({
   const [activeTab, setActiveTab] = useState<ActiveTab>("collected");
   const [collectedFilter, setCollectedFilter] =
     useState<CollectedFilterType>("all");
-  const [createdFilter, setCreatedFilter] = useState<CreatedFilterType>("all");
   const [showMintModal, setShowMintModal] = useState(false);
 
   const pageBg = isLight ? "#F8F8F8" : "oklch(0.08 0.02 160)";
-
-  // ─── Collected filter chips ──────────────────────────────────────────────
 
   const collectedFilterChips: { key: CollectedFilterType; label: string }[] = [
     { key: "all", label: "All" },
     { key: "photos", label: "Photos" },
     { key: "videos", label: "Videos" },
     { key: "listed", label: "Listed" },
-  ];
-
-  const createdFilterChips: { key: CreatedFilterType; label: string }[] = [
-    { key: "all", label: "All" },
-    { key: "sets", label: "Sets" },
-    { key: "cards", label: "Cards" },
-    { key: "listings", label: "Listings" },
   ];
 
   function handleMintClick() {
@@ -937,8 +800,6 @@ export function LibraryPage({
     if (onCaptureMoment) onCaptureMoment();
   }
 
-  // ─── Collected: filtered media ───────────────────────────────────────────
-
   function getFilteredMedia(): OwnedMediaItem[] {
     if (collectedFilter === "photos")
       return MOCK_OWNED_MEDIA.filter((m) => m.type === "photo");
@@ -946,63 +807,11 @@ export function LibraryPage({
       return MOCK_OWNED_MEDIA.filter((m) => m.type === "video");
     if (collectedFilter === "listed")
       return MOCK_OWNED_MEDIA.filter((m) => m.isListed);
-    return MOCK_OWNED_MEDIA; // "all"
+    return MOCK_OWNED_MEDIA;
   }
 
   function handleItemClick(item: OwnedMediaItem) {
     if (onAssetClick) onAssetClick(item.id);
-  }
-
-  // ─── Collected Content ───────────────────────────────────────────────────
-
-  function renderCollectedContent() {
-    return (
-      <CollectedMediaGrid
-        media={getFilteredMedia()}
-        onItemClick={handleItemClick}
-      />
-    );
-  }
-
-  // ─── Created Content ─────────────────────────────────────────────────────
-
-  function renderCreatedContent() {
-    const f = createdFilter;
-    if (f === "sets") {
-      return <CreatedSetsList sets={MOCK_CREATED_SETS} />;
-    }
-    if (f === "cards") {
-      return <CreatedCardsGrid cards={MOCK_CREATED_CARDS} />;
-    }
-    if (f === "listings") {
-      return <CreatedListingsList listings={MOCK_CREATED_LISTINGS} />;
-    }
-    // All — stacked sections
-    return (
-      <>
-        <SectionHeader label="Sets" />
-        <CreatedSetsList sets={MOCK_CREATED_SETS} />
-        <SectionHeader label="Cards" />
-        <CreatedCardsGrid cards={MOCK_CREATED_CARDS} />
-        <SectionHeader label="Listings" />
-        <CreatedListingsList listings={MOCK_CREATED_LISTINGS} />
-      </>
-    );
-  }
-
-  // ─── Active filter chips for current tab ─────────────────────────────────
-
-  const activeChips =
-    activeTab === "collected" ? collectedFilterChips : createdFilterChips;
-  const activeFilterValue: string =
-    activeTab === "collected" ? collectedFilter : createdFilter;
-
-  function handleFilterChange(key: string) {
-    if (activeTab === "collected") {
-      setCollectedFilter(key as CollectedFilterType);
-    } else {
-      setCreatedFilter(key as CreatedFilterType);
-    }
   }
 
   return (
@@ -1015,7 +824,7 @@ export function LibraryPage({
         paddingBottom: 88,
       }}
     >
-      {/* ── Segmented Toggle ── */}
+      {/* ── Segmented Toggle: Collected | Pack ── */}
       <div
         style={{
           padding: "14px 16px 0",
@@ -1034,14 +843,14 @@ export function LibraryPage({
             }`,
           }}
         >
-          {(["collected", "created"] as ActiveTab[]).map((tab) => (
+          {(["collected", "pack"] as ActiveTab[]).map((tab) => (
             <button
               key={tab}
               type="button"
               data-ocid={`library.${tab}.tab`}
               onClick={() => setActiveTab(tab)}
               style={{
-                padding: "7px 22px",
+                padding: "7px 24px",
                 borderRadius: "99px",
                 fontSize: "14px",
                 fontWeight: activeTab === tab ? 600 : 500,
@@ -1066,101 +875,114 @@ export function LibraryPage({
         </div>
       </div>
 
-      {/* ── Mint Moment Banner (Created tab only) ── */}
-      <AnimatePresence mode="wait">
-        {activeTab === "created" && (
+      {/* ── Filter Chips — only when Collected is active ── */}
+      <AnimatePresence initial={false}>
+        {activeTab === "collected" && (
           <motion.div
-            key="mint-banner"
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.2 }}
-            style={{ marginTop: "14px" }}
+            key="filter-chips"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
           >
-            <MintMomentBanner
-              hasDraft={hasDraft}
-              onMint={handleMintClick}
-              onFinish={() => onCaptureMoment?.()}
-            />
+            <div
+              data-ocid="library.filter.tab"
+              style={{
+                position: "sticky",
+                top: 56,
+                zIndex: 20,
+                background: isLight
+                  ? "rgba(248,248,248,0.90)"
+                  : "rgba(10,15,12,0.90)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                borderBottom: `1px solid ${
+                  isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)"
+                }`,
+                marginTop: "14px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  padding: "10px 16px",
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                }}
+              >
+                {collectedFilterChips.map(({ key, label }) => {
+                  const isActive = collectedFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() =>
+                        setCollectedFilter(key as CollectedFilterType)
+                      }
+                      type="button"
+                      style={{
+                        flexShrink: 0,
+                        padding: "6px 14px",
+                        borderRadius: "99px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        color: isActive ? "#059669" : "#6b7280",
+                        background: isActive
+                          ? "rgba(16,185,129,0.10)"
+                          : isLight
+                            ? "#f3f4f6"
+                            : "rgba(255,255,255,0.06)",
+                        border: isActive
+                          ? "1px solid rgba(16,185,129,0.30)"
+                          : "1px solid transparent",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Filter Chips (sticky) ── */}
-      <div
-        data-ocid="library.filter.tab"
-        style={{
-          position: "sticky",
-          top: 56,
-          zIndex: 20,
-          background: isLight
-            ? "rgba(248,248,248,0.90)"
-            : "rgba(10,15,12,0.90)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          borderBottom: `1px solid ${
-            isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)"
-          }`,
-          marginTop: activeTab === "created" ? 0 : "14px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            gap: "8px",
-            padding: "10px 16px",
-            overflowX: "auto",
-            scrollbarWidth: "none",
-          }}
-        >
-          {activeChips.map(({ key, label }) => {
-            const isActive = activeFilterValue === key;
-            return (
-              <button
-                key={key}
-                onClick={() => handleFilterChange(key)}
-                type="button"
-                style={{
-                  flexShrink: 0,
-                  padding: "6px 14px",
-                  borderRadius: "99px",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  color: isActive ? "#059669" : "#6b7280",
-                  background: isActive
-                    ? "rgba(16,185,129,0.10)"
-                    : isLight
-                      ? "#f3f4f6"
-                      : "rgba(255,255,255,0.06)",
-                  border: isActive
-                    ? "1px solid rgba(16,185,129,0.30)"
-                    : "1px solid transparent",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* ── Content ── */}
       <AnimatePresence mode="wait">
-        <motion.div
-          key={`${activeTab}-${activeFilterValue}`}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          style={{ paddingTop: "12px" }}
-        >
-          {activeTab === "collected"
-            ? renderCollectedContent()
-            : renderCreatedContent()}
-        </motion.div>
+        {activeTab === "collected" ? (
+          <motion.div
+            key={`collected-${collectedFilter}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            style={{ paddingTop: "12px" }}
+          >
+            <CollectedMediaGrid
+              media={getFilteredMedia()}
+              onItemClick={handleItemClick}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="pack"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            style={{ paddingTop: "20px" }}
+          >
+            <PackView
+              hasDraft={hasDraft}
+              onMintClick={handleMintClick}
+              onFinishMoment={() => onCaptureMoment?.()}
+            />
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ── Mint Moment Modal ── */}
