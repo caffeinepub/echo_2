@@ -322,8 +322,8 @@ function VideoPreviewModal({
             style={{
               display: "block",
               width: "100%",
-              maxHeight: "70vh",
-              objectFit: "contain",
+              aspectRatio: "4/5",
+              objectFit: "cover",
             }}
           />
 
@@ -490,7 +490,7 @@ function ReleaseCard({
           style={{
             position: "relative",
             width: "100%",
-            height: 180,
+            aspectRatio: "4/5",
             overflow: "hidden",
           }}
         >
@@ -935,7 +935,7 @@ function ReleaseDetailSheet({
         <div
           style={{
             position: "relative",
-            height: 220,
+            aspectRatio: "4/5",
             overflow: "hidden",
             background: "#000",
           }}

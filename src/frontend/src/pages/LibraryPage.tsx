@@ -95,7 +95,7 @@ function PackCard() {
   }, []);
 
   return (
-    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "460px" }}>
+    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
       {/* Background image layer — muted/desaturated */}
       <div
         style={{
@@ -558,7 +558,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
           padding: "22px 20px",
           fontSize: "11px",
           overflowY: "auto",
-          maxHeight: "460px",
+          maxHeight: "350px",
         }}
       >
         {/* 1. Top label */}
@@ -1116,7 +1116,7 @@ export function LibraryPage({
                 style={{
                   perspective: "1200px",
                   width: "280px",
-                  height: "460px",
+                  height: "350px",
                 }}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}

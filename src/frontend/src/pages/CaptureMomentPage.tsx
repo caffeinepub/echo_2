@@ -564,7 +564,7 @@ export function CaptureMomentPage({
                     borderRadius: "16px",
                     overflow: "hidden",
                     background: "#000",
-                    aspectRatio: "3/4",
+                    aspectRatio: "4/5",
                     boxShadow: "0 4px 24px rgba(52,168,132,0.18)",
                     border: `1.5px solid ${MINT_BORDER}`,
                     flexShrink: 0,
@@ -875,7 +875,7 @@ export function CaptureMomentPage({
                 style={{
                   width: "100%",
                   maxWidth: "360px",
-                  aspectRatio: "3/4",
+                  aspectRatio: "4/5",
                   objectFit: "cover",
                   borderRadius: "16px",
                   border: `1.5px solid ${MINT_BORDER}`,
@@ -950,7 +950,7 @@ export function CaptureMomentPage({
                 style={{
                   width: "100%",
                   maxWidth: "360px",
-                  aspectRatio: "3/4",
+                  aspectRatio: "4/5",
                   objectFit: "cover",
                   borderRadius: "16px",
                   border: `1.5px solid ${MINT_BORDER}`,
@@ -1066,7 +1066,7 @@ export function CaptureMomentPage({
                 key={src}
                 data-ocid={`capture.item.${i + 1}`}
                 style={{
-                  aspectRatio: "1",
+                  aspectRatio: "4/5",
                   borderRadius: "12px",
                   overflow: "hidden",
                   border: `2px solid ${MINT_BORDER_STRONG}`,
