@@ -7,7 +7,7 @@ import {
   Settings2,
   ShieldCheck,
   Sun,
-  Upload,
+  UserCircle,
   Wallet,
   X,
 } from "lucide-react";
@@ -973,10 +973,10 @@ function SignInModal({
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 interface TopBarProps {
   onAdminClick?: () => void;
-  onUploadClick?: () => void;
+  onProfileClick?: () => void;
 }
 
-export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
+export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { theme, toggleTheme } = useTheme();
   const [signInOpen, setSignInOpen] = useState(false);
@@ -1086,14 +1086,14 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
             </button>
           )}
 
-          {/* Upload button */}
-          {onUploadClick && (
+          {/* Profile button */}
+          {onProfileClick && (
             <button
               type="button"
-              onClick={onUploadClick}
-              data-ocid="topbar.upload.button"
-              aria-label="Submit a Release"
-              title="Submit a Release"
+              onClick={onProfileClick}
+              data-ocid="topbar.profile.button"
+              aria-label="View Profile"
+              title="View Profile"
               className="flex items-center gap-1.5 transition-all duration-150"
               style={{
                 padding: "5px 12px",
@@ -1116,8 +1116,8 @@ export function TopBar({ onAdminClick, onUploadClick }: TopBarProps) {
                   uploadBg;
               }}
             >
-              <Upload size={13} />
-              Upload
+              <UserCircle size={14} strokeWidth={1.6} />
+              Profile
             </button>
           )}
 

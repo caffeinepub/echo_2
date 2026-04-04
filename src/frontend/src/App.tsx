@@ -22,6 +22,7 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { ManageCatalogPage } from "./pages/ManageCatalogPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import SetDetailPage from "./pages/SetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
@@ -34,7 +35,8 @@ type View =
   | { type: "card-detail"; id: string }
   | { type: "upload" }
   | { type: "admin" }
-  | { type: "capture-moment" };
+  | { type: "capture-moment" }
+  | { type: "profile" };
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
@@ -138,7 +140,7 @@ function AppContent() {
       {showSplash && <SplashScreen />}
       <TopBar
         onAdminClick={() => setView({ type: "admin" })}
-        onUploadClick={() => setView({ type: "upload" })}
+        onProfileClick={() => setView({ type: "profile" })}
       />
       <main className="pt-16 pb-[68px] min-h-screen">
         {view.type === "tab" && view.tab === "library" && (
@@ -211,6 +213,11 @@ function AppContent() {
           <CaptureMomentPage
             onBack={() => setView({ type: "tab", tab: "library" })}
             onMintComplete={handleMintComplete}
+          />
+        )}
+        {view.type === "profile" && (
+          <ProfilePage
+            onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}
       </main>
