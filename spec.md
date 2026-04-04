@@ -1,39 +1,44 @@
-# Minty — Profile Button & Creator Dashboard
+# Minty — Discover Page Leaderboard
 
 ## Current State
-- TopBar has an Upload button (pill style, mint outline) that opens UploadPage
-- App.tsx view state includes `{ type: 'upload' }` which renders UploadPage
-- TopBar accepts `onUploadClick` prop
-- No Profile page or creator dashboard exists
-- CollectionContext holds sealed packs and NFTs from minted sets
-- Internet Identity provides the principal (wallet ID)
+
+The Discover (MarketPage) page currently shows:
+- 4 stat signal cards (Total Volume, 24H Volume, Total Transactions, Live Users)
+- Time filter pills: 24H, 1W, 1M, 1Y, ALL
+- A ranked list of the top 10 **individual luxury item completed sales** (Rolex, iPhone, Birkin bag, etc.) from mockSales.ts
+- RankRow components showing thumbnail, title, category, price, and time ago
+- No preview media, no set structure, no collector counts, no sales count
+
+The mock data contains luxury/fashion/watch items unrelated to Mint Moment sets.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `ProfilePage.tsx` — full creator dashboard with:
-  - Top section: shortened principal/wallet ID, join date, total sets created, total collectibles minted
-  - Revenue Summary: Total Earned panel (3% creator royalty logic), breakdown by pack sales / NFT sales / resales
-  - Sets Performance: per-set cards with title, cover preview, packs minted, sold, revenue, avg/best sale price; tap to expand deep analytics panel
-  - Transaction Activity: recent royalty events list with thumbnail, type label, amount, date
-- Profile button in TopBar replacing Upload button (same pill style: rounded, mint outline, mint icon, same padding/font)
-  - Icon: `UserCircle` or `User` from lucide-react — minimal line style, mint accent
-- `{ type: 'profile' }` view type in App.tsx
-- Mock royalty/revenue data for UI (seeded inline in ProfilePage)
+- New data model: `MintMomentSetRank` — represents a ranked Mint Moment set with: id, rank, title, creator, totalVolume, salesCount, nftTrades, uniqueCollectors, recentActivityScore, previewClipUrl (optional), coverImageUrl, description, totalPacks, remainingPacks, pricePerPack, recentSales array
+- Weighted scoring function to compute rank: totalVolume (40%) + salesCount (25%) + nftTrades (15%) + uniqueCollectors (15%) + recentActivityBoost (5%)
+- Filter tabs: All Time, 24H, 7D, 30D (default: All Time)
+- Top 100 ranked set rows, each showing: rank number, looping preview clip (1–2s, 4:5 ratio, muted), set title, creator name/wallet, total volume, number of sales, number of collectors
+- Set detail sheet/modal: preview clip, set description, total packs, remaining packs, price per pack, recent activity list, Buy Packs button
+- Leaderboard header text ("Top 100 Mint Moment Sets")
+- New mock data file: `store/mockDiscoverSets.ts` — 100 Mint Moment sets with realistic names and stats
 
 ### Modify
-- `TopBar.tsx`: remove Upload button and `onUploadClick` prop, add `onProfileClick` prop with Profile button
-- `App.tsx`: remove `onUploadClick` and `{ type: 'upload' }` view handling, add `onProfileClick` and `{ type: 'profile' }` view rendering ProfilePage
-- View type union: replace `{ type: 'upload' }` with `{ type: 'profile' }`
+- `MarketPage.tsx` — completely replace the luxury-item rank list with the new Mint Moment set leaderboard. Keep stat signal cards. Replace time filter options with All Time / 24H / 7D / 30D. Replace RankRow with new SetRankRow. Add SetDetailSheet.
+- `store/mockSales.ts` — keep as-is (used for ticker elsewhere if any), but Discover no longer reads from it
 
 ### Remove
-- Upload button from TopBar
-- `onUploadClick` prop from TopBar
-- `{ type: 'upload' }` view from App.tsx (UploadPage import can remain but is no longer routed to from header)
+- MOCK_SALES luxury item data from Discover display
+- RankRow component showing individual sale rows with luxury items
+- `getTopSoldItems` usage in MarketPage
 
 ## Implementation Plan
-1. Create `ProfilePage.tsx` with mock data, 4 sections, set detail expand panel, transaction list
-2. Update `TopBar.tsx`: replace Upload button with Profile button using `UserCircle` icon + same pill style variables
-3. Update `App.tsx`: swap `onUploadClick`→`onProfileClick`, add `{ type: 'profile' }` view → `<ProfilePage onBack={...} />`
-4. Royalty display logic: 3% creator, 1% Minty — read-only, no editing
-5. Visual: off-white panels, mint accents, rounded containers, calm spacing — Minty design language
+
+1. Create `src/frontend/src/store/mockDiscoverSets.ts` with 100 mock Mint Moment sets, each with weighted scoring fields
+2. Add weighted scoring utility function and filter logic by time window
+3. Rewrite `MarketPage.tsx`:
+   - Keep stat signal cards at top
+   - Replace time filters with All Time / 24H / 7D / 30D
+   - Add leaderboard header
+   - New `SetRankRow` component: rank badge, 4:5 preview clip loop or cover image, set title, creator, volume/sales/collectors stats
+   - New `SetDetailSheet` bottom sheet: preview clip, description, pack stats, recent activity, Buy Packs CTA
+4. Validate and build
