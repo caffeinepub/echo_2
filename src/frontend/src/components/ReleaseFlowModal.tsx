@@ -1,4 +1,12 @@
-import { Check, ChevronLeft, ChevronRight, Flame, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Film,
+  Flame,
+  Image,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import type { SealedPack } from "../context/CollectionContext";
 import { useCollection } from "../context/CollectionContext";
@@ -15,6 +23,8 @@ const COVER_OPTIONS = [
   "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
   "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
 ];
+
+type MediaMode = "clip" | "image";
 
 interface ReleaseFlowModalProps {
   open: boolean;
@@ -34,6 +44,11 @@ export function ReleaseFlowModal({
 
   const [step, setStep] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [mediaMode, setMediaMode] = useState<MediaMode>("image");
+  const [previewClipUrl, setPreviewClipUrl] = useState<string | undefined>(
+    undefined,
+  );
+  const [previewClipFile, setPreviewClipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState(
     allPacksInSet[0]?.pendingNFT?.imageUrl ?? COVER_OPTIONS[0],
   );
@@ -59,6 +74,16 @@ export function ReleaseFlowModal({
     setQuantity((prev) => Math.min(maxQty, Math.max(1, prev + delta)));
   }
 
+  function handleClipFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Revoke previous object URL if any
+    if (previewClipUrl) URL.revokeObjectURL(previewClipUrl);
+    const url = URL.createObjectURL(file);
+    setPreviewClipFile(file);
+    setPreviewClipUrl(url);
+  }
+
   function handleConfirmRelease() {
     const now = Date.now();
     const selectedPacks = allPacksInSet.slice(0, quantity);
@@ -66,6 +91,7 @@ export function ReleaseFlowModal({
       id: `release_${now}_${Math.random().toString(36).slice(2, 7)}`,
       creatorName: "you.icp",
       coverImageUrl: coverImage,
+      previewClipUrl: mediaMode === "clip" ? previewClipUrl : undefined,
       title: title.trim() || pack.setName,
       caption: caption.trim(),
       setName: pack.setName,
@@ -84,6 +110,9 @@ export function ReleaseFlowModal({
       onClose();
       setStep(0);
       setQuantity(1);
+      setMediaMode("image");
+      setPreviewClipUrl(undefined);
+      setPreviewClipFile(null);
       setTitle("");
       setCaption("");
       setPriceStr("2.00");
@@ -362,7 +391,7 @@ export function ReleaseFlowModal({
               {pack.setName}
             </p>
 
-            {/* Cover image picker */}
+            {/* ── Media type toggle ── */}
             <p
               style={{
                 fontSize: 12,
@@ -373,52 +402,226 @@ export function ReleaseFlowModal({
                 letterSpacing: "0.05em",
               }}
             >
-              Cover Image
+              Preview Media
             </p>
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 8,
-                marginBottom: 20,
+                display: "flex",
+                background: "rgba(0,0,0,0.05)",
+                borderRadius: 12,
+                padding: 3,
+                marginBottom: 16,
+                gap: 3,
               }}
             >
-              {packImages.slice(0, 8).map((url) => (
-                <button
-                  key={url}
-                  type="button"
-                  data-ocid="release_flow.button"
-                  onClick={() => setCoverImage(url)}
+              <button
+                type="button"
+                data-ocid="release_flow.toggle"
+                onClick={() => setMediaMode("clip")}
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: mediaMode === "clip" ? "#fff" : "transparent",
+                  color: mediaMode === "clip" ? MINT : "#6b7280",
+                  fontSize: 13,
+                  fontWeight: mediaMode === "clip" ? 700 : 500,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  boxShadow:
+                    mediaMode === "clip"
+                      ? "0 1px 4px rgba(0,0,0,0.10)"
+                      : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <Film size={13} />
+                Preview Clip
+              </button>
+              <button
+                type="button"
+                data-ocid="release_flow.toggle"
+                onClick={() => setMediaMode("image")}
+                style={{
+                  flex: 1,
+                  padding: "9px 12px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: mediaMode === "image" ? "#fff" : "transparent",
+                  color: mediaMode === "image" ? MINT : "#6b7280",
+                  fontSize: 13,
+                  fontWeight: mediaMode === "image" ? 700 : 500,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  boxShadow:
+                    mediaMode === "image"
+                      ? "0 1px 4px rgba(0,0,0,0.10)"
+                      : "none",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <Image size={13} />
+                Cover Image
+              </button>
+            </div>
+
+            {/* ── Preview Clip upload ── */}
+            {mediaMode === "clip" && (
+              <div style={{ marginBottom: 20 }}>
+                <label
+                  htmlFor="release-clip-upload"
                   style={{
-                    aspectRatio: "1",
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    border: `2px solid ${
-                      coverImage === url ? MINT : "rgba(0,0,0,0.08)"
-                    }`,
-                    padding: 0,
+                    display: "block",
+                    border: `1.5px dashed ${previewClipUrl ? MINT : "rgba(0,0,0,0.14)"}`,
+                    borderRadius: 14,
+                    padding: "20px 16px",
                     cursor: "pointer",
-                    outline:
-                      coverImage === url
-                        ? `2px solid ${MINT}`
-                        : "2px solid transparent",
-                    outlineOffset: 1,
-                    transition: "border 0.15s, outline 0.15s",
+                    textAlign: "center",
+                    background: previewClipUrl
+                      ? "rgba(16,185,129,0.05)"
+                      : "rgba(0,0,0,0.02)",
+                    transition: "border 0.15s, background 0.15s",
                   }}
                 >
-                  <img
-                    src={url}
-                    alt="Cover option"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
+                  <input
+                    id="release-clip-upload"
+                    data-ocid="release_flow.upload_button"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleClipFileChange}
+                    style={{ display: "none" }}
                   />
-                </button>
-              ))}
-            </div>
+                  {previewClipUrl ? (
+                    <div>
+                      <video
+                        src={previewClipUrl}
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                        style={{
+                          width: "100%",
+                          maxHeight: 120,
+                          objectFit: "cover",
+                          borderRadius: 10,
+                          marginBottom: 8,
+                          display: "block",
+                        }}
+                      />
+                      <p
+                        style={{
+                          fontSize: 12,
+                          color: MINT,
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        ✓ {previewClipFile?.name ?? "Clip uploaded"}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "#9ca3af",
+                          margin: "4px 0 0",
+                        }}
+                      >
+                        Tap to replace
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <Film
+                        size={24}
+                        color="#9ca3af"
+                        style={{ marginBottom: 8 }}
+                      />
+                      <p
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "#374151",
+                          margin: "0 0 4px",
+                        }}
+                      >
+                        Upload a short preview clip
+                      </p>
+                      <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
+                        ~7 seconds · Clip will autoplay muted on your release
+                        card
+                      </p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            )}
+
+            {/* ── Cover image picker ── */}
+            {mediaMode === "image" && (
+              <div style={{ marginBottom: 20 }}>
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#374151",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Cover Image
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 8,
+                  }}
+                >
+                  {packImages.slice(0, 8).map((url) => (
+                    <button
+                      key={url}
+                      type="button"
+                      data-ocid="release_flow.button"
+                      onClick={() => setCoverImage(url)}
+                      style={{
+                        aspectRatio: "1",
+                        borderRadius: 10,
+                        overflow: "hidden",
+                        border: `2px solid ${
+                          coverImage === url ? MINT : "rgba(0,0,0,0.08)"
+                        }`,
+                        padding: 0,
+                        cursor: "pointer",
+                        outline:
+                          coverImage === url
+                            ? `2px solid ${MINT}`
+                            : "2px solid transparent",
+                        outlineOffset: 1,
+                        transition: "border 0.15s, outline 0.15s",
+                      }}
+                    >
+                      <img
+                        src={url}
+                        alt="Cover option"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Title */}
             <p
@@ -695,16 +898,32 @@ export function ReleaseFlowModal({
                     marginBottom: 16,
                   }}
                 >
-                  <img
-                    src={coverImage}
-                    alt="Release cover"
-                    style={{
-                      width: "100%",
-                      height: 140,
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
+                  {mediaMode === "clip" && previewClipUrl ? (
+                    <video
+                      src={previewClipUrl}
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      style={{
+                        width: "100%",
+                        height: 140,
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={coverImage}
+                      alt="Release cover"
+                      style={{
+                        width: "100%",
+                        height: 140,
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  )}
                   <div style={{ padding: "14px 16px" }}>
                     <p
                       style={{

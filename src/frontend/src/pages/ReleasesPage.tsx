@@ -5,9 +5,11 @@ import {
   Sparkles,
   Timer,
   TrendingUp,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
@@ -225,6 +227,203 @@ function useCountdown(expiresAt: number, now: number) {
   return { msLeft, isBurned, isEndingSoon, label: formatCountdown(msLeft) };
 }
 
+// ─── VideoPreviewModal ────────────────────────────────────────────────────────
+
+function VideoPreviewModal({
+  clipUrl,
+  open,
+  onClose,
+}: {
+  clipUrl: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(true);
+
+  // Reset muted state each time modal opens
+  useEffect(() => {
+    if (open) setIsMuted(true);
+  }, [open]);
+
+  function toggleMute() {
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (videoRef.current) videoRef.current.muted = next;
+      return next;
+    });
+  }
+
+  if (!open) return null;
+
+  return (
+    <div
+      data-ocid="releases.modal"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 500,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px 16px",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close video preview"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter") onClose();
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.80)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          animation: "vpBdIn 0.2s ease",
+        }}
+      />
+
+      {/* Container */}
+      <div
+        style={{
+          position: "relative",
+          background: "#FAFAF8",
+          borderRadius: 24,
+          overflow: "hidden",
+          maxWidth: 480,
+          width: "100%",
+          boxShadow:
+            "0 20px 60px rgba(0,0,0,0.40), 0 0 0 1px rgba(255,255,255,0.08)",
+          animation: "vpIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+        }}
+      >
+        <style>{`
+          @keyframes vpBdIn { from{opacity:0} to{opacity:1} }
+          @keyframes vpIn {
+            from { transform: scale(0.92); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+          }
+        `}</style>
+
+        {/* Video */}
+        <div style={{ position: "relative", background: "#000" }}>
+          <video
+            ref={videoRef}
+            src={clipUrl}
+            autoPlay
+            loop
+            muted={isMuted}
+            playsInline
+            style={{
+              display: "block",
+              width: "100%",
+              maxHeight: "70vh",
+              objectFit: "contain",
+            }}
+          />
+
+          {/* Mute/Unmute toggle */}
+          <button
+            type="button"
+            data-ocid="releases.toggle"
+            onClick={toggleMute}
+            aria-label={isMuted ? "Unmute" : "Mute"}
+            style={{
+              position: "absolute",
+              bottom: 12,
+              left: 12,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              border: "1px solid rgba(255,255,255,0.20)",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#fff",
+            }}
+          >
+            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+
+          {/* Close button */}
+          <button
+            type="button"
+            data-ocid="releases.close_button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              border: "1px solid rgba(255,255,255,0.20)",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#fff",
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: "12px 16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12,
+              color: "#9ca3af",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            {isMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+            {isMuted ? "Tap speaker to unmute" : "Sound on"}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              fontSize: 12,
+              color: "#6b7280",
+              fontWeight: 600,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 8px",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Release Card ─────────────────────────────────────────────────────────────
 
 function ReleaseCard({
@@ -240,6 +439,7 @@ function ReleaseCard({
     release.expiresAt,
     now,
   );
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
 
   const countdownColor = isBurned
     ? "#9ca3af"
@@ -247,264 +447,348 @@ function ReleaseCard({
       ? "#f59e0b"
       : "#6b7280";
 
+  const hasClip = !!release.previewClipUrl;
+
   return (
-    <button
-      type="button"
-      data-ocid="releases.item.1"
-      onClick={() => onTap(release)}
-      style={{
-        background: "#fff",
-        borderRadius: 20,
-        boxShadow: "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-        border: "1.5px solid rgba(0,0,0,0.05)",
-        overflow: "hidden",
-        cursor: "pointer",
-        textAlign: "left",
-        padding: 0,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        transition: "box-shadow 0.18s ease, transform 0.15s ease",
-        opacity: isBurned ? 0.55 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!isBurned) {
-          (e.currentTarget as HTMLButtonElement).style.boxShadow =
-            "0 6px 24px rgba(16,185,129,0.18), 0 2px 8px rgba(0,0,0,0.07)";
-          (e.currentTarget as HTMLButtonElement).style.transform =
-            "translateY(-2px)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.boxShadow =
-          "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)";
-        (e.currentTarget as HTMLButtonElement).style.transform =
-          "translateY(0)";
-      }}
-    >
-      {/* Cover image */}
-      <div
+    <>
+      <button
+        type="button"
+        data-ocid="releases.item.1"
+        onClick={() => onTap(release)}
         style={{
-          position: "relative",
-          width: "100%",
-          height: 180,
+          background: "#fff",
+          borderRadius: 20,
+          boxShadow: "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+          border: "1.5px solid rgba(0,0,0,0.05)",
           overflow: "hidden",
+          cursor: "pointer",
+          textAlign: "left",
+          padding: 0,
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          transition: "box-shadow 0.18s ease, transform 0.15s ease",
+          opacity: isBurned ? 0.55 : 1,
+        }}
+        onMouseEnter={(e) => {
+          if (!isBurned) {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              "0 6px 24px rgba(16,185,129,0.18), 0 2px 8px rgba(0,0,0,0.07)";
+            (e.currentTarget as HTMLButtonElement).style.transform =
+              "translateY(-2px)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.boxShadow =
+            "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)";
+          (e.currentTarget as HTMLButtonElement).style.transform =
+            "translateY(0)";
         }}
       >
-        <img
-          src={release.coverImageUrl}
-          alt={release.title}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-        />
-        {/* Gradient overlay for readability */}
+        {/* Cover media — video clip or image */}
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.28) 100%)",
+            position: "relative",
+            width: "100%",
+            height: 180,
+            overflow: "hidden",
           }}
-        />
-        {/* Sold out / burned overlay */}
-        {(isBurned || release.status === "sold_out") && (
+        >
+          {hasClip ? (
+            <div style={{ position: "absolute", inset: 0 }}>
+              <video
+                src={release.previewClipUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+              {/* Transparent button overlay to open preview modal */}
+              <button
+                type="button"
+                aria-label="Expand video preview"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVideoModalOpen(true);
+                }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              />
+              {/* Play hint overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 8,
+                  right: 8,
+                  background: "rgba(0,0,0,0.50)",
+                  backdropFilter: "blur(4px)",
+                  borderRadius: 20,
+                  padding: "3px 8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  pointerEvents: "none",
+                }}
+              >
+                <VolumeX size={10} color="rgba(255,255,255,0.80)" />
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.80)",
+                    fontWeight: 600,
+                  }}
+                >
+                  tap to expand
+                </span>
+              </div>
+            </div>
+          ) : (
+            <img
+              src={release.coverImageUrl}
+              alt={release.title}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          )}
+
+          {/* Gradient overlay for readability */}
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: "rgba(0,0,0,0.42)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              background:
+                "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.28) 100%)",
+              pointerEvents: "none",
             }}
-          >
-            <span
+          />
+
+          {/* Sold out / burned overlay */}
+          {(isBurned || release.status === "sold_out") && (
+            <div
               style={{
-                background: isBurned ? "#374151" : "#10b981",
-                color: "#fff",
-                fontSize: 12,
-                fontWeight: 700,
-                borderRadius: 20,
-                padding: "5px 14px",
-                letterSpacing: "0.05em",
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.42)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
               }}
             >
-              {isBurned ? "🔥 Burned" : "✓ Sold Out"}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Content area */}
-      <div style={{ padding: "14px 16px 16px" }}>
-        {/* Row 1 — creator + type */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 5,
-          }}
-        >
-          <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>
-            @{release.creatorName}
-          </span>
-          <span
-            style={{
-              fontSize: 10,
-              color: "#6b7280",
-              background: "rgba(0,0,0,0.05)",
-              borderRadius: 6,
-              padding: "2px 7px",
-              fontWeight: 600,
-            }}
-          >
-            {release.collectibleType === "photo" ? "📷 Photo" : "🎬 Video"}
-          </span>
+              <span
+                style={{
+                  background: isBurned ? "#374151" : "#10b981",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  borderRadius: 20,
+                  padding: "5px 14px",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {isBurned ? "🔥 Burned" : "✓ Sold Out"}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Row 2 — title */}
-        <p
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: "#111",
-            margin: "0 0 4px",
-            lineHeight: 1.25,
-          }}
-        >
-          {release.title}
-        </p>
-
-        {/* Row 3 — caption */}
-        {release.caption && (
-          <p
+        {/* Content area */}
+        <div style={{ padding: "14px 16px 16px" }}>
+          {/* Row 1 — creator + type */}
+          <div
             style={{
-              fontSize: 12,
-              color: "#6b7280",
-              margin: "0 0 8px",
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              lineHeight: 1.45,
-            }}
-          >
-            {release.caption}
-          </p>
-        )}
-
-        {/* Row 4 — packs + price */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginBottom: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              display: "inline-flex",
+              display: "flex",
+              justifyContent: "space-between",
               alignItems: "center",
-              gap: 4,
-              fontSize: 12,
-              color: "#374151",
-              fontWeight: 500,
+              marginBottom: 5,
             }}
           >
-            <Package2 size={12} color="#9ca3af" />
-            {release.packsAvailable} pack
-            {release.packsAvailable !== 1 ? "s" : ""} available
-          </span>
-          <span style={{ fontSize: 11, color: "#d1d5db" }}>·</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
-            ${release.priceUsd.toFixed(2)}
+            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>
+              @{release.creatorName}
+            </span>
             <span
               style={{
                 fontSize: 10,
-                color: "#9ca3af",
-                fontWeight: 400,
-                marginLeft: 2,
+                color: "#6b7280",
+                background: "rgba(0,0,0,0.05)",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontWeight: 600,
               }}
             >
-              each
+              {hasClip
+                ? "🎬 Clip"
+                : release.collectibleType === "photo"
+                  ? "📷 Photo"
+                  : "🎬 Video"}
             </span>
-          </span>
-        </div>
+          </div>
 
-        {/* Row 5 — countdown */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            marginBottom: 12,
-          }}
-        >
-          {isEndingSoon && !isBurned ? (
-            <Flame size={12} color="#f59e0b" />
-          ) : (
-            <Timer size={12} color={countdownColor} />
-          )}
-          <span
+          {/* Row 2 — title */}
+          <p
             style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: countdownColor,
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#111",
+              margin: "0 0 4px",
+              lineHeight: 1.25,
             }}
           >
-            {label}
-          </span>
-        </div>
+            {release.title}
+          </p>
 
-        {/* Row 6 — Buy button */}
-        <button
-          type="button"
-          data-ocid="releases.primary_button"
-          disabled={isBurned || release.status !== "active"}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            width: "100%",
-            padding: "12px",
-            borderRadius: 12,
-            background:
-              isBurned || release.status !== "active"
-                ? "#f3f4f6"
-                : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-            color: isBurned || release.status !== "active" ? "#9ca3af" : "#fff",
-            fontSize: 14,
-            fontWeight: 700,
-            border: "none",
-            cursor:
-              isBurned || release.status !== "active"
-                ? "not-allowed"
-                : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            boxShadow:
-              !isBurned && release.status === "active"
-                ? "0 4px 14px rgba(16,185,129,0.28)"
-                : "none",
-            transition: "opacity 0.15s",
-          }}
-        >
-          <ShoppingBag size={14} />
-          {isBurned
-            ? "Burned"
-            : release.status === "sold_out"
-              ? "Sold Out"
-              : "Buy Pack"}
-        </button>
-      </div>
-    </button>
+          {/* Row 3 — caption */}
+          {release.caption && (
+            <p
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                margin: "0 0 8px",
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                lineHeight: 1.45,
+              }}
+            >
+              {release.caption}
+            </p>
+          )}
+
+          {/* Row 4 — packs + price */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 12,
+                color: "#374151",
+                fontWeight: 500,
+              }}
+            >
+              <Package2 size={12} color="#9ca3af" />
+              {release.packsAvailable} pack
+              {release.packsAvailable !== 1 ? "s" : ""} available
+            </span>
+            <span style={{ fontSize: 11, color: "#d1d5db" }}>·</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
+              ${release.priceUsd.toFixed(2)}
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                  marginLeft: 2,
+                }}
+              >
+                each
+              </span>
+            </span>
+          </div>
+
+          {/* Row 5 — countdown */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: 12,
+            }}
+          >
+            {isEndingSoon && !isBurned ? (
+              <Flame size={12} color="#f59e0b" />
+            ) : (
+              <Timer size={12} color={countdownColor} />
+            )}
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: countdownColor,
+              }}
+            >
+              {label}
+            </span>
+          </div>
+
+          {/* Row 6 — Buy button */}
+          <button
+            type="button"
+            data-ocid="releases.primary_button"
+            disabled={isBurned || release.status !== "active"}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: 12,
+              background:
+                isBurned || release.status !== "active"
+                  ? "#f3f4f6"
+                  : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              color:
+                isBurned || release.status !== "active" ? "#9ca3af" : "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              border: "none",
+              cursor:
+                isBurned || release.status !== "active"
+                  ? "not-allowed"
+                  : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              boxShadow:
+                !isBurned && release.status === "active"
+                  ? "0 4px 14px rgba(16,185,129,0.28)"
+                  : "none",
+              transition: "opacity 0.15s",
+            }}
+          >
+            <ShoppingBag size={14} />
+            {isBurned
+              ? "Burned"
+              : release.status === "sold_out"
+                ? "Sold Out"
+                : "Buy Pack"}
+          </button>
+        </div>
+      </button>
+
+      {/* Video preview modal (per-card) */}
+      {hasClip && (
+        <VideoPreviewModal
+          clipUrl={release.previewClipUrl!}
+          open={videoModalOpen}
+          onClose={() => setVideoModalOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -647,24 +931,48 @@ function ReleaseDetailSheet({
           <X size={16} color="#374151" />
         </button>
 
-        {/* Cover image */}
-        <div style={{ position: "relative", height: 220, overflow: "hidden" }}>
-          <img
-            src={release.coverImageUrl}
-            alt={release.title}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
+        {/* Cover media */}
+        <div
+          style={{
+            position: "relative",
+            height: 220,
+            overflow: "hidden",
+            background: "#000",
+          }}
+        >
+          {release.previewClipUrl ? (
+            <video
+              src={release.previewClipUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <img
+              src={release.coverImageUrl}
+              alt={release.title}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          )}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
                 "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.35) 100%)",
+              pointerEvents: "none",
             }}
           />
         </div>
@@ -693,7 +1001,11 @@ function ReleaseDetailSheet({
                 fontWeight: 600,
               }}
             >
-              {release.collectibleType === "photo" ? "📷 Photo" : "🎬 Video"}
+              {release.previewClipUrl
+                ? "🎬 Clip"
+                : release.collectibleType === "photo"
+                  ? "📷 Photo"
+                  : "🎬 Video"}
             </span>
           </div>
 
@@ -1068,7 +1380,7 @@ export function ReleasesPage() {
             textAlign: "center",
           }}
         >
-          Unsold released packs are burned after 24 hours.
+          Unsold released packs burn after 24 hours.
         </p>
 
         {/* Filter pills */}

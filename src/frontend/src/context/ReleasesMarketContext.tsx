@@ -13,6 +13,7 @@ export interface MarketRelease {
   id: string;
   creatorName: string;
   coverImageUrl: string;
+  previewClipUrl?: string;
   title: string;
   caption: string;
   setName: string;
@@ -43,6 +44,7 @@ const SEED_RELEASES: MarketRelease[] = [
     creatorName: "mintcreator.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Sunset Ride",
     caption: "9 photos and 1 video from a late summer drive along the coast",
     setName: "Coastal Drift Vol. 1",
