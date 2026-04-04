@@ -95,7 +95,7 @@ function PackCard() {
   }, []);
 
   return (
-    <div style={{ ...CARD_OUTER_STYLE, minHeight: "380px" }}>
+    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "460px" }}>
       {/* Background image layer — muted/desaturated */}
       <div
         style={{
@@ -462,8 +462,8 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
   return (
     <div
       style={{
-        width: "280px",
-        minHeight: "420px",
+        width: "100%",
+        height: "100%",
         borderRadius: "20px",
         boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
         border: "1px solid rgba(0,0,0,0.06)",
@@ -558,7 +558,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
           padding: "22px 20px",
           fontSize: "11px",
           overflowY: "auto",
-          maxHeight: "100%",
+          maxHeight: "460px",
         }}
       >
         {/* 1. Top label */}
@@ -1102,7 +1102,7 @@ export function LibraryPage({
                 style={{
                   perspective: "1200px",
                   width: "280px",
-                  minHeight: "420px",
+                  height: "460px",
                   cursor: "pointer",
                   background: "none",
                   border: "none",
@@ -1122,15 +1122,20 @@ export function LibraryPage({
                   style={{
                     position: "relative",
                     width: "100%",
-                    minHeight: "420px",
+                    height: "100%",
                     transformStyle: "preserve-3d",
-                    transition: "transform 450ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition: "transform 0.6s ease",
                     transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                   }}
                 >
                   {/* FRONT FACE */}
                   <div
                     style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
                       backfaceVisibility: "hidden",
                       WebkitBackfaceVisibility: "hidden",
                     }}
@@ -1145,7 +1150,7 @@ export function LibraryPage({
                       top: 0,
                       left: 0,
                       width: "100%",
-                      minHeight: "420px",
+                      height: "100%",
                       backfaceVisibility: "hidden",
                       WebkitBackfaceVisibility: "hidden",
                       transform: "rotateY(180deg)",
