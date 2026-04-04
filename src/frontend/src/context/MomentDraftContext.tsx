@@ -8,21 +8,28 @@ import {
 
 const LS_KEY = "minty_active_draft";
 
+export interface CaptureMetadataItem {
+  sequenceIndex: number; // 0-8 for photos, 9 for video
+  capturedAt: number; // Date.now() at capture time
+  mediaType: "photo" | "video";
+}
+
 export interface MomentDraft {
   id: string;
   photos: string[]; // data URLs or object URLs
   video: string | null;
   completed: boolean;
   createdAt: number;
+  captureMetadata: CaptureMetadataItem[];
 }
 
 interface MomentDraftCtx {
   activeDraft: MomentDraft | null;
   hasDraft: boolean; // exists and !completed
   startDraft: () => void;
-  addPhoto: (dataUrl: string) => void;
+  addPhoto: (dataUrl: string, capturedAt?: number) => void;
   removePhoto: (index: number) => void;
-  addVideo: (dataUrl: string) => void;
+  addVideo: (dataUrl: string, capturedAt?: number) => void;
   removeVideo: () => void;
   completeDraft: () => void;
   clearDraft: () => void;
@@ -34,7 +41,12 @@ function loadFromStorage(): MomentDraft | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as MomentDraft;
+    const parsed = JSON.parse(raw) as MomentDraft;
+    // Backfill captureMetadata for drafts saved before this field existed
+    if (!parsed.captureMetadata) {
+      parsed.captureMetadata = [];
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -76,39 +88,81 @@ export function MomentDraftProvider({
         video: null,
         completed: false,
         createdAt: Date.now(),
+        captureMetadata: [],
       };
       return draft;
     });
   }, []);
 
-  const addPhoto = useCallback((dataUrl: string) => {
+  const addPhoto = useCallback((dataUrl: string, capturedAt?: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
       if (prev.photos.length >= 9) return prev;
-      return { ...prev, photos: [...prev.photos, dataUrl] };
+      const sequenceIndex = prev.photos.length;
+      const meta: CaptureMetadataItem = {
+        sequenceIndex,
+        capturedAt: capturedAt ?? Date.now(),
+        mediaType: "photo",
+      };
+      return {
+        ...prev,
+        photos: [...prev.photos, dataUrl],
+        captureMetadata: [...prev.captureMetadata, meta],
+      };
     });
   }, []);
 
   const removePhoto = useCallback((index: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      const updated = [...prev.photos];
-      updated.splice(index, 1);
-      return { ...prev, photos: updated };
+      const updatedPhotos = [...prev.photos];
+      updatedPhotos.splice(index, 1);
+      // Remove matching metadata entry
+      const updatedMeta = prev.captureMetadata.filter(
+        (m) => !(m.mediaType === "photo" && m.sequenceIndex === index),
+      );
+      // Re-index remaining photo metadata
+      let photoIdx = 0;
+      const reIndexedMeta = updatedMeta.map((m) => {
+        if (m.mediaType === "photo") {
+          return { ...m, sequenceIndex: photoIdx++ };
+        }
+        return m;
+      });
+      return { ...prev, photos: updatedPhotos, captureMetadata: reIndexedMeta };
     });
   }, []);
 
-  const addVideo = useCallback((dataUrl: string) => {
+  const addVideo = useCallback((dataUrl: string, capturedAt?: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, video: dataUrl };
+      const meta: CaptureMetadataItem = {
+        sequenceIndex: 9,
+        capturedAt: capturedAt ?? Date.now(),
+        mediaType: "video",
+      };
+      // Remove any existing video metadata entry first
+      const filteredMeta = prev.captureMetadata.filter(
+        (m) => m.mediaType !== "video",
+      );
+      return {
+        ...prev,
+        video: dataUrl,
+        captureMetadata: [...filteredMeta, meta],
+      };
     });
   }, []);
 
   const removeVideo = useCallback(() => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, video: null };
+      return {
+        ...prev,
+        video: null,
+        captureMetadata: prev.captureMetadata.filter(
+          (m) => m.mediaType !== "video",
+        ),
+      };
     });
   }, []);
 

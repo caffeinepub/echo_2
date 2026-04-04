@@ -7,7 +7,7 @@ import {
   Image,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SealedPack } from "../context/CollectionContext";
 import { useCollection } from "../context/CollectionContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
@@ -48,7 +48,6 @@ export function ReleaseFlowModal({
   const [previewClipUrl, setPreviewClipUrl] = useState<string | undefined>(
     undefined,
   );
-  const [previewClipFile, setPreviewClipFile] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState(
     allPacksInSet[0]?.pendingNFT?.imageUrl ?? COVER_OPTIONS[0],
   );
@@ -56,6 +55,18 @@ export function ReleaseFlowModal({
   const [caption, setCaption] = useState("");
   const [priceStr, setPriceStr] = useState("2.00");
   const [confirmed, setConfirmed] = useState(false);
+
+  // ── Clip camera state ──────────────────────────────────────────────────────
+  const [clipCameraActive, setClipCameraActive] = useState(false);
+  const [clipRecording, setClipRecording] = useState(false);
+  const [clipCountdown, setClipCountdown] = useState(7);
+  const [clipCameraError, setClipCameraError] = useState<string | null>(null);
+
+  const clipVideoRef = useRef<HTMLVideoElement>(null);
+  const clipStreamRef = useRef<MediaStream | null>(null);
+  const clipMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const clipChunksRef = useRef<Blob[]>([]);
+  const clipTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const maxQty = allPacksInSet.length;
   const priceUsd = Number.parseFloat(priceStr) || 0;
@@ -70,18 +81,135 @@ export function ReleaseFlowModal({
     ...COVER_OPTIONS,
   ].slice(0, 8);
 
-  function handleQuantityChange(delta: number) {
-    setQuantity((prev) => Math.min(maxQty, Math.max(1, prev + delta)));
+  // ── Clip camera helpers ────────────────────────────────────────────────────
+  function stopClipCamera() {
+    if (clipTimerRef.current) {
+      clearInterval(clipTimerRef.current);
+      clipTimerRef.current = null;
+    }
+    if (
+      clipMediaRecorderRef.current &&
+      clipMediaRecorderRef.current.state !== "inactive"
+    ) {
+      clipMediaRecorderRef.current.stop();
+    }
+    if (clipStreamRef.current) {
+      for (const track of clipStreamRef.current.getTracks()) {
+        track.stop();
+      }
+      clipStreamRef.current = null;
+    }
+    if (clipVideoRef.current) {
+      clipVideoRef.current.srcObject = null;
+    }
+    setClipCameraActive(false);
+    setClipRecording(false);
+    setClipCountdown(7);
   }
 
-  function handleClipFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Revoke previous object URL if any
-    if (previewClipUrl) URL.revokeObjectURL(previewClipUrl);
-    const url = URL.createObjectURL(file);
-    setPreviewClipFile(file);
-    setPreviewClipUrl(url);
+  async function startClipCamera() {
+    setClipCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      clipStreamRef.current = stream;
+      if (clipVideoRef.current) {
+        clipVideoRef.current.srcObject = stream;
+        clipVideoRef.current.play().catch(() => {});
+      }
+      setClipCameraActive(true);
+    } catch (err: any) {
+      const msg =
+        err?.name === "NotAllowedError"
+          ? "Camera permission required. Please allow access and try again."
+          : "Could not access camera. Try again.";
+      setClipCameraError(msg);
+    }
+  }
+
+  function startClipRecording() {
+    const stream = clipStreamRef.current;
+    if (!stream) return;
+    clipChunksRef.current = [];
+    setClipCountdown(7);
+
+    let mr: MediaRecorder;
+    try {
+      mr = new MediaRecorder(stream, { mimeType: "video/webm" });
+    } catch {
+      mr = new MediaRecorder(stream);
+    }
+
+    mr.ondataavailable = (e) => {
+      if (e.data.size > 0) clipChunksRef.current.push(e.data);
+    };
+
+    mr.onstop = () => {
+      const blob = new Blob(clipChunksRef.current, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      // Revoke previous clip URL if any
+      if (previewClipUrl) URL.revokeObjectURL(previewClipUrl);
+      setPreviewClipUrl(url);
+      setClipRecording(false);
+      stopClipCamera();
+    };
+
+    clipMediaRecorderRef.current = mr;
+    mr.start(100);
+    setClipRecording(true);
+
+    let elapsed = 0;
+    clipTimerRef.current = setInterval(() => {
+      elapsed += 1;
+      setClipCountdown(7 - elapsed);
+      if (elapsed >= 7) {
+        stopClipRecording();
+      }
+    }, 1000);
+  }
+
+  function stopClipRecording() {
+    if (clipTimerRef.current) {
+      clearInterval(clipTimerRef.current);
+      clipTimerRef.current = null;
+    }
+    if (
+      clipMediaRecorderRef.current &&
+      clipMediaRecorderRef.current.state !== "inactive"
+    ) {
+      clipMediaRecorderRef.current.stop();
+    }
+    setClipRecording(false);
+  }
+
+  // Stop clip camera when modal closes or step changes away
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stopClipCamera is a stable local function
+  useEffect(() => {
+    if (!open) {
+      stopClipCamera();
+    }
+  }, [open]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stopClipCamera is a stable local function
+  useEffect(() => {
+    if (step !== 1 || mediaMode !== "clip") {
+      stopClipCamera();
+    }
+  }, [step, mediaMode]);
+
+  // Cleanup on unmount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stopClipCamera is a stable local function
+  useEffect(() => {
+    return () => {
+      stopClipCamera();
+    };
+  }, []);
+
+  // ── Other handlers ─────────────────────────────────────────────────────────
+  function handleQuantityChange(delta: number) {
+    setQuantity((prev) => Math.min(maxQty, Math.max(1, prev + delta)));
   }
 
   function handleConfirmRelease() {
@@ -112,7 +240,6 @@ export function ReleaseFlowModal({
       setQuantity(1);
       setMediaMode("image");
       setPreviewClipUrl(undefined);
-      setPreviewClipFile(null);
       setTitle("");
       setCaption("");
       setPriceStr("2.00");
@@ -177,6 +304,10 @@ export function ReleaseFlowModal({
           @keyframes rfSlideUp {
             from { transform: translateY(60px); opacity: 0; }
             to   { transform: translateY(0); opacity: 1; }
+          }
+          @keyframes rfRecordPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.08); }
           }
         `}</style>
 
@@ -472,93 +603,278 @@ export function ReleaseFlowModal({
               </button>
             </div>
 
-            {/* ── Preview Clip upload ── */}
+            {/* ── Preview Clip — camera recorder ── */}
             {mediaMode === "clip" && (
               <div style={{ marginBottom: 20 }}>
-                <label
-                  htmlFor="release-clip-upload"
-                  style={{
-                    display: "block",
-                    border: `1.5px dashed ${previewClipUrl ? MINT : "rgba(0,0,0,0.14)"}`,
-                    borderRadius: 14,
-                    padding: "20px 16px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    background: previewClipUrl
-                      ? "rgba(16,185,129,0.05)"
-                      : "rgba(0,0,0,0.02)",
-                    transition: "border 0.15s, background 0.15s",
-                  }}
-                >
-                  <input
-                    id="release-clip-upload"
-                    data-ocid="release_flow.upload_button"
-                    type="file"
-                    accept="video/*"
-                    onChange={handleClipFileChange}
-                    style={{ display: "none" }}
-                  />
-                  {previewClipUrl ? (
-                    <div>
-                      <video
-                        src={previewClipUrl}
-                        muted
-                        autoPlay
-                        loop
-                        playsInline
+                {/* No clip recorded yet — prompt to start camera */}
+                {!previewClipUrl && !clipCameraActive && (
+                  <div
+                    style={{
+                      border: "1.5px dashed rgba(0,0,0,0.14)",
+                      borderRadius: 14,
+                      padding: "20px 16px",
+                      textAlign: "center",
+                      background: "rgba(0,0,0,0.02)",
+                    }}
+                  >
+                    <Film
+                      size={24}
+                      color="#9ca3af"
+                      style={{ marginBottom: 8 }}
+                    />
+                    <p
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "#374151",
+                        margin: "0 0 4px",
+                      }}
+                    >
+                      Record a 7-second preview
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: "#9ca3af",
+                        margin: "0 0 14px",
+                      }}
+                    >
+                      Clip will autoplay muted on your release card
+                    </p>
+                    {clipCameraError && (
+                      <p
                         style={{
-                          width: "100%",
-                          maxHeight: 120,
-                          objectFit: "cover",
-                          borderRadius: 10,
-                          marginBottom: 8,
-                          display: "block",
+                          fontSize: 12,
+                          color: "#ef4444",
+                          margin: "0 0 10px",
                         }}
-                      />
+                      >
+                        {clipCameraError}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      data-ocid="release_flow.button"
+                      onClick={startClipCamera}
+                      style={{
+                        padding: "10px 22px",
+                        borderRadius: 10,
+                        background:
+                          "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        border: "none",
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Open Camera
+                    </button>
+                  </div>
+                )}
+
+                {/* Camera active — show viewfinder */}
+                {clipCameraActive && !previewClipUrl && (
+                  <div
+                    style={{
+                      border: `1.5px solid ${MINT_BORDER}`,
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      background: "#000",
+                      position: "relative",
+                    }}
+                  >
+                    <video
+                      ref={clipVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      style={{
+                        width: "100%",
+                        height: 200,
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+
+                    {/* Recording indicator */}
+                    {clipRecording && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          left: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          background: "rgba(0,0,0,0.60)",
+                          borderRadius: 20,
+                          padding: "4px 10px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: "#ef4444",
+                            animation: "rfRecordPulse 1s ease-in-out infinite",
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#fff",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          0:{String(clipCountdown).padStart(2, "0")}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Controls */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: 16,
+                        padding: "12px 16px",
+                        background: "rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      {!clipRecording ? (
+                        <button
+                          type="button"
+                          data-ocid="release_flow.button"
+                          onClick={startClipRecording}
+                          style={{
+                            padding: "10px 24px",
+                            borderRadius: 10,
+                            background: "#ef4444",
+                            border: "none",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: "#fff",
+                            }}
+                          />
+                          Record
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          data-ocid="release_flow.button"
+                          onClick={stopClipRecording}
+                          style={{
+                            padding: "10px 24px",
+                            borderRadius: 10,
+                            background: "rgba(0,0,0,0.15)",
+                            border: "1.5px solid rgba(255,255,255,0.3)",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Stop Early
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-ocid="release_flow.cancel_button"
+                        onClick={stopClipCamera}
+                        style={{
+                          padding: "10px 16px",
+                          borderRadius: 10,
+                          background: "transparent",
+                          border: "none",
+                          color: "#6b7280",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Clip recorded — show preview */}
+                {previewClipUrl && (
+                  <div>
+                    <video
+                      src={previewClipUrl}
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                      style={{
+                        width: "100%",
+                        maxHeight: 160,
+                        objectFit: "cover",
+                        borderRadius: 10,
+                        marginBottom: 10,
+                        display: "block",
+                        border: `1.5px solid ${MINT_BORDER}`,
+                      }}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: "center",
+                      }}
+                    >
                       <p
                         style={{
                           fontSize: 12,
                           color: MINT,
                           fontWeight: 600,
                           margin: 0,
+                          alignSelf: "center",
                         }}
                       >
-                        ✓ {previewClipFile?.name ?? "Clip uploaded"}
+                        ✓ Preview clip recorded
                       </p>
-                      <p
-                        style={{
-                          fontSize: 11,
-                          color: "#9ca3af",
-                          margin: "4px 0 0",
+                      <button
+                        type="button"
+                        data-ocid="release_flow.button"
+                        onClick={() => {
+                          if (previewClipUrl)
+                            URL.revokeObjectURL(previewClipUrl);
+                          setPreviewClipUrl(undefined);
                         }}
-                      >
-                        Tap to replace
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <Film
-                        size={24}
-                        color="#9ca3af"
-                        style={{ marginBottom: 8 }}
-                      />
-                      <p
                         style={{
-                          fontSize: 14,
-                          fontWeight: 600,
+                          padding: "5px 12px",
+                          borderRadius: 8,
+                          background: "rgba(0,0,0,0.06)",
+                          border: "none",
                           color: "#374151",
-                          margin: "0 0 4px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
                         }}
                       >
-                        Upload a short preview clip
-                      </p>
-                      <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
-                        ~7 seconds · Clip will autoplay muted on your release
-                        card
-                      </p>
+                        Retake
+                      </button>
                     </div>
-                  )}
-                </label>
+                  </div>
+                )}
               </div>
             )}
 
