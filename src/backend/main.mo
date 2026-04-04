@@ -1,11 +1,13 @@
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
+import Int "mo:core/Int";
 import Order "mo:core/Order";
 import Map "mo:core/Map";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+import Time "mo:core/Time";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
@@ -155,6 +157,58 @@ actor {
     name : Text;
   };
 
+  // --- PACK / COLLECTIBLE TYPES ---
+
+  public type PackStatus = { #sealed; #opened };
+
+  public type CollectibleMediaType = { #photo; #video };
+
+  public type Pack = {
+    id : Text;
+    releaseId : Text;
+    ownerPrincipal : Principal;
+    status : PackStatus;
+    serialNumber : Nat;
+    collectibleId : ?Text;
+    openedAt : ?Int;
+    setName : Text;
+    coverImageUrl : Text;
+    totalSupply : Nat;
+    packCount : Nat;
+    createdAt : Int;
+  };
+
+  public type Collectible = {
+    id : Text;
+    packId : Text;
+    ownerPrincipal : Principal;
+    setName : Text;
+    releaseId : Text;
+    mediaType : CollectibleMediaType;
+    editionNumber : Nat;
+    totalSupply : Nat;
+    typeSupply : Nat;
+    rarity : Text;
+    imageUrl : Text;
+    title : Text;
+    creator : Text;
+    mintDate : Text;
+    openedAt : Int;
+  };
+
+  public type PackOpenResult = { #ok : Collectible; #err : Text };
+
+  public type AddPackInput = {
+    id : Text;
+    releaseId : Text;
+    ownerPrincipal : Principal;
+    serialNumber : Nat;
+    setName : Text;
+    coverImageUrl : Text;
+    totalSupply : Nat;
+    packCount : Nat;
+  };
+
   // --- STATE ---
 
   let accessControlState = AccessControl.initState();
@@ -183,6 +237,11 @@ actor {
   var nextCardId = 1;
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+
+  // Packs and collectibles
+  let packs = Map.empty<Text, Pack>();
+  let collectibles = Map.empty<Text, Collectible>();
+  var nextCollectibleSeq : Nat = 1;
 
   // --- COMPARATORS ---
 
@@ -214,6 +273,148 @@ actor {
     public func compare(album1 : Album, album2 : Album) : Order.Order {
       Text.compare(album1.id, album2.id);
     };
+  };
+
+  // --- HELPER: pseudo-random roll ---
+  // Returns true (~10% chance) for video, false (~90%) for photo
+  // Uses Time.now() + serial number as seed; all arithmetic stays in Nat
+  func rollIsVideo(serialNumber : Nat, salt : Int) : Bool {
+    let saltNat : Nat = Int.abs(salt);
+    let seed : Nat = (saltNat + serialNumber * 7919) % 10;
+    seed == 0;
+  };
+
+  // Count how many collectibles of a given type exist for a release
+  func countTypeForRelease(releaseId : Text, isVideo : Bool) : Nat {
+    var count = 0;
+    for (c in collectibles.values()) {
+      if (c.releaseId == releaseId) {
+        switch (c.mediaType) {
+          case (#video) { if (isVideo) { count += 1 } };
+          case (#photo) { if (not isVideo) { count += 1 } };
+        };
+      };
+    };
+    count;
+  };
+
+  // --- PACK FUNCTIONS ---
+
+  public shared ({ caller = _ }) func addPack(input : AddPackInput) : async () {
+    let pack : Pack = {
+      id = input.id;
+      releaseId = input.releaseId;
+      ownerPrincipal = input.ownerPrincipal;
+      status = #sealed;
+      serialNumber = input.serialNumber;
+      collectibleId = null;
+      openedAt = null;
+      setName = input.setName;
+      coverImageUrl = input.coverImageUrl;
+      totalSupply = input.totalSupply;
+      packCount = input.packCount;
+      createdAt = Time.now();
+    };
+    packs.add(input.id, pack);
+  };
+
+  public shared ({ caller }) func openPack(packId : Text) : async PackOpenResult {
+    // 1. Look up the pack
+    switch (packs.get(packId)) {
+      case (null) { return #err("Pack not found") };
+      case (?pack) {
+        // 2. Validate ownership
+        if (pack.ownerPrincipal != caller) {
+          return #err("You do not own this pack");
+        };
+        // 3. Validate sealed (atomic: check status first)
+        switch (pack.status) {
+          case (#opened) { return #err("Pack has already been opened") };
+          case (#sealed) {
+            let now = Time.now();
+
+            // 4. Atomically mark as opened BEFORE rolling outcome
+            let lockedPack : Pack = {
+              pack with
+              status = #opened;
+              openedAt = ?now;
+            };
+            packs.add(packId, lockedPack);
+
+            // 5. Roll collectible type: video ~10%, photo ~90%
+            let isVideo = rollIsVideo(pack.serialNumber, now);
+
+            // 6. Determine edition number within the type for this release
+            let typeCount = countTypeForRelease(pack.releaseId, isVideo);
+            let editionNumber = typeCount + 1;
+
+            // 7. Calculate type supply based on packCount
+            let videoSupply = pack.packCount / 10;
+            let photoSupply = pack.packCount - videoSupply;
+            let typeSupply = if (isVideo) { videoSupply } else { photoSupply };
+
+            // 8. Build collectible id using dot-notation toText
+            let seqStr = nextCollectibleSeq.toText();
+            nextCollectibleSeq += 1;
+            let collectibleId = "col_" # packId # "_" # seqStr;
+
+            // 9. Build collectible record
+            let mediaType : CollectibleMediaType = if (isVideo) { #video } else { #photo };
+            let rarity = if (isVideo) { "Rare" } else { "Common" };
+            let typeLabel = if (isVideo) { "Video" } else { "Photo" };
+            let title = typeLabel # " #" # editionNumber.toText() # " \u{2014} " # pack.setName;
+
+            let collectible : Collectible = {
+              id = collectibleId;
+              packId = packId;
+              ownerPrincipal = caller;
+              setName = pack.setName;
+              releaseId = pack.releaseId;
+              mediaType = mediaType;
+              editionNumber = editionNumber;
+              totalSupply = pack.totalSupply;
+              typeSupply = typeSupply;
+              rarity = rarity;
+              imageUrl = pack.coverImageUrl;
+              title = title;
+              creator = "";
+              mintDate = now.toText();
+              openedAt = now;
+            };
+
+            // 10. Store collectible
+            collectibles.add(collectibleId, collectible);
+
+            // 11. Update pack with collectible id
+            packs.add(packId, { lockedPack with collectibleId = ?collectibleId });
+
+            return #ok(collectible);
+          };
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getUserPacks(user : Principal) : async [Pack] {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
+    };
+    packs.values().toArray().filter(func(p : Pack) : Bool { p.ownerPrincipal == user });
+  };
+
+  public query ({ caller }) func getUserCollectibles(user : Principal) : async [Collectible] {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized");
+    };
+    collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == user });
+  };
+
+  public query ({ caller }) func getCallerPacks() : async [Pack] {
+    packs.values().toArray().filter(func(p : Pack) : Bool { p.ownerPrincipal == caller });
+  };
+
+  public query ({ caller }) func getCallerCollectibles() : async [Collectible] {
+    collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == caller });
   };
 
   // --- USER PROFILE FUNCTIONS ---
@@ -255,19 +456,19 @@ actor {
     releases.add(release.album.id, release);
   };
 
-  public query ({ caller }) func getAlbums() : async [Album] {
+  public query func getAlbums() : async [Album] {
     albums.values().toArray().sort();
   };
 
-  public query ({ caller }) func getReleases() : async [Release] {
+  public query func getReleases() : async [Release] {
     releases.values().toArray();
   };
 
-  public query ({ caller }) func getMarketListings() : async [MarketListing] {
+  public query func getMarketListings() : async [MarketListing] {
     marketListings.values().toArray();
   };
 
-  public query ({ caller }) func getAlbumById(id : Text) : async ?Album {
+  public query func getAlbumById(id : Text) : async ?Album {
     albums.get(id);
   };
 

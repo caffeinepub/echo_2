@@ -8,31 +8,22 @@ const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
   photos: string[];
-  onBack: () => void; // go back to re-review
+  onBack: () => void; // go back to cover photo step
   onSubmit: (draft: MomentDraft) => void;
 }
 
 export function FinalSetupScreen({
-  photos,
+  photos: _photos,
   onBack,
   onSubmit,
 }: FinalSetupScreenProps) {
-  const {
-    activeDraft,
-    setTitle,
-    setCaption,
-    setCoverIndex,
-    setExplicit,
-    completeDraft,
-  } = useMomentDraft();
+  const { activeDraft, setTitle, setCaption, setExplicit, completeDraft } =
+    useMomentDraft();
 
   const [localTitle, setLocalTitle] = useState(activeDraft?.title ?? "");
   const [localCaption, setLocalCaption] = useState(activeDraft?.caption ?? "");
   const [localExplicit, setLocalExplicit] = useState(
     activeDraft?.explicit ?? false,
-  );
-  const [localCoverIndex, setLocalCoverIndex] = useState(
-    activeDraft?.coverIndex ?? 0,
   );
   const [titleTouched, setTitleTouched] = useState(false);
 
@@ -46,9 +37,6 @@ export function FinalSetupScreen({
   useEffect(() => {
     setExplicit(localExplicit);
   }, [localExplicit, setExplicit]);
-  useEffect(() => {
-    setCoverIndex(localCoverIndex);
-  }, [localCoverIndex, setCoverIndex]);
 
   function handleSubmit() {
     if (!localTitle.trim()) {
@@ -63,7 +51,6 @@ export function FinalSetupScreen({
       ...activeDraft,
       title: localTitle.trim(),
       caption: localCaption.trim(),
-      coverIndex: localCoverIndex,
       explicit: localExplicit,
       completed: true,
     };
@@ -72,6 +59,9 @@ export function FinalSetupScreen({
 
   const titleEmpty = !localTitle.trim();
   const showTitleError = titleTouched && titleEmpty;
+
+  // Cover photo from draft (captured in step 10)
+  const coverPhotoUrl = activeDraft?.coverPhoto ?? null;
 
   return (
     <div
@@ -149,7 +139,7 @@ export function FinalSetupScreen({
             color: "rgba(52,168,132,0.70)",
           }}
         >
-          10 / 10
+          11 / 11
         </span>
       </div>
 
@@ -199,7 +189,9 @@ export function FinalSetupScreen({
               borderRadius: "14px",
               border: showTitleError
                 ? "2px solid #ef4444"
-                : `1.5px solid ${localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
+                : `1.5px solid ${
+                    localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"
+                  }`,
               background: "#fff",
               fontSize: "15px",
               fontWeight: 500,
@@ -298,126 +290,6 @@ export function FinalSetupScreen({
             <span style={{ fontSize: "11px", color: "#9ca3af" }}>
               {localCaption.length}/200
             </span>
-          </div>
-        </div>
-
-        {/* ── Cover Photo Selection ── */}
-        <div>
-          <p
-            style={{
-              fontSize: "12px",
-              fontWeight: 700,
-              color: "#374151",
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
-              margin: "0 0 8px",
-            }}
-          >
-            Cover Photo
-          </p>
-          <p
-            style={{
-              fontSize: "12px",
-              color: "#6b7280",
-              margin: "0 0 12px",
-              lineHeight: 1.5,
-            }}
-          >
-            Select one of your 9 photos as the cover for this set.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "8px",
-            }}
-          >
-            {photos.map((src, i) => (
-              <button
-                key={src}
-                type="button"
-                onClick={() => setLocalCoverIndex(i)}
-                style={{
-                  aspectRatio: "4/5",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  border:
-                    localCoverIndex === i
-                      ? `2.5px solid ${MINT_GREEN}`
-                      : "2px solid rgba(0,0,0,0.08)",
-                  background: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  position: "relative",
-                  transition: "border-color 0.15s",
-                  boxShadow:
-                    localCoverIndex === i
-                      ? "0 0 0 3px rgba(52,168,132,0.20)"
-                      : "none",
-                }}
-                aria-label={`Select photo ${i + 1} as cover`}
-                aria-pressed={localCoverIndex === i}
-              >
-                <img
-                  src={src}
-                  alt={`Set cover ${i + 1}`}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
-                  }}
-                />
-                {/* Selected checkmark */}
-                {localCoverIndex === i && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "6px",
-                      right: "6px",
-                      width: "20px",
-                      height: "20px",
-                      borderRadius: "50%",
-                      background: MINT_GREEN,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <svg
-                      width="11"
-                      height="11"
-                      viewBox="0 0 11 11"
-                      fill="none"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M2 5.5l2.5 2.5 4.5-4.5"
-                        stroke="#fff"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                )}
-                {/* Photo number */}
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "5px",
-                    left: "6px",
-                    fontSize: "9px",
-                    fontWeight: 700,
-                    color: "#fff",
-                    textShadow: "0 1px 3px rgba(0,0,0,0.6)",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {i + 1}
-                </div>
-              </button>
-            ))}
           </div>
         </div>
 
@@ -556,7 +428,7 @@ export function FinalSetupScreen({
             padding: "14px 16px",
             display: "flex",
             flexDirection: "column",
-            gap: "6px",
+            gap: "10px",
           }}
         >
           <p
@@ -571,12 +443,12 @@ export function FinalSetupScreen({
           >
             Ready to publish
           </p>
+
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "4px 12px",
-              marginTop: "4px",
             }}
           >
             {[
@@ -604,6 +476,57 @@ export function FinalSetupScreen({
               </div>
             ))}
           </div>
+
+          {/* Cover Art thumbnail */}
+          {coverPhotoUrl && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                paddingTop: "8px",
+                borderTop: `1px solid ${MINT_BORDER}`,
+              }}
+            >
+              <img
+                src={coverPhotoUrl}
+                alt="Pack cover art"
+                style={{
+                  width: "52px",
+                  aspectRatio: "4/5",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border: `1.5px solid ${MINT_BORDER_STRONG}`,
+                  flexShrink: 0,
+                  display: "block",
+                }}
+              />
+              <div>
+                <p
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    color: MINT_GREEN,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    margin: "0 0 2px",
+                  }}
+                >
+                  Cover Art
+                </p>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "#6b7280",
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Pack wrapper image — not a collectible
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Submit Button ── */}
@@ -611,6 +534,7 @@ export function FinalSetupScreen({
           type="button"
           onClick={handleSubmit}
           disabled={titleEmpty}
+          data-ocid="capture.submit_button"
           style={{
             width: "100%",
             height: "54px",

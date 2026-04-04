@@ -18,6 +18,7 @@ export interface MomentDraft {
   id: string;
   photos: string[]; // data URLs or object URLs
   video: string | null;
+  coverPhoto: string | null; // separate cover photo for pack art (NOT a collectible)
   completed: boolean;
   createdAt: number;
   captureMetadata: CaptureMetadataItem[];
@@ -25,7 +26,7 @@ export interface MomentDraft {
   // Content labeling fields (filled in FinalSetupScreen)
   title: string;
   caption: string;
-  coverIndex: number; // index into photos[] chosen as cover
+  coverIndex: number; // index into photos[] chosen as cover (legacy fallback)
   explicit: boolean;
 }
 
@@ -43,6 +44,7 @@ interface MomentDraftCtx {
   setTitle: (title: string) => void;
   setCaption: (caption: string) => void;
   setCoverIndex: (index: number) => void;
+  setCoverPhoto: (url: string) => void;
   setExplicit: (explicit: boolean) => void;
 }
 
@@ -66,6 +68,8 @@ function loadFromStorage(): MomentDraft | null {
     if (parsed.caption === undefined) parsed.caption = "";
     if (parsed.coverIndex === undefined) parsed.coverIndex = 0;
     if (parsed.explicit === undefined) parsed.explicit = false;
+    // Backfill coverPhoto (new field)
+    if (parsed.coverPhoto === undefined) parsed.coverPhoto = null;
     return parsed;
   } catch {
     return null;
@@ -106,6 +110,7 @@ export function MomentDraftProvider({
         id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         photos: [],
         video: null,
+        coverPhoto: null,
         completed: false,
         createdAt: Date.now(),
         captureMetadata: [],
@@ -230,6 +235,13 @@ export function MomentDraftProvider({
     });
   }, []);
 
+  const setCoverPhoto = useCallback((url: string) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, coverPhoto: url };
+    });
+  }, []);
+
   const setExplicit = useCallback((explicit: boolean) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
@@ -253,6 +265,7 @@ export function MomentDraftProvider({
         setTitle,
         setCaption,
         setCoverIndex,
+        setCoverPhoto,
         setExplicit,
       }}
     >

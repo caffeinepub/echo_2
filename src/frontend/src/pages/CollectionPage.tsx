@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PackOpeningOverlay } from "../components/PackOpeningOverlay";
 import { ReleaseFlowModal } from "../components/ReleaseFlowModal";
 import {
   type CollectionNFT,
@@ -94,6 +95,10 @@ function buildSetGroups(
     g.packs.push(pack);
     g.sealedCount += 1;
     g.totalMinted += 1;
+    // Use the dedicated cover photo if available (set on first occurrence)
+    if (pack.coverPhotoUrl && g.previewImageUrl === PACK_IMAGE) {
+      g.previewImageUrl = pack.coverPhotoUrl;
+    }
     if (pack.createdAt > g.latestAt) g.latestAt = pack.createdAt;
   }
 
@@ -242,7 +247,7 @@ function VaultTile({
           }}
         >
           <img
-            src={PACK_IMAGE}
+            src={imageUrl || PACK_IMAGE}
             alt="Sealed Pack"
             style={{
               width: "100%",
@@ -751,7 +756,11 @@ function TileRows({
                     key={item.id}
                     id={item.id}
                     isPack={item.isPack}
-                    imageUrl={item.isPack ? undefined : item.nft?.imageUrl}
+                    imageUrl={
+                      item.isPack
+                        ? item.pack?.coverPhotoUrl
+                        : item.nft?.imageUrl
+                    }
                     mediaType={
                       item.isPack
                         ? item.pack?.collectibleType
@@ -1927,107 +1936,111 @@ function PackDetailSheet({
 }: {
   pack: SealedPack;
   onClose: () => void;
-  onOpen: (packId: string) => void;
+  onOpen: (packId: string) => Promise<CollectionNFT>;
 }) {
-  const [phase, setPhase] = useState<"idle" | "opening" | "revealed">("idle");
+  const [phase, setPhase] = useState<"idle" | "opening" | "error">("idle");
+  const [openedNFT, setOpenedNFT] = useState<CollectionNFT | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
-  function handleOpenPack() {
+  async function handleOpenPack() {
+    if (phase === "opening") return;
     setPhase("opening");
-    setTimeout(() => {
-      onOpen(pack.id);
-      setPhase("revealed");
-    }, 700);
-    setTimeout(() => {
-      onClose();
-    }, 2400);
+    setErrorMsg("");
+    try {
+      const nft = await onOpen(pack.id);
+      setOpenedNFT(nft);
+    } catch (err) {
+      setPhase("error");
+      setErrorMsg(
+        err instanceof Error ? err.message : "Failed to open pack. Try again.",
+      );
+    }
   }
 
-  const nft = pack.pendingNFT;
-
   return (
-    <div
-      data-ocid="collection.sheet"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 350,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-      }}
-    >
+    <>
       <div
-        role="button"
-        tabIndex={0}
-        aria-label="Close"
+        data-ocid="collection.sheet"
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
-          background: "rgba(0,0,0,0.45)",
-          backdropFilter: "blur(4px)",
-        }}
-        onClick={phase === "idle" ? onClose : undefined}
-        onKeyDown={(e) => {
-          if ((e.key === "Escape" || e.key === "Enter") && phase === "idle")
-            onClose();
-        }}
-      />
-
-      <div
-        style={{
-          position: "relative",
-          background: "#F7F6F2",
-          borderRadius: "24px 24px 0 0",
-          maxHeight: "85vh",
-          overflowY: "auto",
-          boxShadow: "0 -4px 32px rgba(0,0,0,0.14)",
-          animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0,0.12,1)",
+          zIndex: 350,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
         }}
       >
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           style={{
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: "12px",
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={phase === "idle" ? onClose : undefined}
+          onKeyDown={(e) => {
+            if ((e.key === "Escape" || e.key === "Enter") && phase === "idle")
+              onClose();
+          }}
+        />
+
+        <div
+          style={{
+            position: "relative",
+            background: "#F7F6F2",
+            borderRadius: "24px 24px 0 0",
+            maxHeight: "85vh",
+            overflowY: "auto",
+            boxShadow: "0 -4px 32px rgba(0,0,0,0.14)",
+            animation: "sheetSlideUp 0.32s cubic-bezier(0.32,0,0.12,1)",
           }}
         >
           <div
             style={{
-              width: "32px",
-              height: "4px",
-              borderRadius: "2px",
-              background: "rgba(0,0,0,0.15)",
-            }}
-          />
-        </div>
-
-        {phase === "idle" && (
-          <button
-            type="button"
-            data-ocid="collection.close_button"
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: "14px",
-              right: "16px",
-              background: "rgba(0,0,0,0.07)",
-              border: "none",
-              borderRadius: "50%",
-              width: "32px",
-              height: "32px",
               display: "flex",
-              alignItems: "center",
               justifyContent: "center",
-              cursor: "pointer",
-              color: "#555",
+              paddingTop: "12px",
             }}
           >
-            <X size={16} />
-          </button>
-        )}
+            <div
+              style={{
+                width: "32px",
+                height: "4px",
+                borderRadius: "2px",
+                background: "rgba(0,0,0,0.15)",
+              }}
+            />
+          </div>
 
-        <div style={{ padding: "16px 20px 40px" }}>
-          {phase !== "revealed" ? (
+          {phase === "idle" && (
+            <button
+              type="button"
+              data-ocid="collection.close_button"
+              onClick={onClose}
+              style={{
+                position: "absolute",
+                top: "14px",
+                right: "16px",
+                background: "rgba(0,0,0,0.07)",
+                border: "none",
+                borderRadius: "50%",
+                width: "32px",
+                height: "32px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "#555",
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+
+          <div style={{ padding: "16px 20px 40px" }}>
             <>
               <div
                 style={{
@@ -2044,7 +2057,7 @@ function PackDetailSheet({
                 }}
               >
                 <img
-                  src={PACK_IMAGE}
+                  src={pack.coverPhotoUrl || PACK_IMAGE}
                   alt="Sealed Pack"
                   style={{
                     width: "70%",
@@ -2140,6 +2153,25 @@ function PackDetailSheet({
                 </span>
               </div>
 
+              {/* Error message */}
+              {phase === "error" && errorMsg && (
+                <div
+                  data-ocid="collection.error_state"
+                  style={{
+                    background: "rgba(255,100,100,0.08)",
+                    border: "1px solid rgba(255,100,100,0.22)",
+                    borderRadius: "10px",
+                    padding: "10px 14px",
+                    marginBottom: "12px",
+                    fontSize: "12px",
+                    color: "#c94040",
+                    fontWeight: 500,
+                  }}
+                >
+                  {errorMsg}
+                </div>
+              )}
+
               <button
                 type="button"
                 data-ocid="collection.primary_button"
@@ -2147,166 +2179,63 @@ function PackDetailSheet({
                 disabled={phase === "opening"}
                 style={{
                   width: "100%",
-                  height: "52px",
+                  height: "56px",
                   borderRadius: "14px",
                   border: "none",
                   background:
                     phase === "opening"
-                      ? "rgba(52,168,132,0.5)"
-                      : "linear-gradient(160deg, #34A884, #2a9070)",
+                      ? "rgba(52,168,132,0.55)"
+                      : "linear-gradient(160deg, #34A884 0%, #2a9070 100%)",
                   color: "#fff",
-                  fontSize: "16px",
+                  fontSize: "17px",
                   fontWeight: 700,
                   cursor: phase === "opening" ? "not-allowed" : "pointer",
                   letterSpacing: "0.01em",
+                  boxShadow:
+                    phase === "opening"
+                      ? "none"
+                      : "0 4px 20px rgba(52,168,132,0.35), 0 2px 8px rgba(0,0,0,0.12)",
                   animation:
                     phase === "opening"
                       ? "openingPulse 0.5s ease infinite"
                       : undefined,
-                }}
-              >
-                {phase === "opening" ? "Opening..." : "Open Pack"}
-              </button>
-            </>
-          ) : (
-            <div style={{ animation: "revealFadeIn 0.4s ease" }}>
-              <div
-                style={{
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  marginBottom: "16px",
-                  background: "#e8e8e4",
-                  position: "relative",
-                  aspectRatio: "4/5",
-                }}
-              >
-                <img
-                  src={nft.imageUrl}
-                  alt={nft.title}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "block",
-                    objectFit: "cover",
-                  }}
-                />
-              </div>
-
-              <span
-                style={{
-                  display: "inline-block",
-                  background: MINT_SOFT,
-                  color: MINT_TEXT,
-                  borderRadius: "20px",
-                  padding: "3px 10px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  letterSpacing: "0.04em",
-                  marginBottom: "8px",
-                }}
-              >
-                {nft.setName}
-              </span>
-
-              <h2
-                style={{
-                  fontSize: "20px",
-                  fontWeight: 700,
-                  color: "#111",
-                  margin: "0 0 12px",
-                }}
-              >
-                {nft.title}
-              </h2>
-
-              <div
-                data-ocid="collection.success_state"
-                style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "6px",
-                  background: MINT_SOFT,
-                  borderRadius: "10px",
-                  padding: "10px 14px",
-                  marginBottom: "16px",
-                }}
-              >
-                <span style={{ fontSize: "14px", color: MINT_TEXT }}>✓</span>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: MINT_TEXT,
-                    fontWeight: 600,
-                  }}
-                >
-                  Added to your collection
-                </span>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  justifyContent: "center",
                   gap: "8px",
                 }}
               >
-                {[
-                  {
-                    label: "Mint Number",
-                    value: `#${nft.editionNumber} of ${nft.totalSupply}`,
-                  },
-                  {
-                    label: "Type",
-                    value:
-                      nft.mediaType === "photo"
-                        ? "Photo Moment"
-                        : "Video Moment (30s)",
-                  },
-                  {
-                    label: "Rarity",
-                    value: nft.rarity,
-                    valueColor: rarityColor(nft.rarity),
-                  },
-                  { label: "Creator", value: nft.creator },
-                ].map(({ label, value, valueColor }) => (
-                  <div
-                    key={label}
-                    style={{
-                      background: "#fff",
-                      borderRadius: "10px",
-                      padding: "10px 12px",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "10px",
-                        color: "#9B9B9B",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        marginBottom: "3px",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {label}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: valueColor ?? "#111",
-                      }}
-                    >
-                      {value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                {phase === "opening" ? (
+                  <>
+                    <span style={{ fontSize: "16px" }}>⏳</span>
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "18px" }}>✦</span>
+                    Open Pack
+                  </>
+                )}
+              </button>
+            </>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Pack opening overlay — shown when openedNFT is set */}
+      {openedNFT && (
+        <PackOpeningOverlay
+          pack={pack}
+          nft={openedNFT}
+          onComplete={() => {
+            onClose();
+          }}
+          onClose={() => {
+            onClose();
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -2558,10 +2487,7 @@ export function CollectionPage({
         <PackDetailSheet
           pack={secondTapPack}
           onClose={clearSecondTap}
-          onOpen={(packId) => {
-            openPack(packId);
-            setTimeout(() => clearSecondTap(), 1700);
-          }}
+          onOpen={(packId) => openPack(packId)}
         />
       )}
 

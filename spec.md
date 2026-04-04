@@ -1,53 +1,88 @@
-# Minty — Content Labeling & Visibility Controls
+# Minty — Pack Reveal Flow (Mobile)
 
 ## Current State
 
-- `CaptureMomentPage` captures 9 photos + 1 video and after capture goes to a basic "Review & Print" screen (step 10) that only shows the photo grid, video slot, and a "Print Moment" button.
-- `SetPackPriceModal` intercepts after capture to ask for pack price, then builds a `MarketRelease` and calls `addRelease()`.
-- `MomentDraft` stores: `id`, `photos[]`, `video`, `completed`, `createdAt`, `captureMetadata[]`, `packSupply`.
-- `MarketRelease` stores: `id`, `creatorName`, `coverImageUrl`, `previewClipUrl?`, `title`, `caption`, `setName`, `packsAvailable`, `packIds[]`, `priceUsd`, `listedAt`, `expiresAt`, `status`, `collectibleType`.
-- Releases page filters by `status` only — no explicit content filtering.
-- Discover (`MarketPage` / `mockDiscoverSets`) has engagement metadata but no `explicit` field.
-- No user settings context for explicit-mode toggle exists.
+The Collection page has a two-tap flow for sealed packs:
+1. First tap → shows an inline metadata panel beneath the tile
+2. Second tap → opens `PackDetailSheet` (a bottom sheet) with pack info and an "Open Pack" button
+
+When "Open Pack" is tapped, `openPack(packId)` is called on `CollectionContext`. On success it sets `openedNFT` state inside `PackDetailSheet`, which renders `PackOpeningOverlay` as a portal.
+
+The existing `PackOpeningOverlay` plays a 4-phase auto-advancing animation (lift → flip → particles → card rise → action button). It does NOT have a "Slide to Open" mechanic — the animation triggers automatically. The flow bypasses the sheet entirely; when "Add to Collection" is tapped, `onComplete` is called and the sheet closes.
+
+Gaps in the current implementation:
+- No "Slide to Open" control — the animation plays automatically without user interaction
+- No fullscreen background blur of the Collection page content behind the overlay
+- No anticipation/vibration phase before the tear animation
+- No tear-open animation (wrapper splits, light spills out)
+- No suspense silhouette state between tear and reveal
+- The overlay auto-advances through phases without the user's "slide" gesture triggering anything
+- Only one CTA ("Add to Collection") — no "View NFT" vs "Back to Collection" split
+- No creator name in the revealed metadata
+- Video NFTs immediately play video, instead of showing cover image first with a video badge
 
 ## Requested Changes (Diff)
 
 ### Add
-
-- **`UserSettingsContext`** — stores viewer's `explicitModeOn: boolean` (default `false`), persisted in localStorage. Exposes `explicitModeOn` and `setExplicitModeOn`.
-- **`FinalSetupScreen`** component — the new step 10 in the capture flow. Fields: set title (required), caption (optional), explicit toggle, cover photo selector (grid of 9 captured photos), submit button. Replaces old inline review step.
-- **`explicit: boolean`** field on `MomentDraft` — defaults to `false`. Also add `title: string`, `caption: string`, `coverIndex: number` to `MomentDraft`.
-- Setters in `MomentDraftContext`: `setTitle`, `setCaption`, `setExplicit`, `setCoverIndex`.
-- **`explicit: boolean`** field on `MarketRelease` — passed through from draft metadata at listing time.
-- **`creatorId: string`**, **`createdAt: number`**, **`packCount: number`**, **`releaseStatus: string`** semantic fields — most already exist but ensure `createdAt` (= `listedAt`) and `packCount` (= `packsAvailable`) are consistently represented.
-- **`explicit: boolean`** field on `MintMomentSetRank` in `mockDiscoverSets`.
-- Seed data for explicit releases (2-3 items marked explicit in seed releases + discover sets).
-- Explicit blur overlay component used in `MarketPage` / Discover when viewer `explicitModeOn === false`.
-- Settings toggle on `ReleasesPage` header — small "Safe" / "Explicit" pill button that opens a settings row in-page or uses `UserSettingsContext` to toggle.
+- **Fullscreen modal entry**: When user taps a sealed pack (first tap is fine, but the pack reveal should open directly, not require a second tap through the bottom sheet — the sheet can remain as an intermediate step, but the sheet's "Open Pack" button triggers the new overlay)
+- **Slide to Open control**: Premium horizontal slider at the bottom of the overlay. Drag past 85% to trigger the opening sequence. Before sliding, the pack is centered with a soft animated glow. Slider uses a mint gradient track and smooth white knob.
+- **Anticipation phase** (on slide complete): Pack vibrates subtly (CSS translateX shake), inner glow intensifies, brief ~400ms build-up before tear
+- **Tear animation**: The pack wrapper splits — two halves animate apart (top half slides up, bottom half slides down, or diagonal tear), soft warm/mint light spills from the center seam. Duration ~600ms.
+- **Suspense silhouette state**: After the tear clears, a hidden NFT card silhouette appears in the center for ~800ms. Card-shaped frosted glass / dark shape with a subtle pulse. Builds anticipation.
+- **Card reveal**: NFT card rises/scales into view from the silhouette. For image NFTs: clean card with cover image and a shine sweep. For video NFTs: show the cover image (static), overlay a small refined video badge (play icon + "VIDEO" label) — do NOT autoplay video in the reveal.
+- **Metadata fade-in**: After card settle, fade in: title, rarity pill, edition number (e.g. "#23 of 90"), creator name
+- **Two action buttons**: "View NFT" (primary, mint gradient) and "Back to Collection" (ghost/secondary). "View NFT" calls `onComplete(nft)` and navigates to the NFT detail. "Back to Collection" calls `onComplete(nft)` and dismisses.
+- **Background**: Entire overlay is fixed fullscreen, `backdrop-filter: blur(18px)` over a near-black semi-transparent layer so the Collection page content is softly visible and dimmed beneath
 
 ### Modify
-
-- **`CaptureMomentPage`** — after video capture (step 9 → use video), instead of going to old step 10 inline review, call `onSetupComplete` (or set internal state to `'setup'`) to render the new `FinalSetupScreen`. The old review grid (step 10) is replaced by `FinalSetupScreen`.
-- **`App.tsx` `handleConfirmPackPrice`** — read `draft.title`, `draft.caption`, `draft.photos[draft.coverIndex]` (or `draft.photos[0]` fallback) and `draft.explicit` and set them on the `MarketRelease` object.
-- **`ReleasesPage`** — filter `activeReleases`, `endingSoon`, `newlyReleased`, `liveReleases` to exclude releases where `release.explicit === true` when viewer `explicitModeOn === false`. This filtering must happen at the data query level (applied before rendering any section), not in the JSX conditionally.
-- **`ReleasesPage`** — add a discreet safe-viewing toggle (pill button near top) that surfaces the setting.
-- **`mockDiscoverSets.ts`** — add `explicit?: boolean` to `MintMomentSetRank` interface; mark a few seed sets as explicit.
-- **`MarketPage`** — when rendering a set card and `set.explicit === true` and viewer `explicitModeOn === false`, apply a blur overlay and display a "Explicit" label badge over the set card instead of the real media.
-- **`SetPackPriceModal`** — its summary block already says "100 total packs" etc — no change needed.
-- **`ReleasesMarketContext` seed data** — mark 1-2 seed releases as `explicit: true`.
+- **`PackOpeningOverlay`**: Full redesign of this component to implement the new 6-phase flow: `idle` → `sliding` → `anticipation` → `tear` → `suspense` → `reveal` → `action`. Replace the existing auto-advancing animation with user-driven Slide to Open.
+- **Phase transitions**: Each phase now waits for the prior phase to complete (or for user interaction in `idle`/`sliding`) before advancing
+- **`PackDetailSheet`**: Keep the sheet as the detail/info view, but rename the "Open Pack" button action to directly fire the new overlay (existing wiring stays — `openedNFT` triggers `PackOpeningOverlay`)
+- **Video NFT reveal**: Show `nft.imageUrl` as a static image (not a `<video>` element) with a refined video badge overlay. The video badge is a pill: small play circle icon + "VIDEO" text, mint-tinted, in the bottom-right of the card.
 
 ### Remove
-
-- The old inline review step (step 10) block inside `CaptureMomentPage` (the `captureStep === 10` section showing photo grid + Print Moment button). It is fully replaced by `FinalSetupScreen`.
+- The existing auto-play phase logic (lift → flip → particles → reveal → action auto-advancing with setTimeout)
+- The single "Add to Collection" CTA
+- The `<video>` autoplay on card reveal for video NFTs
 
 ## Implementation Plan
 
-1. Add `explicit`, `title`, `caption`, `coverIndex` fields to `MomentDraft` and `MomentDraftContext` with setters.
-2. Add `explicit: boolean` to `MarketRelease` type and seed releases.
-3. Create `UserSettingsContext` with `explicitModeOn` state, persisted in localStorage.
-4. Create `FinalSetupScreen` component (Minty style).
-5. Update `CaptureMomentPage`: replace step-10 inline review with `FinalSetupScreen`; `onSetupComplete` fires `onMintComplete` when user submits from setup screen.
-6. Update `App.tsx`: read `title`, `caption`, `coverIndex`, `explicit` from draft when building `MarketRelease`.
-7. Update `ReleasesPage`: apply explicit filtering at data level, add safe-viewing toggle.
-8. Add `explicit` to `MintMomentSetRank`, add blur overlay in `MarketPage`.
-9. Register `UserSettingsProvider` in `App.tsx`.
+1. **Redesign `PackOpeningOverlay`** as a new 6-phase component:
+   - Phase `idle`: Fullscreen overlay renders. Pack card animates to center with a gentle float + soft glow. Background blurs.
+   - Phase `sliding`: Slide to Open track visible at bottom. User drags. Pack glows stronger as slide progresses.
+   - Phase `anticipation`: Slide completes. Pack vibrates (short shake keyframe), inner glow pulses and intensifies. ~400ms auto-advance.
+   - Phase `tear`: Two halves of the pack animate apart (pseudo-element or two absolutely positioned divs showing the same image, split at midpoint). Warm mint light spills from gap. ~600ms auto-advance.
+   - Phase `suspense`: Pack halves fade out. Dark card-shaped silhouette appears with a soft pulse. ~800ms auto-advance.
+   - Phase `reveal`: Silhouette scales/fades as the NFT card rises into place. Shine sweep for Rare cards. Static image for both photo and video NFTs.
+   - Phase `action`: Metadata fades in (title, rarity, edition, creator). "View NFT" and "Back to Collection" buttons slide up.
+
+2. **Slide to Open control**:
+   - Custom draggable control — a wide track with a circular knob
+   - Uses `onPointerDown`/`onPointerMove`/`onPointerUp` for unified touch + mouse
+   - Track fills with mint gradient as the knob moves right
+   - At 85%+ threshold: auto-advance to `anticipation` phase
+   - If released below threshold: knob snaps back
+   - Track label: "Slide to Open" fades out as slider approaches threshold
+
+3. **Tear animation**:
+   - Render the pack image in two `<div>` containers: top half (`overflow: hidden`, only shows top 50%) and bottom half (only shows bottom 50%)
+   - On `tear` phase: top half translates up + rotates slightly, bottom half translates down + rotates slightly
+   - A central glow div expands from the split line
+
+4. **Suspense silhouette**:
+   - A `4/5` aspect-ratio div with dark frosted glass background and subtle card-shaped border
+   - Pulsing opacity animation
+   - No image shown — pure shape hint
+
+5. **Card reveal**:
+   - Same 4/5 card container as now but image appears via scale + fade from the silhouette position
+   - For video NFTs: `<img>` with `nft.imageUrl`, plus a bottom-right badge: `◉ VIDEO`
+   - Shine sweep on all Rare pulls
+
+6. **Metadata**: Staggered fade-in below card: title → rarity pill → edition string → creator name
+
+7. **Action buttons**: Two full-width pill buttons, stacked. Primary = "View NFT" (mint gradient). Secondary = "Back to Collection" (transparent, mint border, off-white text). Both call `onComplete(nft)` then close.
+
+8. **Keyboard**: Escape closes when in `action` phase.
+
+9. **No changes** to `CollectionContext`, `SealedPack`, `CollectionNFT` types, or the wiring in `CollectionPage.tsx`.

@@ -1252,36 +1252,38 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
         onSignOut={clear}
         isLight={isLight}
       />
-      {/* DEBUG: Principal/Admin label — remove after testing */}
-      <div
-        data-ocid="debug.principal.label"
-        style={{
-          position: "fixed",
-          bottom: "76px",
-          left: "8px",
-          zIndex: 999,
-          background: isLight ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.85)",
-          color: "#ffffff",
-          fontSize: "10px",
-          fontFamily: "monospace",
-          padding: "5px 8px",
-          borderRadius: "6px",
-          lineHeight: "1.6",
-          pointerEvents: "none",
-          maxWidth: "260px",
-          wordBreak: "break-all",
-        }}
-      >
-        <div>
-          Principal: {identity ? identity.getPrincipal().toText() : "anonymous"}
+      {/* Debug overlay hidden in production */}
+      {false && (
+        <div
+          data-ocid="debug.principal.label"
+          style={{
+            position: "fixed",
+            bottom: "76px",
+            left: "8px",
+            zIndex: 999,
+            background: isLight ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.85)",
+            color: "#ffffff",
+            fontSize: "10px",
+            fontFamily: "monospace",
+            padding: "5px 8px",
+            borderRadius: "6px",
+            lineHeight: "1.6",
+            pointerEvents: "none",
+            maxWidth: "260px",
+            wordBreak: "break-all",
+          }}
+        >
+          <div>
+            Principal: {identity?.getPrincipal()?.toText() ?? "anonymous"}
+          </div>
+          <div>
+            Admin:{" "}
+            <span style={{ color: isAdmin ? "#4ade80" : "#f87171" }}>
+              {isAdmin ? "Yes ✓" : "No"}
+            </span>
+          </div>
         </div>
-        <div>
-          Admin:{" "}
-          <span style={{ color: isAdmin ? "#4ade80" : "#f87171" }}>
-            {isAdmin ? "Yes ✓" : "No"}
-          </span>
-        </div>
-      </div>
+      )}
     </>
   );
 }

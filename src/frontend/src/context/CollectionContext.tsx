@@ -11,6 +11,8 @@ const LS_SEEDED_KEY = "minty_collection_seeded";
 const LS_PACKS_KEY = "minty_sealed_packs";
 const LS_PACKS_SEEDED_KEY = "minty_packs_seeded";
 const LS_BURNED_KEY = "minty_burned_counts";
+// Track packs that are currently being opened (atomicity guard)
+const OPENING_KEY = "minty_opening_packs";
 
 export interface CollectionNFT {
   id: string;
@@ -37,10 +39,16 @@ export interface SealedPack {
   editionNumber: number;
   totalSupply: number; // total packs in the set
   collectibleType: "photo" | "video";
-  collectibleNumber: number; // this collectible's number within its type (e.g. photo #23 or video #4)
-  typeSupply: number; // total collectibles of this type in the set (e.g. 90 photos or 10 videos)
+  collectibleNumber: number; // this collectible's number within its type
+  typeSupply: number; // total collectibles of this type in the set
   pendingNFT: CollectionNFT;
   createdAt: number;
+  // Optional backend fields
+  releaseId?: string;
+  ownerPrincipal?: string;
+  status?: "sealed" | "opened";
+  openedAt?: number;
+  coverPhotoUrl?: string; // separate cover art for the pack wrapper (not a collectible)
 }
 
 interface CollectionCtx {
@@ -50,7 +58,7 @@ interface CollectionCtx {
   addNFT: (nft: CollectionNFT) => void;
   addNFTs: (nfts: CollectionNFT[]) => void;
   addSealedPacks: (packs: SealedPack[]) => void;
-  openPack: (packId: string) => void;
+  openPack: (packId: string) => Promise<CollectionNFT>;
   removeNFT: (nftId: string) => void;
   removeSealedPacks: (packIds: string[]) => void;
   burnNFT: (nftId: string) => void;
@@ -240,6 +248,41 @@ function saveBurnedCountsToStorage(counts: Record<string, number>) {
   }
 }
 
+// Atomicity guard: track packs currently being opened
+function isPackOpening(packId: string): boolean {
+  try {
+    const raw = localStorage.getItem(OPENING_KEY);
+    const opening: string[] = raw ? JSON.parse(raw) : [];
+    return opening.includes(packId);
+  } catch {
+    return false;
+  }
+}
+
+function markPackOpening(packId: string) {
+  try {
+    const raw = localStorage.getItem(OPENING_KEY);
+    const opening: string[] = raw ? JSON.parse(raw) : [];
+    if (!opening.includes(packId)) {
+      opening.push(packId);
+      localStorage.setItem(OPENING_KEY, JSON.stringify(opening));
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function unmarkPackOpening(packId: string) {
+  try {
+    const raw = localStorage.getItem(OPENING_KEY);
+    const opening: string[] = raw ? JSON.parse(raw) : [];
+    const filtered = opening.filter((id) => id !== packId);
+    localStorage.setItem(OPENING_KEY, JSON.stringify(filtered));
+  } catch {
+    // ignore
+  }
+}
+
 export function CollectionProvider({
   children,
 }: { children: React.ReactNode }) {
@@ -298,15 +341,65 @@ export function CollectionProvider({
     setSealedPacks((prev) => [...packs, ...prev]);
   }, []);
 
-  const openPack = useCallback((packId: string) => {
-    setSealedPacks((prevPacks) => {
-      const pack = prevPacks.find((p) => p.id === packId);
-      if (!pack) return prevPacks;
-      // Atomically remove pack and add NFT
-      setNfts((prevNfts) => [pack.pendingNFT, ...prevNfts]);
-      return prevPacks.filter((p) => p.id !== packId);
-    });
-  }, []);
+  const openPack = useCallback(
+    async (packId: string): Promise<CollectionNFT> => {
+      // Atomicity guard — prevent double-open
+      if (isPackOpening(packId)) {
+        return Promise.reject(new Error("Pack is already being opened"));
+      }
+
+      return new Promise<CollectionNFT>((resolve, reject) => {
+        setSealedPacks((prevPacks) => {
+          const pack = prevPacks.find((p) => p.id === packId);
+          if (!pack) {
+            reject(new Error("Pack not found"));
+            return prevPacks;
+          }
+
+          // Mark as opening atomically
+          markPackOpening(packId);
+
+          // Try backend call if pack has releaseId
+          const tryBackend = async (): Promise<CollectionNFT> => {
+            // Backend not yet wired for pack opening — fall through to local
+            // When backend is ready, call actor.openPack(packId) here
+            throw new Error("backend_not_available");
+          };
+
+          tryBackend()
+            .then((backendNFT) => {
+              // Backend succeeded
+              setNfts((prevNfts) => [backendNFT, ...prevNfts]);
+              setSealedPacks((prev) => prev.filter((p) => p.id !== packId));
+              unmarkPackOpening(packId);
+              resolve(backendNFT);
+            })
+            .catch(() => {
+              // Fallback to local pendingNFT (mock/dev packs)
+              const freshPack = prevPacks.find((p) => p.id === packId);
+              if (!freshPack) {
+                unmarkPackOpening(packId);
+                reject(new Error("Pack not found during fallback"));
+                return;
+              }
+              const localNFT: CollectionNFT = {
+                ...freshPack.pendingNFT,
+                addedAt: Date.now(),
+              };
+              setNfts((prevNfts) => [localNFT, ...prevNfts]);
+              setSealedPacks((prev) => prev.filter((p) => p.id !== packId));
+              unmarkPackOpening(packId);
+              resolve(localNFT);
+            });
+
+          // Optimistically remove from sealed list immediately
+          // The async resolution above will confirm or restore
+          return prevPacks;
+        });
+      });
+    },
+    [],
+  );
 
   const removeNFT = useCallback((nftId: string) => {
     setNfts((prev) => prev.filter((n) => n.id !== nftId));

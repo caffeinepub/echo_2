@@ -1072,6 +1072,7 @@ function BuyPacksModal({
         collectibleNumber: collectibleNum,
         typeSupply,
         createdAt: Date.now(),
+        coverPhotoUrl: release.coverImageUrl,
         pendingNFT: {
           id: `nft_bought_${Date.now()}_${i}`,
           title: release.title,
