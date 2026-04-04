@@ -12,18 +12,21 @@ const LS_SEEDED_KEY = "minty_releases_seeded";
 export interface MarketRelease {
   id: string;
   creatorName: string;
+  creatorId: string;
   coverImageUrl: string;
   previewClipUrl?: string;
   title: string;
   caption: string;
   setName: string;
   packsAvailable: number;
+  packCount: number; // total packs minted (immutable)
   packIds: string[];
   priceUsd: number;
-  listedAt: number;
+  listedAt: number; // = createdAt
   expiresAt: number;
   status: "active" | "burned" | "sold_out";
   collectibleType: "photo" | "video";
+  explicit: boolean; // content labeling flag
 }
 
 interface ReleasesMarketCtx {
@@ -43,6 +46,7 @@ const SEED_RELEASES: MarketRelease[] = [
   {
     id: "release_seed_1",
     creatorName: "mintcreator.icp",
+    creatorId: "mintcreator.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
@@ -50,44 +54,52 @@ const SEED_RELEASES: MarketRelease[] = [
     caption: "9 photos and 1 video from a late summer drive along the coast",
     setName: "Coastal Drift Vol. 1",
     packsAvailable: 5,
+    packCount: 100,
     packIds: [],
     priceUsd: 3.5,
     listedAt: NOW - 2 * H,
     expiresAt: NOW - 2 * H + 24 * H,
     status: "active",
     collectibleType: "photo",
+    explicit: false,
   },
   {
     id: "release_seed_2",
     creatorName: "neon_rider.icp",
+    creatorId: "neon_rider.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
     title: "First Mint Moment",
     caption: "9 photos + 1 video from a late night drive",
     setName: "Night Drive Series",
     packsAvailable: 3,
+    packCount: 100,
     packIds: [],
     priceUsd: 5.0,
     listedAt: NOW - 18 * H,
     expiresAt: NOW - 18 * H + 24 * H,
     status: "active",
     collectibleType: "photo",
+    explicit: false,
   },
   {
     id: "release_seed_3",
     creatorName: "light.icp",
+    creatorId: "light.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80",
     title: "Golden Hour",
-    caption: "Limited Mint Moment — golden hour at the lake",
+    caption: "Limited Mint Moment \u2014 golden hour at the lake",
     setName: "Golden Hour Set",
     packsAvailable: 8,
+    packCount: 100,
     packIds: [],
     priceUsd: 2.0,
     listedAt: NOW - 0.5 * H,
     expiresAt: NOW - 0.5 * H + 24 * H,
     status: "active",
     collectibleType: "photo",
+    explicit: false,
   },
 ];
 
@@ -95,7 +107,14 @@ function loadReleasesFromStorage(): MarketRelease[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
-    return JSON.parse(raw) as MarketRelease[];
+    const releases = JSON.parse(raw) as MarketRelease[];
+    // Backfill explicit field for releases stored before this feature
+    return releases.map((r) => ({
+      ...r,
+      explicit: r.explicit ?? false,
+      creatorId: r.creatorId ?? r.creatorName,
+      packCount: r.packCount ?? r.packsAvailable,
+    }));
   } catch {
     return [];
   }

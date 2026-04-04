@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import { useUserSettings } from "../context/UserSettingsContext";
 import type {
   DiscoverSections,
   MintMomentSetRank,
@@ -144,12 +145,14 @@ function SetRankRow({
   isDark,
   onClick,
   sectionRank,
+  explicitModeOn = false,
 }: {
   set: MintMomentSetRank;
   rank: number;
   isDark: boolean;
   onClick: () => void;
   sectionRank: number;
+  explicitModeOn?: boolean;
 }) {
   const isHighlight = sectionRank <= 3;
   const rankColor = isHighlight
@@ -187,11 +190,52 @@ function SetRankRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, delay: Math.min(sectionRank * 0.04, 0.5) }}
       className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer"
-      style={rowStyle}
       onClick={onClick}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       data-ocid={`discover.item.${rank}`}
+      style={{
+        ...rowStyle,
+        position: "relative",
+        filter: set.explicit && !explicitModeOn ? "blur(4px)" : "none",
+        userSelect: set.explicit && !explicitModeOn ? "none" : "auto",
+        transition: "filter 0.2s",
+      }}
     >
+      {/* Explicit overlay badge */}
+      {set.explicit && !explicitModeOn && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2,
+            cursor: "default",
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <span
+            style={{
+              fontSize: "9px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              background: isDark
+                ? "rgba(245,158,11,0.85)"
+                : "rgba(245,158,11,0.90)",
+              color: "#fff",
+              borderRadius: "10px",
+              padding: "2px 8px",
+              backdropFilter: "blur(4px)",
+              border: "1px solid rgba(245,158,11,0.40)",
+            }}
+          >
+            EXPLICIT
+          </span>
+        </div>
+      )}
       {/* Rank */}
       <span
         className="font-bold tabular-nums shrink-0"
@@ -315,6 +359,7 @@ function DiscoverSection({
   globalOffset,
   isDark,
   onSelect,
+  explicitModeOn = false,
 }: {
   icon: string;
   label: string;
@@ -322,6 +367,7 @@ function DiscoverSection({
   globalOffset: number;
   isDark: boolean;
   onSelect: (set: MintMomentSetRank) => void;
+  explicitModeOn?: boolean;
 }) {
   if (sets.length === 0) return null;
 
@@ -337,6 +383,7 @@ function DiscoverSection({
             sectionRank={i + 1}
             isDark={isDark}
             onClick={() => onSelect(set)}
+            explicitModeOn={explicitModeOn}
           />
         ))}
       </div>
@@ -884,6 +931,7 @@ export function MarketPage({
 }: MarketPageProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const { explicitModeOn } = useUserSettings();
   const [timeRange, setTimeRange] = useState<TimeRange>("ALL_TIME");
   const [selectedSet, setSelectedSet] = useState<MintMomentSetRank | null>(
     null,
@@ -1004,6 +1052,7 @@ export function MarketPage({
                 globalOffset={0}
                 isDark={isDark}
                 onSelect={setSelectedSet}
+                explicitModeOn={explicitModeOn}
               />
               <DiscoverSection
                 icon="📦"
@@ -1012,6 +1061,7 @@ export function MarketPage({
                 globalOffset={trendingCount}
                 isDark={isDark}
                 onSelect={setSelectedSet}
+                explicitModeOn={explicitModeOn}
               />
               <DiscoverSection
                 icon="⚡"
@@ -1020,6 +1070,7 @@ export function MarketPage({
                 globalOffset={trendingCount + openedCount}
                 isDark={isDark}
                 onSelect={setSelectedSet}
+                explicitModeOn={explicitModeOn}
               />
               <DiscoverSection
                 icon="❤️"
@@ -1028,6 +1079,7 @@ export function MarketPage({
                 globalOffset={trendingCount + openedCount + risingCount}
                 isDark={isDark}
                 onSelect={setSelectedSet}
+                explicitModeOn={explicitModeOn}
               />
               <DiscoverSection
                 icon="✨"
@@ -1038,6 +1090,7 @@ export function MarketPage({
                 }
                 isDark={isDark}
                 onSelect={setSelectedSet}
+                explicitModeOn={explicitModeOn}
               />
             </div>
           )}

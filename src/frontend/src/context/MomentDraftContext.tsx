@@ -22,6 +22,11 @@ export interface MomentDraft {
   createdAt: number;
   captureMetadata: CaptureMetadataItem[];
   packSupply: number; // how many packs the creator wants to mint
+  // Content labeling fields (filled in FinalSetupScreen)
+  title: string;
+  caption: string;
+  coverIndex: number; // index into photos[] chosen as cover
+  explicit: boolean;
 }
 
 interface MomentDraftCtx {
@@ -35,6 +40,10 @@ interface MomentDraftCtx {
   completeDraft: () => void;
   clearDraft: () => void;
   setPackSupply: (n: number) => void;
+  setTitle: (title: string) => void;
+  setCaption: (caption: string) => void;
+  setCoverIndex: (index: number) => void;
+  setExplicit: (explicit: boolean) => void;
 }
 
 const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
@@ -52,6 +61,11 @@ function loadFromStorage(): MomentDraft | null {
     if (!parsed.packSupply || parsed.packSupply < 10) {
       parsed.packSupply = 100;
     }
+    // Backfill content labeling fields
+    if (parsed.title === undefined) parsed.title = "";
+    if (parsed.caption === undefined) parsed.caption = "";
+    if (parsed.coverIndex === undefined) parsed.coverIndex = 0;
+    if (parsed.explicit === undefined) parsed.explicit = false;
     return parsed;
   } catch {
     return null;
@@ -96,6 +110,10 @@ export function MomentDraftProvider({
         createdAt: Date.now(),
         captureMetadata: [],
         packSupply: 100,
+        title: "",
+        caption: "",
+        coverIndex: 0,
+        explicit: false,
       };
       return draft;
     });
@@ -191,6 +209,34 @@ export function MomentDraftProvider({
     });
   }, []);
 
+  const setTitle = useCallback((title: string) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, title };
+    });
+  }, []);
+
+  const setCaption = useCallback((caption: string) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, caption };
+    });
+  }, []);
+
+  const setCoverIndex = useCallback((index: number) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, coverIndex: index };
+    });
+  }, []);
+
+  const setExplicit = useCallback((explicit: boolean) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, explicit };
+    });
+  }, []);
+
   return (
     <MomentDraftContext.Provider
       value={{
@@ -204,6 +250,10 @@ export function MomentDraftProvider({
         completeDraft,
         clearDraft,
         setPackSupply,
+        setTitle,
+        setCaption,
+        setCoverIndex,
+        setExplicit,
       }}
     >
       {children}

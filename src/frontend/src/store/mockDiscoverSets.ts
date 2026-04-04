@@ -22,6 +22,7 @@ export interface MintMomentSetRank {
   videoCompletionRate: number;
   recentActivityVelocity: number;
   trendingTag: boolean;
+  explicit?: boolean; // content label flag
 }
 
 export function computeEngagementScore(
@@ -299,6 +300,7 @@ export const MOCK_DISCOVER_SETS: MintMomentSetRank[] = [
   },
   {
     id: "ds009",
+    explicit: true,
     title: "Mountain Top",
     creator: "@altitudelab",
     coverImageUrl: COVER_IMAGES[0],
@@ -459,6 +461,7 @@ export const MOCK_DISCOVER_SETS: MintMomentSetRank[] = [
   // ── MID TIER ─────────────────────────────────────────────────────────────
   {
     id: "ds015",
+    explicit: true,
     title: "Tokyo Alley",
     creator: "@streetframe.jp",
     coverImageUrl: COVER_IMAGES[1],

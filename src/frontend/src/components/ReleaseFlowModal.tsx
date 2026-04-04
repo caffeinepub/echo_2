@@ -230,6 +230,9 @@ export function ReleaseFlowModal({
       expiresAt: now + 24 * 3600000,
       status: "active",
       collectibleType: pack.collectibleType,
+      creatorId: "you",
+      packCount: quantity,
+      explicit: false,
     };
     addRelease(release);
     removeSealedPacks(selectedPacks.map((p) => p.id));

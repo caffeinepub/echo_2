@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { SetPackPriceModal } from "./components/SetPackPriceModal";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
@@ -16,6 +17,7 @@ import {
   useReleasesMarket,
 } from "./context/ReleasesMarketContext";
 import type { MarketRelease } from "./context/ReleasesMarketContext";
+import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
@@ -41,9 +43,21 @@ type View =
   | { type: "capture-moment" }
   | { type: "profile" };
 
+const PRICE_TO_HOURS: Record<number, number> = {
+  1: 24,
+  5: 12,
+  20: 8,
+  50: 4,
+  100: 1,
+};
+
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
+  const [pendingMintDraft, setPendingMintDraft] = useState<MomentDraft | null>(
+    null,
+  );
+  const [showPackPriceModal, setShowPackPriceModal] = useState(false);
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
 
@@ -72,19 +86,29 @@ function AppContent() {
     setView({ type: "capture-moment" });
   }
 
-  // When a creator completes a Mint Moment, all generated packs are
-  // automatically listed in Releases — not stored in the creator's Collection.
-  // The creator is the origin of the set but not the holder of the packs.
+  // When a creator completes capture, store the draft and show the pricing modal
+  // before anything is published to Releases.
   function handleMintComplete(draft: MomentDraft) {
+    setPendingMintDraft(draft);
+    setShowPackPriceModal(true);
+    setView({ type: "tab", tab: "library" });
+  }
+
+  // Called when the creator confirms a price in SetPackPriceModal.
+  // Contains all pack-generation logic; uses user-selected price + matching duration.
+  function handleConfirmPackPrice(priceUsd: number) {
+    if (!pendingMintDraft) return;
+    const draft = pendingMintDraft;
     const now = Date.now();
-    const totalPacks = draft.packSupply ?? 100;
+    const totalPacks = 100; // always 100 packs per Mint Moment set
+
+    const hours = PRICE_TO_HOURS[priceUsd] ?? 24;
 
     // 90/10 split — round to integers, ensure they sum to totalPacks
     const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
     const photoCount = totalPacks - videoCount;
 
     // Build assignment pool: photoCount slots + videoCount slots
-    // Photo slots are numbered 1..photoCount, video slots 1..videoCount
     type SlotPhoto = { type: "photo"; num: number };
     type SlotVideo = { type: "video"; num: number };
     type Slot = SlotPhoto | SlotVideo;
@@ -106,36 +130,57 @@ function AppContent() {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
+    // Use cover photo from creator's selection, fallback to first photo
     const coverImageUrl =
       draft.photos.length > 0
-        ? draft.photos[0]
+        ? (draft.photos[draft.coverIndex ?? 0] ?? draft.photos[0])
         : "https://images.pokemontcg.io/sv1/025_hires.png";
 
     const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
 
+    // Use title/caption/explicit from FinalSetupScreen fields
+    const releaseTitle = draft.title?.trim() || "Mint Moment";
+    const releaseCaption =
+      draft.caption?.trim() ||
+      `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`;
+
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
       creatorName: "You",
+      creatorId: "you",
       coverImageUrl,
       previewClipUrl: draft.video ?? undefined,
-      title: "My Mint Moment",
-      caption: `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`,
-      setName: "My Mint Moment",
+      title: releaseTitle,
+      caption: releaseCaption,
+      setName: releaseTitle,
       packsAvailable: totalPacks,
+      packCount: totalPacks,
       packIds,
-      priceUsd: 3.0,
+      priceUsd,
       listedAt: now,
-      expiresAt: now + 24 * 3600000,
+      expiresAt: now + hours * 3600000,
       status: "active",
       collectibleType: "photo",
+      explicit: draft.explicit ?? false,
     };
 
     addRelease(release);
+    setPendingMintDraft(null);
+    setShowPackPriceModal(false);
   }
 
   return (
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
+
+      {/* Pack Price Modal — intercepts between capture-complete and Releases listing */}
+      {showPackPriceModal && pendingMintDraft && (
+        <SetPackPriceModal
+          onConfirm={handleConfirmPackPrice}
+          onClose={() => handleConfirmPackPrice(1)}
+        />
+      )}
+
       <TopBar
         onAdminClick={() => setView({ type: "admin" })}
         onProfileClick={() => setView({ type: "profile" })}
@@ -226,20 +271,22 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <InternetIdentityProvider>
-        <WalletProvider>
-          <AdminReleasesProvider>
-            <MomentDraftProvider>
-              <CollectionProvider>
-                <ReleasesMarketProvider>
-                  <AppContent />
-                </ReleasesMarketProvider>
-              </CollectionProvider>
-            </MomentDraftProvider>
-          </AdminReleasesProvider>
-        </WalletProvider>
-      </InternetIdentityProvider>
-    </ThemeProvider>
+    <UserSettingsProvider>
+      <ThemeProvider>
+        <InternetIdentityProvider>
+          <WalletProvider>
+            <AdminReleasesProvider>
+              <MomentDraftProvider>
+                <CollectionProvider>
+                  <ReleasesMarketProvider>
+                    <AppContent />
+                  </ReleasesMarketProvider>
+                </CollectionProvider>
+              </MomentDraftProvider>
+            </AdminReleasesProvider>
+          </WalletProvider>
+        </InternetIdentityProvider>
+      </ThemeProvider>
+    </UserSettingsProvider>
   );
 }

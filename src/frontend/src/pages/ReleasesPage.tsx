@@ -17,6 +17,7 @@ import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import { useUserSettings } from "../context/UserSettingsContext";
 
 // ─── Countdown helper ─────────────────────────────────────────────────────────
 
@@ -700,7 +701,11 @@ function ReleaseCard({
             type="button"
             data-ocid="releases.primary_button"
             disabled={isBurned || release.status !== "active"}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log("[MintyBuyPack] tapped:", release.id, release.title);
+              onTap(release);
+            }}
             style={{
               width: "100%",
               padding: "12px",
@@ -1147,7 +1152,6 @@ function BuyPacksModal({
       />
 
       {/* Modal panel */}
-      {/* biome-ignore lint/a11y/useSemanticElements: custom styled modal container */}
       <div
         data-ocid="releases.buy_packs_modal"
         aria-modal="true"
@@ -1663,6 +1667,7 @@ const FILTER_LABELS: { key: FilterMode; label: string }[] = [
 export function ReleasesPage() {
   const { theme } = useTheme();
   const { releases, burnExpired } = useReleasesMarket();
+  const { explicitModeOn, setExplicitModeOn } = useUserSettings();
   const [now, setNow] = useState(Date.now());
   const [selectedRelease, setSelectedRelease] = useState<MarketRelease | null>(
     null,
@@ -1687,8 +1692,9 @@ export function ReleasesPage() {
     };
   }, [burnExpired]);
 
-  // Categorise releases
-  const activeReleases = releases.filter((r) => r.status === "active");
+  // Categorise releases — explicit filtering happens here at data level
+  const visibleReleases = releases.filter((r) => explicitModeOn || !r.explicit);
+  const activeReleases = visibleReleases.filter((r) => r.status === "active");
   const endingSoon = activeReleases.filter(
     (r) => r.expiresAt - now < 4 * 3600000,
   );
@@ -1741,17 +1747,82 @@ export function ReleasesPage() {
       >
         <TickerBar isDark={isDark} />
 
-        {/* Helper text */}
-        <p
+        {/* Helper text row with safe viewing toggle */}
+        <div
           style={{
-            fontSize: 11,
-            color: "#9ca3af",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
             margin: "0 0 8px",
-            textAlign: "center",
           }}
         >
-          Unsold released packs burn after 24 hours.
-        </p>
+          <p
+            style={{
+              fontSize: 11,
+              color: "#9ca3af",
+              margin: 0,
+            }}
+          >
+            Unsold released packs burn after 24 hours.
+          </p>
+          {/* Safe Viewing Toggle */}
+          <button
+            type="button"
+            onClick={() => setExplicitModeOn(!explicitModeOn)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              background: explicitModeOn
+                ? "rgba(245,158,11,0.10)"
+                : "rgba(16,185,129,0.08)",
+              border: explicitModeOn
+                ? "1.5px solid rgba(245,158,11,0.30)"
+                : "1.5px solid rgba(16,185,129,0.25)",
+              borderRadius: "20px",
+              padding: "4px 10px",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: "26px",
+                height: "14px",
+                borderRadius: "7px",
+                background: explicitModeOn
+                  ? "rgba(245,158,11,0.75)"
+                  : "rgba(16,185,129,0.75)",
+                position: "relative",
+                transition: "background 0.2s",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: "2px",
+                  left: explicitModeOn ? "14px" : "2px",
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  background: "#fff",
+                  transition: "left 0.2s",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                }}
+              />
+            </div>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                color: explicitModeOn ? "#92400e" : "#047857",
+              }}
+            >
+              {explicitModeOn ? "EXPLICIT ON" : "SAFE VIEW"}
+            </span>
+          </button>
+        </div>
 
         {/* Filter pills */}
         <div
