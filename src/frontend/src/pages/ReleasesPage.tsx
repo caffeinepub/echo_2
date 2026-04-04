@@ -2624,894 +2624,6 @@ const SORT_LABELS: { key: SortMode; label: string }[] = [
   { key: "minted", label: "Minted" },
 ];
 
-// ─── Media: Photo types & mock data ─────────────────────────────────────────
-
-interface PhotoPost {
-  id: string;
-  imageUrl: string;
-  creatorName: string;
-  creatorHandle: string;
-  priceUsd: number;
-  views: number;
-  likes: number;
-  aspectRatio: "tall" | "square" | "wide";
-}
-
-const MOCK_PHOTOS: PhotoPost[] = [
-  {
-    id: "p1",
-    imageUrl: "https://picsum.photos/seed/photo1/400/560",
-    creatorName: "Alex Rivera",
-    creatorHandle: "@alexr",
-    priceUsd: 85,
-    views: 2340,
-    likes: 187,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p2",
-    imageUrl: "https://picsum.photos/seed/photo2/400/400",
-    creatorName: "Mia Chen",
-    creatorHandle: "@miachen",
-    priceUsd: 120,
-    views: 5820,
-    likes: 412,
-    aspectRatio: "square",
-  },
-  {
-    id: "p3",
-    imageUrl: "https://picsum.photos/seed/photo3/400/600",
-    creatorName: "Jordan Lee",
-    creatorHandle: "@jlee",
-    priceUsd: 210,
-    views: 1200,
-    likes: 98,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p4",
-    imageUrl: "https://picsum.photos/seed/photo4/400/300",
-    creatorName: "Sam Park",
-    creatorHandle: "@sampark",
-    priceUsd: 55,
-    views: 3100,
-    likes: 230,
-    aspectRatio: "wide",
-  },
-  {
-    id: "p5",
-    imageUrl: "https://picsum.photos/seed/photo5/400/500",
-    creatorName: "Casey Wu",
-    creatorHandle: "@caseywu",
-    priceUsd: 340,
-    views: 8900,
-    likes: 721,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p6",
-    imageUrl: "https://picsum.photos/seed/photo6/400/400",
-    creatorName: "Robin Blake",
-    creatorHandle: "@rblake",
-    priceUsd: 75,
-    views: 1560,
-    likes: 143,
-    aspectRatio: "square",
-  },
-  {
-    id: "p7",
-    imageUrl: "https://picsum.photos/seed/photo7/400/550",
-    creatorName: "Taylor Kim",
-    creatorHandle: "@tkim",
-    priceUsd: 160,
-    views: 4200,
-    likes: 310,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p8",
-    imageUrl: "https://picsum.photos/seed/photo8/400/320",
-    creatorName: "Drew Santos",
-    creatorHandle: "@drewsantos",
-    priceUsd: 95,
-    views: 2800,
-    likes: 205,
-    aspectRatio: "wide",
-  },
-  {
-    id: "p9",
-    imageUrl: "https://picsum.photos/seed/photo9/400/480",
-    creatorName: "Morgan Liu",
-    creatorHandle: "@mliuu",
-    priceUsd: 275,
-    views: 6700,
-    likes: 540,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p10",
-    imageUrl: "https://picsum.photos/seed/photo10/400/400",
-    creatorName: "Jamie Cruz",
-    creatorHandle: "@jcruz",
-    priceUsd: 45,
-    views: 920,
-    likes: 67,
-    aspectRatio: "square",
-  },
-  {
-    id: "p11",
-    imageUrl: "https://picsum.photos/seed/photo11/400/600",
-    creatorName: "Sky Nguyen",
-    creatorHandle: "@skyn",
-    priceUsd: 480,
-    views: 12400,
-    likes: 980,
-    aspectRatio: "tall",
-  },
-  {
-    id: "p12",
-    imageUrl: "https://picsum.photos/seed/photo12/400/350",
-    creatorName: "Avery Mills",
-    creatorHandle: "@averym",
-    priceUsd: 130,
-    views: 3400,
-    likes: 267,
-    aspectRatio: "wide",
-  },
-];
-
-// ─── Media: Video types & mock data ─────────────────────────────────────────
-
-interface VideoPost {
-  id: string;
-  thumbnailUrl: string;
-  creatorName: string;
-  creatorHandle: string;
-  caption: string;
-  priceUsd: number;
-  edition: string;
-  supply: string;
-  views: number;
-}
-
-const MOCK_VIDEOS: VideoPost[] = [
-  {
-    id: "v1",
-    thumbnailUrl: "https://picsum.photos/seed/vid1/600/1000",
-    creatorName: "Luna Ray",
-    creatorHandle: "@lunaray",
-    caption: "Golden hour in Kyoto",
-    priceUsd: 220,
-    edition: "Edition 1 of 10",
-    supply: "7 left",
-    views: 18400,
-  },
-  {
-    id: "v2",
-    thumbnailUrl: "https://picsum.photos/seed/vid2/600/1000",
-    creatorName: "Zane Ford",
-    creatorHandle: "@zaneford",
-    caption: "Storm chasing over Nevada",
-    priceUsd: 380,
-    edition: "Edition 1 of 5",
-    supply: "2 left",
-    views: 42100,
-  },
-  {
-    id: "v3",
-    thumbnailUrl: "https://picsum.photos/seed/vid3/600/1000",
-    creatorName: "Nova Lin",
-    creatorHandle: "@novalin",
-    caption: "Ocean depth timelapse",
-    priceUsd: 150,
-    edition: "Edition 1 of 20",
-    supply: "14 left",
-    views: 9800,
-  },
-  {
-    id: "v4",
-    thumbnailUrl: "https://picsum.photos/seed/vid4/600/1000",
-    creatorName: "Ezra Walsh",
-    creatorHandle: "@ezrawalsh",
-    caption: "Neon city nights",
-    priceUsd: 510,
-    edition: "Edition 1 of 3",
-    supply: "1 left",
-    views: 67300,
-  },
-  {
-    id: "v5",
-    thumbnailUrl: "https://picsum.photos/seed/vid5/600/1000",
-    creatorName: "Isla Moon",
-    creatorHandle: "@islamoon",
-    caption: "Mountain mist at dawn",
-    priceUsd: 290,
-    edition: "Edition 1 of 8",
-    supply: "5 left",
-    views: 22500,
-  },
-  {
-    id: "v6",
-    thumbnailUrl: "https://picsum.photos/seed/vid6/600/1000",
-    creatorName: "Caden Voss",
-    creatorHandle: "@cadenv",
-    caption: "Desert bloom season",
-    priceUsd: 175,
-    edition: "Edition 1 of 15",
-    supply: "10 left",
-    views: 14200,
-  },
-];
-
-// ─── ModeToggle ───────────────────────────────────────────────────────────────
-
-function ModeToggle({
-  active,
-  onChange,
-  isDark,
-}: {
-  active: "market" | "media";
-  onChange: (mode: "market" | "media") => void;
-  isDark: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        padding: "12px 16px 0",
-      }}
-    >
-      <div
-        style={{
-          display: "inline-flex",
-          background: isDark ? "oklch(0.10 0.04 160 / 0.55)" : "#FFFFFF",
-          boxShadow: isDark
-            ? "0 2px 12px rgba(0,0,0,0.30), inset 0 1px 0 oklch(0.80 0.12 160 / 0.06)"
-            : "0 2px 8px rgba(0,0,0,0.06)",
-          borderRadius: 12,
-          padding: 4,
-          border: isDark
-            ? "1px solid oklch(0.55 0.12 160 / 0.22)"
-            : "1px solid rgba(0,0,0,0.06)",
-        }}
-      >
-        {(["market", "media"] as const).map((mode) => {
-          const isActive = active === mode;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onChange(mode)}
-              data-ocid={`releases.${mode}.tab`}
-              style={{
-                padding: "8px 28px",
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                letterSpacing: "0.01em",
-                border: "none",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                background: isActive
-                  ? isDark
-                    ? "oklch(0.70 0.18 160 / 0.25)"
-                    : "#FFFFFF"
-                  : "transparent",
-                boxShadow: isActive
-                  ? isDark
-                    ? "0 1px 6px oklch(0.70 0.18 160 / 0.20)"
-                    : "0 1px 4px rgba(0,0,0,0.10)"
-                  : "none",
-                color: isActive
-                  ? isDark
-                    ? "#e8f5f0"
-                    : "#111"
-                  : isDark
-                    ? "rgba(180,220,205,0.45)"
-                    : "#6b7280",
-              }}
-            >
-              {mode === "market" ? "Market" : "Media"}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── MediaSubToggle ───────────────────────────────────────────────────────────
-
-function MediaSubToggle({
-  active,
-  onChange,
-  isDark,
-}: {
-  active: "photos" | "videos";
-  onChange: (mode: "photos" | "videos") => void;
-  isDark: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        padding: "8px 16px 0",
-      }}
-    >
-      <div
-        style={{
-          display: "inline-flex",
-          background: isDark ? "oklch(0.10 0.04 160 / 0.55)" : "#f3f4f6",
-          boxShadow: isDark ? "0 1px 6px rgba(0,0,0,0.20)" : "none",
-          borderRadius: 99,
-          padding: 3,
-          border: isDark
-            ? "1px solid oklch(0.55 0.12 160 / 0.18)"
-            : "1px solid rgba(0,0,0,0.07)",
-        }}
-      >
-        {(["photos", "videos"] as const).map((mode) => {
-          const isActive = active === mode;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onChange(mode)}
-              data-ocid={`releases.media.${mode}.tab`}
-              style={{
-                padding: "6px 20px",
-                borderRadius: 99,
-                fontSize: 13,
-                fontWeight: 600,
-                border: isActive
-                  ? "1.5px solid rgba(125,223,194,0.55)"
-                  : "none",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                background: isActive
-                  ? "linear-gradient(135deg, #c8f5e6, #7ddfc2)"
-                  : "transparent",
-                color: isActive
-                  ? "#0f2a25"
-                  : isDark
-                    ? "rgba(180,220,205,0.55)"
-                    : "#6b7280",
-              }}
-            >
-              {mode === "photos" ? "Photos" : "Videos"}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── PhotosGrid ───────────────────────────────────────────────────────────────
-
-function PhotosGrid({ isDark }: { isDark: boolean }) {
-  const imgHeights: Record<PhotoPost["aspectRatio"], number> = {
-    tall: 200,
-    square: 160,
-    wide: 130,
-  };
-
-  const cardBg = isDark ? "oklch(0.10 0.04 160 / 0.55)" : "#FFFFFF";
-  const cardBorder = isDark
-    ? "oklch(0.55 0.12 160 / 0.18)"
-    : "rgba(0,0,0,0.05)";
-  const titleColor = isDark ? "#e8f5f0" : "#111111";
-  const secColor = isDark ? "rgba(180,220,205,0.55)" : "#6b7280";
-  const mintColor = "#10b981";
-  const mintBg = "rgba(16,185,129,0.10)";
-  const mintText = isDark ? "oklch(0.78 0.14 160)" : "#10b981";
-
-  return (
-    <div
-      style={{
-        padding: "12px 12px 0",
-        columns: 2,
-        columnGap: 12,
-      }}
-    >
-      {MOCK_PHOTOS.map((photo) => (
-        <div
-          key={photo.id}
-          data-ocid={`releases.media.photo.item.${photo.id}`}
-          style={{
-            display: "inline-block",
-            width: "100%",
-            marginBottom: 12,
-            breakInside: "avoid",
-            background: cardBg,
-            borderRadius: 14,
-            overflow: "hidden",
-            boxShadow: isDark
-              ? "0 4px 16px rgba(0,0,0,0.30)"
-              : "0 2px 12px rgba(0,0,0,0.06)",
-            border: `1px solid ${cardBorder}`,
-            backdropFilter: isDark ? "blur(10px)" : undefined,
-            WebkitBackdropFilter: isDark ? "blur(10px)" : undefined,
-          }}
-        >
-          {/* Image */}
-          <div style={{ position: "relative" }}>
-            <img
-              src={photo.imageUrl}
-              alt={photo.creatorName}
-              style={{
-                width: "100%",
-                height: imgHeights[photo.aspectRatio],
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-            {/* PHOTO badge */}
-            <span
-              style={{
-                position: "absolute",
-                top: 8,
-                left: 8,
-                background: "rgba(0,0,0,0.45)",
-                backdropFilter: "blur(4px)",
-                color: "#ffffff",
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-                padding: "2px 6px",
-                borderRadius: 4,
-              }}
-            >
-              PHOTO
-            </span>
-          </div>
-
-          {/* Info */}
-          <div style={{ padding: "10px 10px 12px" }}>
-            {/* Creator row */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                marginBottom: 6,
-              }}
-            >
-              <div
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #c8f5e6, #7ddfc2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "#0f2a25",
-                  flexShrink: 0,
-                }}
-              >
-                {photo.creatorName.charAt(0)}
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: titleColor,
-                  lineHeight: 1.2,
-                }}
-              >
-                {photo.creatorName}
-              </span>
-            </div>
-
-            {/* Price + type badge */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                marginBottom: 6,
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700, color: mintColor }}>
-                ${photo.priceUsd}
-              </span>
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                  background: mintBg,
-                  color: mintText,
-                  padding: "2px 5px",
-                  borderRadius: 4,
-                }}
-              >
-                PHOTO
-              </span>
-            </div>
-
-            {/* Stats row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={secColor}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                <span style={{ fontSize: 10, color: secColor }}>
-                  {(photo.views / 1000).toFixed(1)}k
-                </span>
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={secColor}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-                <span style={{ fontSize: 10, color: secColor }}>
-                  {photo.likes}
-                </span>
-              </span>
-            </div>
-
-            {/* Buy button */}
-            <button
-              type="button"
-              data-ocid={`releases.media.photo.buy.${photo.id}`}
-              style={{
-                width: "100%",
-                marginTop: 8,
-                height: 30,
-                borderRadius: 8,
-                border: "none",
-                cursor: "pointer",
-                background: "linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%)",
-                color: "#ffffff",
-                fontSize: 11,
-                fontWeight: 600,
-                boxShadow:
-                  "0 2px 8px rgba(62,207,160,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
-                transition: "all 0.15s ease",
-              }}
-            >
-              Buy ${photo.priceUsd}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── VideosSwipeFeed ──────────────────────────────────────────────────────────
-
-function VideosSwipeFeed(_props: { isDark: boolean }) {
-  return (
-    <div
-      style={{
-        height: "calc(100dvh - 144px)",
-        overflowY: "scroll",
-        scrollSnapType: "y mandatory",
-        WebkitOverflowScrolling: "touch",
-      }}
-    >
-      {MOCK_VIDEOS.map((video) => (
-        <div
-          key={video.id}
-          data-ocid={`releases.media.video.item.${video.id}`}
-          style={{
-            height: "calc(100dvh - 144px)",
-            scrollSnapAlign: "start",
-            position: "relative",
-            flexShrink: 0,
-            backgroundImage: `url(${video.thumbnailUrl})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            overflow: "hidden",
-          }}
-        >
-          {/* Dark gradient overlay */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.45) 40%, transparent 70%)",
-            }}
-          />
-
-          {/* VIDEO badge top-left */}
-          <div
-            style={{
-              position: "absolute",
-              top: 16,
-              left: 16,
-              background: "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              color: "#ffffff",
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              padding: "3px 8px",
-              borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            VIDEO
-          </div>
-
-          {/* Right side action column */}
-          <div
-            style={{
-              position: "absolute",
-              right: 16,
-              bottom: 180,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 16,
-            }}
-          >
-            {/* Views */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.20)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.75)",
-                  fontWeight: 600,
-                }}
-              >
-                {video.views >= 1000
-                  ? `${(video.views / 1000).toFixed(0)}k`
-                  : video.views}
-              </span>
-            </div>
-            {/* Heart */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <button
-                type="button"
-                data-ocid={`releases.media.video.like.${video.id}`}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.20)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom overlay */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: "20px 16px",
-              paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
-            }}
-          >
-            {/* Creator */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 6,
-              }}
-            >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #c8f5e6, #7ddfc2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#0f2a25",
-                  flexShrink: 0,
-                  border: "2px solid rgba(255,255,255,0.25)",
-                }}
-              >
-                {video.creatorName.charAt(0)}
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: "#ffffff",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {video.creatorName}
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.60)" }}>
-                  {video.creatorHandle}
-                </div>
-              </div>
-            </div>
-
-            {/* Caption */}
-            <p
-              style={{
-                fontSize: 14,
-                color: "#ffffff",
-                marginBottom: 4,
-                lineHeight: 1.4,
-                marginTop: 0,
-              }}
-            >
-              {video.caption}
-            </p>
-
-            {/* Edition + Supply */}
-            <p
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.60)",
-                marginBottom: 8,
-                marginTop: 0,
-              }}
-            >
-              {video.edition} · {video.supply}
-            </p>
-
-            {/* Price */}
-            <p
-              style={{
-                fontSize: 24,
-                fontWeight: 800,
-                color: "#ffffff",
-                marginBottom: 12,
-                marginTop: 0,
-              }}
-            >
-              ${video.priceUsd.toLocaleString()}
-            </p>
-
-            {/* Actions */}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                type="button"
-                data-ocid={`releases.media.video.buy.${video.id}`}
-                style={{
-                  flex: 1,
-                  height: 44,
-                  borderRadius: 12,
-                  border: "none",
-                  cursor: "pointer",
-                  background:
-                    "linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%)",
-                  color: "#ffffff",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  boxShadow:
-                    "0 4px 14px rgba(62,207,160,0.28), inset 0 1px 0 rgba(255,255,255,0.25)",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Buy ${video.priceUsd}
-              </button>
-              <button
-                type="button"
-                data-ocid={`releases.media.video.offer.${video.id}`}
-                style={{
-                  width: 90,
-                  height: 44,
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.28)",
-                  color: "#ffffff",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Offer
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 interface ReleasesPageProps {
@@ -3527,10 +2639,6 @@ export function ReleasesPage(_props: ReleasesPageProps) {
   const [offersModalSlab, setOffersModalSlab] = useState<SlabItem | null>(null);
   const [offersMap, setOffersMap] =
     useState<Record<string, LiveOffer[]>>(SEEDED_OFFERS);
-  const [activeMode, setActiveMode] = useState<"market" | "media">("market");
-  const [mediaSubMode, setMediaSubMode] = useState<"photos" | "videos">(
-    "photos",
-  );
 
   const isLight = theme === "light";
   const isDark = !isLight;
@@ -3565,161 +2673,124 @@ export function ReleasesPage(_props: ReleasesPageProps) {
         paddingBottom: 68,
       }}
     >
-      {/* Top Mode Toggle */}
-      <ModeToggle
-        active={activeMode}
-        onChange={setActiveMode}
-        isDark={isDark}
-      />
-
-      {/* Market Mode */}
-      {activeMode === "market" && (
+      <div
+        style={{
+          position: "sticky",
+          top: 72,
+          zIndex: 20,
+          background: isLight
+            ? "rgba(248,248,248,0.95)"
+            : "oklch(0.08 0.02 160 / 0.92)",
+          backdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : C.border}`,
+          padding: "8px 16px 10px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 0,
+        }}
+      >
+        <TickerBar
+          transactions={RECENT_TRANSACTIONS.slice(0, 25)}
+          isDark={isDark}
+        />
         <div
-          key="market"
           style={{
-            opacity: 1,
-            transition: "opacity 0.2s ease, transform 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
           <div
             style={{
-              position: "sticky",
-              top: 72,
-              zIndex: 20,
-              background: isLight
-                ? "rgba(248,248,248,0.95)"
-                : "oklch(0.08 0.02 160 / 0.92)",
-              backdropFilter: "blur(12px)",
-              borderBottom: `1px solid ${isLight ? "rgba(0,0,0,0.06)" : C.border}`,
-              padding: "8px 16px 10px",
               display: "flex",
-              flexDirection: "column",
-              gap: 0,
+              background: isDark
+                ? "oklch(0.14 0.04 160 / 0.50)"
+                : "rgba(0,0,0,0.04)",
+              border: isDark
+                ? "1px solid oklch(0.55 0.12 160 / 0.18)"
+                : "1px solid rgba(0,0,0,0.08)",
+              borderRadius: 99,
+              padding: "3px",
+              gap: 2,
             }}
           >
-            <TickerBar
-              transactions={RECENT_TRANSACTIONS.slice(0, 25)}
-              isDark={isDark}
-            />
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  background: isDark
-                    ? "oklch(0.14 0.04 160 / 0.50)"
-                    : "rgba(0,0,0,0.04)",
-                  border: isDark
-                    ? "1px solid oklch(0.55 0.12 160 / 0.18)"
-                    : "1px solid rgba(0,0,0,0.08)",
-                  borderRadius: 99,
-                  padding: "3px",
-                  gap: 2,
-                }}
-              >
-                {SORT_LABELS.map(({ key, label }) => {
-                  const isActive = sortMode === key;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSortMode(key)}
-                      data-ocid={`releases.${key}.tab`}
-                      style={{
-                        padding: "5px 14px",
-                        borderRadius: 99,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        letterSpacing: "0.02em",
-                        border:
-                          isDark && isActive
-                            ? "1px solid oklch(0.70 0.18 160 / 0.30)"
-                            : "none",
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                        background: isActive
-                          ? isDark
-                            ? "oklch(0.70 0.18 160 / 0.22)"
-                            : "#10b981"
-                          : isDark
-                            ? "rgba(255,255,255,0.06)"
-                            : "#f3f4f6",
-                        color: isActive
-                          ? isDark
-                            ? "oklch(0.85 0.10 160)"
-                            : "#ffffff"
-                          : isDark
-                            ? "oklch(0.58 0.08 160)"
-                            : "#6b7280",
-                        boxShadow: "none",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 11,
-                  color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
-                  fontWeight: 500,
-                }}
-              >
-                {sorted.length} listings
-              </span>
-            </div>
+            {SORT_LABELS.map(({ key, label }) => {
+              const isActive = sortMode === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSortMode(key)}
+                  data-ocid={`releases.${key}.tab`}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: 99,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    border:
+                      isDark && isActive
+                        ? "1px solid oklch(0.70 0.18 160 / 0.30)"
+                        : "none",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    background: isActive
+                      ? isDark
+                        ? "oklch(0.70 0.18 160 / 0.22)"
+                        : "#10b981"
+                      : isDark
+                        ? "rgba(255,255,255,0.06)"
+                        : "#f3f4f6",
+                    color: isActive
+                      ? isDark
+                        ? "oklch(0.85 0.10 160)"
+                        : "#ffffff"
+                      : isDark
+                        ? "oklch(0.58 0.08 160)"
+                        : "#6b7280",
+                    boxShadow: "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Feed */}
-          <main
+          <span
             style={{
-              padding: "6px 16px 12px 16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
+              marginLeft: "auto",
+              fontSize: 11,
+              color: isDark ? "oklch(0.58 0.08 160)" : "#6b7280",
+              fontWeight: 500,
             }}
           >
-            {sorted.map((slab, i) => (
-              <SlabCard
-                key={slab.id}
-                slab={slab}
-                index={i}
-                onTap={() => setSelectedSlab(slab)}
-                onBuyOffer={(s) => setBuyOfferSlab(s)}
-                onOffers={(s) => setOffersModalSlab(s)}
-                isDark={isDark}
-              />
-            ))}
-          </main>
+            {sorted.length} listings
+          </span>
         </div>
-      )}
+      </div>
 
-      {/* Media Mode */}
-      {activeMode === "media" && (
-        <div
-          key="media"
-          style={{
-            opacity: 1,
-            transition: "opacity 0.2s ease, transform 0.2s ease",
-          }}
-        >
-          <MediaSubToggle
-            active={mediaSubMode}
-            onChange={setMediaSubMode}
+      {/* Feed */}
+      <main
+        style={{
+          padding: "6px 16px 12px 16px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        {sorted.map((slab, i) => (
+          <SlabCard
+            key={slab.id}
+            slab={slab}
+            index={i}
+            onTap={() => setSelectedSlab(slab)}
+            onBuyOffer={(s) => setBuyOfferSlab(s)}
+            onOffers={(s) => setOffersModalSlab(s)}
             isDark={isDark}
           />
-          {mediaSubMode === "photos" && <PhotosGrid isDark={isDark} />}
-          {mediaSubMode === "videos" && <VideosSwipeFeed isDark={isDark} />}
-        </div>
-      )}
+        ))}
+      </main>
 
       {/* Detail sheet */}
       {selectedSlab && (
