@@ -2811,9 +2811,62 @@ function AuctionGridTile({
   const countdown = useAuctionCountdown(listing.endsAt);
   const isEnded = countdown === "Auction ended";
 
-  // Suppress unused vars to avoid lint errors
+  // accentGlow unused in tile body (passed through to modal via parent)
   void accentGlow;
-  void accentSolid;
+
+  // bid flash state
+  const [bidFlash, setBidFlash] = useState(false);
+  const prevBidRef = useRef(listing.highestBid);
+  // live ticker for time progress and activity row
+  const [liveNow, setLiveNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // bid flash effect
+  useEffect(() => {
+    if (listing.highestBid !== prevBidRef.current && listing.highestBid > 0) {
+      setBidFlash(true);
+      const t = setTimeout(() => setBidFlash(false), 1500);
+      prevBidRef.current = listing.highestBid;
+      return () => clearTimeout(t);
+    }
+    prevBidRef.current = listing.highestBid;
+  }, [listing.highestBid]);
+
+  const AUCTION_DURATION = 24 * 60 * 60 * 1000;
+  const auctionStart = listing.endsAt - AUCTION_DURATION;
+  const elapsed = liveNow - auctionStart;
+  const fillPct = Math.min(
+    100,
+    Math.max(0, (elapsed / AUCTION_DURATION) * 100),
+  );
+  const msLeft = listing.endsAt - liveNow;
+  const timeLabel = (() => {
+    if (msLeft <= 0) return "Ended";
+    const totalSec = Math.floor(msLeft / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return `${h}h ${m}m left`;
+    if (m > 0) return `${m}m ${s}s left`;
+    return `${s}s left`;
+  })();
+
+  const nextMinBid = listing.highestBid > 0 ? listing.highestBid + 1.0 : 1.0;
+  const lastBid =
+    listing.bids.length > 0 ? listing.bids[listing.bids.length - 1] : null;
+  const lastBidAgo = (() => {
+    if (!lastBid) return "";
+    const sec = Math.floor((liveNow - lastBid.placedAt) / 1000);
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    return `${hr}h ago`;
+  })();
 
   useEffect(() => {
     if (listing.bids.length > prevBidCountRef.current) {
@@ -2926,7 +2979,7 @@ function AuctionGridTile({
           )}
         </div>
 
-        {/* Bottom info */}
+        {/* Bottom info — auction info bar */}
         <div style={{ padding: "10px 10px 12px" }}>
           {/* Title */}
           <p
@@ -2934,7 +2987,7 @@ function AuctionGridTile({
               fontSize: 13,
               fontWeight: 600,
               color: "#111",
-              margin: "0 0 4px",
+              margin: "0 0 6px",
               lineHeight: 1.3,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -2944,52 +2997,138 @@ function AuctionGridTile({
             {listing.nftTitle}
           </p>
 
-          {/* Bid amount */}
+          {/* Current bid block */}
+          <div style={{ marginBottom: 5 }}>
+            {listing.highestBid > 0 ? (
+              <>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: "#9ca3af",
+                    display: "block",
+                    marginBottom: 1,
+                  }}
+                >
+                  Current bid:
+                </span>
+                <span
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 800,
+                    fontVariantNumeric: "tabular-nums",
+                    color: bidFlash ? accentSolid : "#111",
+                    transition: "color 0.3s ease",
+                    display: "block",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  ${listing.highestBid.toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 400,
+                  color: "#9ca3af",
+                  display: "block",
+                }}
+              >
+                No bids yet
+              </span>
+            )}
+          </div>
+
+          {/* Next bid sub-line */}
           <p
             style={{
-              fontSize: 16,
-              fontWeight: 800,
-              color: listing.highestBid > 0 ? "#111" : "#9ca3af",
+              fontSize: 11,
+              fontWeight: 400,
+              color: "#9ca3af",
               fontVariantNumeric: "tabular-nums",
-              margin: "0 0 3px",
+              margin: "0 0 5px",
               lineHeight: 1,
             }}
           >
             {listing.highestBid > 0
-              ? `$${listing.highestBid.toFixed(2)}`
-              : "No bids"}
+              ? `Next bid: $${nextMinBid.toFixed(2)}`
+              : `Opening bid: $${nextMinBid.toFixed(2)}`}
           </p>
 
-          {/* Timer row */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              marginBottom: listing.bids.length > 0 ? 2 : 0,
-            }}
-          >
-            <Timer size={10} color={isEnded ? "#9ca3af" : accentText} />
-            <span
-              style={{ fontSize: 11, color: isEnded ? "#9ca3af" : accentText }}
+          {/* Bid activity row */}
+          {listing.bids.length > 0 && lastBid && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                marginBottom: 6,
+              }}
             >
-              {countdown}
-            </span>
-          </div>
+              {/* Activity pulse dot */}
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: accentSolid,
+                  opacity: 0.7,
+                  flexShrink: 0,
+                  display: "inline-block",
+                  animation: "packActivityPulse 2s ease-in-out infinite",
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                  lineHeight: 1,
+                }}
+              >
+                {listing.bids.length}{" "}
+                {listing.bids.length === 1 ? "bid" : "bids"}
+                <span style={{ color: "#d1d5db", margin: "0 3px" }}>•</span>
+                last bid {lastBidAgo}
+              </span>
+            </div>
+          )}
 
-          {/* Bid count */}
-          {listing.bids.length > 0 && (
+          {/* Time progress bar */}
+          <div>
             <p
               style={{
-                fontSize: 11,
+                fontSize: 10,
+                fontWeight: 400,
                 color: "#9ca3af",
-                margin: 0,
+                margin: "0 0 3px",
+                textAlign: "right",
                 lineHeight: 1,
               }}
             >
-              {listing.bids.length} {listing.bids.length === 1 ? "bid" : "bids"}
+              {timeLabel}
             </p>
-          )}
+            <div
+              style={{
+                height: 3,
+                borderRadius: 99,
+                background: "rgba(0,0,0,0.06)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  borderRadius: 99,
+                  background: accentSolid,
+                  opacity: 0.55,
+                  width: `${fillPct}%`,
+                  transition: "width 0.8s ease",
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

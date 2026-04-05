@@ -1,39 +1,48 @@
-# Minty — Market Grid Layout
+# Minty — Auction Card Info Bar
 
 ## Current State
-The Market tab (inside ReleasesPage.tsx, `viewMode === 'market'`) renders auction listings as a vertical column of full-width `AuctionCard` components. Each card is a tall portrait card (4:5 image ratio) followed by a large info block with creator row, title, highest bid, bid count, time remaining, and a full-width Place Bid button. Cards are sorted by insertion order (no live reordering). The `PlaceBidModal` and `SlideToConfirm` components are unchanged and working.
+The Market tab in ReleasesPage.tsx displays auction listings in a 2-column grid. Each auction tile shows: NFT image, title, highest bid, bid count, time remaining, and a Place Bid button. There is no info bar like the bonding curve bar on pack release cards.
+
+Pack release cards (ReleaseCard component in ReleasesPage.tsx) have a well-designed bonding curve info section with:
+- Large current price + `per pack` label
+- Sub-line: `{remaining} remaining • next ${nextPrice}`
+- Thin 3px progress bar with `{n}% collected` label
+- Activity dot + `last mint Xs ago` label
+- `+0.01` flash on price change
+- Momentum signals: `Early price`, `Almost gone`, `🔥 trending`
+
+Auction listings come from `AuctionContext.tsx` — each `AuctionListing` has:
+- `highestBid: number` (0 if no bids)
+- `bids: Bid[]` (each with `placedAt: number` timestamp)
+- `endsAt: number` (auction end timestamp)
+- `status: 'active' | 'ended'`
 
 ## Requested Changes (Diff)
 
 ### Add
-- 2-column CSS grid layout for the Market view container (gap ~8–10px, padding 12px)
-- New compact `AuctionGridTile` component to replace the existing `AuctionCard` for the Market view only
-  - Top: NFT image (square or 1:1 aspect ratio) with lazy loading (`loading="lazy"`), soft gradient overlay at bottom, video badge if mediaType === "video"
-  - Bottom info block: NFT title (truncated 1 line, ~13px semibold), current highest bid ($XX.XX bold ~15px, or "No bids" muted), time remaining (small, with timer icon, accent-colored), bid count (small muted optional text)
-  - Tap anywhere on tile opens the existing `PlaceBidModal` (unchanged)
-  - Rounded corners (~16px), soft shadow, white background, thin border
-- Auto-reorder: sort active listings by `mostRecentBidTimestamp` descending (most recent bid → top-left). Use `Math.max(...bids.map(b => b.placedAt))` or fallback to listing creation order
-- Live pulse: on each sort update (when `listings` changes), briefly flash a subtle accent-colored ring or scale on the newly moved tile (CSS animation, 600ms, optional)
-- `useIntersectionObserver` or native `loading="lazy"` on images for scroll-based lazy loading
+- Auction info bar inside each Market grid tile (below the image, above the bid button)
+- Info bar includes:
+  1. Current bid: `$42.50` (prominent, large font matching pack price prominence)
+  2. Next minimum bid: `Next bid: $43.50` (sub-line, +$1 over current, or opening bid if none)
+  3. Bid activity: `3 bids • last bid 18s ago` (live-ticking seconds)
+  4. Thin progress bar representing time elapsed since auction start vs total 24h duration, with label `5h 59m left`
+  5. Soft animation on value changes (CSS transition on bid amount)
+  6. `No bids yet` state when `bids.length === 0`
 
 ### Modify
-- Market view container: replace `flexDirection: column` with `display: grid, gridTemplateColumns: repeat(2, 1fr)` 
-- Sort `auctionListings` before mapping: sort by latest bid timestamp descending
-- Keep the empty state (no auctions) unchanged
-- `AuctionCard` component stays in the file — it is not deleted — just not used for the Market grid (can be kept as-is for potential future use, or renamed)
+- Market auction tile component to include the new info bar section
+- Time remaining label already exists — move it inside the new info bar section replacing the standalone display
 
 ### Remove
-- The existing `AuctionCard` component usage in the Market view (replaced by `AuctionGridTile`)
-- No sorting dropdowns or filter pills in the Market view
+- Standalone minimal time/bid display that currently exists on tiles (replaced by the new info bar)
 
 ## Implementation Plan
-1. Add a sort helper in the Market view section that sorts `auctionListings` by `Math.max(...bids.map(b => b.placedAt), 0)` descending — so listings with most recent bids appear first
-2. Change the Market view container div from `flexDirection: column` to `display: grid, gridTemplateColumns: repeat(2, 1fr), gap: 10`
-3. Create `AuctionGridTile` component inline (above or below `AuctionCard`) with:
-   - Compact square/portrait image top section (aspect-ratio 1/1 or 4/5, `loading="lazy"`)
-   - Bottom info: title (1 line clamp), bid amount, time remaining, bid count
-   - `onClick` → `setShowBidModal(true)` → renders existing `PlaceBidModal`
-   - Styled with white bg, 16px border-radius, soft shadow, 1.5px accent border on hover
-4. Replace `<AuctionCard ... />` in the Market grid render with `<AuctionGridTile ... />`
-5. Add `@keyframes tilePulse` (brief scale + ring flash) triggered when a tile receives a new bid (track `listing.bids.length` in a ref)
-6. Verify PlaceBidModal opens correctly from tile tap and all bid functionality remains unchanged
+1. In ReleasesPage.tsx, find the Market tile render (the 2-column grid tile, look for `AuctionListing` rendering in the market grid section)
+2. Add `AuctionInfoBar` component inline or as a named function component within ReleasesPage.tsx
+3. `AuctionInfoBar` receives `listing: AuctionListing`, `accentSolid`, `accentRgb` props
+4. Implement live tick using `useState(Date.now())` + `setInterval(1000)` inside the bar
+5. Progress bar: `elapsed = Date.now() - (endsAt - 24h)`, fill = `elapsed / (24h)`, clamped 0–100%
+6. Next bid = highestBid > 0 ? highestBid + 1.00 : 1.00 (opening bid)
+7. Last bid ago: derive from `bids[bids.length-1].placedAt` — live-ticking seconds
+8. Bid amount change: use `useRef` to track previous highestBid and `CSS transition` on the value
+9. Match exact visual style of pack card info bar: same font sizes, same color palette, same 3px bar height, same subtle dot pulse animation
