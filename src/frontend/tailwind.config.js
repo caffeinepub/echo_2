@@ -16,7 +16,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        brand: ["'Dancing Script'", 'cursive'],
+        brand: ["'DM Sans'", 'system-ui', 'sans-serif'],
         ui: ["'DM Sans'", 'system-ui', 'sans-serif'],
         sans: ["'DM Sans'", 'system-ui', 'sans-serif'],
       },

@@ -8,7 +8,7 @@ import {
 import type { CollectionNFT } from "./CollectionContext";
 
 const LS_KEY = "minty_auctions";
-const LS_SEEDED_KEY = "minty_auctions_seeded";
+const LS_SEEDED_KEY = "minty_auctions_seeded_v2";
 
 export interface Bid {
   id: string;
@@ -43,7 +43,7 @@ interface AuctionCtx {
 const AuctionContext = createContext<AuctionCtx | null>(null);
 
 const NOW = Date.now();
-const H24 = 24 * 60 * 60 * 1000;
+const DAY = 86_400_000;
 
 const SEED_LISTINGS: AuctionListing[] = [
   {
@@ -76,7 +76,7 @@ const SEED_LISTINGS: AuctionListing[] = [
         placedAt: NOW - 45 * 60 * 1000,
       },
     ],
-    endsAt: NOW + 6 * 60 * 60 * 1000,
+    endsAt: NOW + 2 * DAY,
     listingFee: 100,
     status: "active",
   },
@@ -104,7 +104,7 @@ const SEED_LISTINGS: AuctionListing[] = [
         placedAt: NOW - 4 * 60 * 60 * 1000,
       },
     ],
-    endsAt: NOW + 14 * 60 * 60 * 1000,
+    endsAt: NOW + 4 * DAY,
     listingFee: 100,
     status: "active",
   },
@@ -119,7 +119,7 @@ const SEED_LISTINGS: AuctionListing[] = [
     creatorName: "sage_creator.icp",
     highestBid: 0,
     bids: [],
-    endsAt: NOW + 22 * 60 * 60 * 1000,
+    endsAt: NOW + 6 * DAY,
     listingFee: 100,
     status: "active",
   },
@@ -148,11 +148,13 @@ export function AuctionProvider({ children }: { children: React.ReactNode }) {
     loadListingsFromStorage(),
   );
 
-  // Seed mock listings once
+  // Seed mock listings once (v2 key resets old 24h seeds)
   useEffect(() => {
     const alreadySeeded = localStorage.getItem(LS_SEEDED_KEY);
     if (!alreadySeeded) {
-      setListings((prev) => [...SEED_LISTINGS, ...prev]);
+      // Clear old seed data
+      localStorage.removeItem("minty_auctions_seeded");
+      setListings(SEED_LISTINGS);
       localStorage.setItem(LS_SEEDED_KEY, "1");
     }
   }, []);
@@ -174,7 +176,7 @@ export function AuctionProvider({ children }: { children: React.ReactNode }) {
       creatorName: nft.creator,
       highestBid: 0,
       bids: [],
-      endsAt: Date.now() + H24,
+      endsAt: Date.now() + 7 * DAY,
       listingFee: 100,
       status: "active",
     };

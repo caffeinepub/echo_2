@@ -282,7 +282,7 @@ function RevealedCard({
             color: "#111111",
             margin: 0,
             textAlign: "center",
-            fontFamily: "var(--font-brand)",
+            fontFamily: "DM Sans, sans-serif",
             lineHeight: 1.1,
           }}
         >

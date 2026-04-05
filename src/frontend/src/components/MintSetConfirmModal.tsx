@@ -261,7 +261,7 @@ export function MintSetConfirmModal({
                     color: "#111",
                     margin: 0,
                     lineHeight: 1.1,
-                    fontFamily: "var(--font-brand)",
+                    fontFamily: "DM Sans, sans-serif",
                   }}
                 >
                   Mint Set

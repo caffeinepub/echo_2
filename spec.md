@@ -1,33 +1,33 @@
-# Minty Pack Visuals Update
+# Minty – Remove Cursive/Script Fonts & Collection Header
 
 ## Current State
-Sealed packs across the app use a CSS-only off-white rectangle with "MINTY PACK" text as a placeholder. The Library page has a complex flipping card system (PackCard front + PackBackside back) with a glass pedestal container. An off-white wrapper image already exists at `/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png`.
+- `--font-brand` CSS variable in `index.css` is set to `"Dancing Script", cursive`
+- `index.html` loads Google Fonts with `Dancing+Script:wght@600;700` alongside DM Sans
+- Multiple components use `fontFamily: "var(--font-brand)"` inline style for decorative headings, modal titles, section labels, NFT titles, profile/wallet elements
+- Files affected: `CollectionPage.tsx`, `LibraryPage.tsx`, `ReleasesPage.tsx`, `TopBar.tsx`, `MintSetConfirmModal.tsx`
+- `CollectionPage.tsx` has a large "Collection" `<h1>` page header block (~lines 2522–2537) rendered above the asset grid
 
 ## Requested Changes (Diff)
 
 ### Add
-- Off-white wrapper image displayed in LibraryPage as the main pack visual
-- Wrapper image in CollectionPage sealed pack thumbnails (VaultTile)
-- Wrapper image in PackOpeningOverlay during idle/anticipation/tear phases
+- Nothing new to add
 
 ### Modify
-- LibraryPage: Remove flip card component (PackBackside), remove glass pedestal square, replace with wrapper image centered in card area behind text labels
-- CollectionPage (VaultTile): Replace CSS text placeholder with wrapper image
-- PackOpeningOverlay: Replace CSS text placeholder with wrapper image in idle, anticipation, and tear phases
+- `index.css` line 8: change `--font-brand` from `"Dancing Script", cursive` to `"DM Sans", system-ui, sans-serif`
+- `index.html`: remove `Dancing+Script:wght@600;700` from the Google Fonts URL (keep DM Sans)
+- `CollectionPage.tsx`: anywhere `fontFamily: "var(--font-brand)"` appears, change to `fontFamily: "DM Sans, sans-serif"`. Also apply appropriate fontWeight for context (700 for titles, 500 for section labels, 400 for body)
+- Same font-brand → DM Sans substitution in `LibraryPage.tsx`, `ReleasesPage.tsx`, `TopBar.tsx`, `MintSetConfirmModal.tsx`
 
 ### Remove
-- PackBackside component entirely
-- Flip hint SVG (top-right corner of PackCard)
-- isFlipped state and all flip-related handlers
-- Glass pedestal container div with its accentRgb border/glow
-- 3D flip layer structure (Layer 1-4b)
-- handleCardAreaClick, handleTouchStart/End for swipe
-- Flip-related aria attributes
+- The "Collection" page header `<div>` block in `CollectionPage.tsx` (the `<div style={{ marginBottom: "20px", paddingTop: "4px" }}>` containing the `<h1>Collection</h1>` element)
+- Dancing Script from Google Fonts import
 
 ## Implementation Plan
-1. Add wrapper image path constant
-2. Rewrite PackCard in LibraryPage to display wrapper image behind text (no pedestal, no flip hint)
-3. Remove PackBackside component
-4. Simplify LibraryPage: replace 3D flip structure with simple card display
-5. Update VaultTile in CollectionPage to use wrapper image for isPack tiles
-6. Update PackOpeningOverlay idle/anticipation/tear phase pack visuals to use wrapper image
+1. Update `index.css`: change `--font-brand` to `"DM Sans", system-ui, sans-serif`
+2. Update `index.html`: strip `Dancing+Script:wght@600;700&` from the Google Fonts link
+3. In `CollectionPage.tsx`: replace all `fontFamily: "var(--font-brand)"` with `fontFamily: "DM Sans, sans-serif"` + remove the "Collection" page header block
+4. In `LibraryPage.tsx`: replace all `fontFamily: "var(--font-brand)"` with `fontFamily: "DM Sans, sans-serif"` with appropriate weights
+5. In `ReleasesPage.tsx`: same substitution
+6. In `TopBar.tsx`: same substitution
+7. In `MintSetConfirmModal.tsx`: same substitution
+8. Validate and build

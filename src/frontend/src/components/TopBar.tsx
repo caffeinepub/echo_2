@@ -512,7 +512,7 @@ function WalletModal({
             fontWeight: 700,
             color: titleColor,
             marginBottom: 16,
-            fontFamily: "var(--font-brand)",
+            fontFamily: "DM Sans, sans-serif",
             lineHeight: 1.1,
           }}
         >
@@ -615,7 +615,7 @@ function WalletModal({
             fontWeight: 700,
             color: titleColor,
             marginBottom: 18,
-            fontFamily: "var(--font-brand)",
+            fontFamily: "DM Sans, sans-serif",
             lineHeight: 1.1,
           }}
         >
@@ -828,7 +828,7 @@ function WalletModal({
                 fontSize: "22px",
                 fontWeight: 700,
                 color: "#0D1520",
-                fontFamily: "var(--font-brand)",
+                fontFamily: "DM Sans, sans-serif",
                 lineHeight: 1,
               }}
             >
@@ -929,7 +929,7 @@ function SignInModal({
           style={{
             fontSize: "26px",
             color: "#0D1520",
-            fontFamily: "var(--font-brand)",
+            fontFamily: "DM Sans, sans-serif",
             fontWeight: 700,
             lineHeight: 1.1,
           }}

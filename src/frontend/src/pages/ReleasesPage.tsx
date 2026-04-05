@@ -1588,7 +1588,7 @@ function BuyPacksModal({
                   margin: 0,
                   lineHeight: 1.1,
                   textShadow: "0 1px 6px rgba(0,0,0,0.35)",
-                  fontFamily: "var(--font-brand)",
+                  fontFamily: "DM Sans, sans-serif",
                 }}
               >
                 {release.title}
@@ -1679,7 +1679,7 @@ function BuyPacksModal({
                     fontWeight: 700,
                     color: "#111",
                     margin: "0 0 6px",
-                    fontFamily: "var(--font-brand)",
+                    fontFamily: "DM Sans, sans-serif",
                     lineHeight: 1.1,
                   }}
                 >
@@ -2043,23 +2043,19 @@ function TrendingHashtagsSection({
   );
 }
 
-// ─── Auction Countdown helper ────────────────────────────────────────────────
+// ─── Auction Countdown helpers ───────────────────────────────────────────────
 
-function useAuctionCountdown(endsAt: number) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const msLeft = endsAt - now;
-  if (msLeft <= 0) return "Auction ended";
+function formatAuctionCountdown(endsAt: number): string {
+  const msLeft = endsAt - Date.now();
+  if (msLeft <= 0) return "Ended";
   const totalSec = Math.floor(msLeft / 1000);
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s left`;
-  if (m > 0) return `${m}m ${s}s left`;
-  return `${s}s left`;
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  if (mins > 0) return `${mins}m`;
+  return `${totalSec}s`;
 }
 
 // ─── Slide To Confirm (auction) ───────────────────────────────────────────────
@@ -2418,7 +2414,7 @@ function PlaceBidModal({
                   color: "#fff",
                   margin: 0,
                   lineHeight: 1.1,
-                  fontFamily: "var(--font-brand)",
+                  fontFamily: "DM Sans, sans-serif",
                 }}
               >
                 {listing.nftTitle}
@@ -2473,7 +2469,7 @@ function PlaceBidModal({
                     fontWeight: 700,
                     color: "#111",
                     margin: "0 0 4px",
-                    fontFamily: "var(--font-brand)",
+                    fontFamily: "DM Sans, sans-serif",
                     lineHeight: 1.1,
                   }}
                 >
@@ -2576,9 +2572,11 @@ function PlaceBidModal({
 
 // ─── Auction Card ─────────────────────────────────────────────────────────────
 
-// biome-ignore lint/correctness/noUnusedVariables: kept for reference, not used in grid view
-function AuctionCard({
+// ─── Auction List Card (mirrors ReleaseCard layout) ────────────────────────────
+
+function AuctionDetailModal({
   listing,
+  onClose,
   accentGradient,
   accentGlow,
   accentSolid,
@@ -2588,6 +2586,7 @@ function AuctionCard({
   accentText,
 }: {
   listing: AuctionListing;
+  onClose: () => void;
   accentGradient: string;
   accentGlow: string;
   accentSolid: string;
@@ -2596,210 +2595,498 @@ function AuctionCard({
   accentBorder: string;
   accentText: string;
 }) {
+  void accentGlow;
   const [showBidModal, setShowBidModal] = useState(false);
-  const countdown = useAuctionCountdown(listing.endsAt);
-  const isEnded = countdown === "Auction ended";
+  const [isMuted, setIsMuted] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [liveNow, setLiveNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const msLeft = listing.endsAt - liveNow;
+  const isEnded = msLeft <= 0;
+  const countdown = formatAuctionCountdown(listing.endsAt);
+  const countdownColor = isEnded
+    ? "#9ca3af"
+    : msLeft < 24 * 3600000
+      ? "#f59e0b"
+      : accentSolid;
+
+  const nextMinBid =
+    listing.highestBid > 0
+      ? Math.round(listing.highestBid * 1.05 * 100) / 100
+      : 1.0;
+
+  const lastBid =
+    listing.bids.length > 0
+      ? listing.bids.reduce((a, b) => (a.placedAt > b.placedAt ? a : b))
+      : null;
+
+  function bidAgo(ts: number): string {
+    const sec = Math.floor((liveNow - ts) / 1000);
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    return `${Math.floor(min / 60)}h ago`;
+  }
 
   return (
     <>
+      <style>{`
+        @keyframes aDetailBdIn { from{opacity:0} to{opacity:1} }
+        @keyframes aDetailIn {
+          from { opacity: 0; transform: scale(0.94); }
+          to   { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+      {/* Backdrop */}
       <div
-        data-ocid="releases.item.1"
+        role="button"
+        tabIndex={0}
+        aria-label="Close auction detail"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter") onClose();
+        }}
         style={{
-          background: "#fff",
-          borderRadius: 20,
-          boxShadow: "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-          border: "1.5px solid rgba(0,0,0,0.05)",
-          overflow: "hidden",
-          opacity: isEnded ? 0.55 : 1,
+          position: "fixed",
+          inset: 0,
+          zIndex: 450,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          animation: "aDetailBdIn 0.2s ease",
+        }}
+      />
+      {/* Panel */}
+      <div
+        data-ocid="releases.modal"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 451,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px",
         }}
       >
-        {/* Cover image */}
         <div
           style={{
-            position: "relative",
+            background: "#FCFCFC",
+            borderRadius: 24,
+            maxWidth: 480,
             width: "100%",
-            aspectRatio: "4/5",
-            overflow: "hidden",
+            maxHeight: "90dvh",
+            overflowY: "auto",
+            animation: "aDetailIn 0.28s cubic-bezier(0.16,1,0.3,1)",
+            boxShadow:
+              "0 24px 80px rgba(0,0,0,0.30), 0 0 0 1px rgba(0,0,0,0.06)",
           }}
         >
-          <img
-            src={listing.nftImageUrl}
-            alt={listing.nftTitle}
+          {/* Video / Image header */}
+          <div
             style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
+              position: "relative",
+              aspectRatio: "4/5",
+              overflow: "hidden",
+              borderRadius: "24px 24px 0 0",
+              background: "#111",
             }}
-          />
-          {listing.mediaType === "video" && (
+          >
+            {!videoError ? (
+              <video
+                ref={videoRef}
+                src={listing.nftImageUrl}
+                autoPlay
+                loop
+                muted={isMuted}
+                playsInline
+                onError={() => setVideoError(true)}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <img
+                src={listing.nftImageUrl}
+                alt={listing.nftTitle}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            )}
+            {/* Gradient overlay */}
             <div
               style={{
                 position: "absolute",
-                bottom: 8,
-                right: 8,
-                background: "rgba(0,0,0,0.50)",
-                backdropFilter: "blur(4px)",
-                borderRadius: 20,
-                padding: "3px 8px",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "rgba(255,255,255,0.85)",
-                  fontWeight: 600,
-                }}
-              >
-                ▷ Video
-              </span>
-            </div>
-          )}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.28) 100%)",
-              pointerEvents: "none",
-            }}
-          />
-        </div>
-
-        {/* Content */}
-        <div style={{ padding: "14px 16px 16px" }}>
-          {/* Row 1: creator + rarity */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 5,
-            }}
-          >
-            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>
-              @{listing.creatorName}
-            </span>
-            <span
-              style={{
-                fontSize: 10,
-                color: listing.nftRarity === "Rare" ? accentSolid : "#9ca3af",
+                inset: 0,
                 background:
-                  listing.nftRarity === "Rare" ? accentBg : "rgba(0,0,0,0.05)",
-                border:
-                  listing.nftRarity === "Rare"
-                    ? `1px solid ${accentBorder}`
-                    : "1px solid rgba(0,0,0,0.06)",
-                borderRadius: 6,
-                padding: "2px 7px",
-                fontWeight: 700,
-                letterSpacing: "0.04em",
+                  "linear-gradient(to bottom, transparent 45%, rgba(0,0,0,0.72) 100%)",
+                pointerEvents: "none",
               }}
-            >
-              {listing.nftRarity === "Rare" ? "RARE" : "COMMON"}
-            </span>
-          </div>
-
-          {/* Row 2: title */}
-          <p
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: "#111",
-              margin: "0 0 10px",
-              lineHeight: 1.25,
-            }}
-          >
-            {listing.nftTitle}
-          </p>
-
-          {/* Row 3: highest bid */}
-          <div style={{ marginBottom: 6 }}>
+            />
+            {/* Title overlay */}
             <div
               style={{
-                fontSize: 11,
-                color: "#9ca3af",
-                fontWeight: 500,
-                marginBottom: 2,
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: "18px 18px 16px",
               }}
             >
-              Highest bid
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.70)",
+                  margin: "0 0 4px",
+                  fontWeight: 500,
+                }}
+              >
+                {listing.nftSetName}
+              </p>
+              <h2
+                style={{
+                  fontSize: 26,
+                  fontWeight: 700,
+                  color: "#fff",
+                  margin: 0,
+                  lineHeight: 1.1,
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                {listing.nftTitle}
+              </h2>
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            {/* Mute button */}
+            {!videoError && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMuted((p) => {
+                    const next = !p;
+                    if (videoRef.current) videoRef.current.muted = next;
+                    return next;
+                  });
+                }}
+                aria-label={isMuted ? "Unmute" : "Mute"}
+                style={{
+                  position: "absolute",
+                  bottom: 12,
+                  left: 12,
+                  background: "rgba(0,0,0,0.55)",
+                  backdropFilter: "blur(4px)",
+                  border: "1px solid rgba(255,255,255,0.20)",
+                  borderRadius: "50%",
+                  width: 36,
+                  height: 36,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+            )}
+            {/* Close button */}
+            <button
+              type="button"
+              data-ocid="releases.close_button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                background: "rgba(0,0,0,0.55)",
+                backdropFilter: "blur(4px)",
+                border: "1px solid rgba(255,255,255,0.20)",
+                borderRadius: "50%",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "#fff",
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Info section */}
+          <div style={{ padding: "20px 20px 24px" }}>
+            {/* Badges row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 12,
+              }}
+            >
               <span
                 style={{
-                  fontSize: 22,
-                  fontWeight: 800,
-                  color: listing.highestBid > 0 ? "#111" : "#9ca3af",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  color: accentText,
+                  background: accentBg,
+                  border: `1px solid ${accentBorder}`,
+                  borderRadius: 6,
+                  padding: "2px 8px",
+                }}
+              >
+                VIDEO NFT
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                  color: listing.nftRarity === "Rare" ? accentText : "#6b7280",
+                  background:
+                    listing.nftRarity === "Rare"
+                      ? accentBg
+                      : "rgba(0,0,0,0.05)",
+                  border: `1px solid ${listing.nftRarity === "Rare" ? accentBorder : "rgba(0,0,0,0.08)"}`,
+                  borderRadius: 6,
+                  padding: "2px 8px",
+                }}
+              >
+                {listing.nftRarity.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Creator */}
+            <p style={{ fontSize: 13, color: "#9ca3af", margin: "0 0 12px" }}>
+              @{listing.creatorName} · {listing.nftSetName}
+            </p>
+
+            {/* Countdown */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 16,
+              }}
+            >
+              <Timer size={16} color={countdownColor} />
+              <span
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: countdownColor,
                   fontVariantNumeric: "tabular-nums",
-                  letterSpacing: "-0.5px",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {isEnded ? "Auction Ended" : countdown}
+              </span>
+              {!isEnded && (
+                <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                  remaining
+                </span>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div
+              style={{
+                height: 1,
+                background: "rgba(0,0,0,0.07)",
+                margin: "0 0 16px",
+              }}
+            />
+
+            {/* Bid section */}
+            <div style={{ marginBottom: 16 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                  margin: "0 0 4px",
+                }}
+              >
+                Current Highest Bid
+              </p>
+              <p
+                style={{
+                  fontSize: 28,
+                  fontWeight: 800,
+                  color: "#111",
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-0.03em",
+                  margin: "0 0 4px",
                   lineHeight: 1,
                 }}
               >
                 {listing.highestBid > 0
                   ? `$${listing.highestBid.toFixed(2)}`
                   : "No bids yet"}
-              </span>
+              </p>
+              <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 8px" }}>
+                {listing.highestBid > 0
+                  ? `Next minimum bid: $${nextMinBid.toFixed(2)}`
+                  : `Opening bid: $${nextMinBid.toFixed(2)}`}
+              </p>
+              {lastBid && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: accentSolid,
+                      display: "inline-block",
+                      animation: "packActivityPulse 2s ease-in-out infinite",
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#9ca3af" }}>
+                    {listing.bids.length} bid
+                    {listing.bids.length !== 1 ? "s" : ""} · last bid{" "}
+                    {bidAgo(lastBid.placedAt)}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
 
-          {/* Row 4: bids count + time */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 14,
-            }}
-          >
-            <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
-              {listing.bids.length} bid{listing.bids.length !== 1 ? "s" : ""}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <Timer size={12} color={isEnded ? "#9ca3af" : accentSolid} />
-              <span
+            {/* Bid history */}
+            {listing.bids.length > 0 ? (
+              <div
                 style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: isEnded ? "#9ca3af" : accentText,
-                  fontVariantNumeric: "tabular-nums",
+                  background: "rgba(0,0,0,0.025)",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 16,
+                  maxHeight: 160,
+                  overflowY: "auto",
+                  padding: "8px 0",
                 }}
               >
-                {countdown}
-              </span>
-            </div>
-          </div>
+                {[...listing.bids]
+                  .sort((a, b) => b.placedAt - a.placedAt)
+                  .map((bid) => (
+                    <div
+                      key={bid.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "7px 14px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "#374151",
+                          fontWeight: 500,
+                        }}
+                      >
+                        @{bid.bidderName}
+                      </span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#111",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          ${bid.amountUsd.toFixed(2)}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                          {bidAgo(bid.placedAt)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "14px 16px",
+                  background: "rgba(0,0,0,0.025)",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.06)",
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#9ca3af",
+                }}
+              >
+                No bids yet — be the first!
+              </div>
+            )}
 
-          {/* Row 5: Place Bid button */}
-          <button
-            type="button"
-            data-ocid="releases.primary_button"
-            disabled={isEnded}
-            onClick={() => setShowBidModal(true)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              borderRadius: 12,
-              background: isEnded ? "#f3f4f6" : accentGradient,
-              color: isEnded ? "#9ca3af" : "#fff",
-              fontSize: 14,
-              fontWeight: 700,
-              border: "none",
-              cursor: isEnded ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              boxShadow: !isEnded ? `0 4px 14px ${accentGlow}` : "none",
-              transition: "opacity 0.15s",
-            }}
-          >
-            <Gavel size={14} />
-            {isEnded ? "Auction Ended" : "Place Bid"}
-          </button>
+            {/* Place Bid button */}
+            <button
+              type="button"
+              data-ocid="releases.primary_button"
+              disabled={isEnded}
+              onClick={() => setShowBidModal(true)}
+              style={{
+                width: "100%",
+                padding: "13px",
+                borderRadius: 12,
+                background: isEnded ? "#f3f4f6" : accentGradient,
+                color: isEnded ? "#9ca3af" : "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                border: "none",
+                cursor: isEnded ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                boxShadow: !isEnded
+                  ? `0 4px 14px rgba(${accentRgb},0.35)`
+                  : "none",
+              }}
+            >
+              <Gavel size={14} />
+              {isEnded ? "Auction Ended" : "Place Bid"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2819,9 +3106,7 @@ function AuctionCard({
   );
 }
 
-// ─── Auction Grid Tile ────────────────────────────────────────────────────────
-
-function AuctionGridTile({
+function AuctionListCard({
   listing,
   accentGradient,
   accentGlow,
@@ -2840,20 +3125,12 @@ function AuctionGridTile({
   accentBorder: string;
   accentText: string;
 }) {
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showBidModal, setShowBidModal] = useState(false);
-  const [isPulsing, setIsPulsing] = useState(false);
-  const prevBidCountRef = useRef(listing.bids.length);
-  const countdown = useAuctionCountdown(listing.endsAt);
-  const isEnded = countdown === "Auction ended";
-
-  // accentGlow unused in tile body (passed through to modal via parent)
-  void accentGlow;
-
-  // bid flash state
+  const [videoError, setVideoError] = useState(false);
+  const [liveNow, setLiveNow] = useState(Date.now());
   const [bidFlash, setBidFlash] = useState(false);
   const prevBidRef = useRef(listing.highestBid);
-  // live ticker for time progress and activity row
-  const [liveNow, setLiveNow] = useState(Date.now());
 
   useEffect(() => {
     const id = setInterval(() => setLiveNow(Date.now()), 1000);
@@ -2871,279 +3148,262 @@ function AuctionGridTile({
     prevBidRef.current = listing.highestBid;
   }, [listing.highestBid]);
 
-  const AUCTION_DURATION = 24 * 60 * 60 * 1000;
+  const msLeft = listing.endsAt - liveNow;
+  const isEnded = msLeft <= 0;
+  const countdown = formatAuctionCountdown(listing.endsAt);
+  const countdownColor = isEnded
+    ? "#9ca3af"
+    : msLeft < 24 * 3600000
+      ? "#f59e0b"
+      : "#6b7280";
+
+  const nextMinBid =
+    listing.highestBid > 0
+      ? Math.round(listing.highestBid * 1.05 * 100) / 100
+      : 1.0;
+
+  const AUCTION_DURATION = 7 * 24 * 60 * 60 * 1000;
   const auctionStart = listing.endsAt - AUCTION_DURATION;
   const elapsed = liveNow - auctionStart;
   const fillPct = Math.min(
     100,
     Math.max(0, (elapsed / AUCTION_DURATION) * 100),
   );
-  const msLeft = listing.endsAt - liveNow;
-  const timeLabel = (() => {
-    if (msLeft <= 0) return "Ended";
-    const totalSec = Math.floor(msLeft / 1000);
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    if (h > 0) return `${h}h ${m}m left`;
-    if (m > 0) return `${m}m ${s}s left`;
-    return `${s}s left`;
-  })();
 
-  const nextMinBid = listing.highestBid > 0 ? listing.highestBid + 1.0 : 1.0;
   const lastBid =
-    listing.bids.length > 0 ? listing.bids[listing.bids.length - 1] : null;
-  const lastBidAgo = (() => {
-    if (!lastBid) return "";
-    const sec = Math.floor((liveNow - lastBid.placedAt) / 1000);
+    listing.bids.length > 0
+      ? listing.bids.reduce((a, b) => (a.placedAt > b.placedAt ? a : b))
+      : null;
+
+  function lastBidAgo(ts: number): string {
+    const sec = Math.floor((liveNow - ts) / 1000);
     if (sec < 60) return `${sec}s ago`;
     const min = Math.floor(sec / 60);
     if (min < 60) return `${min}m ago`;
-    const hr = Math.floor(min / 60);
-    return `${hr}h ago`;
-  })();
-
-  useEffect(() => {
-    if (listing.bids.length > prevBidCountRef.current) {
-      setIsPulsing(true);
-      const t = setTimeout(() => setIsPulsing(false), 600);
-      prevBidCountRef.current = listing.bids.length;
-      return () => clearTimeout(t);
-    }
-    prevBidCountRef.current = listing.bids.length;
-  }, [listing.bids.length]);
+    return `${Math.floor(min / 60)}h ago`;
+  }
 
   return (
     <>
-      <div
+      <button
+        type="button"
         data-ocid="releases.item.1"
-        tabIndex={isEnded ? -1 : 0}
-        onClick={() => !isEnded && setShowBidModal(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (!isEnded) setShowBidModal(true);
-          }
-        }}
+        onClick={() => setShowDetailModal(true)}
         style={{
           background: "#fff",
-          borderRadius: 16,
+          borderRadius: 20,
+          boxShadow: "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
           border: "1.5px solid rgba(0,0,0,0.05)",
           overflow: "hidden",
-          cursor: isEnded ? "default" : "pointer",
+          cursor: "pointer",
+          textAlign: "left",
+          padding: 0,
+          width: "100%",
+          display: "flex",
+          flexDirection: "column",
+          transition: "box-shadow 0.18s ease, transform 0.15s ease",
           opacity: isEnded ? 0.55 : 1,
-          transition: "transform 0.15s, box-shadow 0.15s",
-          animation: isPulsing ? "tileBidPulse 0.6s ease-out" : "none",
-          // @ts-expect-error CSS custom property
-          "--tile-accent-rgb": accentRgb,
-          boxShadow: isPulsing
-            ? undefined
-            : "0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)",
         }}
         onMouseEnter={(e) => {
           if (!isEnded) {
-            (e.currentTarget as HTMLDivElement).style.transform =
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              `0 6px 24px ${accentGlow}, 0 2px 8px rgba(0,0,0,0.07)`;
+            (e.currentTarget as HTMLButtonElement).style.transform =
               "translateY(-2px)";
-            (e.currentTarget as HTMLDivElement).style.boxShadow =
-              "0 6px 20px rgba(0,0,0,0.11), 0 2px 6px rgba(0,0,0,0.06)";
           }
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.transform = "";
-          (e.currentTarget as HTMLDivElement).style.boxShadow =
-            "0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow =
+            "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)";
+          (e.currentTarget as HTMLButtonElement).style.transform =
+            "translateY(0)";
         }}
       >
-        {/* Image / media */}
+        {/* Cover media */}
         <div
           style={{
             position: "relative",
             width: "100%",
-            aspectRatio: "1/1",
+            aspectRatio: "4/5",
             overflow: "hidden",
             background: "#f3f4f6",
           }}
         >
-          <img
-            src={listing.nftImageUrl}
-            alt={listing.nftTitle}
-            loading="lazy"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
+          {!videoError ? (
+            <video
+              src={listing.nftImageUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onError={() => setVideoError(true)}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <img
+              src={listing.nftImageUrl}
+              alt={listing.nftTitle}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          )}
           {/* Gradient overlay */}
           <div
             style={{
               position: "absolute",
               inset: 0,
               background:
-                "linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.22) 100%)",
+                "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.28) 100%)",
               pointerEvents: "none",
             }}
           />
-          {/* Video badge */}
-          {listing.mediaType === "video" && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: 7,
-                right: 7,
-                background: "rgba(0,0,0,0.48)",
-                backdropFilter: "blur(4px)",
-                borderRadius: 20,
-                padding: "2px 7px",
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 9,
-                  color: "rgba(255,255,255,0.85)",
-                  fontWeight: 600,
-                }}
-              >
-                ▷ Video
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* Bottom info — auction info bar */}
-        <div style={{ padding: "10px 10px 12px" }}>
-          {/* Title */}
+        {/* Content area */}
+        <div style={{ padding: "14px 16px 16px" }}>
+          {/* Row 1 — creator + VIDEO NFT badge */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 5,
+            }}
+          >
+            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>
+              @{listing.creatorName}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                color: "#6b7280",
+                background: "rgba(0,0,0,0.05)",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontWeight: 600,
+              }}
+            >
+              VIDEO NFT
+            </span>
+          </div>
+
+          {/* Row 2 — title */}
           <p
             style={{
-              fontSize: 13,
-              fontWeight: 600,
+              fontSize: 16,
+              fontWeight: 700,
               color: "#111",
-              margin: "0 0 6px",
-              lineHeight: 1.3,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              margin: "0 0 4px",
+              lineHeight: 1.25,
             }}
           >
             {listing.nftTitle}
           </p>
 
-          {/* Current bid block */}
-          <div style={{ marginBottom: 5 }}>
-            {listing.highestBid > 0 ? (
-              <>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 500,
-                    color: "#9ca3af",
-                    display: "block",
-                    marginBottom: 1,
-                  }}
-                >
-                  Current bid:
-                </span>
-                <span
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 800,
-                    fontVariantNumeric: "tabular-nums",
-                    color: bidFlash ? accentSolid : "#111",
-                    transition: "color 0.3s ease",
-                    display: "block",
-                    lineHeight: 1.1,
-                  }}
-                >
-                  ${listing.highestBid.toFixed(2)}
-                </span>
-              </>
-            ) : (
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 400,
-                  color: "#9ca3af",
-                  display: "block",
-                }}
-              >
-                No bids yet
-              </span>
-            )}
-          </div>
-
-          {/* Next bid sub-line */}
+          {/* Row 3 — caption (set name as fallback) */}
           <p
             style={{
-              fontSize: 11,
-              fontWeight: 400,
-              color: "#9ca3af",
-              fontVariantNumeric: "tabular-nums",
-              margin: "0 0 5px",
-              lineHeight: 1,
+              fontSize: 12,
+              color: "#6b7280",
+              margin: "0 0 8px",
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              lineHeight: 1.45,
             }}
           >
-            {listing.highestBid > 0
-              ? `Next bid: $${nextMinBid.toFixed(2)}`
-              : `Opening bid: $${nextMinBid.toFixed(2)}`}
+            {listing.nftSetName}
           </p>
 
-          {/* Bid activity row */}
-          {listing.bids.length > 0 && lastBid && (
+          {/* Row 4 — Highest bid */}
+          <div style={{ marginBottom: 8 }}>
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                marginBottom: 6,
+                fontSize: 11,
+                color: "#9ca3af",
+                fontWeight: 400,
+                marginBottom: 2,
               }}
             >
-              {/* Activity pulse dot */}
-              <span
+              Highest bid
+            </div>
+            <span
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                color: bidFlash
+                  ? accentSolid
+                  : listing.highestBid > 0
+                    ? "#111"
+                    : "#9ca3af",
+                fontVariantNumeric: "tabular-nums",
+                letterSpacing: "-0.5px",
+                lineHeight: 1,
+                display: "block",
+                transition: "color 0.3s ease",
+              }}
+            >
+              {listing.highestBid > 0
+                ? `$${listing.highestBid.toFixed(2)}`
+                : "No bids"}
+            </span>
+            <span style={{ fontSize: 12, color: "#9ca3af" }}>
+              {listing.highestBid > 0
+                ? `Next bid: $${nextMinBid.toFixed(2)}`
+                : `Opening bid: $${nextMinBid.toFixed(2)}`}
+            </span>
+          </div>
+
+          {/* Row 5 — Bid activity + progress bar */}
+          <div style={{ marginBottom: 8 }}>
+            {lastBid ? (
+              <div
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: accentSolid,
-                  opacity: 0.7,
-                  flexShrink: 0,
-                  display: "inline-block",
-                  animation: "packActivityPulse 2s ease-in-out infinite",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "#9ca3af",
-                  fontWeight: 400,
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  marginBottom: 6,
                 }}
               >
-                {listing.bids.length}{" "}
-                {listing.bids.length === 1 ? "bid" : "bids"}
-                <span style={{ color: "#d1d5db", margin: "0 3px" }}>•</span>
-                last bid {lastBidAgo}
-              </span>
-            </div>
-          )}
-
-          {/* Time progress bar */}
-          <div>
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 400,
-                color: "#9ca3af",
-                margin: "0 0 3px",
-                textAlign: "right",
-                lineHeight: 1,
-              }}
-            >
-              {timeLabel}
-            </p>
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: accentSolid,
+                    opacity: 0.7,
+                    flexShrink: 0,
+                    display: "inline-block",
+                    animation: "packActivityPulse 2s ease-in-out infinite",
+                  }}
+                />
+                <span
+                  style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}
+                >
+                  {listing.bids.length} bid
+                  {listing.bids.length !== 1 ? "s" : ""}
+                  <span style={{ color: "#d1d5db", margin: "0 3px" }}>·</span>
+                  last bid {lastBidAgo(lastBid.placedAt)}
+                </span>
+              </div>
+            ) : (
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  No bids yet
+                </span>
+              </div>
+            )}
+            {/* Thin time progress bar */}
             <div
               style={{
                 height: 3,
@@ -3164,8 +3424,77 @@ function AuctionGridTile({
               />
             </div>
           </div>
+
+          {/* Row 6 — Countdown */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: 12,
+            }}
+          >
+            <Timer size={12} color={countdownColor} />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: countdownColor,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {isEnded ? "Auction ended" : countdown}
+            </span>
+          </div>
+
+          {/* Row 7 — Place Bid button */}
+          <button
+            type="button"
+            data-ocid="releases.secondary_button"
+            disabled={isEnded}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowBidModal(true);
+            }}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: 12,
+              background: isEnded ? "#f3f4f6" : accentGradient,
+              color: isEnded ? "#9ca3af" : "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              border: "none",
+              cursor: isEnded ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              boxShadow: !isEnded
+                ? `0 4px 14px rgba(${accentRgb},0.30)`
+                : "none",
+              transition: "opacity 0.15s",
+            }}
+          >
+            <Gavel size={14} />
+            {isEnded ? "Auction Ended" : "Place Bid"}
+          </button>
         </div>
-      </div>
+      </button>
+
+      {showDetailModal && (
+        <AuctionDetailModal
+          listing={listing}
+          onClose={() => setShowDetailModal(false)}
+          accentGradient={accentGradient}
+          accentGlow={accentGlow}
+          accentSolid={accentSolid}
+          accentRgb={accentRgb}
+          accentBg={accentBg}
+          accentBorder={accentBorder}
+          accentText={accentText}
+        />
+      )}
 
       {showBidModal && (
         <PlaceBidModal
@@ -3353,6 +3682,48 @@ export function ReleasesPage() {
       {/* ── Market view ─────────────────────────────────────────────────── */}
       {viewMode === "market" && (
         <div style={{ padding: "12px 16px 24px" }}>
+          {/* LIVE badge header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              marginBottom: 16,
+              paddingTop: 4,
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                color: accentSolid,
+                background: accentBg,
+                border: `1px solid ${accentBorder}`,
+                borderRadius: 20,
+                padding: "3px 9px",
+              }}
+            >
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: accentSolid,
+                  display: "inline-block",
+                  animation: "packActivityPulse 2s ease-in-out infinite",
+                }}
+              />
+              LIVE
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>
+              Video NFT Auctions
+            </span>
+          </div>
+
           {auctionListings.filter(
             (l) => l.status === "active" && l.mediaType === "video",
           ).length === 0 ? (
@@ -3407,14 +3778,7 @@ export function ReleasesPage() {
               </div>
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: 10,
-                paddingTop: 12,
-              }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[...auctionListings]
                 .filter((l) => l.status === "active" && l.mediaType === "video")
                 .sort((a, b) => {
@@ -3429,7 +3793,7 @@ export function ReleasesPage() {
                   return latestB - latestA;
                 })
                 .map((listing) => (
-                  <AuctionGridTile
+                  <AuctionListCard
                     key={listing.id}
                     listing={listing}
                     accentGradient={accentGradient}

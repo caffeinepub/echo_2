@@ -1528,7 +1528,7 @@ function SendToAuctionModal({
                 color: "#fff",
                 margin: 0,
                 lineHeight: 1.1,
-                fontFamily: "var(--font-brand)",
+                fontFamily: "DM Sans, sans-serif",
               }}
             >
               {nft.title}
@@ -1580,7 +1580,7 @@ function SendToAuctionModal({
                 fontWeight: 700,
                 color: "#111",
                 margin: "0 0 18px",
-                fontFamily: "var(--font-brand)",
+                fontFamily: "DM Sans, sans-serif",
                 lineHeight: 1.1,
               }}
             >
@@ -1854,7 +1854,7 @@ function NFTDetailSheet({
                 fontWeight: 700,
                 color: "#111",
                 margin: "0 0 8px",
-                fontFamily: "var(--font-brand)",
+                fontFamily: "DM Sans, sans-serif",
                 lineHeight: 1.1,
               }}
             >
@@ -2197,7 +2197,7 @@ function BurnConfirmModal({
             fontWeight: 700,
             color: "#111",
             marginBottom: "6px",
-            fontFamily: "var(--font-brand)",
+            fontFamily: "DM Sans, sans-serif",
             lineHeight: 1.1,
           }}
         >
@@ -2518,24 +2518,6 @@ export function CollectionPage({
       }}
     >
       <style>{KEYFRAMES}</style>
-
-      {/* Page header */}
-      <div style={{ marginBottom: "20px", paddingTop: "4px" }}>
-        <h1
-          style={{
-            fontSize: "22px",
-            fontWeight: 500,
-            color: "#111",
-            margin: 0,
-            fontFamily: "DM Sans, sans-serif",
-            lineHeight: 1.1,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase" as const,
-          }}
-        >
-          Collection
-        </h1>
-      </div>
 
       {isEmpty ? (
         <EmptyState onGoToLibrary={onGoToLibrary} />

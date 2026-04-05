@@ -5,7 +5,7 @@
 @layer base {
   :root {
     --radius: 1rem;
-    --font-brand: "Dancing Script", cursive;
+    --font-brand: "DM Sans", system-ui, sans-serif;
     --font-ui: "DM Sans", system-ui, sans-serif;
     /* Light mode — permanent (Blue supply cycle) */
     --background: 0.978 0.003 240;
