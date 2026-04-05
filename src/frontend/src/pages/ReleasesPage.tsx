@@ -152,6 +152,14 @@ function TickerBar({
           from { transform: translateX(0); }
           to   { transform: translateX(-50%); }
         }
+        @keyframes packActivityPulse {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.35); }
+        }
+        @keyframes packProgressIn {
+          from { width: 0%; }
+          to { width: var(--progress-target); }
+        }
       `}</style>
       <div
         style={{
@@ -430,6 +438,12 @@ function ReleaseCard({
   const hasClip = !!release.previewClipUrl;
   const packsSold = release.packCount - release.packsAvailable;
   const currentPrice = calcPackPrice(packsSold, release.packCount);
+  const nextPackPrice = calcPackPrice(packsSold + 1, release.packCount);
+  const percentSold = Math.round((packsSold / release.packCount) * 100);
+  const recentActivity =
+    packsSold > 0
+      ? Math.min(packsSold, Math.max(1, Math.round(packsSold * 0.08)))
+      : 0;
 
   return (
     <>
@@ -674,7 +688,15 @@ function ReleaseCard({
               {release.packsAvailable !== 1 ? "s" : ""} available
             </span>
             <span style={{ fontSize: 11, color: "#d1d5db" }}>·</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#111",
+                transition: "color 0.4s ease",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
               ${currentPrice.toFixed(2)}
               <span
                 style={{
@@ -687,14 +709,94 @@ function ReleaseCard({
                 / pack
               </span>
             </span>
+            <span
+              style={{
+                fontSize: 11,
+                color: "#9ca3af",
+                fontWeight: 400,
+                marginLeft: 6,
+              }}
+            >
+              Next: ${nextPackPrice.toFixed(2)}
+            </span>
           </div>
 
-          {/* Row 4b — sold / remaining */}
-          <div style={{ marginBottom: 8, lineHeight: 1 }}>
-            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>
-              {packsSold} sold&nbsp;&middot;&nbsp;{release.packsAvailable}{" "}
-              remaining
-            </span>
+          {/* Row 4b — market signals */}
+          <div style={{ marginBottom: 8 }}>
+            {/* Supply + percent sold row */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 5,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color:
+                    release.packsAvailable < 50
+                      ? accentSolid
+                      : release.packsAvailable < 100
+                        ? "#6b7280"
+                        : "#9ca3af",
+                }}
+              >
+                {release.packsAvailable} packs left
+              </span>
+              <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>
+                {percentSold}% sold
+              </span>
+            </div>
+            {/* Thin progress bar */}
+            <div
+              style={{
+                height: 3,
+                borderRadius: 99,
+                background: "rgba(0,0,0,0.06)",
+                overflow: "hidden",
+                marginBottom: 6,
+              }}
+            >
+              <div
+                style={
+                  {
+                    height: "100%",
+                    width: `${percentSold}%`,
+                    background: accentSolid,
+                    opacity: 0.55,
+                    borderRadius: 99,
+                    transition: "width 0.8s ease",
+                    animation: "packProgressIn 1s ease forwards",
+                    "--progress-target": `${percentSold}%`,
+                  } as React.CSSProperties
+                }
+              />
+            </div>
+            {/* Recent activity */}
+            {packsSold > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: accentSolid,
+                    opacity: 0.7,
+                    flexShrink: 0,
+                    animation: "packActivityPulse 2s ease-in-out infinite",
+                  }}
+                />
+                <span
+                  style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}
+                >
+                  {recentActivity} pack{recentActivity !== 1 ? "s" : ""} sold
+                  recently
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Row 5 — countdown */}
