@@ -3,19 +3,15 @@ import {
   Check,
   ChevronRight,
   Flame,
-  Gavel,
   Link2,
   Package,
   Play,
   Star,
-  Store,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CollectibleCard } from "../components/CollectibleCard";
 import { PackOpeningOverlay } from "../components/PackOpeningOverlay";
-import { ReleaseFlowModal } from "../components/ReleaseFlowModal";
-import { useAuctions } from "../context/AuctionContext";
 import {
   type CollectionNFT,
   type SealedPack,
@@ -618,7 +614,6 @@ function SetSection({
   onTap,
   onSecondTap,
   onClosePanel,
-  onRelease,
   onBurn,
 }: {
   group: SetGroup;
@@ -627,7 +622,6 @@ function SetSection({
   onTap: (id: string) => void;
   onSecondTap: (id: string) => void;
   onClosePanel: () => void;
-  onRelease: (pack: SealedPack, all: SealedPack[]) => void;
   onBurn: (nft: CollectionNFT) => void;
 }) {
   const statParts: { text: string; highlight?: boolean }[] = [
@@ -716,32 +710,6 @@ function SetSection({
             ))}
           </div>
         </div>
-
-        {group.sealedCount > 0 && (
-          <button
-            type="button"
-            data-ocid="collection.open_modal_button"
-            onClick={() => onRelease(group.packs[0], group.packs)}
-            style={{
-              background: MINT_SOFT,
-              color: MINT_TEXT,
-              fontSize: "11px",
-              padding: "5px 10px",
-              borderRadius: "20px",
-              border: "1px solid rgba(var(--cycle-accent-rgb) / 0.25)",
-              fontWeight: 700,
-              cursor: "pointer",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              letterSpacing: "0.01em",
-            }}
-          >
-            <Store size={10} />
-            Release
-          </button>
-        )}
       </div>
 
       {/* Sealed packs — horizontal scroll row */}
@@ -1131,599 +1099,6 @@ function SendToWalletModal({
   );
 }
 
-// ─── NFT Detail Sheet ─────────────────────────────────────────────────────────
-function SendToAuctionButton({ nft }: { nft: CollectionNFT }) {
-  const { isListed, createAuction } = useAuctions();
-  const { activeStyle } = usePackStyle();
-  const aR = activeStyle.accentR;
-  const aG = activeStyle.accentG;
-  const aB = activeStyle.accentB;
-  const accentRgb = `${aR},${aG},${aB}`;
-  const accentSolid = `rgb(${accentRgb})`;
-  const accentBg = `rgba(${accentRgb},0.09)`;
-  const accentBorder = `rgba(${accentRgb},0.28)`;
-  const accentText = `rgba(${Math.round(aR * 0.55)},${Math.round(aG * 0.55)},${Math.round(aB * 0.55)},1)`;
-  const accentGradient = `linear-gradient(135deg, rgb(${accentRgb}) 0%, rgba(${Math.round(aR * 0.78)},${Math.round(aG * 0.78)},${Math.round(aB * 0.78)},1) 100%)`;
-  const [showAuctionModal, setShowAuctionModal] = useState(false);
-  const listed = isListed(nft.id);
-
-  // Only video NFTs are eligible for auction
-  if (nft.mediaType !== "video") {
-    return (
-      <div
-        style={{
-          width: "100%",
-          padding: "10px 0",
-          textAlign: "center",
-          fontSize: "12px",
-          color: "#9ca3af",
-          letterSpacing: "0.01em",
-        }}
-      >
-        Auctions are available for video NFTs only
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        data-ocid="collection.secondary_button"
-        disabled={listed}
-        onClick={() => !listed && setShowAuctionModal(true)}
-        style={{
-          width: "100%",
-          height: "48px",
-          borderRadius: "12px",
-          background: "transparent",
-          border: listed
-            ? "1.5px solid rgba(var(--cycle-accent-rgb) / 0.20)"
-            : `1.5px solid ${MINT}`,
-          color: listed ? "rgba(var(--cycle-accent-rgb) / 0.40)" : MINT_TEXT,
-          fontSize: "14px",
-          fontWeight: 600,
-          cursor: listed ? "not-allowed" : "pointer",
-          letterSpacing: "0.02em",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
-          opacity: listed ? 0.6 : 1,
-        }}
-      >
-        <Gavel size={14} />
-        {listed ? "Listed in Market" : "Send to Auction"}
-      </button>
-      {showAuctionModal && (
-        <SendToAuctionModal
-          nft={nft}
-          onClose={() => setShowAuctionModal(false)}
-          onConfirm={() => {
-            createAuction(nft);
-            setShowAuctionModal(false);
-          }}
-          accentRgb={accentRgb}
-          accentSolid={accentSolid}
-          accentBg={accentBg}
-          accentBorder={accentBorder}
-          accentText={accentText}
-          accentGradient={accentGradient}
-        />
-      )}
-    </>
-  );
-}
-
-// ─── Send To Auction Modal ────────────────────────────────────────────────────
-
-function SlideToConfirmAuction({
-  onConfirm,
-  disabled,
-  accentRgb,
-  accentSolid,
-  accentGradient,
-  accentBorder,
-  accentText,
-}: {
-  onConfirm: () => void;
-  disabled: boolean;
-  accentRgb: string;
-  accentSolid: string;
-  accentGradient: string;
-  accentBorder: string;
-  accentText: string;
-}) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [knobX, setKnobX] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
-  const dragStart = useRef<{ pointerX: number; startKnob: number } | null>(
-    null,
-  );
-
-  const TRACK_HEIGHT = 56;
-  const KNOB_SIZE = 44;
-  const KNOB_PADDING = 6;
-
-  const getMaxX = useCallback(() => {
-    if (!trackRef.current) return 200;
-    return trackRef.current.offsetWidth - KNOB_SIZE - KNOB_PADDING * 2;
-  }, []);
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (disabled || isComplete) return;
-      e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      setIsDragging(true);
-      dragStart.current = { pointerX: e.clientX, startKnob: knobX };
-    },
-    [disabled, isComplete, knobX],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging || !dragStart.current) return;
-      const delta = e.clientX - dragStart.current.pointerX;
-      const newX = Math.max(
-        0,
-        Math.min(dragStart.current.startKnob + delta, getMaxX()),
-      );
-      setKnobX(newX);
-      const maxX = getMaxX();
-      if (newX >= maxX * 0.85) {
-        setKnobX(maxX);
-        setIsComplete(true);
-        setIsDragging(false);
-        dragStart.current = null;
-        setTimeout(onConfirm, 300);
-      }
-    },
-    [isDragging, getMaxX, onConfirm],
-  );
-
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    dragStart.current = null;
-    if (!isComplete) setKnobX(0);
-  }, [isDragging, isComplete]);
-
-  const maxX = typeof window !== "undefined" ? getMaxX() : 200;
-  const progress = maxX > 0 ? knobX / maxX : 0;
-  const labelOpacity = Math.max(0, 1 - progress * 2.5);
-
-  return (
-    <div
-      ref={trackRef}
-      style={{
-        position: "relative",
-        height: TRACK_HEIGHT,
-        borderRadius: TRACK_HEIGHT / 2,
-        background: `linear-gradient(135deg, rgba(${accentRgb},0.15) 0%, rgba(${accentRgb},0.22) 100%)`,
-        border: `1.5px solid ${accentBorder}`,
-        overflow: "hidden",
-        userSelect: "none",
-        cursor: "default",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          height: "100%",
-          width: `${KNOB_PADDING + KNOB_SIZE / 2 + knobX}px`,
-          background: accentGradient,
-          borderRadius: TRACK_HEIGHT / 2,
-          opacity: isComplete ? 1 : 0.6,
-          transition: isDragging
-            ? "none"
-            : "width 0.3s cubic-bezier(0.34,1.56,0.64,1)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "none",
-          opacity: labelOpacity,
-          transition: "opacity 0.1s",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: accentText,
-            letterSpacing: "0.01em",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          {!isComplete && <ChevronRight size={14} color={accentText} />}
-          Slide to confirm
-        </span>
-      </div>
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        style={{
-          position: "absolute",
-          top: KNOB_PADDING,
-          left: KNOB_PADDING + knobX,
-          width: KNOB_SIZE,
-          height: KNOB_SIZE,
-          borderRadius: "50%",
-          background: isComplete ? accentSolid : "#fff",
-          boxShadow: isComplete
-            ? `0 0 0 3px rgba(${accentRgb},0.30), 0 4px 16px rgba(${accentRgb},0.45)`
-            : "0 2px 10px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: isDragging ? "grabbing" : "grab",
-          transition: isDragging
-            ? "none"
-            : "left 0.35s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, box-shadow 0.2s",
-          touchAction: "none",
-          zIndex: 2,
-        }}
-      >
-        {isComplete ? (
-          <Check size={20} color="#fff" strokeWidth={2.5} />
-        ) : (
-          <ChevronRight size={20} color={accentSolid} strokeWidth={2.5} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function SendToAuctionModal({
-  nft,
-  onClose,
-  onConfirm,
-  accentRgb,
-  accentSolid,
-  accentBg,
-  accentBorder,
-  accentText,
-  accentGradient,
-}: {
-  nft: CollectionNFT;
-  onClose: () => void;
-  onConfirm: () => void;
-  accentRgb: string;
-  accentSolid: string;
-  accentBg: string;
-  accentBorder: string;
-  accentText: string;
-  accentGradient: string;
-}) {
-  const [confirmed, setConfirmed] = useState(false);
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
-  function handleConfirm() {
-    setConfirmed(true);
-    setTimeout(() => {
-      onConfirm();
-    }, 1200);
-  }
-
-  return (
-    <div
-      data-ocid="collection.auction_modal"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 500,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px 16px",
-      }}
-    >
-      {/* Backdrop */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Close"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" || e.key === "Enter") onClose();
-        }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
-      />
-
-      <div
-        style={{
-          position: "relative",
-          background: "#FCFCFC",
-          borderRadius: 24,
-          width: "100%",
-          maxWidth: 400,
-          maxHeight: "92dvh",
-          overflowY: "auto",
-          boxShadow: `0 0 0 1px ${accentBorder}, 0 24px 60px rgba(0,0,0,0.25)`,
-          animation: "modalFadeIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-        }}
-      >
-        {/* Close */}
-        <button
-          type="button"
-          data-ocid="collection.close_button"
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
-            background: "rgba(255,255,255,0.92)",
-            border: "none",
-            borderRadius: "50%",
-            width: 32,
-            height: 32,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            zIndex: 10,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
-          }}
-        >
-          <X size={16} color="#374151" />
-        </button>
-
-        {/* NFT image */}
-        <div
-          style={{
-            position: "relative",
-            aspectRatio: "4/5",
-            overflow: "hidden",
-            background: "#e8e8e4",
-            borderRadius: "24px 24px 0 0",
-          }}
-        >
-          <img
-            src={nft.imageUrl}
-            alt={nft.title}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "/assets/generated/minty-pack-wrapper.png";
-              (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
-              (e.currentTarget as HTMLImageElement).style.padding = "12px";
-              (e.currentTarget as HTMLImageElement).style.background =
-                "#F9F9F7";
-            }}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.60) 100%)",
-              pointerEvents: "none",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "flex-end",
-              padding: "18px 18px 16px",
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.70)",
-                margin: "0 0 4px",
-                fontWeight: 500,
-              }}
-            >
-              {nft.setName}
-            </p>
-            <h2
-              style={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: "#fff",
-                margin: 0,
-                lineHeight: 1.1,
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              {nft.title}
-            </h2>
-          </div>
-        </div>
-
-        {/* Content */}
-        {confirmed ? (
-          <div
-            data-ocid="collection.success_state"
-            style={{ padding: "32px 24px 40px", textAlign: "center" }}
-          >
-            <div
-              style={{
-                width: 68,
-                height: 68,
-                borderRadius: "50%",
-                background: accentGradient,
-                margin: "0 auto 16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: `0 0 0 6px rgba(${accentRgb},0.22)`,
-                animation: "successBounce 0.55s cubic-bezier(0.34,1.56,0.64,1)",
-              }}
-            >
-              <Check size={30} color="#fff" strokeWidth={2.5} />
-            </div>
-            <p
-              style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: "#111",
-                margin: "0 0 6px",
-              }}
-            >
-              Listed in Minty Market!
-            </p>
-            <p style={{ fontSize: 13, color: "#6b7280" }}>
-              Your NFT is now live in the auction market.
-            </p>
-          </div>
-        ) : (
-          <div style={{ padding: "20px 20px 28px" }}>
-            <h3
-              style={{
-                fontSize: 26,
-                fontWeight: 700,
-                color: "#111",
-                margin: "0 0 18px",
-                fontFamily: "DM Sans, sans-serif",
-                lineHeight: 1.1,
-              }}
-            >
-              Send to Auction
-            </h3>
-
-            {/* Listing fee */}
-            <div
-              style={{
-                background: accentBg,
-                border: `1.5px solid ${accentBorder}`,
-                borderRadius: 14,
-                padding: "14px 16px",
-                marginBottom: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                Auction listing fee
-              </span>
-              <span
-                style={{ fontSize: 18, fontWeight: 800, color: accentSolid }}
-              >
-                $100
-              </span>
-            </div>
-
-            {/* Duration */}
-            <div
-              style={{
-                background: "rgba(0,0,0,0.04)",
-                borderRadius: 10,
-                padding: "10px 14px",
-                marginBottom: 16,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span style={{ fontSize: 12, color: "#6b7280" }}>⏱</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>
-                Duration: 24 hours
-              </span>
-            </div>
-
-            {/* Description */}
-            <p
-              style={{
-                fontSize: 13,
-                color: "#6b7280",
-                lineHeight: 1.6,
-                marginBottom: 20,
-              }}
-            >
-              This NFT will be listed in the Minty Market as a timed auction.
-              Users will place bids. Highest bid at end of auction wins.
-            </p>
-
-            {/* Auction rules */}
-            <div
-              style={{
-                height: 1,
-                background: "rgba(0,0,0,0.07)",
-                marginBottom: 16,
-              }}
-            />
-            <div style={{ marginBottom: 20 }}>
-              {[
-                "Only NFTs opened from packs can be listed",
-                "Highest bid wins at end of auction",
-                "Auction cannot be canceled after first bid",
-                "$100 fee will be deducted from your wallet",
-              ].map((rule) => (
-                <div
-                  key={rule}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    marginBottom: 8,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: accentSolid,
-                      marginTop: 1,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✓
-                  </span>
-                  <span
-                    style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.45 }}
-                  >
-                    {rule}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <SlideToConfirmAuction
-              onConfirm={handleConfirm}
-              disabled={false}
-              accentRgb={accentRgb}
-              accentSolid={accentSolid}
-              accentGradient={accentGradient}
-              accentBorder={accentBorder}
-              accentText={accentText}
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function NFTDetailSheet({
   nft,
   burnedCount,
@@ -2076,8 +1451,6 @@ function NFTDetailSheet({
             <div
               style={{ display: "flex", flexDirection: "column", gap: "10px" }}
             >
-              <SendToAuctionButton nft={nft} />
-
               <button
                 type="button"
                 data-ocid="collection.primary_button"
@@ -2703,10 +2076,6 @@ export function CollectionPage({
   const [openingNFT, setOpeningNFT] = useState<CollectionNFT | null>(null);
   const [isOpeningPack, setIsOpeningPack] = useState(false);
 
-  const [releaseModalData, setReleaseModalData] = useState<{
-    pack: SealedPack;
-    all: SealedPack[];
-  } | null>(null);
   // Burn state
   const [burnTarget, setBurnTarget] = useState<CollectionNFT | null>(null);
   const [showBurnConfirm, setShowBurnConfirm] = useState(false);
@@ -2862,7 +2231,6 @@ export function CollectionPage({
                 onTap={handleTap}
                 onSecondTap={handleSecondTap}
                 onClosePanel={handleClosePanel}
-                onRelease={(pack, all) => setReleaseModalData({ pack, all })}
                 onBurn={handleBurnRequest}
               />
               {/* Separator between sets */}
@@ -2916,16 +2284,6 @@ export function CollectionPage({
             }}
           />
         ))}
-
-      {/* Release to Market modal */}
-      {releaseModalData && (
-        <ReleaseFlowModal
-          open={!!releaseModalData}
-          onClose={() => setReleaseModalData(null)}
-          pack={releaseModalData.pack}
-          allPacksInSet={releaseModalData.all}
-        />
-      )}
 
       {/* Burn confirm modal — triggered from inline panel */}
       {showBurnConfirm && burnTarget && (

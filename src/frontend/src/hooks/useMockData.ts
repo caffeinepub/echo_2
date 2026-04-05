@@ -1,5 +1,4 @@
-import { useReleasesData } from "./useReleasesData";
-
+// useMockData — stub hook retained for backward compatibility
 export function useMockData() {
-  return useReleasesData();
+  return {};
 }

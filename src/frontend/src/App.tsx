@@ -6,8 +6,6 @@ import { BottomNav, type Tab } from "./components/BottomNav";
 import { MintSetConfirmModal } from "./components/MintSetConfirmModal";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
-import { AdminReleasesProvider } from "./context/AdminReleasesContext";
-import { AuctionProvider } from "./context/AuctionContext";
 import { CollectionProvider } from "./context/CollectionContext";
 import {
   type MomentDraft,
@@ -15,11 +13,6 @@ import {
   useMomentDraft,
 } from "./context/MomentDraftContext";
 import { PackStyleProvider } from "./context/PackStyleContext";
-import {
-  ReleasesMarketProvider,
-  useReleasesMarket,
-} from "./context/ReleasesMarketContext";
-import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
 import { useActor } from "./hooks/useActor";
@@ -28,14 +21,12 @@ import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
+import { PetPage } from "./pages/PetPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import { ReleasesPage } from "./pages/ReleasesPage";
-import { UploadPage } from "./pages/UploadPage";
 import { seedMockData } from "./store/seedMockData";
 
 type View =
   | { type: "tab"; tab: Tab }
-  | { type: "upload" }
   | { type: "capture-moment" }
   | { type: "profile" };
 
@@ -121,7 +112,6 @@ function AppContent() {
   const [isUploading, setIsUploading] = useState(false);
 
   const { startDraft, media, clearDraft } = useMomentDraft();
-  const { addRelease } = useReleasesMarket();
   const { actor } = useActor();
   const { identity } = useInternetIdentity();
 
@@ -211,34 +201,10 @@ function AppContent() {
           images: imageUrls,
         };
 
-        const setId = await actor.createMintySet(setInput);
+        await actor.createMintySet(setInput);
 
-        // Wire new set as a release
-        const now = Date.now();
-        const release: MarketRelease = {
-          id: `release_mint_${setId}`,
-          creatorName: "You",
-          creatorId: principal.toString(),
-          coverImageUrl:
-            coverImageUrl || "/assets/generated/minty-pack-wrapper.png",
-          previewClipUrl: previewClipUrl || undefined,
-          title: draft.title || "Mint Moment",
-          caption: draft.caption || "300 packs",
-          setName: draft.title || "Mint Moment",
-          packsAvailable: 300,
-          packCount: 300,
-          packIds: Array.from({ length: 300 }, (_, i) => `pack_${setId}_${i}`),
-          priceUsd: draft.pricePerPackUsd,
-          listedAt: now,
-          expiresAt: now + 365 * 24 * 3600000,
-          status: "active",
-          collectibleType: "photo",
-          explicit: draft.explicit,
-          hashtags: draft.hashtags,
-        };
-        addRelease(release);
         clearDraft();
-        toast.success("Moment minted and listed in Releases!");
+        toast.success("Moment minted!");
       } catch (err) {
         console.error("[Minty] Mint failed:", err);
         toast.error("Mint failed. Please try again.");
@@ -251,30 +217,6 @@ function AppContent() {
     }
 
     // ── Fallback: no actor — local only ──────────────────────────────────
-    const now = Date.now();
-    const release: MarketRelease = {
-      id: `release_mint_${draft.id}`,
-      creatorName: "You",
-      creatorId: "you",
-      coverImageUrl:
-        media.imagePreviewUrls[0] || "/assets/generated/minty-pack-wrapper.png",
-      previewClipUrl: media.videoPreviewUrl ?? undefined,
-      title: draft.title || "Mint Moment",
-      caption: draft.caption || "300 packs",
-      setName: draft.title || "Mint Moment",
-      packsAvailable: 300,
-      packCount: 300,
-      packIds: Array.from({ length: 300 }, (_, i) => `pack_${draft.id}_${i}`),
-      priceUsd: draft.pricePerPackUsd,
-      listedAt: now,
-      expiresAt: now + 365 * 24 * 3600000,
-      status: "active",
-      collectibleType: "photo",
-      explicit: draft.explicit,
-      hashtags: draft.hashtags,
-    };
-
-    addRelease(release);
     clearDraft();
     setPendingMintDraft(null);
     setShowMintSetConfirmModal(false);
@@ -346,22 +288,14 @@ function AppContent() {
       <TopBar onProfileClick={() => setView({ type: "profile" })} />
       <main className="pt-16 pb-[68px] min-h-screen">
         {view.type === "tab" && view.tab === "library" && (
-          <LibraryPage
-            onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
-            onCaptureMoment={handleCaptureMoment}
-          />
+          <LibraryPage onCaptureMoment={handleCaptureMoment} />
         )}
-        {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
         {view.type === "tab" && view.tab === "collection" && (
           <CollectionPage
             onGoToLibrary={() => setView({ type: "tab", tab: "library" })}
           />
         )}
-        {view.type === "upload" && (
-          <UploadPage
-            onBack={() => setView({ type: "tab", tab: "releases" })}
-          />
-        )}
+        {view.type === "tab" && view.tab === "pet" && <PetPage />}
         {view.type === "capture-moment" && (
           <CaptureMomentPage
             onBack={() => setView({ type: "tab", tab: "library" })}
@@ -386,17 +320,11 @@ export default function App() {
         <PackStyleProvider>
           <InternetIdentityProvider>
             <WalletProvider>
-              <AdminReleasesProvider>
-                <MomentDraftProvider>
-                  <CollectionProvider>
-                    <ReleasesMarketProvider>
-                      <AuctionProvider>
-                        <AppContent />
-                      </AuctionProvider>
-                    </ReleasesMarketProvider>
-                  </CollectionProvider>
-                </MomentDraftProvider>
-              </AdminReleasesProvider>
+              <MomentDraftProvider>
+                <CollectionProvider>
+                  <AppContent />
+                </CollectionProvider>
+              </MomentDraftProvider>
             </WalletProvider>
           </InternetIdentityProvider>
         </PackStyleProvider>

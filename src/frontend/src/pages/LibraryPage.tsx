@@ -6,7 +6,6 @@ import { usePackStyle } from "../context/PackStyleContext";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
-  onBrowseReleases?: () => void;
   onCaptureMoment?: () => void;
 }
 
@@ -419,10 +418,7 @@ function DraftLockedState({
   );
 }
 
-export function LibraryPage({
-  onBrowseReleases,
-  onCaptureMoment,
-}: LibraryPageProps) {
+export function LibraryPage({ onCaptureMoment }: LibraryPageProps) {
   const [packState, setPackState] = useState<PackState>("idle");
   const [currentCollectible, setCurrentCollectible] =
     useState<Collectible | null>(null);
@@ -483,12 +479,8 @@ export function LibraryPage({
   }
 
   function handleViewLibrary() {
-    if (onBrowseReleases) {
-      onBrowseReleases();
-    } else {
-      setPackState("idle");
-      setCurrentCollectible(null);
-    }
+    setPackState("idle");
+    setCurrentCollectible(null);
   }
 
   const handleRevealRandom = useCallback(() => {
