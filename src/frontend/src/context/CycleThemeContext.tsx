@@ -71,9 +71,6 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
       "/assets/generated/pack-wrapper-cycle3-blue-v2-transparent.dim_400x560.png",
     glowDark: "rgba(75,130,220,",
     glowLight: "rgba(75,130,220,",
-    // Mint logo hue is ~160deg. Blue target ~220-230deg.
-    // Shift +75deg, slight desaturation to keep it pastel, slight brightness
-    // lift to match the soft glossy feel of the other colorways.
     logoFilter: "hue-rotate(75deg) saturate(0.85) brightness(1.05)",
   },
   4: {
@@ -122,7 +119,10 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
       "/assets/generated/pack-wrapper-cycle6-gold-transparent.dim_400x560.png",
     glowDark: "rgba(212,175,55,",
     glowLight: "rgba(180,145,30,",
-    logoFilter: "hue-rotate(-80deg) saturate(1.1) brightness(1.0)",
+    // Champagne-gold treatment: shift hue from mint-green toward warm amber-gold,
+    // boost saturation for richness, slight brightness lift for glossy sheen.
+    logoFilter:
+      "hue-rotate(-75deg) saturate(1.4) brightness(1.12) contrast(1.05)",
   },
 };
 

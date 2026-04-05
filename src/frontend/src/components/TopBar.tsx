@@ -23,22 +23,111 @@ const isLight = true;
 
 let neonStyleEl: HTMLStyleElement | null = null;
 
-function injectNeonStyles(r: number, g: number, b: number, filter: string) {
+function injectNeonStyles(
+  r: number,
+  g: number,
+  b: number,
+  filter: string,
+  cycleId: number,
+) {
   if (!neonStyleEl) {
     neonStyleEl = document.createElement("style");
     document.head.appendChild(neonStyleEl);
   }
-  neonStyleEl.textContent = `
+
+  const isGold = cycleId === 6;
+
+  // Base breathe animation — overridden for gold
+  const baseBreathe = isGold
+    ? `
+@keyframes echo-neon-breathe-light {
+  0%,100% { filter: ${filter} brightness(1.0) drop-shadow(0 0 2px rgba(${r},${g},${b},0.35)) drop-shadow(0 0 6px rgba(${r},${g},${b},0.18)); }
+  50%     { filter: ${filter} brightness(1.06) drop-shadow(0 0 4px rgba(${r},${g},${b},0.55)) drop-shadow(0 0 14px rgba(${r},${g},${b},0.28)); }
+}
+`
+    : `
 @keyframes echo-neon-breathe-light {
   0%,100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.92) drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
   50%     { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.96) drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
 }
+`;
+
+  const goldExtras = isGold
+    ? `
+/* ── Gold shimmer sweep ─────────────────────────────────────────── */
+.gold-shimmer-sweep {
+  background: linear-gradient(
+    118deg,
+    transparent 20%,
+    rgba(255, 252, 210, 0.00) 30%,
+    rgba(255, 248, 190, 0.38) 46%,
+    rgba(255, 255, 235, 0.55) 50%,
+    rgba(255, 248, 190, 0.38) 54%,
+    rgba(255, 252, 210, 0.00) 70%,
+    transparent 80%
+  );
+  background-size: 300% 100%;
+  animation: gold-sweep 5.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+  border-radius: 4px;
+}
+
+@keyframes gold-sweep {
+  0%   { background-position: 160% center; opacity: 0; }
+  4%   { opacity: 1; }
+  42%  { background-position: -60% center; opacity: 1; }
+  54%  { opacity: 0; }
+  100% { background-position: -60% center; opacity: 0; }
+}
+
+/* ── Star gleams ─────────────────────────────────────────────────── */
+.gold-gleam {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 228, 0.96);
+  box-shadow:
+    0 0 3px 1px rgba(255, 248, 150, 0.9),
+    0 0 7px 3px rgba(255, 220, 60, 0.45),
+    0 0 12px 5px rgba(212, 175, 55, 0.20);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.gold-gleam-1 {
+  top: 28%;
+  left: 10%;
+  animation: gold-gleam-pulse 8s ease-in-out 0.6s infinite;
+}
+.gold-gleam-2 {
+  top: 52%;
+  left: 52%;
+  animation: gold-gleam-pulse 8s ease-in-out 3.1s infinite;
+}
+.gold-gleam-3 {
+  top: 22%;
+  left: 80%;
+  animation: gold-gleam-pulse 8s ease-in-out 5.8s infinite;
+}
+
+@keyframes gold-gleam-pulse {
+  0%, 82%  { opacity: 0; transform: scale(0.5); }
+  87%      { opacity: 0.92; transform: scale(1.3); }
+  91%      { opacity: 0.65; transform: scale(1.05); }
+  96%      { opacity: 0; transform: scale(0.4); }
+  100%     { opacity: 0; transform: scale(0.5); }
+}
+`
+    : "";
+
+  neonStyleEl.textContent = `
+${baseBreathe}
 
 .echo-logo-neon {
-  animation: echo-neon-breathe-light 3.8s ease-in-out infinite;
+  animation: echo-neon-breathe-light ${isGold ? "4.2s" : "3.8s"} ease-in-out infinite;
   will-change: filter;
 }
-`;
+${goldExtras}`;
 }
 
 // ─── Asset Data ────────────────────────────────────────────────────────────────
@@ -999,12 +1088,14 @@ interface TopBarProps {
 
 export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
-  const { activeCycle, activeCycleId: _activeCycleId } = useCycleTheme();
+  const { activeCycle, activeCycleId } = useCycleTheme();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
   // Always use the original mint logo — CSS filter in logoFilter handles color per cycle
   const MINTY_LOGO = "/assets/minty-logo.png";
+
+  const isGoldCycle = activeCycleId === 6;
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1013,8 +1104,9 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
       activeCycle.accentG,
       activeCycle.accentB,
       activeCycle.logoFilter,
+      activeCycleId,
     );
-  }, [activeCycle]);
+  }, [activeCycle, activeCycleId]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
@@ -1050,10 +1142,15 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
           paddingRight: "20px",
         }}
       >
-        {/* Minty Logo */}
+        {/* Minty Logo — gold cycle gets shimmer overlay treatment */}
         <div
-          className="relative flex items-center"
-          style={{ paddingTop: "6px" }}
+          className={`relative flex items-center${isGoldCycle ? " gold-cycle-active" : ""}`}
+          style={{
+            paddingTop: "6px",
+            // Clip the shimmer sweep to the logo bounds when gold cycle is active
+            overflow: isGoldCycle ? "hidden" : "visible",
+            borderRadius: isGoldCycle ? "4px" : undefined,
+          }}
         >
           <img
             src={MINTY_LOGO}
@@ -1070,6 +1167,35 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
             }}
             draggable={false}
           />
+
+          {/* Gold prestige shimmer — only rendered for Cycle 6 */}
+          {isGoldCycle && (
+            <>
+              {/* Light sweep across the logo surface */}
+              <div
+                className="gold-shimmer-sweep"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  zIndex: 1,
+                }}
+              />
+              {/* Star gleams at strategic positions on the logo */}
+              <span
+                className="gold-gleam gold-gleam-1"
+                style={{ position: "absolute", zIndex: 2 }}
+              />
+              <span
+                className="gold-gleam gold-gleam-2"
+                style={{ position: "absolute", zIndex: 2 }}
+              />
+              <span
+                className="gold-gleam gold-gleam-3"
+                style={{ position: "absolute", zIndex: 2 }}
+              />
+            </>
+          )}
         </div>
 
         <div className="flex items-center self-center gap-2">
