@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
+import { useCycleTheme } from "../context/CycleThemeContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
 import { useUserSettings } from "../context/UserSettingsContext";
@@ -122,19 +123,21 @@ const RECENT_TRANSACTIONS: TickerTransaction[] = [
   },
 ].sort((a, b) => b.soldAt - a.soldAt);
 
-function TickerBar({ isDark }: { isDark: boolean }) {
+function TickerBar({
+  isDark,
+  accentRgb,
+  accentSolid,
+}: {
+  isDark: boolean;
+  accentRgb: string;
+  accentSolid: string;
+}) {
   const [paused, setPaused] = useState(false);
   const items = [...RECENT_TRANSACTIONS, ...RECENT_TRANSACTIONS];
-  const mintColor = isDark ? "oklch(0.75 0.14 160)" : "#10b981";
-  const badgeBg = isDark
-    ? "oklch(0.70 0.18 160 / 0.20)"
-    : "rgba(16,185,129,0.15)";
-  const containerBg = isDark
-    ? "oklch(0.70 0.18 160 / 0.08)"
-    : "rgba(16,185,129,0.07)";
-  const containerBorder = isDark
-    ? "oklch(0.70 0.18 160 / 0.22)"
-    : "rgba(16,185,129,0.18)";
+  const mintColor = accentSolid;
+  const badgeBg = `rgba(${accentRgb},0.15)`;
+  const containerBg = `rgba(${accentRgb},0.07)`;
+  const containerBorder = `rgba(${accentRgb},0.18)`;
   const textColor = isDark ? "oklch(0.72 0.06 160)" : "#6b7280";
   const dimDot = isDark ? "oklch(0.38 0.06 160)" : "rgba(0,0,0,0.12)";
   const sepDot = isDark ? "oklch(0.58 0.08 160)" : "#9ca3af";
@@ -398,10 +401,16 @@ function ReleaseCard({
   release,
   now,
   onTap,
+  accentGradient,
+  accentGlow,
+  accentSolid,
 }: {
   release: MarketRelease;
   now: number;
   onTap: (r: MarketRelease) => void;
+  accentGradient: string;
+  accentGlow: string;
+  accentSolid: string;
 }) {
   const { isBurned, isEndingSoon, label } = useCountdown(
     release.expiresAt,
@@ -441,7 +450,7 @@ function ReleaseCard({
         onMouseEnter={(e) => {
           if (!isBurned) {
             (e.currentTarget as HTMLButtonElement).style.boxShadow =
-              "0 6px 24px rgba(16,185,129,0.18), 0 2px 8px rgba(0,0,0,0.07)";
+              `0 6px 24px ${accentGlow}, 0 2px 8px rgba(0,0,0,0.07)`;
             (e.currentTarget as HTMLButtonElement).style.transform =
               "translateY(-2px)";
           }
@@ -561,7 +570,7 @@ function ReleaseCard({
             >
               <span
                 style={{
-                  background: isBurned ? "#374151" : "#10b981",
+                  background: isBurned ? "#374151" : accentSolid,
                   color: "#fff",
                   fontSize: 12,
                   fontWeight: 700,
@@ -717,7 +726,7 @@ function ReleaseCard({
               background:
                 isBurned || release.status !== "active"
                   ? "#f3f4f6"
-                  : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  : accentGradient,
               color:
                 isBurned || release.status !== "active" ? "#9ca3af" : "#fff",
               fontSize: 14,
@@ -733,7 +742,7 @@ function ReleaseCard({
               gap: 6,
               boxShadow:
                 !isBurned && release.status === "active"
-                  ? "0 4px 14px rgba(16,185,129,0.28)"
+                  ? `0 4px 14px ${accentGlow}`
                   : "none",
               transition: "opacity 0.15s",
             }}
@@ -801,9 +810,19 @@ function setRLEntry(releaseId: string, entry: RLEntry) {
 function SlideToBuy({
   onConfirm,
   disabled,
+  accentRgb,
+  accentSolid,
+  accentGradient,
+  accentBorder,
+  accentText,
 }: {
   onConfirm: () => void;
   disabled: boolean;
+  accentRgb: string;
+  accentSolid: string;
+  accentGradient: string;
+  accentBorder: string;
+  accentText: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [knobX, setKnobX] = useState(0);
@@ -879,10 +898,10 @@ function SlideToBuy({
         borderRadius: TRACK_HEIGHT / 2,
         background: disabled
           ? "#f3f4f6"
-          : "linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(5,150,105,0.22) 100%)",
+          : `linear-gradient(135deg, rgba(${accentRgb},0.15) 0%, rgba(${accentRgb},0.22) 100%)`,
         border: disabled
           ? "1.5px solid #e5e7eb"
-          : "1.5px solid rgba(16,185,129,0.30)",
+          : `1.5px solid ${accentBorder}`,
         overflow: "hidden",
         userSelect: "none",
         cursor: disabled ? "not-allowed" : "default",
@@ -896,7 +915,7 @@ function SlideToBuy({
           top: 0,
           height: "100%",
           width: `${KNOB_PADDING + KNOB_SIZE / 2 + knobX}px`,
-          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          background: accentGradient,
           borderRadius: TRACK_HEIGHT / 2,
           opacity: isComplete ? 1 : 0.6,
           transition: isDragging
@@ -923,7 +942,7 @@ function SlideToBuy({
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: disabled ? "#9ca3af" : "#047857",
+            color: disabled ? "#9ca3af" : accentText,
             letterSpacing: "0.01em",
             display: "flex",
             alignItems: "center",
@@ -931,7 +950,7 @@ function SlideToBuy({
           }}
         >
           {!isComplete && (
-            <ChevronRight size={14} color={disabled ? "#9ca3af" : "#047857"} />
+            <ChevronRight size={14} color={disabled ? "#9ca3af" : accentText} />
           )}
           {disabled ? "Unavailable" : "Slide to confirm purchase"}
         </span>
@@ -949,11 +968,11 @@ function SlideToBuy({
           width: KNOB_SIZE,
           height: KNOB_SIZE,
           borderRadius: "50%",
-          background: isComplete ? "#10b981" : disabled ? "#d1d5db" : "#fff",
+          background: isComplete ? accentSolid : disabled ? "#d1d5db" : "#fff",
           boxShadow: disabled
             ? "none"
             : isComplete
-              ? "0 0 0 3px rgba(16,185,129,0.30), 0 4px 16px rgba(16,185,129,0.45)"
+              ? `0 0 0 3px rgba(${accentRgb},0.30), 0 4px 16px rgba(${accentRgb},0.45)`
               : "0 2px 10px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)",
           display: "flex",
           alignItems: "center",
@@ -971,7 +990,7 @@ function SlideToBuy({
         ) : (
           <ChevronRight
             size={20}
-            color={disabled ? "#9ca3af" : "#10b981"}
+            color={disabled ? "#9ca3af" : accentSolid}
             strokeWidth={2.5}
           />
         )}
@@ -989,9 +1008,23 @@ const PAYMENT_METHODS: PaymentMethod[] = ["USDC", "BTC", "ETH", "SOL"];
 function BuyPacksModal({
   release,
   onClose,
+  accentRgb,
+  accentSolid,
+  accentBg,
+  accentBorder,
+  accentBorderStrong,
+  accentText,
+  accentGradient,
 }: {
   release: MarketRelease;
   onClose: () => void;
+  accentRgb: string;
+  accentSolid: string;
+  accentBg: string;
+  accentBorder: string;
+  accentBorderStrong: string;
+  accentText: string;
+  accentGradient: string;
 }) {
   const { buyPacks } = useReleasesMarket();
   const { addSealedPacks } = useCollection();
@@ -1125,9 +1158,9 @@ function BuyPacksModal({
           100% { transform: scale(1); }
         }
         @keyframes glowPulse {
-          0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.55), 0 0 0 6px rgba(16,185,129,0.22); }
-          50%  { box-shadow: 0 0 0 10px rgba(16,185,129,0.18), 0 0 0 20px rgba(16,185,129,0.08); }
-          100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.55), 0 0 0 6px rgba(16,185,129,0.22); }
+          0%   { box-shadow: 0 0 0 0 rgba(var(--cycle-accent-rgb),0.55), 0 0 0 6px rgba(var(--cycle-accent-rgb),0.22); }
+          50%  { box-shadow: 0 0 0 10px rgba(var(--cycle-accent-rgb),0.18), 0 0 0 20px rgba(var(--cycle-accent-rgb),0.08); }
+          100% { box-shadow: 0 0 0 0 rgba(var(--cycle-accent-rgb),0.55), 0 0 0 6px rgba(var(--cycle-accent-rgb),0.22); }
         }
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(12px); }
@@ -1180,8 +1213,7 @@ function BuyPacksModal({
             maxWidth: 420,
             maxHeight: "88dvh",
             overflowY: "auto",
-            boxShadow:
-              "0 0 0 1px rgba(16,185,129,0.15), 0 24px 60px rgba(0,0,0,0.22)",
+            boxShadow: `0 0 0 1px ${accentBorder}, 0 24px 60px rgba(0,0,0,0.22)`,
             animation: "modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
             pointerEvents: "auto",
             position: "relative",
@@ -1309,15 +1341,13 @@ function BuyPacksModal({
                   width: 72,
                   height: 72,
                   borderRadius: "50%",
-                  background:
-                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  background: accentGradient,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   animation:
                     "successBounce 0.55s cubic-bezier(0.34,1.56,0.64,1), glowPulse 1.8s ease-in-out infinite",
-                  boxShadow:
-                    "0 0 0 6px rgba(16,185,129,0.22), 0 8px 28px rgba(16,185,129,0.40)",
+                  boxShadow: `0 0 0 6px rgba(${accentRgb},0.22), 0 8px 28px rgba(${accentRgb},0.40)`,
                 }}
               >
                 <Check size={32} color="#fff" strokeWidth={2.5} />
@@ -1336,7 +1366,7 @@ function BuyPacksModal({
                 </p>
                 <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
                   {purchasedQty} pack{purchasedQty > 1 ? "s" : ""} from{" "}
-                  <span style={{ color: "#10b981", fontWeight: 600 }}>
+                  <span style={{ color: accentSolid, fontWeight: 600 }}>
                     {release.setName}
                   </span>
                 </p>
@@ -1348,15 +1378,15 @@ function BuyPacksModal({
                   gap: 8,
                   alignItems: "center",
                   marginTop: 4,
-                  background: "rgba(16,185,129,0.08)",
+                  background: accentBg,
                   borderRadius: 12,
                   padding: "10px 16px",
-                  border: "1px solid rgba(16,185,129,0.18)",
+                  border: `1px solid ${accentBorder}`,
                 }}
               >
-                <Package2 size={14} color="#10b981" />
+                <Package2 size={14} color={accentSolid} />
                 <span
-                  style={{ fontSize: 12, color: "#047857", fontWeight: 600 }}
+                  style={{ fontSize: 12, color: accentText, fontWeight: 600 }}
                 >
                   Open your packs in the Collection tab
                 </span>
@@ -1451,15 +1481,15 @@ function BuyPacksModal({
                           padding: "10px 0",
                           borderRadius: 12,
                           border: isSelected
-                            ? "2px solid #10b981"
+                            ? `2px solid ${accentBorderStrong}`
                             : "1.5px solid rgba(0,0,0,0.09)",
                           background: isSelected
-                            ? "rgba(16,185,129,0.10)"
+                            ? accentBg
                             : isOver
                               ? "#f9fafb"
                               : "#fff",
                           color: isSelected
-                            ? "#047857"
+                            ? accentText
                             : isOver
                               ? "#d1d5db"
                               : "#374151",
@@ -1505,12 +1535,10 @@ function BuyPacksModal({
                           padding: "10px 0",
                           borderRadius: 12,
                           border: isSelected
-                            ? "2px solid #10b981"
+                            ? `2px solid ${accentBorderStrong}`
                             : "1.5px solid rgba(0,0,0,0.09)",
-                          background: isSelected
-                            ? "rgba(16,185,129,0.10)"
-                            : "#fff",
-                          color: isSelected ? "#047857" : "#374151",
+                          background: isSelected ? accentBg : "#fff",
+                          color: isSelected ? accentText : "#374151",
                           fontSize: 12,
                           fontWeight: isSelected ? 700 : 500,
                           cursor: "pointer",
@@ -1587,6 +1615,11 @@ function BuyPacksModal({
               <SlideToBuy
                 onConfirm={handleConfirmPurchase}
                 disabled={isDisabled}
+                accentRgb={accentRgb}
+                accentSolid={accentSolid}
+                accentGradient={accentGradient}
+                accentBorder={accentBorder}
+                accentText={accentText}
               />
 
               {/* Subtle burn notice */}
@@ -1661,10 +1694,14 @@ function SectionHeader({
 
 function TrendingHashtagsSection({
   hashtags,
-  isDark,
+  accentBg,
+  accentBorder,
+  accentText,
 }: {
   hashtags: TrendingHashtag[];
-  isDark: boolean;
+  accentBg: string;
+  accentBorder: string;
+  accentText: string;
 }) {
   if (hashtags.length === 0) return null;
 
@@ -1684,17 +1721,9 @@ function TrendingHashtagsSection({
               fontWeight: 500,
               letterSpacing: "0.01em",
               cursor: "default",
-              background: isDark
-                ? "rgba(10, 32, 22, 0.65)"
-                : "rgba(240, 253, 248, 0.85)",
-              border: isDark
-                ? "1px solid rgba(110, 230, 185, 0.14)"
-                : "1px solid rgba(16, 185, 129, 0.18)",
-              color: isDark
-                ? "rgba(160, 220, 195, 0.85)"
-                : "rgba(5, 120, 80, 0.9)",
-              backdropFilter: isDark ? "blur(8px)" : "none",
-              WebkitBackdropFilter: isDark ? "blur(8px)" : "none",
+              background: accentBg,
+              border: `1px solid ${accentBorder}`,
+              color: accentText,
             }}
           >
             {tag}
@@ -1731,6 +1760,23 @@ export function ReleasesPage() {
 
   const isLight = theme === "light";
   const isDark = !isLight;
+
+  // ─── Cycle theme accent derivations ─────────────────────────────────────────
+  const { activeCycle } = useCycleTheme();
+  const aR = activeCycle.accentR;
+  const aG = activeCycle.accentG;
+  const aB = activeCycle.accentB;
+  const accentRgb = `${aR},${aG},${aB}`;
+  const accentSolid = `rgb(${accentRgb})`;
+  const accentBg = `rgba(${accentRgb},0.09)`;
+  const accentBgStrong = `rgba(${accentRgb},0.14)`;
+  const accentBorder = `rgba(${accentRgb},0.28)`;
+  const accentBorderStrong = `rgba(${accentRgb},0.55)`;
+  const accentText = `rgba(${Math.round(aR * 0.55)},${Math.round(aG * 0.55)},${Math.round(aB * 0.55)},1)`;
+  const accentGlow = `rgba(${accentRgb},0.28)`;
+  const accentGradient = `linear-gradient(135deg, rgb(${accentRgb}) 0%, rgba(${Math.round(aR * 0.78)},${Math.round(aG * 0.78)},${Math.round(aB * 0.78)},1) 100%)`;
+  // Suppress unused variable
+  void accentBgStrong;
 
   // Burn expired releases every minute, update clock every second
   useEffect(() => {
@@ -1800,7 +1846,11 @@ export function ReleasesPage() {
           padding: "8px 16px 10px",
         }}
       >
-        <TickerBar isDark={isDark} />
+        <TickerBar
+          isDark={isDark}
+          accentRgb={accentRgb}
+          accentSolid={accentSolid}
+        />
 
         {/* Helper text row with safe viewing toggle */}
         <div
@@ -1828,12 +1878,10 @@ export function ReleasesPage() {
               display: "flex",
               alignItems: "center",
               gap: "5px",
-              background: explicitModeOn
-                ? "rgba(245,158,11,0.10)"
-                : "rgba(16,185,129,0.08)",
+              background: explicitModeOn ? "rgba(245,158,11,0.10)" : accentBg,
               border: explicitModeOn
                 ? "1.5px solid rgba(245,158,11,0.30)"
-                : "1.5px solid rgba(16,185,129,0.25)",
+                : `1.5px solid ${accentBorder}`,
               borderRadius: "20px",
               padding: "4px 10px",
               cursor: "pointer",
@@ -1847,7 +1895,7 @@ export function ReleasesPage() {
                 borderRadius: "7px",
                 background: explicitModeOn
                   ? "rgba(245,158,11,0.75)"
-                  : "rgba(16,185,129,0.75)",
+                  : `rgba(${accentRgb},0.75)`,
                 position: "relative",
                 transition: "background 0.2s",
               }}
@@ -1871,7 +1919,7 @@ export function ReleasesPage() {
                 fontSize: "10px",
                 fontWeight: 700,
                 letterSpacing: "0.04em",
-                color: explicitModeOn ? "#92400e" : "#047857",
+                color: explicitModeOn ? "#92400e" : accentText,
               }}
             >
               {explicitModeOn ? "EXPLICIT ON" : "SAFE VIEW"}
@@ -1902,17 +1950,17 @@ export function ReleasesPage() {
                   padding: "7px 14px",
                   borderRadius: 20,
                   border: isActive
-                    ? "1.5px solid rgba(16,185,129,0.35)"
+                    ? `1.5px solid ${accentBorder}`
                     : `1.5px solid ${
                         isLight ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.08)"
                       }`,
                   background: isActive
-                    ? "rgba(16,185,129,0.10)"
+                    ? accentBg
                     : isLight
                       ? "rgba(255,255,255,0.7)"
                       : "rgba(255,255,255,0.05)",
                   color: isActive
-                    ? "#10b981"
+                    ? accentSolid
                     : isLight
                       ? "#374151"
                       : "rgba(255,255,255,0.7)",
@@ -1947,7 +1995,9 @@ export function ReleasesPage() {
         <div style={{ paddingTop: 10 }}>
           <TrendingHashtagsSection
             hashtags={trendingHashtags}
-            isDark={isDark}
+            accentBg={accentBg}
+            accentBorder={accentBorder}
+            accentText={accentText}
           />
         </div>
       </div>
@@ -1973,14 +2023,14 @@ export function ReleasesPage() {
                 width: 60,
                 height: 60,
                 borderRadius: 20,
-                background: "rgba(16,185,129,0.10)",
-                border: "1.5px solid rgba(16,185,129,0.22)",
+                background: accentBg,
+                border: `1.5px solid ${accentBorder}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Sparkles size={24} color="#10b981" />
+              <Sparkles size={24} color={accentSolid} />
             </div>
             <div>
               <p
@@ -2029,6 +2079,9 @@ export function ReleasesPage() {
                       release={r}
                       now={now}
                       onTap={setSelectedRelease}
+                      accentGradient={accentGradient}
+                      accentGlow={accentGlow}
+                      accentSolid={accentSolid}
                     />
                   ))}
                 </div>
@@ -2039,7 +2092,7 @@ export function ReleasesPage() {
             {filterMode === "live" && newlyReleased.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <SectionHeader
-                  icon={<Sparkles size={14} color="#10b981" />}
+                  icon={<Sparkles size={14} color={accentSolid} />}
                   label="Newly Released"
                   count={newlyReleased.length}
                 />
@@ -2056,6 +2109,9 @@ export function ReleasesPage() {
                       release={r}
                       now={now}
                       onTap={setSelectedRelease}
+                      accentGradient={accentGradient}
+                      accentGlow={accentGlow}
+                      accentSolid={accentSolid}
                     />
                   ))}
                 </div>
@@ -2083,6 +2139,9 @@ export function ReleasesPage() {
                       release={r}
                       now={now}
                       onTap={setSelectedRelease}
+                      accentGradient={accentGradient}
+                      accentGlow={accentGlow}
+                      accentSolid={accentSolid}
                     />
                   ))}
                 </div>
@@ -2118,6 +2177,9 @@ export function ReleasesPage() {
                         release={r}
                         now={now}
                         onTap={setSelectedRelease}
+                        accentGradient={accentGradient}
+                        accentGlow={accentGlow}
+                        accentSolid={accentSolid}
                       />
                     ))}
                   </div>
@@ -2133,6 +2195,13 @@ export function ReleasesPage() {
         <BuyPacksModal
           release={selectedRelease}
           onClose={() => setSelectedRelease(null)}
+          accentRgb={accentRgb}
+          accentSolid={accentSolid}
+          accentBg={accentBg}
+          accentBorder={accentBorder}
+          accentBorderStrong={accentBorderStrong}
+          accentText={accentText}
+          accentGradient={accentGradient}
         />
       )}
     </div>
