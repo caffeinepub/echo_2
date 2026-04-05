@@ -18,7 +18,6 @@ export interface MomentDraft {
   id: string;
   photos: string[]; // data URLs or object URLs
   video: string | null;
-  coverPhoto: string | null; // separate cover photo for pack art (NOT a collectible)
   completed: boolean;
   createdAt: number;
   captureMetadata: CaptureMetadataItem[];
@@ -26,7 +25,6 @@ export interface MomentDraft {
   // Content labeling fields (filled in FinalSetupScreen)
   title: string;
   caption: string;
-  coverIndex: number; // index into photos[] chosen as cover (legacy fallback)
   explicit: boolean;
   hashtags: string[]; // structured array, e.g. ["nightdrive", "citylights"]
 }
@@ -44,8 +42,6 @@ interface MomentDraftCtx {
   setPackSupply: (n: number) => void;
   setTitle: (title: string) => void;
   setCaption: (caption: string) => void;
-  setCoverIndex: (index: number) => void;
-  setCoverPhoto: (url: string) => void;
   setExplicit: (explicit: boolean) => void;
   setHashtags: (tags: string[]) => void;
 }
@@ -68,10 +64,7 @@ function loadFromStorage(): MomentDraft | null {
     // Backfill content labeling fields
     if (parsed.title === undefined) parsed.title = "";
     if (parsed.caption === undefined) parsed.caption = "";
-    if (parsed.coverIndex === undefined) parsed.coverIndex = 0;
     if (parsed.explicit === undefined) parsed.explicit = false;
-    // Backfill coverPhoto (new field)
-    if (parsed.coverPhoto === undefined) parsed.coverPhoto = null;
     // Backfill hashtags
     if (!parsed.hashtags) parsed.hashtags = [];
     return parsed;
@@ -114,14 +107,12 @@ export function MomentDraftProvider({
         id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         photos: [],
         video: null,
-        coverPhoto: null,
         completed: false,
         createdAt: Date.now(),
         captureMetadata: [],
         packSupply: 100,
         title: "",
         caption: "",
-        coverIndex: 0,
         explicit: false,
         hashtags: [],
       };
@@ -233,20 +224,6 @@ export function MomentDraftProvider({
     });
   }, []);
 
-  const setCoverIndex = useCallback((index: number) => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return { ...prev, coverIndex: index };
-    });
-  }, []);
-
-  const setCoverPhoto = useCallback((url: string) => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return { ...prev, coverPhoto: url };
-    });
-  }, []);
-
   const setExplicit = useCallback((explicit: boolean) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
@@ -276,8 +253,6 @@ export function MomentDraftProvider({
         setPackSupply,
         setTitle,
         setCaption,
-        setCoverIndex,
-        setCoverPhoto,
         setExplicit,
         setHashtags,
       }}

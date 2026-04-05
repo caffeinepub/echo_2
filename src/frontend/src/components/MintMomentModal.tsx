@@ -370,7 +370,6 @@ export function MintMomentModal({
   const STEPS = [
     "Capture 9 photos",
     "Record 1 video",
-    "Choose a cover image for the moment",
     "Mint the moment into sealed packs",
   ];
 

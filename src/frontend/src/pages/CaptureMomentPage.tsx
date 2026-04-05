@@ -15,15 +15,14 @@ const MINT_GREEN = "rgba(52,168,132,1)";
 const MINT_BORDER = "rgba(52,168,132,0.3)";
 const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
-// Steps 0–8 = photos, 9 = video, 10 = cover photo, 11 = review
+// Steps 0–8 = photos, 9 = video, 10 = review
 type CaptureStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
 
 export function CaptureMomentPage({
   onBack,
   onMintComplete,
 }: CaptureMomentPageProps) {
-  const { activeDraft, hasDraft, addPhoto, addVideo, setCoverPhoto } =
-    useMomentDraft();
+  const { activeDraft, hasDraft, addPhoto, addVideo } = useMomentDraft();
 
   const photos = activeDraft?.photos ?? [];
   const _video = activeDraft?.video ?? null;
@@ -35,10 +34,6 @@ export function CaptureMomentPage({
   // Preview state after capture (before "Use" or "Retake")
   const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
   const [pendingVideoUrl, setPendingVideoUrl] = useState<string | null>(null);
-  // Cover photo capture state
-  const [pendingCoverPhotoUrl, setPendingCoverPhotoUrl] = useState<
-    string | null
-  >(null);
 
   // Video recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -91,12 +86,7 @@ export function CaptureMomentPage({
   // Start camera on mount (steps 0–10), stop on step 11 or unmount
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only re-run on step change
   useEffect(() => {
-    if (
-      captureStep <= 10 &&
-      !pendingPhotoUrl &&
-      !pendingVideoUrl &&
-      !pendingCoverPhotoUrl
-    ) {
+    if (captureStep <= 9 && !pendingPhotoUrl && !pendingVideoUrl) {
       startCamera();
     }
     return () => {
@@ -106,7 +96,7 @@ export function CaptureMomentPage({
 
   // Stop camera when entering final setup step
   useEffect(() => {
-    if (captureStep === 11) {
+    if (captureStep === 10) {
       stopCamera();
     }
   }, [captureStep, stopCamera]);
@@ -207,7 +197,7 @@ export function CaptureMomentPage({
     if (!pendingVideoUrl) return;
     addVideo(pendingVideoUrl, Date.now());
     setPendingVideoUrl(null);
-    // Move to cover photo step (10), not directly to final setup
+    // Move directly to final setup (step 10)
     setCaptureStep(10);
   }, [pendingVideoUrl, addVideo]);
 
@@ -219,30 +209,6 @@ export function CaptureMomentPage({
     startCamera();
   }, [pendingVideoUrl, startCamera]);
 
-  // ── Cover Photo capture ────────────────────────────────────────────────────
-  const handleCoverShutterPress = useCallback(async () => {
-    if (!isActive) return;
-    const file = await capturePhoto();
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPendingCoverPhotoUrl(url);
-  }, [isActive, capturePhoto]);
-
-  const handleUseCoverPhoto = useCallback(() => {
-    if (!pendingCoverPhotoUrl) return;
-    setCoverPhoto(pendingCoverPhotoUrl);
-    setPendingCoverPhotoUrl(null);
-    // Move to final setup (step 11)
-    setCaptureStep(11);
-  }, [pendingCoverPhotoUrl, setCoverPhoto]);
-
-  const handleRetakeCoverPhoto = useCallback(() => {
-    if (pendingCoverPhotoUrl) URL.revokeObjectURL(pendingCoverPhotoUrl);
-    setPendingCoverPhotoUrl(null);
-    // Restart camera for retake
-    startCamera();
-  }, [pendingCoverPhotoUrl, startCamera]);
-
   // ── Setup Screen Submit ───────────────────────────────────────────────────
   function handleSetupSubmit(draft: MomentDraft) {
     onMintComplete?.(draft);
@@ -253,14 +219,13 @@ export function CaptureMomentPage({
   }
 
   // ── Progress bar ──────────────────────────────────────────────────────────
-  const filledSteps = Math.min(captureStep, 11);
-  const progressPct = Math.round((filledSteps / 11) * 100);
+  const filledSteps = Math.min(captureStep, 10);
+  const progressPct = Math.round((filledSteps / 10) * 100);
 
   // ── Step label ────────────────────────────────────────────────────────────
   function getStepLabel() {
     if (captureStep <= 8) return `Photo ${captureStep + 1} of 9`;
     if (captureStep === 9) return "Video capture";
-    if (captureStep === 10) return "Cover Photo";
     return "Final Setup";
   }
 
@@ -401,55 +366,29 @@ export function CaptureMomentPage({
           {getStepLabel()}
         </span>
 
-        {/* Cover photo helper text */}
-        {captureStep === 10 && (
-          <span
-            style={{
-              fontSize: "11px",
-              color: "rgba(52,168,132,0.60)",
-              fontWeight: 400,
-              letterSpacing: "0.01em",
-              textAlign: "center",
-              maxWidth: "260px",
-            }}
-          >
-            This photo is the pack cover art — not a collectible
-          </span>
-        )}
-
-        {/* Step dots — 11 total (steps 0–10) */}
-        {captureStep < 11 && (
+        {/* Step dots — 10 total (steps 0–9) */}
+        {captureStep < 10 && (
           <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
-            {[
-              "s0",
-              "s1",
-              "s2",
-              "s3",
-              "s4",
-              "s5",
-              "s6",
-              "s7",
-              "s8",
-              "s9",
-              "s10",
-            ].map((id, i) => (
-              <div
-                key={id}
-                style={{
-                  width: i === captureStep ? 14 : 6,
-                  height: 6,
-                  borderRadius: 3,
-                  background:
-                    i < captureStep
-                      ? MINT_GREEN
-                      : i === captureStep
+            {["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"].map(
+              (id, i) => (
+                <div
+                  key={id}
+                  style={{
+                    width: i === captureStep ? 14 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    background:
+                      i < captureStep
                         ? MINT_GREEN
-                        : "rgba(52,168,132,0.18)",
-                  transition: "width 0.2s ease, background 0.2s ease",
-                  opacity: i < captureStep ? 0.7 : 1,
-                }}
-              />
-            ))}
+                        : i === captureStep
+                          ? MINT_GREEN
+                          : "rgba(52,168,132,0.18)",
+                    transition: "width 0.2s ease, background 0.2s ease",
+                    opacity: i < captureStep ? 0.7 : 1,
+                  }}
+                />
+              ),
+            )}
           </div>
         )}
       </div>
@@ -1060,424 +999,11 @@ export function CaptureMomentPage({
         </div>
       )}
 
-      {/* ── COVER PHOTO STEP (step 10) ── */}
+      {/* ── FINAL SETUP STEP (step 10) ── */}
       {captureStep === 10 && (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            padding: "16px 20px 32px",
-            gap: "0",
-          }}
-        >
-          {/* Camera error states for cover photo step */}
-          {isSupported === false && (
-            <div
-              data-ocid="capture.error_state"
-              style={{
-                margin: "32px 0",
-                textAlign: "center",
-                padding: "24px",
-                background: "rgba(0,0,0,0.04)",
-                borderRadius: "16px",
-                border: `1.5px solid ${MINT_BORDER}`,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: "#111",
-                  margin: "0 0 6px",
-                }}
-              >
-                Camera not available
-              </p>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>
-                Camera is not supported on this device.
-              </p>
-            </div>
-          )}
-
-          {isSupported !== false && error?.type === "permission" && (
-            <div
-              data-ocid="capture.error_state"
-              style={{
-                margin: "32px 0",
-                textAlign: "center",
-                padding: "24px",
-                background: "rgba(0,0,0,0.04)",
-                borderRadius: "16px",
-                border: `1.5px solid ${MINT_BORDER}`,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: "#111",
-                  margin: "0 0 6px",
-                }}
-              >
-                Camera permission required
-              </p>
-              <button
-                type="button"
-                data-ocid="capture.button"
-                onClick={() => camera.retry()}
-                style={{
-                  padding: "10px 24px",
-                  borderRadius: "10px",
-                  background: MINT_GREEN,
-                  border: "none",
-                  color: "#fff",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  marginTop: "12px",
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {/* Cover photo viewfinder — shown when no pending cover preview */}
-          {isSupported !== false && !error && !pendingCoverPhotoUrl && (
-            <>
-              {/* Cover badge overlay hint */}
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  maxWidth: "360px",
-                }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    background: "#000",
-                    aspectRatio: "4/5",
-                    boxShadow: "0 4px 24px rgba(52,168,132,0.22)",
-                    border: `2px solid ${MINT_BORDER_STRONG}`,
-                    flexShrink: 0,
-                  }}
-                >
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-
-                  {/* Loading overlay */}
-                  {isLoading && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(0,0,0,0.55)",
-                      }}
-                    >
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 32 32"
-                        fill="none"
-                        style={{ animation: "spin 0.9s linear infinite" }}
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="16"
-                          cy="16"
-                          r="12"
-                          stroke="rgba(255,255,255,0.25)"
-                          strokeWidth="2.5"
-                        />
-                        <path
-                          d="M16 4a12 12 0 0 1 12 12"
-                          stroke={MINT_GREEN}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                  )}
-
-                  {/* Cover Art label on viewfinder */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 10,
-                      left: 10,
-                      background: "rgba(52,168,132,0.85)",
-                      borderRadius: "8px",
-                      padding: "4px 10px",
-                      backdropFilter: "blur(4px)",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        color: "#fff",
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Pack Cover
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Hidden canvas for photo capture */}
-              <canvas ref={canvasRef} style={{ display: "none" }} />
-
-              {/* Camera controls */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "32px",
-                  marginTop: "24px",
-                  width: "100%",
-                  maxWidth: "360px",
-                }}
-              >
-                {/* Flip camera */}
-                <button
-                  type="button"
-                  data-ocid="capture.toggle"
-                  onClick={() => switchCamera()}
-                  disabled={isLoading}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    background: "rgba(0,0,0,0.08)",
-                    border: `1.5px solid ${MINT_BORDER}`,
-                    cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.5 : 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  aria-label="Switch camera"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M3 7a7 7 0 0 1 13.5-2M17 13a7 7 0 0 1-13.5 2"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M17 7l-1.5 2.5L13 7"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M3 13l1.5-2.5L7 13"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-
-                {/* Cover photo shutter */}
-                <button
-                  type="button"
-                  data-ocid="capture.primary_button"
-                  onClick={handleCoverShutterPress}
-                  disabled={!isActive || isLoading}
-                  aria-label="Capture cover photo"
-                  style={{
-                    width: 70,
-                    height: 70,
-                    borderRadius: "50%",
-                    background:
-                      isActive && !isLoading
-                        ? `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`
-                        : "rgba(0,0,0,0.10)",
-                    border: "3px solid rgba(255,255,255,0.9)",
-                    boxShadow:
-                      isActive && !isLoading
-                        ? "0 4px 18px rgba(52,168,132,0.38)"
-                        : "none",
-                    cursor: isActive && !isLoading ? "pointer" : "default",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "background 0.2s ease, box-shadow 0.2s ease",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.92)",
-                    }}
-                  />
-                </button>
-
-                {/* Spacer to balance layout */}
-                <div style={{ width: 44, height: 44 }} />
-              </div>
-
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "rgba(52,168,132,0.65)",
-                  marginTop: "10px",
-                  textAlign: "center",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                Tap to capture cover art
-              </p>
-            </>
-          )}
-
-          {/* ── COVER PHOTO PREVIEW (after shutter, before "Use as Cover") ── */}
-          {pendingCoverPhotoUrl && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "16px",
-                width: "100%",
-              }}
-            >
-              {/* Preview with cover art badge */}
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  maxWidth: "360px",
-                }}
-              >
-                <img
-                  src={pendingCoverPhotoUrl}
-                  alt="Cover art preview"
-                  style={{
-                    width: "100%",
-                    aspectRatio: "4/5",
-                    objectFit: "cover",
-                    borderRadius: "16px",
-                    border: `2px solid ${MINT_BORDER_STRONG}`,
-                    boxShadow: "0 4px 24px rgba(52,168,132,0.22)",
-                    display: "block",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 10,
-                    left: 10,
-                    background: "rgba(52,168,132,0.85)",
-                    borderRadius: "8px",
-                    padding: "4px 10px",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      color: "#fff",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Pack Cover
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  width: "100%",
-                  maxWidth: "360px",
-                }}
-              >
-                <button
-                  type="button"
-                  data-ocid="capture.secondary_button"
-                  onClick={handleRetakeCoverPhoto}
-                  style={{
-                    flex: 1,
-                    padding: "13px",
-                    borderRadius: "14px",
-                    border: `1.5px solid ${MINT_BORDER}`,
-                    background: "#fff",
-                    color: "#374151",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Retake
-                </button>
-                <button
-                  type="button"
-                  data-ocid="capture.primary_button"
-                  onClick={handleUseCoverPhoto}
-                  style={{
-                    flex: 2,
-                    padding: "13px",
-                    borderRadius: "14px",
-                    background: `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`,
-                    border: "none",
-                    color: "#fff",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 2px 12px rgba(52,168,132,0.28)",
-                  }}
-                >
-                  Use as Cover
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── FINAL SETUP STEP (step 11) ── */}
-      {captureStep === 11 && (
         <FinalSetupScreen
           photos={photos}
-          onBack={() => setCaptureStep(10)}
+          onBack={() => setCaptureStep(9)}
           onSubmit={handleSetupSubmit}
         />
       )}

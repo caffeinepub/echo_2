@@ -105,10 +105,9 @@ function AppContent() {
     }
 
     const coverImageUrl =
-      draft.coverPhoto ??
-      (draft.photos.length > 0
-        ? (draft.photos[draft.coverIndex ?? 0] ?? draft.photos[0])
-        : "https://images.pokemontcg.io/sv1/025_hires.png");
+      draft.photos.length > 0
+        ? draft.photos[0]
+        : "https://images.pokemontcg.io/sv1/025_hires.png";
 
     const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
 

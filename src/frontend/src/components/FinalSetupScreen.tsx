@@ -8,7 +8,7 @@ const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
   photos: string[];
-  onBack: () => void; // go back to cover photo step
+  onBack: () => void; // go back to video capture step
   onSubmit: (draft: MomentDraft) => void;
 }
 
@@ -91,9 +91,6 @@ export function FinalSetupScreen({
 
   const titleEmpty = !localTitle.trim();
   const showTitleError = titleTouched && titleEmpty;
-
-  // Cover photo from draft (captured in step 10)
-  const coverPhotoUrl = activeDraft?.coverPhoto ?? null;
 
   return (
     <div
@@ -658,57 +655,6 @@ export function FinalSetupScreen({
               </div>
             ))}
           </div>
-
-          {/* Cover Art thumbnail */}
-          {coverPhotoUrl && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                paddingTop: "8px",
-                borderTop: `1px solid ${MINT_BORDER}`,
-              }}
-            >
-              <img
-                src={coverPhotoUrl}
-                alt="Pack cover art"
-                style={{
-                  width: "52px",
-                  aspectRatio: "4/5",
-                  objectFit: "cover",
-                  borderRadius: "8px",
-                  border: `1.5px solid ${MINT_BORDER_STRONG}`,
-                  flexShrink: 0,
-                  display: "block",
-                }}
-              />
-              <div>
-                <p
-                  style={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    color: MINT_GREEN,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    margin: "0 0 2px",
-                  }}
-                >
-                  Cover Art
-                </p>
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: "#6b7280",
-                    margin: 0,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Pack wrapper image — not a collectible
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* ── Submit Button ── */}
