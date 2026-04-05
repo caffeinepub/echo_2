@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
-import { useCycleTheme } from "../context/CycleThemeContext";
 import { useMomentDraft } from "../context/MomentDraftContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -992,7 +992,7 @@ export function LibraryPage({
   const [showMintModal, setShowMintModal] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
 
-  const { activeCycle } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const { hasDraft, startDraft, activeDraft } = useMomentDraft();
 
   // Derive accent values from active cycle
@@ -1024,7 +1024,7 @@ export function LibraryPage({
         0%, 100% { transform: translateY(0px) scale(1); }
         50%       { transform: translateY(-5px) scale(1.012); }
       }
-      /* Soft glow pulse on the wrapper — uses CSS custom property set by CycleThemeContext */
+      /* Soft glow pulse on the wrapper — uses CSS custom property set by PackStyleContext */
       @keyframes packPreviewGlow {
         0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import type { CollectionNFT, SealedPack } from "../context/CollectionContext";
-import { useCycleTheme } from "../context/CycleThemeContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 const OVERLAY_KEYFRAMES = `
   @keyframes packFloat {
@@ -132,7 +132,7 @@ export function PackOpeningOverlay({
 }: PackOpeningOverlayProps) {
   ensureOverlayStyles();
 
-  const { activeCycle } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const wrapperImageUrl = activeCycle.packWrapperUrl;
   const r = activeCycle.accentR;
   const g = activeCycle.accentG;

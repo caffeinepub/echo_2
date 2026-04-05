@@ -1,5 +1,5 @@
 import { BookOpen, Compass, LayoutGrid, Sparkles } from "lucide-react";
-import { useCycleTheme } from "../context/CycleThemeContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 export type Tab = "library" | "releases" | "market" | "collection";
 
@@ -16,24 +16,9 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
 ];
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  const { activeCycle, activeCycleId } = useCycleTheme();
-  const isGold = activeCycleId === 6;
-  const isWhite = activeCycleId === 7;
-  const accentColor = isGold
-    ? "#9A7B1C"
-    : isWhite
-      ? "#111111"
-      : `oklch(${activeCycle.accentOklchDark})`;
-  const accentGlow = isGold
-    ? "0 0 12px rgba(212,175,55,0.38)"
-    : isWhite
-      ? "none"
-      : `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
-  const activeIndicatorBg = isGold
-    ? "linear-gradient(90deg, #C9A227, #E8C84A, #C9A227)"
-    : isWhite
-      ? "#111111"
-      : accentColor;
+  const { activeStyle: activeCycle } = usePackStyle();
+  const accentColor = `oklch(${activeCycle.accentOklchDark})`;
+  const accentGlow = `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
 
   return (
     <nav
@@ -53,18 +38,14 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onClick={() => onTabChange(id)}
             className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-all relative"
             style={{
-              color: isActive
-                ? accentColor
-                : isWhite
-                  ? "#777777"
-                  : "var(--echo-text-dark)",
+              color: isActive ? accentColor : "var(--echo-text-dark)",
             }}
           >
             {isActive && (
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                 style={{
-                  background: activeIndicatorBg,
+                  background: accentColor,
                   boxShadow: accentGlow,
                 }}
               />
@@ -73,11 +54,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             <span
               className="text-[10px]"
               style={{
-                color: isActive
-                  ? accentColor
-                  : isWhite
-                    ? "#777777"
-                    : "var(--echo-text-dark)",
+                color: isActive ? accentColor : "var(--echo-text-dark)",
               }}
             >
               {label}

@@ -10,10 +10,11 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
-  CYCLE_THEMES,
-  type CycleId,
-  useCycleTheme,
-} from "../context/CycleThemeContext";
+  PACK_STYLES,
+  type PackStyle,
+  type PackStyleId,
+  usePackStyle,
+} from "../context/PackStyleContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 // Always light mode — dark mode removed
@@ -21,125 +22,27 @@ const isLight = true;
 
 let neonStyleEl: HTMLStyleElement | null = null;
 
-function injectNeonStyles(
-  r: number,
-  g: number,
-  b: number,
-  filter: string,
-  cycleId: number,
-) {
+function injectNeonStyles(r: number, g: number, b: number, filter: string) {
   if (!neonStyleEl) {
     neonStyleEl = document.createElement("style");
     document.head.appendChild(neonStyleEl);
   }
 
-  const isGold = cycleId === 6;
-  const isWhite = cycleId === 7;
-
-  // Base breathe animation — overridden for gold and white
-  let baseBreathe: string;
-  if (isGold) {
-    baseBreathe = `
-@keyframes echo-neon-breathe-light {
-  0%,100% { filter: hue-rotate(-65deg) saturate(1.1) brightness(1.12) contrast(1.05) sepia(0.20) drop-shadow(0 0 3px rgba(201,162,55,0.22)) drop-shadow(0 0 8px rgba(201,162,55,0.10)); }
-  50%     { filter: hue-rotate(-65deg) saturate(1.1) brightness(1.18) contrast(1.05) sepia(0.20) drop-shadow(0 0 6px rgba(201,162,55,0.32)) drop-shadow(0 0 16px rgba(201,162,55,0.16)); }
-}
-`;
-  } else if (isWhite) {
-    baseBreathe = `
-@keyframes echo-neon-breathe-light {
-  0%,100% { opacity: 0.92; }
-  50%     { opacity: 1.0; }
-}
-`;
-  } else {
-    baseBreathe = `
+  neonStyleEl.textContent = `
 @keyframes echo-neon-breathe-light {
   0%,100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.92) drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
   50%     { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.96) drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
 }
-`;
-  }
-
-  const goldExtras = isGold
-    ? `
-/* ── Gold shimmer sweep ────────────────────────────────────────────────────── */
-.gold-shimmer-sweep {
-  background: linear-gradient(
-    118deg,
-    transparent 20%,
-    rgba(245, 225, 165, 0.00) 30%,
-    rgba(245, 225, 165, 0.22) 46%,
-    rgba(240, 220, 155, 0.32) 50%,
-    rgba(245, 225, 165, 0.22) 54%,
-    rgba(245, 225, 165, 0.00) 70%,
-    transparent 80%
-  );
-  background-size: 300% 100%;
-  animation: gold-sweep 5.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
-  border-radius: 4px;
-}
-
-@keyframes gold-sweep {
-  0%   { background-position: 160% center; opacity: 0; }
-  4%   { opacity: 1; }
-  42%  { background-position: -60% center; opacity: 1; }
-  54%  { opacity: 0; }
-  100% { background-position: -60% center; opacity: 0; }
-}
-
-/* ── Star gleams ──────────────────────────────────────────────────── */
-.gold-gleam {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(240, 220, 160, 0.90);
-  box-shadow:
-    0 0 3px 1px rgba(230, 199, 106, 0.75),
-    0 0 7px 3px rgba(212, 175, 55, 0.30),
-    0 0 12px 5px rgba(185, 148, 45, 0.15);
-  pointer-events: none;
-  opacity: 0;
-}
-
-.gold-gleam-1 {
-  top: 28%;
-  left: 10%;
-  animation: gold-gleam-pulse 8s ease-in-out 0.6s infinite;
-}
-.gold-gleam-2 {
-  top: 52%;
-  left: 52%;
-  animation: gold-gleam-pulse 8s ease-in-out 3.1s infinite;
-}
-.gold-gleam-3 {
-  top: 22%;
-  left: 80%;
-  animation: gold-gleam-pulse 8s ease-in-out 5.8s infinite;
-}
-
-@keyframes gold-gleam-pulse {
-  0%, 82%  { opacity: 0; transform: scale(0.5); }
-  87%      { opacity: 0.92; transform: scale(1.3); }
-  91%      { opacity: 0.65; transform: scale(1.05); }
-  96%      { opacity: 0; transform: scale(0.4); }
-  100%     { opacity: 0; transform: scale(0.5); }
-}
-`
-    : "";
-
-  neonStyleEl.textContent = `
-${baseBreathe}
 
 .echo-logo-neon {
-  animation: echo-neon-breathe-light ${isGold ? "4.2s" : "3.8s"} ease-in-out infinite;
+  animation: echo-neon-breathe-light 3.8s ease-in-out infinite;
   will-change: filter;
 }
-${goldExtras}`;
+`;
 }
 
-// ─── Asset Data ────────────────────────────────────────────────────────────────────
+// ─── Asset Data ──────────────────────────────────────────────────────────────────────────────────
+
 const ASSETS = [
   {
     id: "usdc",
@@ -194,164 +97,49 @@ const ASSETS = [
 type AssetType = (typeof ASSETS)[number];
 type WalletView = "list" | "receive" | "send" | "info";
 
-// ─── Cycle Selector ────────────────────────────────────────────────────────────────────
-function CycleSelector() {
-  const { activeCycleId, activeCycle, setCycleId } = useCycleTheme();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
+// ─── Pack Style Selector ──────────────────────────────────────────────────────────────────────────────
+function PackStyleSelector() {
+  const { activeStyleId, setStyleId } = usePackStyle();
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
-      <button
-        type="button"
-        data-ocid="topbar.cycle.button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Change cycle theme"
-        title="Change cycle theme"
-        style={{
-          width: "32px",
-          height: "32px",
-          borderRadius: "50%",
-          border: `2px solid rgba(${accentRgb},0.50)`,
-          background: `rgba(${accentRgb},0.12)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          boxShadow: `0 0 8px rgba(${accentRgb},0.20)`,
-          transition: "border-color 0.2s, box-shadow 0.2s",
-          flexShrink: 0,
-          padding: 0,
-        }}
-      >
-        <div
-          style={{
-            width: "12px",
-            height: "12px",
-            borderRadius: "50%",
-            background: `oklch(${activeCycle.accentOklchLight})`,
-            boxShadow: `0 0 6px rgba(${accentRgb},0.5)`,
-          }}
-        />
-      </button>
-
-      {/* Dropdown panel — light surface */}
-      {open && (
-        <div
-          data-ocid="topbar.cycle.dropdown_menu"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 8px)",
-            right: 0,
-            zIndex: 200,
-            background: "#FFFFFF",
-            border: `1px solid rgba(${accentRgb},0.20)`,
-            borderRadius: "14px",
-            padding: "10px",
-            width: "185px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-          }}
-        >
-          <div
+    <div
+      data-ocid="topbar.packstyle.panel"
+      style={{ display: "flex", alignItems: "center", gap: "6px" }}
+    >
+      {(Object.values(PACK_STYLES) as PackStyle[]).map((style) => {
+        const isActive = activeStyleId === style.id;
+        const cRgb = `${style.accentR},${style.accentG},${style.accentB}`;
+        return (
+          <button
+            key={style.id}
+            type="button"
+            data-ocid={`topbar.packstyle.${style.name}.button`}
+            onClick={() => setStyleId(style.id as PackStyleId)}
+            aria-label={`Pack style: ${style.label}`}
+            title={style.label}
             style={{
-              fontSize: "9px",
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "rgba(0,0,0,0.38)",
-              marginBottom: "8px",
-              paddingLeft: "4px",
+              width: "22px",
+              height: "22px",
+              borderRadius: "50%",
+              border: isActive
+                ? `2px solid oklch(${style.accentOklchLight})`
+                : "2px solid transparent",
+              background: `oklch(${style.accentOklchLight})`,
+              opacity: isActive ? 1 : 0.65,
+              cursor: "pointer",
+              padding: 0,
+              boxShadow: isActive ? `0 0 8px rgba(${cRgb},0.55)` : "none",
+              transition: "opacity 0.15s, box-shadow 0.15s, border-color 0.15s",
+              flexShrink: 0,
             }}
-          >
-            Supply Cycle
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            {(
-              Object.values(CYCLE_THEMES) as (typeof CYCLE_THEMES)[CycleId][]
-            ).map((cycle) => {
-              const isActive = activeCycleId === cycle.id;
-              const cRgb = `${cycle.accentR},${cycle.accentG},${cycle.accentB}`;
-              return (
-                <button
-                  key={cycle.id}
-                  type="button"
-                  data-ocid={`topbar.cycle.item.${cycle.id}`}
-                  onClick={() => {
-                    setCycleId(cycle.id as CycleId);
-                    setOpen(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "9px",
-                    padding: "7px 8px",
-                    borderRadius: "9px",
-                    border: isActive
-                      ? `1px solid rgba(${cRgb},0.20)`
-                      : "1px solid transparent",
-                    cursor: "pointer",
-                    background: isActive ? `rgba(${cRgb},0.10)` : "transparent",
-                    transition: "background 0.15s",
-                    width: "100%",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive)
-                      (e.currentTarget as HTMLButtonElement).style.background =
-                        `rgba(${cRgb},0.06)`;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive)
-                      (e.currentTarget as HTMLButtonElement).style.background =
-                        "transparent";
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      borderRadius: "50%",
-                      background: `oklch(${cycle.accentOklchLight})`,
-                      flexShrink: 0,
-                      boxShadow: isActive
-                        ? `0 0 6px rgba(${cRgb},0.5)`
-                        : "none",
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: "12px",
-                      color: isActive
-                        ? `oklch(${cycle.accentOklchLight})`
-                        : "rgba(0,0,0,0.62)",
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                  >
-                    {cycle.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+          />
+        );
+      })}
     </div>
   );
 }
 
-// ─── Action pill button ────────────────────────────────────────────────────────────────────────────
+// ─── Action pill button ───────────────────────────────────────────────────────────────────────────────────────────
 function ActionPill({
   label,
   icon,
@@ -392,7 +180,7 @@ function ActionPill({
   );
 }
 
-// ─── Asset Row ────────────────────────────────────────────────────────────────────────────────
+// ─── Asset Row ──────────────────────────────────────────────────────────────────────────────────────────────
 function AssetRow({
   asset,
   onReceive,
@@ -466,7 +254,7 @@ function AssetRow({
   );
 }
 
-// ─── Wallet Modal ────────────────────────────────────────────────────────────────────────────
+// ─── Wallet Modal ───────────────────────────────────────────────────────────────────────────────────────────
 function WalletModal({
   open,
   onClose,
@@ -975,7 +763,7 @@ function WalletModal({
   );
 }
 
-// ─── Sign In Modal ───────────────────────────────────────────────────────────────────────────
+// ─── Sign In Modal ────────────────────────────────────────────────────────────────────────────────────
 function SignInModal({
   open,
   onClose,
@@ -1089,19 +877,16 @@ function SignInModal({
   );
 }
 
-// ─── TopBar ──────────────────────────────────────────────────────────────────────────────────────
+// ─── TopBar ────────────────────────────────────────────────────────────────────────────────────────────────────
 interface TopBarProps {
   onProfileClick?: () => void;
 }
 
 export function TopBar({ onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
-  const { activeCycle, activeCycleId } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
-
-  const isGoldCycle = activeCycleId === 6;
-  const isWhiteCycle = activeCycleId === 7;
 
   const MINTY_LOGO = "/assets/minty-logo.png";
 
@@ -1112,38 +897,12 @@ export function TopBar({ onProfileClick }: TopBarProps) {
       activeCycle.accentG,
       activeCycle.accentB,
       activeCycle.logoFilter,
-      activeCycleId,
     );
-  }, [activeCycle, activeCycleId]);
+  }, [activeCycle]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
-  // Button styles — white cycle: black fill, white text
-  const uploadBg = isGoldCycle
-    ? "#FFFFFF"
-    : isWhiteCycle
-      ? "#000000"
-      : "rgba(var(--cycle-accent-rgb),0.07)";
-  const uploadBgHover = isGoldCycle
-    ? "#FFFEF8"
-    : isWhiteCycle
-      ? "#111111"
-      : "rgba(var(--cycle-accent-rgb),0.12)";
-  const uploadBorder = isGoldCycle
-    ? "1px solid rgba(201,162,55,0.58)"
-    : isWhiteCycle
-      ? "1px solid #000000"
-      : "1px solid rgba(var(--cycle-accent-rgb),0.20)";
-  const uploadColor = isGoldCycle
-    ? "#8B6914"
-    : isWhiteCycle
-      ? "#FFFFFF"
-      : "var(--cycle-accent)";
-  const uploadShadow = isGoldCycle
-    ? "0 0 10px rgba(201,162,55,0.18), 0 0 3px rgba(201,162,55,0.08), 0 1px 3px rgba(0,0,0,0.05)"
-    : isWhiteCycle
-      ? "0 1px 3px rgba(0,0,0,0.12)"
-      : "0 1px 3px rgba(0,0,0,0.06)";
+  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
 
   function handleAuthButtonClick() {
     if (isSignedIn) {
@@ -1170,101 +929,30 @@ export function TopBar({ onProfileClick }: TopBarProps) {
           paddingRight: "20px",
         }}
       >
-        {/* Minty Logo — White cycle gets black badge with white lettering */}
+        {/* Minty Logo */}
         <div
-          className={`relative flex items-center${isGoldCycle ? " gold-cycle-active" : ""}`}
-          style={{
-            paddingTop: "6px",
-            overflow: isGoldCycle ? "hidden" : "visible",
-            borderRadius: isGoldCycle ? "4px" : undefined,
-          }}
+          className="relative flex items-center"
+          style={{ paddingTop: "6px" }}
         >
-          {isWhiteCycle ? (
-            /* White cycle: black badge wrapping the logo in white */
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                background: "#000000",
-                borderRadius: "10px",
-                padding: "5px 12px",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src={MINTY_LOGO}
-                alt="Minty"
-                className="echo-logo-neon select-none"
-                style={{
-                  width: "150px",
-                  height: "auto",
-                  maxWidth: "min(150px, 28vw)",
-                  objectFit: "contain",
-                  imageRendering: "auto",
-                  display: "block",
-                  background: "transparent",
-                  // Turn logo white
-                  filter: "brightness(0) invert(1)",
-                }}
-                draggable={false}
-              />
-              {/* Sparkle accents on the badge */}
-              <span className="white-cycle-sparkle white-cycle-sparkle-1" />
-              <span className="white-cycle-sparkle white-cycle-sparkle-2" />
-              <span className="white-cycle-sparkle white-cycle-sparkle-3" />
-            </div>
-          ) : (
-            <>
-              <img
-                src={MINTY_LOGO}
-                alt="Minty"
-                className="echo-logo-neon select-none"
-                style={{
-                  width: "180px",
-                  height: "auto",
-                  maxWidth: "min(180px, 30vw)",
-                  objectFit: "contain",
-                  imageRendering: "auto",
-                  display: "block",
-                  background: "transparent",
-                  filter:
-                    activeCycle.logoFilter !== "none" &&
-                    activeCycle.logoFilter !== "white-cycle-badge"
-                      ? activeCycle.logoFilter
-                      : undefined,
-                }}
-                draggable={false}
-              />
-
-              {/* Gold prestige shimmer — only rendered for Cycle 6 */}
-              {isGoldCycle && (
-                <>
-                  <div
-                    className="gold-shimmer-sweep"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      pointerEvents: "none",
-                      zIndex: 1,
-                    }}
-                  />
-                  <span
-                    className="gold-gleam gold-gleam-1"
-                    style={{ position: "absolute", zIndex: 2 }}
-                  />
-                  <span
-                    className="gold-gleam gold-gleam-2"
-                    style={{ position: "absolute", zIndex: 2 }}
-                  />
-                  <span
-                    className="gold-gleam gold-gleam-3"
-                    style={{ position: "absolute", zIndex: 2 }}
-                  />
-                </>
-              )}
-            </>
-          )}
+          <img
+            src={MINTY_LOGO}
+            alt="Minty"
+            className="echo-logo-neon select-none"
+            style={{
+              width: "180px",
+              height: "auto",
+              maxWidth: "min(180px, 30vw)",
+              objectFit: "contain",
+              imageRendering: "auto",
+              display: "block",
+              background: "transparent",
+              filter:
+                activeCycle.logoFilter !== "none"
+                  ? activeCycle.logoFilter
+                  : undefined,
+            }}
+            draggable={false}
+          />
         </div>
 
         <div className="flex items-center self-center gap-2">
@@ -1282,20 +970,20 @@ export function TopBar({ onProfileClick }: TopBarProps) {
                 fontSize: "12px",
                 fontWeight: 500,
                 letterSpacing: "0.01em",
-                color: uploadColor,
-                background: uploadBg,
-                border: uploadBorder,
+                color: "var(--cycle-accent)",
+                background: `rgba(${accentRgb},0.07)`,
+                border: `1px solid rgba(${accentRgb},0.20)`,
                 borderRadius: "20px",
-                boxShadow: uploadShadow,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                 cursor: "pointer",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  uploadBgHover;
+                  `rgba(${accentRgb},0.12)`;
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  uploadBg;
+                  `rgba(${accentRgb},0.07)`;
               }}
             >
               <UserCircle size={14} strokeWidth={1.6} />
@@ -1304,7 +992,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
           )}
 
           {/* Cycle Selector */}
-          <CycleSelector />
+          <PackStyleSelector />
 
           {/* Auth / Wallet button */}
           <button
@@ -1319,74 +1007,34 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               paddingRight: "12px",
               paddingTop: "7px",
               paddingBottom: "7px",
-              backgroundColor: isGoldCycle
-                ? "#FFFFFF"
-                : isWhiteCycle
-                  ? "#000000"
-                  : "rgba(247, 249, 252, 1)",
-              color: isGoldCycle
-                ? "#8B6914"
-                : isWhiteCycle
-                  ? "#FFFFFF"
-                  : "#1A2840",
-              border: isGoldCycle
-                ? "1px solid rgba(201,162,55,0.58)"
-                : isWhiteCycle
-                  ? "1px solid #000000"
-                  : "1px solid #D0DFEF",
-              boxShadow: isGoldCycle
-                ? "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)"
-                : isWhiteCycle
-                  ? "0 1px 3px rgba(0,0,0,0.12)"
-                  : "0 1px 3px rgba(0,0,0,0.06)",
+              backgroundColor: "rgba(247, 249, 252, 1)",
+              color: "#1A2840",
+              border: "1px solid #D0DFEF",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
-              if (isGoldCycle) {
-                el.style.backgroundColor = "#FFFEF8";
-                el.style.borderColor = "rgba(201,162,55,0.78)";
-                el.style.boxShadow =
-                  "0 0 16px rgba(201,162,55,0.26), 0 0 5px rgba(201,162,55,0.14), 0 1px 4px rgba(0,0,0,0.07)";
-              } else if (isWhiteCycle) {
-                el.style.backgroundColor = "#000000";
-                el.style.borderColor = "#000000";
-              } else {
-                el.style.backgroundColor = "rgba(240, 244, 250, 1)";
-                el.style.borderColor = "#C0D4EC";
-              }
+              el.style.backgroundColor = "rgba(240, 244, 250, 1)";
+              el.style.borderColor = "#C0D4EC";
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
-              if (isGoldCycle) {
-                el.style.backgroundColor = "#FFFFFF";
-                el.style.borderColor = "rgba(201,162,55,0.58)";
-                el.style.boxShadow =
-                  "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)";
-              } else if (isWhiteCycle) {
-                el.style.backgroundColor = "#000000";
-                el.style.borderColor = "#000000";
-              } else {
-                el.style.backgroundColor = "rgba(247, 249, 252, 1)";
-                el.style.borderColor = "#D0DFEF";
-              }
+              el.style.backgroundColor = "rgba(247, 249, 252, 1)";
+              el.style.borderColor = "#D0DFEF";
             }}
           >
             {isSignedIn ? (
               <Wallet
                 size={17}
                 strokeWidth={1.6}
-                style={{
-                  color: isWhiteCycle ? "#FFFFFF" : "var(--cycle-accent)",
-                }}
+                style={{ color: "var(--cycle-accent)" }}
               />
             ) : (
               <ShieldCheck
                 size={17}
                 strokeWidth={1.6}
-                style={{
-                  color: isWhiteCycle ? "#FFFFFF" : "var(--cycle-accent)",
-                }}
+                style={{ color: "var(--cycle-accent)" }}
               />
             )}
             <span className="leading-none text-[13px]">

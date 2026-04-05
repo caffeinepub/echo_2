@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useCycleTheme } from "../context/CycleThemeContext";
+import { usePackStyle } from "../context/PackStyleContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 import {
   type MintMomentSetRank,
@@ -826,7 +826,7 @@ export function MarketPage({
   onAlbumClick: _onAlbumClick,
   onSetClick: _onSetClick,
 }: MarketPageProps) {
-  const { activeCycle } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const accentColor = `oklch(${activeCycle.accentOklchLight})`;
   const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
 

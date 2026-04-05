@@ -17,7 +17,7 @@ import {
   type SealedPack,
   useCollection,
 } from "../context/CollectionContext";
-import { useCycleTheme } from "../context/CycleThemeContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MINT = "var(--cycle-accent)";
@@ -2050,7 +2050,7 @@ export function CollectionPage({
 }: {
   onGoToLibrary?: () => void;
 }) {
-  const { activeCycle } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const { nfts, sealedPacks, burnedCounts, openPack, removeNFT, burnNFT } =
     useCollection();
 

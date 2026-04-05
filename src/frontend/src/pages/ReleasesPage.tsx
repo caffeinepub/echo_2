@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
-import { useCycleTheme } from "../context/CycleThemeContext";
+import { usePackStyle } from "../context/PackStyleContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
 import { useUserSettings } from "../context/UserSettingsContext";
@@ -1785,7 +1785,7 @@ export function ReleasesPage() {
   const isDark = !isLight;
 
   // ─── Cycle theme accent derivations ─────────────────────────────────────────
-  const { activeCycle } = useCycleTheme();
+  const { activeStyle: activeCycle } = usePackStyle();
   const aR = activeCycle.accentR;
   const aG = activeCycle.accentG;
   const aB = activeCycle.accentB;

@@ -7,12 +7,12 @@ import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { CollectionProvider } from "./context/CollectionContext";
-import { CycleThemeProvider } from "./context/CycleThemeContext";
 import {
   MomentDraftProvider,
   useMomentDraft,
 } from "./context/MomentDraftContext";
 import type { MomentDraft } from "./context/MomentDraftContext";
+import { PackStyleProvider } from "./context/PackStyleContext";
 import {
   ReleasesMarketProvider,
   useReleasesMarket,
@@ -255,7 +255,7 @@ export default function App() {
   return (
     <UserSettingsProvider>
       <ThemeProvider>
-        <CycleThemeProvider>
+        <PackStyleProvider>
           <InternetIdentityProvider>
             <WalletProvider>
               <AdminReleasesProvider>
@@ -269,7 +269,7 @@ export default function App() {
               </AdminReleasesProvider>
             </WalletProvider>
           </InternetIdentityProvider>
-        </CycleThemeProvider>
+        </PackStyleProvider>
       </ThemeProvider>
     </UserSettingsProvider>
   );
