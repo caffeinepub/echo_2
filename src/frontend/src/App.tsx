@@ -60,6 +60,7 @@ function AppContent() {
   function handleTabChange(tab: Tab) {
     setView({ type: "tab", tab });
   }
+
   function handleCaptureMoment() {
     startDraft();
     setView({ type: "capture-moment" });
@@ -76,45 +77,23 @@ function AppContent() {
     const draft = pendingMintDraft;
     const now = Date.now();
     const totalPacks = 300;
-    const priceUsd = 10; // bonding curve starting price
+    const priceUsd = 10; // default pack price
 
-    // Simulate $100 minting fee payment
-    console.log("[Minty] Minting fee: $100 deducted");
+    console.log("[Minty] Minting fee: $1 deducted");
 
-    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
-    const photoCount = totalPacks - videoCount;
+    // All packs contain the video as the collectible
+    const packIds = Array.from(
+      { length: totalPacks },
+      (_, idx) => `pack_${draft.id}_${idx}`,
+    );
 
-    type SlotPhoto = { type: "photo"; num: number };
-    type SlotVideo = { type: "video"; num: number };
-    type Slot = SlotPhoto | SlotVideo;
-
-    const pool: Slot[] = [
-      ...Array.from({ length: photoCount }, (_, i) => ({
-        type: "photo" as const,
-        num: i + 1,
-      })),
-      ...Array.from({ length: videoCount }, (_, i) => ({
-        type: "video" as const,
-        num: i + 1,
-      })),
-    ];
-
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-
+    // Use video thumbnail or a fallback cover
     const coverImageUrl =
-      draft.photos.length > 0
-        ? draft.photos[0]
-        : "https://images.pokemontcg.io/sv1/025_hires.png";
-
-    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
+      draft.video ?? "https://images.pokemontcg.io/sv1/025_hires.png";
 
     const releaseTitle = draft.title?.trim() || "Mint Moment";
     const releaseCaption =
-      draft.caption?.trim() ||
-      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
+      draft.caption?.trim() || `${totalPacks} video collectible packs`;
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
@@ -130,10 +109,9 @@ function AppContent() {
       packIds,
       priceUsd,
       listedAt: now,
-      // Standardized releases: 1 year expiry (no burn for normal releases)
       expiresAt: now + 365 * 24 * 3600000,
       status: "active",
-      collectibleType: "photo",
+      collectibleType: "video",
       explicit: draft.explicit ?? false,
       hashtags: draft.hashtags ?? [],
     };

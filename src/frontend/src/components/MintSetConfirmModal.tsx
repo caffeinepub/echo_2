@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Package, TrendingUp } from "lucide-react";
+import { Check, ChevronRight, Package } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 
@@ -81,7 +81,6 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
         touchAction: "none",
       }}
     >
-      {/* Fill */}
       <div
         style={{
           position: "absolute",
@@ -96,7 +95,6 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
           pointerEvents: "none",
         }}
       />
-      {/* Label */}
       {!completed && (
         <div
           style={{
@@ -122,7 +120,6 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
           </span>
         </div>
       )}
-      {/* Completed label */}
       {completed && (
         <div
           style={{
@@ -146,7 +143,6 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
           </span>
         </div>
       )}
-      {/* Thumb */}
       <div
         style={{
           position: "absolute",
@@ -264,7 +260,7 @@ export function MintSetConfirmModal({
                     fontFamily: "DM Sans, sans-serif",
                   }}
                 >
-                  Mint Set
+                  Mint Moment
                 </h2>
               </div>
             </div>
@@ -276,14 +272,13 @@ export function MintSetConfirmModal({
                 margin: 0,
               }}
             >
-              Minting a set costs{" "}
-              <strong style={{ color: "#111" }}>$100</strong>.
+              Minting a Moment costs{" "}
+              <strong style={{ color: "#111" }}>$1</strong>.
             </p>
           </div>
 
           {/* Body */}
           <div style={{ padding: "20px 24px 0" }}>
-            {/* Description */}
             <div
               style={{
                 background: "rgba(52,168,132,0.05)",
@@ -301,14 +296,15 @@ export function MintSetConfirmModal({
                   margin: 0,
                 }}
               >
-                Your set will be published to the{" "}
+                Your video will be published to the{" "}
                 <strong style={{ color: "#111" }}>Releases page</strong> as a
-                pack collection for collectors. Each set automatically generates{" "}
-                <strong style={{ color: "#111" }}>300 packs</strong>.
+                pack collection for collectors. Each Moment automatically
+                generates <strong style={{ color: "#111" }}>300 packs</strong>{" "}
+                at your chosen price.
               </p>
             </div>
 
-            {/* Pack economics — informational */}
+            {/* Pack economics */}
             <p
               style={{
                 fontSize: "10px",
@@ -331,9 +327,9 @@ export function MintSetConfirmModal({
             >
               {[
                 { icon: "📦", label: "Total Packs", value: "300" },
-                { icon: "💵", label: "Starting Price", value: "$10" },
-                { icon: "🎯", label: "Max Price", value: "$60" },
-                { icon: "📈", label: "Pricing Model", value: "Bonding Curve" },
+                { icon: "💵", label: "Price Per Pack", value: "$1–$100" },
+                { icon: "🎬", label: "Media Type", value: "Video" },
+                { icon: "💰", label: "Pricing Model", value: "Fixed" },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -371,40 +367,6 @@ export function MintSetConfirmModal({
               ))}
             </div>
 
-            {/* Bonding curve note */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "8px",
-                marginBottom: "20px",
-                padding: "10px 12px",
-                background: "rgba(52,168,132,0.04)",
-                borderRadius: "10px",
-                border: "1px solid rgba(52,168,132,0.12)",
-              }}
-            >
-              <TrendingUp
-                size={14}
-                color={MINT_GREEN}
-                style={{ marginTop: "1px", flexShrink: 0 }}
-              />
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "#6b7280",
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                Price increases with each purchase — early collectors get the
-                best rate. Price formula:{" "}
-                <span style={{ fontFamily: "monospace", color: "#374151" }}>
-                  $10 + (sold/300)² × $50
-                </span>
-              </p>
-            </div>
-
             {/* What's included */}
             <p
               style={{
@@ -427,10 +389,10 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                "9 photos → Common collectibles",
-                "1 video → Rare collectible",
-                "Each pack contains 1 random collectible",
-                "90% photo packs · 10% video packs",
+                "1 video → 300 collectible packs",
+                "Each pack contains 1 collectible",
+                "Creator-set fixed price per pack",
+                "Unsold packs are burned at expiry",
               ].map((item) => (
                 <div
                   key={item}
@@ -467,7 +429,6 @@ export function MintSetConfirmModal({
               paddingTop: "16px",
             }}
           >
-            {/* Fee summary */}
             <div
               style={{
                 display: "flex",
@@ -493,7 +454,7 @@ export function MintSetConfirmModal({
                   letterSpacing: "-0.02em",
                 }}
               >
-                $100
+                $1
               </span>
             </div>
 

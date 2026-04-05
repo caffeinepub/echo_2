@@ -1,39 +1,60 @@
-# Minty – Remove Cover Art Step from Mint a Moment Flow
+# Minty — Mint a Moment Refactor (Single Video)
 
 ## Current State
-The Mint a Moment creation flow has 12 steps (0–11):
-- Steps 0–8: capture 9 photos
-- Step 9: record 1 video
-- Step 10: capture a cover photo (separate from collectibles, used as pack art)
-- Step 11: final setup (title, caption, hashtags, confirm mint)
 
-`CaptureMomentPage.tsx` drives all 12 steps including cover photo capture UI, shutter, preview, and "Use as Cover" logic.
-
-`MomentDraftContext.tsx` stores `coverPhoto: string | null` and `coverIndex: number` in the draft.
-
-`App.tsx` reads `draft.coverPhoto` (and falls back to `draft.photos[draft.coverIndex]`) to set `coverImageUrl` on the release.
-
-`MintMomentModal.tsx` mentions "Choose a cover image for the moment" in an instruction list.
+The Mint a Moment flow currently supports:
+- 9 photo capture steps (steps 0–8) via `CaptureMomentPage.tsx`
+- 1 video recording step (step 9, max 30s) via `CaptureMomentPage.tsx`
+- A `FinalSetupScreen` step 10 with title/caption/hashtags/explicit fields showing "11/11" step counter
+- `MomentDraft` interface holds: `photos: string[]` (up to 9), `video: string | null`, `captureMetadata`, `packSupply`
+- `MomentDraftContext` exposes `addPhoto`, `removePhoto`, `addVideo`, `removeVideo` methods
+- `MintMomentModal` explains: "Capture 9 photos", "Record 1 video", "Mint packs" with $10 mint cost and bonding curve
+- `MintSetConfirmModal` shows: "9 photos → Common collectibles", "1 video → Rare collectible", $100 fee, bonding curve
+- `FinalSetupScreen` summary shows "9 photos captured", "1 video captured", "100 packs will be minted"
+- Backend `main.mo` has `Pack` and `Collectible` types but no `videoUrl`, `title`, `caption`, `hashtags`, or `explicit` fields on mint data
+- No backend function for minting a moment — pack/collectible logic is separate
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new to add
+- New single-step video recording experience in `CaptureMomentPage.tsx`:
+  - Camera viewfinder with 4:5 portrait ratio
+  - Record button: press to start, press to stop early
+  - 7-second max countdown timer (visible, counting down from 7)
+  - Auto-stop at 7 seconds
+  - Preview the recorded video before continuing
+  - Retake option on preview screen
+  - Step counter shows "1/2" (record) → "2/2" (details)
+- `MintMoment` Motoko type with fields: `id`, `creatorId`, `timestamp`, `title`, `caption`, `hashtags`, `explicit`, `videoChunks` (blob storage reference), `packSupply=300`
+- Backend function `mintMoment` accepting `MintMomentInput`
+- Backend function `getMintMoments` for retrieval
 
 ### Modify
-- **`CaptureMomentPage.tsx`**: Remove step 10 (cover photo capture) entirely. After the video is accepted (step 9), jump directly to step 11 (final setup). Remove: `pendingCoverPhotoUrl` state, `handleCoverShutterPress`, `handleUseCoverPhoto`, `handleRetakeCoverPhoto`, all step-10 UI blocks (viewfinder overlay, cover badge, cover art label, shutter button, cover photo preview), cover photo helper text under step indicator, step 10 from the dots array (reduce from 11 dots to 10). Update step type: `CaptureStep = 0|1|2|3|4|5|6|7|8|9|10` (step 10 = review). Update `getStepLabel()` to remove cover photo case. Update `progressPct` to use 10 total steps. Remove `setCoverPhoto` import from `useMomentDraft`.
-- **`MomentDraftContext.tsx`**: Remove `coverPhoto` and `coverIndex` fields from the `MomentDraft` interface and state. Remove `setCoverPhoto` and `setCoverIndex` functions and their context exposure.
-- **`App.tsx`**: Remove `coverImageUrl` derivation from `draft.coverPhoto`/`draft.coverIndex`. Instead, use the first photo as the release cover image, or a static fallback if no photos. Keep the rest of the release creation logic unchanged.
-- **`MintMomentModal.tsx`**: Remove the "Choose a cover image for the moment" step from the instructional "How It Works" list. Update steps to: 1. Capture 9 photos, 2. Record 1 video, 3. Mint into sealed packs.
+- `MomentDraft` interface: remove `photos: string[]`, remove `captureMetadata`, keep `video`, `title`, `caption`, `hashtags`, `explicit`, `id`, `createdAt`, `completed`, `packSupply` (hardcode to 300)
+- `MomentDraftContext`: remove `addPhoto`, `removePhoto` methods; keep all other methods
+- `CaptureMomentPage.tsx`: replace 9-photo + 30s video flow with single 7s video flow
+  - Step 0: camera viewfinder + record button + countdown timer
+  - Step 1: video preview + retake or continue
+  - Step 2: `FinalSetupScreen` for title/caption/hashtags/explicit
+- `FinalSetupScreen.tsx`: remove "9 photos captured" / "1 video captured" from summary; show "1 video recorded" and "300 packs will be minted"; update step counter label
+- `MintMomentModal.tsx`: update "How It Works" to: 1. Record a 7-second video, 2. Add title and details, 3. Mint into 300 packs; remove all bonding curve sections; keep $1 mint cost and fixed pricing explanation; update pack structure to reflect video-only collectible distribution
+- `MintSetConfirmModal.tsx`: remove "9 photos → Common" / "1 video → Rare" checklist; replace with "1 video → 300 collectible packs"; update fee to $1; remove bonding curve references
 
 ### Remove
-- All cover photo capture UI in `CaptureMomentPage.tsx`
-- `coverPhoto` and `coverIndex` from `MomentDraftContext`
-- `setCoverPhoto`/`setCoverIndex` functions
-- Cover art instructional text
+- All photo capture UI from `CaptureMomentPage.tsx` (steps 0–8, photo shutter, photo preview, pendingPhotoUrl logic, photo progress dots)
+- `photos: string[]` field from `MomentDraft`
+- `captureMetadata` array and `CaptureMetadataItem` type from `MomentDraft`
+- `addPhoto`, `removePhoto` from `MomentDraftContext`
+- `packSupply` setter from context (hardcode to 300)
+- All references to "9 photos", "photo collectibles", "Common collectibles" in modal copy
+- Any cover image logic remaining in flow
+- Bonding curve copy/sections from `MintMomentModal` and `MintSetConfirmModal`
 
 ## Implementation Plan
-1. Edit `MomentDraftContext.tsx`: remove `coverPhoto`, `coverIndex`, `setCoverPhoto`, `setCoverIndex` from interface, initial state, reducer logic, and context value.
-2. Edit `CaptureMomentPage.tsx`: collapse step 10 (cover photo) — after video accepted go to step 11 (now renumbered to 10), remove all cover-photo-specific state and handlers, remove all cover photo UI blocks, update step dots to 10, update progress to /10, update `getStepLabel`, remove `setCoverPhoto` usage.
-3. Edit `App.tsx`: replace `draft.coverPhoto ?? draft.photos[draft.coverIndex]` with `draft.photos[0]` fallback for release cover image.
-4. Edit `MintMomentModal.tsx`: remove cover image step from how-it-works list.
+
+1. **Backend (`main.mo`)**: Add `MintMoment` type and `mintMoment` / `getMintMoments` functions. Store: id, creatorId, timestamp, title, caption, hashtags, explicit, videoRef (text URL/blob ref), packSupply=300.
+2. **`MomentDraftContext.tsx`**: Simplify draft interface — remove `photos`, `captureMetadata`. Keep `video`, `title`, `caption`, `hashtags`, `explicit`. Hardcode `packSupply=300`.
+3. **`CaptureMomentPage.tsx`**: Full rewrite to 2-step flow: (a) video recording with 7s countdown + stop-early, (b) video preview with retake option. Then pass to `FinalSetupScreen`.
+4. **`FinalSetupScreen.tsx`**: Update summary bullets to reflect single video. Update step label from "11/11" to "2/2".
+5. **`MintMomentModal.tsx`**: Update How It Works steps to 3 items (record video, add details, mint). Remove bonding curve section. Update pack structure copy.
+6. **`MintSetConfirmModal.tsx`**: Remove old photo/video breakdown checklist. Update to single video description. Update fee to $1. Remove bonding curve.

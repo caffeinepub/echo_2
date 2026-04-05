@@ -1,22 +1,14 @@
 import { useEffect, useState } from "react";
 import type { MomentDraft } from "../context/MomentDraftContext";
 import { useMomentDraft } from "../context/MomentDraftContext";
-
-const MINT_GREEN = "rgba(52,168,132,1)";
-const MINT_BORDER = "rgba(52,168,132,0.3)";
-const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
+import { usePackStyle } from "../context/PackStyleContext";
 
 interface FinalSetupScreenProps {
-  photos: string[];
-  onBack: () => void; // go back to video capture step
+  onBack: () => void;
   onSubmit: (draft: MomentDraft) => void;
 }
 
-export function FinalSetupScreen({
-  photos: _photos,
-  onBack,
-  onSubmit,
-}: FinalSetupScreenProps) {
+export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
   const {
     activeDraft,
     setTitle,
@@ -25,6 +17,12 @@ export function FinalSetupScreen({
     setHashtags,
     completeDraft,
   } = useMomentDraft();
+
+  const { activeStyle } = usePackStyle();
+  const accentRgb = `${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB}`;
+  const accentColor = `oklch(${activeStyle.accentOklch})`;
+  const accentBorder = `rgba(${accentRgb},0.30)`;
+  const accentBorderStrong = `rgba(${accentRgb},0.55)`;
 
   const [localTitle, setLocalTitle] = useState(activeDraft?.title ?? "");
   const [localCaption, setLocalCaption] = useState(activeDraft?.caption ?? "");
@@ -52,7 +50,6 @@ export function FinalSetupScreen({
   }, [localHashtags, setHashtags]);
 
   function normalizeHashtag(raw: string): string {
-    // Strip leading # symbols (including multiple), trim, lowercase
     return raw.replace(/^#+/, "").trim().toLowerCase();
   }
 
@@ -75,9 +72,7 @@ export function FinalSetupScreen({
       return;
     }
     if (!activeDraft) return;
-    // completeDraft marks it done so LibraryPage resets to idle
     completeDraft();
-    // Snapshot the draft with updated fields before it's cleared
     const snapshot: MomentDraft = {
       ...activeDraft,
       title: localTitle.trim(),
@@ -124,7 +119,7 @@ export function FinalSetupScreen({
             border: "none",
             cursor: "pointer",
             fontSize: "14px",
-            color: MINT_GREEN,
+            color: accentColor,
             fontWeight: 500,
             padding: "4px 0",
           }}
@@ -138,7 +133,7 @@ export function FinalSetupScreen({
           >
             <path
               d="M10 3L5 8l5 5"
-              stroke={MINT_GREEN}
+              stroke={accentColor}
               strokeWidth="1.6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -156,19 +151,18 @@ export function FinalSetupScreen({
             letterSpacing: "-0.01em",
           }}
         >
-          Final Setup
+          Details
         </h2>
-        {/* Step indicator */}
         <span
           style={{
             fontSize: "11px",
             letterSpacing: "0.10em",
             textTransform: "uppercase",
             fontWeight: 600,
-            color: "rgba(52,168,132,0.70)",
+            color: `rgba(${accentRgb},0.70)`,
           }}
         >
-          11 / 11
+          2 / 2
         </span>
       </div>
 
@@ -199,7 +193,7 @@ export function FinalSetupScreen({
               marginBottom: "8px",
             }}
           >
-            Set Title <span style={{ color: "#ef4444" }}>*</span>
+            Title <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <input
             id="set-title"
@@ -212,6 +206,7 @@ export function FinalSetupScreen({
             }}
             onBlur={() => setTitleTouched(true)}
             maxLength={60}
+            data-ocid="capture.input"
             style={{
               width: "100%",
               padding: "13px 14px",
@@ -219,7 +214,7 @@ export function FinalSetupScreen({
               border: showTitleError
                 ? "2px solid #ef4444"
                 : `1.5px solid ${
-                    localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"
+                    localTitle.trim() ? accentBorderStrong : "rgba(0,0,0,0.10)"
                   }`,
               background: "#fff",
               fontSize: "15px",
@@ -239,6 +234,7 @@ export function FinalSetupScreen({
           >
             {showTitleError ? (
               <span
+                data-ocid="capture.error_state"
                 style={{ fontSize: "11px", color: "#ef4444", fontWeight: 500 }}
               >
                 Title is required to publish
@@ -286,6 +282,7 @@ export function FinalSetupScreen({
             onChange={(e) => setLocalCaption(e.target.value)}
             rows={3}
             maxLength={200}
+            data-ocid="capture.textarea"
             style={{
               width: "100%",
               padding: "13px 14px",
@@ -303,7 +300,7 @@ export function FinalSetupScreen({
               transition: "border-color 0.15s",
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = MINT_BORDER_STRONG;
+              e.currentTarget.style.borderColor = accentBorderStrong;
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
@@ -350,7 +347,6 @@ export function FinalSetupScreen({
             </span>
           </label>
 
-          {/* Pill chips */}
           {localHashtags.length > 0 && (
             <div
               style={{
@@ -367,13 +363,13 @@ export function FinalSetupScreen({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "4px",
-                    background: "rgba(52,168,132,0.10)",
-                    border: "1.5px solid rgba(52,168,132,0.30)",
+                    background: `rgba(${accentRgb},0.10)`,
+                    border: `1.5px solid rgba(${accentRgb},0.30)`,
                     borderRadius: "20px",
-                    padding: "4px 10px 4px 10px",
+                    padding: "4px 10px",
                     fontSize: "12px",
                     fontWeight: 600,
-                    color: MINT_GREEN,
+                    color: accentColor,
                     lineHeight: 1,
                   }}
                 >
@@ -387,7 +383,7 @@ export function FinalSetupScreen({
                       border: "none",
                       cursor: "pointer",
                       padding: "0 0 0 2px",
-                      color: "rgba(52,168,132,0.60)",
+                      color: `rgba(${accentRgb},0.60)`,
                       fontSize: "14px",
                       lineHeight: 1,
                       display: "flex",
@@ -401,7 +397,6 @@ export function FinalSetupScreen({
             </div>
           )}
 
-          {/* Input row */}
           {localHashtags.length < 3 && (
             <div style={{ display: "flex", gap: "8px" }}>
               <input
@@ -417,6 +412,7 @@ export function FinalSetupScreen({
                   }
                 }}
                 maxLength={32}
+                data-ocid="hashtag.input"
                 style={{
                   flex: 1,
                   padding: "11px 14px",
@@ -431,7 +427,7 @@ export function FinalSetupScreen({
                   transition: "border-color 0.15s",
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = MINT_BORDER_STRONG;
+                  e.currentTarget.style.borderColor = accentBorderStrong;
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
@@ -446,11 +442,15 @@ export function FinalSetupScreen({
                 style={{
                   padding: "11px 16px",
                   borderRadius: "12px",
-                  border: `1.5px solid ${hashtagInput.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
+                  border: `1.5px solid ${
+                    hashtagInput.trim()
+                      ? accentBorderStrong
+                      : "rgba(0,0,0,0.10)"
+                  }`,
                   background: hashtagInput.trim()
-                    ? "rgba(52,168,132,0.10)"
+                    ? `rgba(${accentRgb},0.10)`
                     : "rgba(0,0,0,0.04)",
-                  color: hashtagInput.trim() ? MINT_GREEN : "#9ca3af",
+                  color: hashtagInput.trim() ? accentColor : "#9ca3af",
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: hashtagInput.trim() ? "pointer" : "default",
@@ -465,21 +465,25 @@ export function FinalSetupScreen({
 
           {localHashtags.length >= 3 && (
             <p
-              style={{ fontSize: "11px", color: "#9ca3af", margin: "4px 0 0" }}
+              style={{
+                fontSize: "11px",
+                color: "#9ca3af",
+                margin: "4px 0 0",
+              }}
             >
               Maximum of 3 hashtags reached.
             </p>
           )}
         </div>
 
-        {/* ── Explicit Content Toggle ── */}
+        {/* ── Explicit Toggle ── */}
         <div
           style={{
             background: "#fff",
             borderRadius: "16px",
             border: localExplicit
               ? "1.5px solid rgba(245,158,11,0.40)"
-              : `1.5px solid ${MINT_BORDER}`,
+              : `1.5px solid ${accentBorder}`,
             padding: "16px",
             transition: "border-color 0.2s",
           }}
@@ -501,7 +505,7 @@ export function FinalSetupScreen({
                   margin: "0 0 4px",
                 }}
               >
-                Mark this set as explicit
+                Mark as explicit
               </p>
               <p
                 style={{
@@ -511,16 +515,16 @@ export function FinalSetupScreen({
                   lineHeight: 1.5,
                 }}
               >
-                Explicit sets may be hidden for viewers with safe viewing
+                Explicit content may be hidden for viewers with safe viewing
                 enabled.
               </p>
             </div>
 
-            {/* Toggle switch */}
             <button
               type="button"
               role="switch"
               aria-checked={localExplicit}
+              data-ocid="capture.switch"
               onClick={() => setLocalExplicit(!localExplicit)}
               style={{
                 flexShrink: 0,
@@ -554,7 +558,6 @@ export function FinalSetupScreen({
             </button>
           </div>
 
-          {/* Warning chip when explicit is ON */}
           {localExplicit && (
             <div
               style={{
@@ -590,9 +593,14 @@ export function FinalSetupScreen({
                 <circle cx="6.5" cy="9.5" r="0.6" fill="#f59e0b" />
               </svg>
               <span
-                style={{ fontSize: "11px", color: "#92400e", fontWeight: 500 }}
+                style={{
+                  fontSize: "11px",
+                  color: "#92400e",
+                  fontWeight: 500,
+                }}
               >
-                This set will be hidden from viewers with safe viewing enabled.
+                This video will be hidden from viewers with safe viewing
+                enabled.
               </span>
             </div>
           )}
@@ -601,9 +609,9 @@ export function FinalSetupScreen({
         {/* ── Summary ── */}
         <div
           style={{
-            background: "rgba(52,168,132,0.05)",
+            background: `rgba(${accentRgb},0.05)`,
             borderRadius: "14px",
-            border: `1px solid ${MINT_BORDER}`,
+            border: `1px solid ${accentBorder}`,
             padding: "14px 16px",
             display: "flex",
             flexDirection: "column",
@@ -614,7 +622,7 @@ export function FinalSetupScreen({
             style={{
               fontSize: "11px",
               fontWeight: 700,
-              color: MINT_GREEN,
+              color: accentColor,
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: 0,
@@ -631,9 +639,8 @@ export function FinalSetupScreen({
             }}
           >
             {[
-              "9 photos captured",
-              "1 video captured",
-              "100 packs will be minted",
+              "1 video recorded",
+              "300 packs will be minted",
               localExplicit ? "Marked as explicit" : "Standard content",
             ].map((item) => (
               <div
@@ -645,7 +652,7 @@ export function FinalSetupScreen({
                     width: "5px",
                     height: "5px",
                     borderRadius: "50%",
-                    background: MINT_GREEN,
+                    background: accentColor,
                     flexShrink: 0,
                   }}
                 />
@@ -657,7 +664,7 @@ export function FinalSetupScreen({
           </div>
         </div>
 
-        {/* ── Submit Button ── */}
+        {/* ── Submit ── */}
         <button
           type="button"
           onClick={handleSubmit}
@@ -674,11 +681,11 @@ export function FinalSetupScreen({
             cursor: titleEmpty ? "default" : "pointer",
             background: titleEmpty
               ? "rgba(0,0,0,0.07)"
-              : `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`,
+              : `linear-gradient(160deg, ${accentColor}, rgba(${accentRgb},0.80))`,
             color: titleEmpty ? "rgba(0,0,0,0.28)" : "#fff",
             boxShadow: titleEmpty
               ? "none"
-              : "0 2px 14px rgba(52,168,132,0.30), inset 0 1px 0 rgba(255,255,255,0.18)",
+              : `0 2px 14px rgba(${accentRgb},0.30), inset 0 1px 0 rgba(255,255,255,0.18)`,
             transition: "background 0.2s, box-shadow 0.2s, color 0.2s",
           }}
           aria-disabled={titleEmpty}

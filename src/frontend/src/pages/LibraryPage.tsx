@@ -78,7 +78,6 @@ function PackCard({
 
   return (
     <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
-      {/* Background layer */}
       <div
         style={{
           position: "absolute",
@@ -89,8 +88,6 @@ function PackCard({
           zIndex: 0,
         }}
       />
-
-      {/* Frosted white gradient overlay */}
       <div
         style={{
           position: "absolute",
@@ -100,8 +97,6 @@ function PackCard({
           zIndex: 1,
         }}
       />
-
-      {/* Slow card bg shimmer */}
       <div
         className="card-bg-shimmer"
         style={{
@@ -113,8 +108,6 @@ function PackCard({
           overflow: "hidden",
         }}
       />
-
-      {/* Content layer */}
       <div
         style={{
           position: "relative",
@@ -127,7 +120,6 @@ function PackCard({
           height: "100%",
         }}
       >
-        {/* Small top label */}
         <span
           style={{
             fontSize: "11px",
@@ -141,8 +133,6 @@ function PackCard({
         >
           MINTY PACK
         </span>
-
-        {/* Divider */}
         <div
           style={{
             width: "32px",
@@ -151,8 +141,6 @@ function PackCard({
             margin: "12px 0",
           }}
         />
-
-        {/* Off-white wrapper image — main visual */}
         <div
           style={{
             flex: 1,
@@ -178,8 +166,6 @@ function PackCard({
             }}
           />
         </div>
-
-        {/* Main name */}
         <h2
           style={{
             fontSize: "28px",
@@ -229,7 +215,6 @@ function RevealedCard({
           gap: "0",
         }}
       >
-        {/* Thin accent line */}
         <div
           style={{
             width: "40px",
@@ -239,8 +224,6 @@ function RevealedCard({
             marginBottom: "28px",
           }}
         />
-
-        {/* Collectible illustration placeholder */}
         <div
           style={{
             width: "100px",
@@ -273,8 +256,6 @@ function RevealedCard({
             <circle cx="24" cy="24" r="3" fill={`rgba(${accentRgb},0.5)`} />
           </svg>
         </div>
-
-        {/* Card name */}
         <h2
           style={{
             fontSize: "26px",
@@ -288,8 +269,6 @@ function RevealedCard({
         >
           {collectible.name}
         </h2>
-
-        {/* Rarity */}
         <p
           style={{
             fontSize: "13px",
@@ -308,7 +287,7 @@ function RevealedCard({
   );
 }
 
-// ── Locked state shown when a draft is in progress ───────────────────────────
+// Draft in-progress locked state — shows video recording progress
 function DraftLockedState({
   onFinish,
   accentRgb,
@@ -326,16 +305,13 @@ function DraftLockedState({
   const [isActive, setIsActive] = useState(false);
   const { activeDraft } = useMomentDraft();
 
-  const photoCount = activeDraft?.photos.length ?? 0;
-  const hasVideo = activeDraft?.video !== null;
+  const hasVideo = (activeDraft?.video ?? null) !== null;
 
   const mintButtonStyle = {
     ...BUTTON_BASE,
     background: isActive
       ? `linear-gradient(160deg, oklch(${accentOklchLight}), oklch(${accentOklch}))`
-      : isHovered
-        ? `linear-gradient(160deg, oklch(${accentOklch}), oklch(${accentOklchLight}))`
-        : `linear-gradient(160deg, oklch(${accentOklch}), oklch(${accentOklchLight}))`,
+      : `linear-gradient(160deg, oklch(${accentOklch}), oklch(${accentOklchLight}))`,
     color: "#ffffff",
     boxShadow: isHovered
       ? `0 4px 20px rgba(${accentRgb},0.38), 0 1px 6px rgba(${accentRgb},0.25), inset 0 1px 0 rgba(255,255,255,0.20)`
@@ -355,7 +331,6 @@ function DraftLockedState({
         width: "280px",
       }}
     >
-      {/* Status message box */}
       <div
         data-ocid="library.loading_state"
         style={{
@@ -368,7 +343,6 @@ function DraftLockedState({
           textAlign: "center",
         }}
       >
-        {/* Soft pulsing dot */}
         <div
           style={{
             width: "8px",
@@ -399,10 +373,8 @@ function DraftLockedState({
             lineHeight: 1.5,
           }}
         >
-          Complete capture and print to unlock your next Moment.
+          Record your video and add details to complete.
         </p>
-
-        {/* Progress summary */}
         <div
           style={{
             marginTop: "12px",
@@ -410,18 +382,8 @@ function DraftLockedState({
             borderTop: `1px solid rgba(${accentRgb},0.12)`,
             display: "flex",
             justifyContent: "center",
-            gap: "16px",
           }}
         >
-          <span
-            style={{
-              fontSize: "12px",
-              color: photoCount === 9 ? accentColor : "#7a9a8a",
-              fontWeight: photoCount === 9 ? 600 : 400,
-            }}
-          >
-            {photoCount}/9 photos
-          </span>
           <span
             style={{
               fontSize: "12px",
@@ -429,12 +391,11 @@ function DraftLockedState({
               fontWeight: hasVideo ? 600 : 400,
             }}
           >
-            {hasVideo ? "1" : "0"}/1 video
+            {hasVideo ? "✓ Video recorded" : "Video not yet recorded"}
           </span>
         </div>
       </div>
 
-      {/* Finish Current Moment button */}
       <button
         type="button"
         data-ocid="library.primary_button"
@@ -469,13 +430,11 @@ export function LibraryPage({
   const { activeStyle: activeCycle } = usePackStyle();
   const { hasDraft, startDraft } = useMomentDraft();
 
-  // Derive accent values from active cycle
   const accentColor = `oklch(${activeCycle.accentOklchDark})`;
   const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
   const accentText = `rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.85)`;
   const accentGlow = `rgba(${accentRgb},0.28)`;
 
-  // Inject keyframes once — uses CSS custom property var(--cycle-accent-rgb) for the glow
   useEffect(() => {
     const id = "library-keyframes-style";
     if (document.getElementById(id)) return;
@@ -486,13 +445,10 @@ export function LibraryPage({
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50%       { opacity: 1;   transform: scale(1.25); }
       }
-      /* ── Pack preview image animations ─────────────────────────────── */
-      /* Gentle float: 6px vertical travel over 5s */
       @keyframes packPreviewFloat {
         0%, 100% { transform: translateY(0px) scale(1); }
         50%       { transform: translateY(-5px) scale(1.012); }
       }
-      /* Soft glow pulse on the wrapper — uses CSS custom property set by PackStyleContext */
       @keyframes packPreviewGlow {
         0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),
@@ -545,14 +501,11 @@ export function LibraryPage({
     }, 300);
   }, [pickRandomCollectible]);
 
-  // Primary button — cycle-accent filled gradient
   const primaryButtonStyle = {
     ...BUTTON_BASE,
     background: isButtonActive
       ? `linear-gradient(160deg, oklch(${activeCycle.accentOklchLight}), oklch(${activeCycle.accentOklch}))`
-      : isButtonHovered
-        ? `linear-gradient(160deg, oklch(${activeCycle.accentOklch}), oklch(${activeCycle.accentOklchLight}))`
-        : `linear-gradient(160deg, oklch(${activeCycle.accentOklch}), oklch(${activeCycle.accentOklchLight}))`,
+      : `linear-gradient(160deg, oklch(${activeCycle.accentOklch}), oklch(${activeCycle.accentOklchLight}))`,
     color: "#ffffff",
     boxShadow: isButtonHovered
       ? `0 4px 20px rgba(${accentRgb},0.35), 0 1px 6px rgba(${accentRgb},0.20), inset 0 1px 0 rgba(255,255,255,0.18)`
@@ -560,7 +513,6 @@ export function LibraryPage({
     transform: isButtonActive ? "scale(0.98)" : "scale(1)",
   };
 
-  // Secondary button — subtle accent border + tinted background
   const secondaryButtonStyle = {
     ...BUTTON_BASE,
     background: isAltButtonHovered
@@ -570,10 +522,8 @@ export function LibraryPage({
     border: `1px solid rgba(${accentRgb},0.22)`,
   };
 
-  // Determine if we show the flippable pack or the revealed card / draft locked
   const showFlippable = !hasDraft && packState === "idle";
 
-  // Suppress unused variable warning — accentGlow is available for future use
   void accentGlow;
   void accentText;
 
@@ -591,7 +541,6 @@ export function LibraryPage({
         position: "relative",
       }}
     >
-      {/* Dim overlay during opening transition */}
       <AnimatePresence>
         {packState === "opening" && (
           <motion.div
@@ -611,7 +560,6 @@ export function LibraryPage({
         )}
       </AnimatePresence>
 
-      {/* Main content */}
       <div
         style={{
           display: "flex",
@@ -623,7 +571,6 @@ export function LibraryPage({
         }}
       >
         <AnimatePresence mode="wait">
-          {/* LOCKED STATE — draft in progress */}
           {hasDraft && packState === "idle" && (
             <motion.div
               key="locked"
@@ -637,7 +584,6 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              {/* Show pack card with first captured photo as preview */}
               <PackCard accentRgb={accentRgb} accentText="" />
               <div style={{ height: "20px" }} />
               <DraftLockedState
@@ -650,7 +596,6 @@ export function LibraryPage({
             </motion.div>
           )}
 
-          {/* IDLE — pack card display */}
           {showFlippable && (
             <motion.div
               key="pack"
@@ -665,7 +610,6 @@ export function LibraryPage({
               }}
             >
               <PackCard accentRgb={accentRgb} accentText="" />
-
               <p
                 style={{
                   fontSize: "12px",
@@ -676,7 +620,6 @@ export function LibraryPage({
               >
                 Supply remaining: 50,000
               </p>
-
               <button
                 type="button"
                 data-ocid="library.primary_button"
@@ -698,7 +641,6 @@ export function LibraryPage({
             </motion.div>
           )}
 
-          {/* OPENING — brief transition state */}
           {packState === "opening" && (
             <motion.div
               key="opening"
@@ -714,7 +656,6 @@ export function LibraryPage({
             />
           )}
 
-          {/* REVEALED — collectible card + action buttons */}
           {packState === "revealed" && currentCollectible && (
             <motion.div
               key="revealed"
@@ -732,8 +673,6 @@ export function LibraryPage({
                 collectible={currentCollectible}
                 accentRgb={accentRgb}
               />
-
-              {/* Action buttons */}
               <div
                 style={{
                   display: "flex",
@@ -758,7 +697,6 @@ export function LibraryPage({
                 >
                   Open Another
                 </button>
-
                 <button
                   type="button"
                   data-ocid="library.secondary_button"
@@ -775,7 +713,6 @@ export function LibraryPage({
         </AnimatePresence>
       </div>
 
-      {/* Mint Moment Modal — only shown when no active draft */}
       {!hasDraft && (
         <MintMomentModal
           open={showMintModal}
