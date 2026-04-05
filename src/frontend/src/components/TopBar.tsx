@@ -41,8 +41,8 @@ function injectNeonStyles(
   const baseBreathe = isGold
     ? `
 @keyframes echo-neon-breathe-light {
-  0%,100% { filter: ${filter} brightness(1.0) drop-shadow(0 0 2px rgba(${r},${g},${b},0.35)) drop-shadow(0 0 6px rgba(${r},${g},${b},0.18)); }
-  50%     { filter: ${filter} brightness(1.06) drop-shadow(0 0 4px rgba(${r},${g},${b},0.55)) drop-shadow(0 0 14px rgba(${r},${g},${b},0.28)); }
+  0%,100% { filter: drop-shadow(0 0 3px rgba(212,175,55,0.40)) drop-shadow(0 0 8px rgba(212,175,55,0.20)); }
+  50%     { filter: drop-shadow(0 0 6px rgba(212,175,55,0.58)) drop-shadow(0 0 16px rgba(212,175,55,0.28)); }
 }
 `
     : `
@@ -1092,10 +1092,12 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
-  // Always use the original mint logo — CSS filter in logoFilter handles color per cycle
-  const MINTY_LOGO = "/assets/minty-logo.png";
-
   const isGoldCycle = activeCycleId === 6;
+
+  // Gold cycle uses dedicated champagne-gold logo; other cycles use original with CSS filter
+  const MINTY_LOGO = isGoldCycle
+    ? "/assets/generated/minty-logo-gold-prestige-transparent.dim_540x120.png"
+    : "/assets/minty-logo.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1103,19 +1105,27 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
       activeCycle.accentR,
       activeCycle.accentG,
       activeCycle.accentB,
-      activeCycle.logoFilter,
+      isGoldCycle ? "" : activeCycle.logoFilter, // Gold uses dedicated image, no filter
       activeCycleId,
     );
-  }, [activeCycle, activeCycleId]);
+  }, [activeCycle, activeCycleId, isGoldCycle]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
 
-  const uploadBg = "rgba(var(--cycle-accent-rgb),0.07)";
-  const uploadBgHover = "rgba(var(--cycle-accent-rgb),0.12)";
-  const uploadBorder = "1px solid rgba(var(--cycle-accent-rgb),0.20)";
-  const uploadColor = "var(--cycle-accent)";
-  const uploadShadow = "0 1px 3px rgba(0,0,0,0.06)";
+  const uploadBg = isGoldCycle
+    ? "#FFFFFF"
+    : "rgba(var(--cycle-accent-rgb),0.07)";
+  const uploadBgHover = isGoldCycle
+    ? "#FFFEF8"
+    : "rgba(var(--cycle-accent-rgb),0.12)";
+  const uploadBorder = isGoldCycle
+    ? "1px solid rgba(212,175,55,0.65)"
+    : "1px solid rgba(var(--cycle-accent-rgb),0.20)";
+  const uploadColor = isGoldCycle ? "#9A7B1C" : "var(--cycle-accent)";
+  const uploadShadow = isGoldCycle
+    ? "0 0 10px rgba(212,175,55,0.22), 0 0 3px rgba(212,175,55,0.10), 0 1px 3px rgba(0,0,0,0.05)"
+    : "0 1px 3px rgba(0,0,0,0.06)";
 
   function handleAuthButtonClick() {
     if (isSignedIn) {
@@ -1164,6 +1174,11 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
               imageRendering: "auto",
               display: "block",
               background: "transparent",
+              filter: isGoldCycle
+                ? undefined
+                : activeCycle.logoFilter !== "none"
+                  ? activeCycle.logoFilter
+                  : undefined,
             }}
             draggable={false}
           />
@@ -1285,21 +1300,41 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
               paddingRight: "12px",
               paddingTop: "7px",
               paddingBottom: "7px",
-              backgroundColor: "rgba(247, 249, 252, 1)",
-              color: "#1A2840",
-              border: "1px solid #D0DFEF",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              backgroundColor: isGoldCycle
+                ? "#FFFFFF"
+                : "rgba(247, 249, 252, 1)",
+              color: isGoldCycle ? "#9A7B1C" : "#1A2840",
+              border: isGoldCycle
+                ? "1px solid rgba(212,175,55,0.65)"
+                : "1px solid #D0DFEF",
+              boxShadow: isGoldCycle
+                ? "0 0 12px rgba(212,175,55,0.24), 0 1px 3px rgba(0,0,0,0.05)"
+                : "0 1px 3px rgba(0,0,0,0.06)",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "rgba(240, 244, 250, 1)";
-              el.style.borderColor = "#C0D4EC";
+              if (isGoldCycle) {
+                el.style.backgroundColor = "#FFFEF8";
+                el.style.borderColor = "rgba(212,175,55,0.88)";
+                el.style.boxShadow =
+                  "0 0 18px rgba(212,175,55,0.35), 0 0 6px rgba(212,175,55,0.18), 0 1px 4px rgba(0,0,0,0.07)";
+              } else {
+                el.style.backgroundColor = "rgba(240, 244, 250, 1)";
+                el.style.borderColor = "#C0D4EC";
+              }
             }}
             onMouseLeave={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "rgba(247, 249, 252, 1)";
-              el.style.borderColor = "#D0DFEF";
+              if (isGoldCycle) {
+                el.style.backgroundColor = "#FFFFFF";
+                el.style.borderColor = "rgba(212,175,55,0.65)";
+                el.style.boxShadow =
+                  "0 0 12px rgba(212,175,55,0.24), 0 1px 3px rgba(0,0,0,0.05)";
+              } else {
+                el.style.backgroundColor = "rgba(247, 249, 252, 1)";
+                el.style.borderColor = "#D0DFEF";
+              }
             }}
           >
             {isSignedIn ? (

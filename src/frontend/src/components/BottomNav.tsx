@@ -16,9 +16,17 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
 ];
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  const { activeCycle } = useCycleTheme();
-  const accentColor = `oklch(${activeCycle.accentOklchDark})`;
-  const accentGlow = `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
+  const { activeCycle, activeCycleId } = useCycleTheme();
+  const isGold = activeCycleId === 6;
+  const accentColor = isGold
+    ? "#9A7B1C"
+    : `oklch(${activeCycle.accentOklchDark})`;
+  const accentGlow = isGold
+    ? "0 0 12px rgba(212,175,55,0.38)"
+    : `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
+  const activeIndicatorBg = isGold
+    ? "linear-gradient(90deg, #C9A227, #E8C84A, #C9A227)"
+    : accentColor;
 
   return (
     <nav
@@ -45,7 +53,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                 style={{
-                  background: accentColor,
+                  background: activeIndicatorBg,
                   boxShadow: accentGlow,
                 }}
               />

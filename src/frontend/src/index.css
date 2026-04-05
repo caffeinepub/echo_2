@@ -761,3 +761,77 @@ header.fixed {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   GOLD CYCLE PRESTIGE — Cycle 6 global button + accent overrides
+   ══════════════════════════════════════════════════════════════ */
+
+/* Gold button glow keyframe */
+@keyframes gold-btn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.22), 0 0 3px
+      rgba(212, 175, 55, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.34), 0 0 6px
+      rgba(212, 175, 55, 0.18), 0 1px 4px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* ── All buttons in gold cycle ── */
+[data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt) {
+  background: #ffffff !important;
+  color: #9a7b1c !important;
+  border-color: rgba(212, 175, 55, 0.65) !important;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.22), 0 0 3px rgba(212, 175, 55, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  animation: gold-btn-pulse 3.5s ease-in-out infinite !important;
+}
+
+[data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt) svg {
+  color: #9a7b1c !important;
+  stroke: #9a7b1c !important;
+}
+
+[data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt):hover {
+  background: #fffef8 !important;
+  border-color: rgba(212, 175, 55, 0.88) !important;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.35), 0 0 6px
+    rgba(212, 175, 55, 0.18), 0 1px 4px rgba(0, 0, 0, 0.07) !important;
+}
+
+/* ── Specific overrides to ensure white bg even on tinted buttons ── */
+[data-gold-cycle] button[style*="background"] {
+  background: #ffffff !important;
+}
+
+/* ── Filter pills / hashtag chips ── */
+[data-gold-cycle] [class*="pill"],
+[data-gold-cycle] [class*="chip"],
+[data-gold-cycle] [class*="filter"] {
+  background: #ffffff !important;
+  border-color: rgba(212, 175, 55, 0.6) !important;
+  color: #9a7b1c !important;
+}
+
+/* ── Active tab indicators ── */
+[data-gold-cycle] [data-active="true"],
+[data-gold-cycle] [aria-selected="true"] {
+  color: #9a7b1c !important;
+  border-color: rgba(212, 175, 55, 0.7) !important;
+}
+
+/* ── Cycle accent overrides for gold ── */
+[data-gold-cycle] {
+  --cycle-accent: oklch(0.62 0.14 80) !important;
+  --cycle-accent-r: 212 !important;
+  --cycle-accent-g: 175 !important;
+  --cycle-accent-b: 55 !important;
+  --cycle-accent-rgb: 212, 175, 55 !important;
+}
+
+/* ── Accent text in gold ── */
+[data-gold-cycle] [style*="var(--cycle-accent)"] {
+  color: #9a7b1c !important;
+}

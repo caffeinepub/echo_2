@@ -154,6 +154,31 @@ function applyThemeVars(cycle: CycleTheme) {
   root.style.setProperty("--cycle-glow-color", cycle.glowLight);
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--ring", accent);
+
+  // Gold cycle prestige — set extra vars and attribute
+  if (cycle.id === 6) {
+    root.setAttribute("data-gold-cycle", "true");
+    root.classList.add("gold-cycle");
+    root.style.setProperty("--gold-text", "#9A7B1C");
+    root.style.setProperty("--gold-border", "rgba(212,175,55,0.72)");
+    root.style.setProperty("--gold-bg", "#FFFFFF");
+    root.style.setProperty(
+      "--gold-glow",
+      "0 0 12px rgba(212,175,55,0.28), 0 0 4px rgba(212,175,55,0.15), 0 1px 3px rgba(0,0,0,0.06)",
+    );
+    root.style.setProperty(
+      "--gold-glow-strong",
+      "0 0 18px rgba(212,175,55,0.38), 0 0 6px rgba(212,175,55,0.20), 0 1px 4px rgba(0,0,0,0.08)",
+    );
+  } else {
+    root.removeAttribute("data-gold-cycle");
+    root.classList.remove("gold-cycle");
+    root.style.removeProperty("--gold-text");
+    root.style.removeProperty("--gold-border");
+    root.style.removeProperty("--gold-bg");
+    root.style.removeProperty("--gold-glow");
+    root.style.removeProperty("--gold-glow-strong");
+  }
 }
 
 export function CycleThemeProvider({
