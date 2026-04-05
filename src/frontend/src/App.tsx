@@ -7,6 +7,7 @@ import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { CollectionProvider } from "./context/CollectionContext";
+import { CycleThemeProvider } from "./context/CycleThemeContext";
 import {
   MomentDraftProvider,
   useMomentDraft,
@@ -86,29 +87,23 @@ function AppContent() {
     setView({ type: "capture-moment" });
   }
 
-  // When a creator completes capture, store the draft and show the pricing modal
-  // before anything is published to Releases.
   function handleMintComplete(draft: MomentDraft) {
     setPendingMintDraft(draft);
     setShowPackPriceModal(true);
     setView({ type: "tab", tab: "library" });
   }
 
-  // Called when the creator confirms a price in SetPackPriceModal.
-  // Contains all pack-generation logic; uses user-selected price + matching duration.
   function handleConfirmPackPrice(priceUsd: number) {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
     const now = Date.now();
-    const totalPacks = 100; // always 100 packs per Mint Moment set
+    const totalPacks = 100;
 
     const hours = PRICE_TO_HOURS[priceUsd] ?? 24;
 
-    // 90/10 split — round to integers, ensure they sum to totalPacks
     const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
     const photoCount = totalPacks - videoCount;
 
-    // Build assignment pool: photoCount slots + videoCount slots
     type SlotPhoto = { type: "photo"; num: number };
     type SlotVideo = { type: "video"; num: number };
     type Slot = SlotPhoto | SlotVideo;
@@ -124,13 +119,11 @@ function AppContent() {
       })),
     ];
 
-    // Fisher-Yates shuffle — randomizes which packs get photo vs video
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    // Use the dedicated cover photo if captured; otherwise fall back to collectible photo (legacy compat)
     const coverImageUrl =
       draft.coverPhoto ??
       (draft.photos.length > 0
@@ -139,11 +132,10 @@ function AppContent() {
 
     const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
 
-    // Use title/caption/explicit from FinalSetupScreen fields
     const releaseTitle = draft.title?.trim() || "Mint Moment";
     const releaseCaption =
       draft.caption?.trim() ||
-      `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`;
+      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
@@ -174,7 +166,6 @@ function AppContent() {
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
 
-      {/* Pack Price Modal — intercepts between capture-complete and Releases listing */}
       {showPackPriceModal && pendingMintDraft && (
         <SetPackPriceModal
           onConfirm={handleConfirmPackPrice}
@@ -274,19 +265,21 @@ export default function App() {
   return (
     <UserSettingsProvider>
       <ThemeProvider>
-        <InternetIdentityProvider>
-          <WalletProvider>
-            <AdminReleasesProvider>
-              <MomentDraftProvider>
-                <CollectionProvider>
-                  <ReleasesMarketProvider>
-                    <AppContent />
-                  </ReleasesMarketProvider>
-                </CollectionProvider>
-              </MomentDraftProvider>
-            </AdminReleasesProvider>
-          </WalletProvider>
-        </InternetIdentityProvider>
+        <CycleThemeProvider>
+          <InternetIdentityProvider>
+            <WalletProvider>
+              <AdminReleasesProvider>
+                <MomentDraftProvider>
+                  <CollectionProvider>
+                    <ReleasesMarketProvider>
+                      <AppContent />
+                    </ReleasesMarketProvider>
+                  </CollectionProvider>
+                </MomentDraftProvider>
+              </AdminReleasesProvider>
+            </WalletProvider>
+          </InternetIdentityProvider>
+        </CycleThemeProvider>
       </ThemeProvider>
     </UserSettingsProvider>
   );

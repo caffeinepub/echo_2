@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import type { CollectionNFT, SealedPack } from "../context/CollectionContext";
-
-const PACK_IMAGE =
-  "/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png";
+import { useCycleTheme } from "../context/CycleThemeContext";
 
 const OVERLAY_KEYFRAMES = `
   @keyframes packFloat {
@@ -121,12 +119,7 @@ export interface PackOpeningOverlayProps {
   isLoading?: boolean;
 }
 
-type Phase =
-  | "idle" // Pack centered, slide to open control
-  | "anticipation" // Pack shakes + inner glow
-  | "tear" // Pack halves split apart
-  | "suspense" // Silhouette card
-  | "reveal"; // Fullscreen NFT reveal
+type Phase = "idle" | "anticipation" | "tear" | "suspense" | "reveal";
 
 const KNOB_SIZE = 54;
 
@@ -139,13 +132,18 @@ export function PackOpeningOverlay({
 }: PackOpeningOverlayProps) {
   ensureOverlayStyles();
 
+  const { activeCycle } = useCycleTheme();
+  const wrapperImageUrl = activeCycle.packWrapperUrl;
+  const r = activeCycle.accentR;
+  const g = activeCycle.accentG;
+  const b = activeCycle.accentB;
+
   const [phase, setPhase] = useState<Phase>("idle");
   const [shineActive, setShineActive] = useState(false);
   const [uiVisible, setUiVisible] = useState(true);
   const completedRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // Slider state
   const trackRef = useRef<HTMLDivElement>(null);
   const [knobX, setKnobX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -155,14 +153,10 @@ export function PackOpeningOverlay({
   const knobStartXRef = useRef(0);
   const trackRefStable = trackRef;
 
-  const wrapperImageUrl = PACK_IMAGE;
-
-  // Open the native dialog on mount
   useEffect(() => {
     dialogRef.current?.showModal();
   }, []);
 
-  // Phase auto-advance timers
   useEffect(() => {
     if (phase === "anticipation") {
       const t = setTimeout(() => setPhase("tear"), 450);
@@ -191,7 +185,6 @@ export function PackOpeningOverlay({
     onComplete(nft);
   }, [nft, onComplete]);
 
-  // ─── Slider logic ───────────────────────────────────────────────────────────
   const updateKnob = useCallback(
     (clientX: number) => {
       const trackWidth =
@@ -220,7 +213,6 @@ export function PackOpeningOverlay({
     setIsDragging(false);
   }, []);
 
-  // Pointer events (unified touch + mouse)
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (sliderTriggered || isLoading || !nft) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -240,7 +232,6 @@ export function PackOpeningOverlay({
     if (sliderProgress < 0.88) snapBack();
   };
 
-  // Touch fallback for iOS Safari
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (sliderTriggered || isLoading || !nft) return;
     const touch = e.touches[0];
@@ -262,13 +253,11 @@ export function PackOpeningOverlay({
     if (sliderProgress < 0.88) snapBack();
   };
 
-  // ─── Derived values ──────────────────────────────────────────────────────────
   const isVideo = nft?.mediaType === "video";
   const isRare = nft?.rarity === "Rare";
   const isSlideDisabled = isLoading || !nft;
 
   const labelOpacity = Math.max(0, 1 - sliderProgress * 2.5);
-
   const inIdleOrSliding = phase === "idle";
 
   const editionText = nft
@@ -292,7 +281,7 @@ export function PackOpeningOverlay({
         animation: "overlayFadeIn 0.32s ease",
       }}
     >
-      {/* ── Persistent X close button (always visible) ──────────────────────── */}
+      {/* Close button */}
       <button
         type="button"
         data-ocid="collection.close_button"
@@ -320,13 +309,12 @@ export function PackOpeningOverlay({
           flexShrink: 0,
         }}
       >
-        ×
+        \u00d7
       </button>
 
-      {/* ── IDLE: Pack wrapper only + Slide to Open ─────────────────────── */}
+      {/* IDLE: Pack wrapper + Slide to Open */}
       {inIdleOrSliding && (
         <>
-          {/* Floating pack — wrapper only, no cover art */}
           <div
             style={{
               width: "240px",
@@ -337,7 +325,7 @@ export function PackOpeningOverlay({
               marginBottom: "auto",
               marginTop: "auto",
               flexShrink: 0,
-              filter: `drop-shadow(0 0 ${28 + sliderProgress * 36}px rgba(52,211,153,${0.28 + sliderProgress * 0.38})) drop-shadow(0 24px 48px rgba(0,0,0,0.6))`,
+              filter: `drop-shadow(0 0 ${28 + sliderProgress * 36}px rgba(${r},${g},${b},${0.28 + sliderProgress * 0.38})) drop-shadow(0 24px 48px rgba(0,0,0,0.6))`,
               transition: isDragging ? "none" : "filter 0.2s ease",
             }}
           >
@@ -352,24 +340,22 @@ export function PackOpeningOverlay({
                 borderRadius: "16px",
               }}
             />
-            {/* Subtle inner glow intensifies as slider advances */}
             <div
               aria-hidden="true"
               style={{
                 position: "absolute",
                 inset: 0,
                 borderRadius: "16px",
-                background: `radial-gradient(ellipse at 50% 50%, rgba(52,211,153,${sliderProgress * 0.12}), transparent 70%)`,
+                background: `radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},${sliderProgress * 0.12}), transparent 70%)`,
                 pointerEvents: "none",
                 transition: isDragging ? "none" : "background 0.2s ease",
               }}
             />
           </div>
 
-          {/* Spacer */}
           <div style={{ flex: 1, minHeight: "28px" }} />
 
-          {/* Slide to Open control */}
+          {/* Slide control */}
           <div
             style={{
               width: "100%",
@@ -379,7 +365,6 @@ export function PackOpeningOverlay({
               WebkitUserSelect: "none",
             }}
           >
-            {/* Label */}
             <div
               style={{
                 textAlign: "center",
@@ -397,11 +382,10 @@ export function PackOpeningOverlay({
                   textTransform: "uppercase",
                 }}
               >
-                {isLoading ? "Preparing your pack…" : "Slide to open pack"}
+                {isLoading ? "Preparing your pack\u2026" : "Slide to open pack"}
               </span>
             </div>
 
-            {/* Track */}
             <div
               ref={trackRef}
               data-ocid="collection.drag_handle"
@@ -418,9 +402,9 @@ export function PackOpeningOverlay({
                 height: "64px",
                 borderRadius: "32px",
                 background: isSlideDisabled
-                  ? "rgba(52,211,153,0.05)"
-                  : "rgba(52,211,153,0.10)",
-                border: `1px solid rgba(52,211,153,${isSlideDisabled ? 0.1 : 0.22})`,
+                  ? `rgba(${r},${g},${b},0.05)`
+                  : `rgba(${r},${g},${b},0.10)`,
+                border: `1px solid rgba(${r},${g},${b},${isSlideDisabled ? 0.1 : 0.22})`,
                 cursor: isSlideDisabled
                   ? "not-allowed"
                   : isDragging
@@ -439,8 +423,7 @@ export function PackOpeningOverlay({
                   top: 0,
                   bottom: 0,
                   width: `${knobX + KNOB_SIZE / 2}px`,
-                  background:
-                    "linear-gradient(90deg, rgba(52,211,153,0.22), rgba(52,211,153,0.12))",
+                  background: `linear-gradient(90deg, rgba(${r},${g},${b},0.22), rgba(${r},${g},${b},0.12))`,
                   borderRadius: "32px",
                   transition: isDragging
                     ? "none"
@@ -462,8 +445,7 @@ export function PackOpeningOverlay({
                   background: isSlideDisabled
                     ? "rgba(255,255,255,0.25)"
                     : "#ffffff",
-                  boxShadow:
-                    "0 2px 12px rgba(0,0,0,0.25), 0 0 0 2px rgba(52,211,153,0.25)",
+                  boxShadow: `0 2px 12px rgba(0,0,0,0.25), 0 0 0 2px rgba(${r},${g},${b},0.25)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -480,7 +462,7 @@ export function PackOpeningOverlay({
                       width: "16px",
                       height: "16px",
                       border: "2px solid rgba(4,12,8,0.15)",
-                      borderTop: "2px solid rgba(52,168,132,0.8)",
+                      borderTop: `2px solid rgba(${r},${g},${b},0.8)`,
                       borderRadius: "50%",
                       animation: "spin 0.8s linear infinite",
                     }}
@@ -505,7 +487,7 @@ export function PackOpeningOverlay({
                 )}
               </div>
 
-              {/* Chevron hint on right */}
+              {/* Chevron hint */}
               {!isSlideDisabled && (
                 <div
                   style={{
@@ -527,7 +509,7 @@ export function PackOpeningOverlay({
                   >
                     <path
                       d="M6 4l5 5-5 5"
-                      stroke="rgba(52,211,153,0.8)"
+                      stroke={`rgba(${r},${g},${b},0.8)`}
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -540,7 +522,7 @@ export function PackOpeningOverlay({
         </>
       )}
 
-      {/* ── ANTICIPATION: Wrapper shakes + glows ────────────────────────── */}
+      {/* ANTICIPATION: Wrapper shakes + glows */}
       {phase === "anticipation" && (
         <div
           style={{
@@ -549,8 +531,7 @@ export function PackOpeningOverlay({
             position: "relative",
             animation: "packShake 400ms ease-in-out forwards",
             flexShrink: 0,
-            filter:
-              "drop-shadow(0 0 60px rgba(52,211,153,0.75)) drop-shadow(0 0 120px rgba(52,211,153,0.40)) drop-shadow(0 24px 48px rgba(0,0,0,0.7))",
+            filter: `drop-shadow(0 0 60px rgba(${r},${g},${b},0.75)) drop-shadow(0 0 120px rgba(${r},${g},${b},0.40)) drop-shadow(0 24px 48px rgba(0,0,0,0.7))`,
           }}
         >
           <img
@@ -570,15 +551,14 @@ export function PackOpeningOverlay({
               position: "absolute",
               inset: 0,
               borderRadius: "16px",
-              background:
-                "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.22), transparent 65%)",
+              background: `radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},0.22), transparent 65%)`,
               pointerEvents: "none",
             }}
           />
         </div>
       )}
 
-      {/* ── TEAR: Wrapper halves split ───────────────────────────────────── */}
+      {/* TEAR: Wrapper halves split */}
       {phase === "tear" && (
         <div
           style={{
@@ -588,7 +568,6 @@ export function PackOpeningOverlay({
             flexShrink: 0,
           }}
         >
-          {/* Top half */}
           <div
             style={{
               position: "absolute",
@@ -615,7 +594,6 @@ export function PackOpeningOverlay({
             />
           </div>
 
-          {/* Bottom half */}
           <div
             style={{
               position: "absolute",
@@ -644,7 +622,6 @@ export function PackOpeningOverlay({
             />
           </div>
 
-          {/* Light burst from the seam */}
           <div
             style={{
               position: "absolute",
@@ -654,8 +631,7 @@ export function PackOpeningOverlay({
               width: "180px",
               height: "180px",
               borderRadius: "50%",
-              background:
-                "radial-gradient(circle, rgba(255,255,255,0.24), rgba(52,211,153,0.18), transparent 70%)",
+              background: `radial-gradient(circle, rgba(255,255,255,0.24), rgba(${r},${g},${b},0.18), transparent 70%)`,
               pointerEvents: "none",
               animation: "lightBurst 700ms ease-out forwards",
             }}
@@ -663,7 +639,7 @@ export function PackOpeningOverlay({
         </div>
       )}
 
-      {/* ── SUSPENSE: Frosted silhouette ─────────────────────────────────── */}
+      {/* SUSPENSE: Frosted silhouette */}
       {phase === "suspense" && (
         <div
           aria-hidden="true"
@@ -682,7 +658,7 @@ export function PackOpeningOverlay({
         />
       )}
 
-      {/* ── REVEAL: Fullscreen immersive NFT reveal ───────────────────────── */}
+      {/* REVEAL: Fullscreen immersive NFT reveal */}
       {phase === "reveal" && nft && (
         <div
           role={isVideo ? "button" : undefined}
@@ -705,17 +681,14 @@ export function PackOpeningOverlay({
             cursor: isVideo ? "pointer" : "default",
           }}
         >
-          {/* Full-viewport media */}
           {isVideo ? (
             <>
-              {/* Ambient glow behind video for rare feel */}
               <div
                 aria-hidden="true"
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background:
-                    "radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.10) 0%, transparent 65%)",
+                  background: `radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},0.10) 0%, transparent 65%)`,
                   pointerEvents: "none",
                   zIndex: 0,
                 }}
@@ -736,7 +709,7 @@ export function PackOpeningOverlay({
                   display: "block",
                   animation: "nftRevealFadeVideo 900ms ease forwards",
                   zIndex: 1,
-                  boxShadow: "0 0 120px rgba(52,211,153,0.25)",
+                  boxShadow: `0 0 120px rgba(${r},${g},${b},0.25)`,
                 }}
               />
             </>
@@ -757,7 +730,6 @@ export function PackOpeningOverlay({
             />
           )}
 
-          {/* Rare shine sweep */}
           {isRare && shineActive && (
             <div
               aria-hidden="true"
@@ -785,7 +757,6 @@ export function PackOpeningOverlay({
             </div>
           )}
 
-          {/* Bottom UI overlay — fades in, tapping video toggles this */}
           <div
             style={{
               position: "absolute",
@@ -804,7 +775,6 @@ export function PackOpeningOverlay({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            {/* Metadata */}
             <div style={{ marginBottom: "20px" }}>
               <div
                 style={{
@@ -835,26 +805,28 @@ export function PackOpeningOverlay({
                     padding: "3px 12px",
                     borderRadius: "20px",
                     background: isRare
-                      ? "rgba(52,168,132,0.22)"
+                      ? `rgba(${r},${g},${b},0.22)`
                       : "rgba(255,255,255,0.10)",
                     border: isRare
-                      ? "1px solid rgba(52,211,153,0.45)"
+                      ? `1px solid rgba(${r},${g},${b},0.45)`
                       : "1px solid rgba(255,255,255,0.18)",
                     fontSize: "11px",
-                    color: isRare ? "#5de8bb" : "rgba(255,255,255,0.65)",
+                    color: isRare
+                      ? `rgba(${r},${g},${b},1)`
+                      : "rgba(255,255,255,0.65)",
                     fontWeight: 700,
                     letterSpacing: "0.09em",
                     textTransform: "uppercase" as const,
                     animation: "metaFadeIn 350ms ease 510ms both",
                   }}
                 >
-                  {isRare ? "✦ Rare" : "Common"}
+                  {isRare ? "\u2726 Rare" : "Common"}
                 </div>
 
                 <div
                   style={{
                     fontSize: "12px",
-                    color: "rgba(52,211,153,0.85)",
+                    color: `rgba(${r},${g},${b},0.85)`,
                     fontWeight: 600,
                     animation: "metaFadeIn 350ms ease 570ms both",
                   }}
@@ -890,7 +862,6 @@ export function PackOpeningOverlay({
               )}
             </div>
 
-            {/* Action buttons */}
             <div
               style={{
                 display: "flex",
@@ -908,14 +879,13 @@ export function PackOpeningOverlay({
                   height: "52px",
                   borderRadius: "14px",
                   border: "none",
-                  background: "linear-gradient(160deg, #34A884, #2a9070)",
+                  background: `linear-gradient(160deg, oklch(${activeCycle.accentOklchDark}), oklch(${activeCycle.accentOklchLight}))`,
                   color: "#fff",
                   fontSize: "15px",
                   fontWeight: 700,
                   cursor: "pointer",
                   letterSpacing: "0.01em",
-                  boxShadow:
-                    "0 0 28px rgba(52,168,132,0.32), 0 4px 16px rgba(0,0,0,0.30)",
+                  boxShadow: `0 0 28px rgba(${r},${g},${b},0.32), 0 4px 16px rgba(0,0,0,0.30)`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -934,7 +904,7 @@ export function PackOpeningOverlay({
                   width: "100%",
                   height: "48px",
                   borderRadius: "14px",
-                  border: "1px solid rgba(52,211,153,0.28)",
+                  border: `1px solid rgba(${r},${g},${b},0.28)`,
                   background: "transparent",
                   color: "rgba(255,255,255,0.60)",
                   fontSize: "14px",

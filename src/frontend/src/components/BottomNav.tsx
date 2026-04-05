@@ -1,4 +1,5 @@
 import { BookOpen, Compass, LayoutGrid, Sparkles } from "lucide-react";
+import { useCycleTheme } from "../context/CycleThemeContext";
 
 export type Tab = "library" | "releases" | "market" | "collection";
 
@@ -14,10 +15,11 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "collection", label: "Collection", Icon: LayoutGrid },
 ];
 
-const MINT = "oklch(0.70 0.18 160)";
-const MINT_GLOW = "0 0 12px oklch(0.68 0.18 160 / 0.40)";
-
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const { activeCycle } = useCycleTheme();
+  const accentColor = `oklch(${activeCycle.accentOklchDark})`;
+  const accentGlow = `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around h-[68px] backdrop-blur-xl border-t"
@@ -36,15 +38,15 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onClick={() => onTabChange(id)}
             className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-all relative"
             style={{
-              color: isActive ? MINT : "var(--echo-text-dark)",
+              color: isActive ? accentColor : "var(--echo-text-dark)",
             }}
           >
             {isActive && (
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                 style={{
-                  background: MINT,
-                  boxShadow: MINT_GLOW,
+                  background: accentColor,
+                  boxShadow: accentGlow,
                 }}
               />
             )}
@@ -52,7 +54,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             <span
               className="text-[10px]"
               style={{
-                color: isActive ? MINT : "var(--echo-text-dark)",
+                color: isActive ? accentColor : "var(--echo-text-dark)",
               }}
             >
               {label}

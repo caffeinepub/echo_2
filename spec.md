@@ -1,68 +1,42 @@
-# Minty — Collectible Card Component (Collections)
+# Minty — Global Cycle Theme System
 
 ## Current State
-
-The Collection tab renders opened collectibles via `VaultTile` — a compact 3-column grid tile with a full-bleed image, rarity pill, edition number pill, and a video badge. Tapping once reveals an `InlineDescPanel` below the row with title, set, and a stats grid. Tapping again opens a full media viewer or `NFTDetailSheet`.
-
-`CollectionNFT` has: `id`, `title`, `setName`, `editionNumber`, `totalSupply`, `mediaType`, `imageUrl`, `rarity`, `mintDate`, `creator`, `owners`, `views`, `isLeader`, `hasOwnershipHistory`, `addedAt`, `burnedCount?`.
-
-**Missing fields for the new card:** `capturedAt` (capture timestamp), `location` (capture location string).
+- `ThemeContext.tsx` manages only dark/light mode (no accent color control)
+- All mint/accent colors are hardcoded inline as `oklch(0.68–0.76 0.18 160)` / `rgba(52,211,153,...)` across all pages and components
+- `PACK_IMAGE` is a hardcoded constant pointing to a single green pack wrapper asset in `CollectionPage.tsx`, `PackOpeningOverlay.tsx`, and `LibraryPage.tsx`
+- No supply cycle concept exists in the frontend
+- `index.css` has fixed mint color tokens (`--accent`, `--ring`, `--mint`, glow vars, `minty-primary-btn`)
 
 ## Requested Changes (Diff)
 
 ### Add
-- `capturedAt?: string` and `location?: string` fields to `CollectionNFT` interface in `CollectionContext.tsx`
-- Seed mock collectibles with sample `capturedAt` timestamps and `location` strings
-- New `CollectibleCard` component at `src/frontend/src/components/CollectibleCard.tsx`
-  - 4:5 portrait aspect ratio, generously rounded corners (16–20px)
-  - Full-bleed cover image (photo) or video thumbnail (video) as card background
-  - All metadata rendered as UI overlays — never baked into the media
-  - **Overlay slots:**
-    - Top-left: captured date/time (e.g. "Apr 3 · 11:42 PM")
-    - Top-right: rarity pill (RARE / COMMON)
-    - Bottom-left: location string (e.g. "New York, NY") with map-pin icon
-    - Bottom-right: mint number out of total supply (e.g. "#3 / 90")
-    - Video badge: small ▷ icon top-center or top-left alongside date
-  - Overlays use frosted-glass pill styling (dark semi-transparent bg, soft white text, backdrop blur)
-  - Subtle gradient scrim at top and bottom to ensure overlay legibility
-  - Premium feel: soft mint-tinted border, subtle drop shadow, smooth rounded card
-- **Tap-to-expand behavior:**
-  - First tap: card smoothly scales up (e.g. 1.0 → 1.6x) in-place with a spring/ease animation, preserving layout in the grid (use `transform: scale`, not layout shift)
-  - Expanded state shows the same overlays at proportionally larger size — layout is identical, just bigger
-  - A second tap (or tap outside) scales back to normal
-  - From expanded state, a "View" button or tap-hold gesture opens the full media viewer (existing `MediaViewerModal` for video, `NFTDetailSheet` for photo)
-- Replace the current `VaultTile` rendering for opened collectibles (isPack=false) in `CollectionPage.tsx` with `CollectibleCard`
-- Keep `VaultTile` unchanged for sealed packs (isPack=true)
-- Remove `InlineDescPanel` as the primary detail trigger — the expanded card state replaces it. Keep `InlineDescPanel` if it provides additional data not shown on card.
+- `CycleThemeContext.tsx` — centralized context with 6 cycle themes (Mint, Pink, Blue, Off-white, Purple, Gold), active cycle state (persisted to localStorage), and a `setCycle(n)` function. Each theme defines: `accentOklch`, `accentRgb`, `packWrapperUrl`, and display metadata.
+- 6 pack wrapper images (one per cycle color) generated via the image generation tool
+- CSS custom property injection: when active cycle changes, write `--cycle-accent`, `--cycle-accent-rgb`, `--cycle-glow`, `--cycle-border` onto `document.documentElement`
+- `CycleThemeProvider` wraps the app in `App.tsx`
+- `useCycleTheme()` hook for consuming the active theme anywhere
+- Cycle selector UI in TopBar (or admin area) so the active cycle can be switched
 
 ### Modify
-- `CollectionNFT` interface — add optional `capturedAt` and `location` fields
-- Mock NFT seed data in `CollectionContext.tsx` — add sample captured timestamps and locations
-- `CollectionPage.tsx` — swap `VaultTile` for `CollectibleCard` for opened NFTs; wire tap-expand → full media viewer
+- `index.css` — replace hardcoded mint color values in `minty-primary-btn`, glow utilities, and CSS vars with `var(--cycle-accent-*)` references
+- `TopBar.tsx` — logo glow and accent references use cycle CSS vars
+- `CollectionPage.tsx` — `PACK_IMAGE` constant reads from active cycle theme instead of hardcoded path
+- `PackOpeningOverlay.tsx` — `PACK_IMAGE` constant reads from active cycle theme
+- `LibraryPage.tsx` — pack image path reads from active cycle theme
+- All pages/components that inline `oklch(0.68–0.76 0.18 160)` or `rgba(52,211,153,...)` as accent/glow colors — replaced with `var(--cycle-accent)` / `var(--cycle-accent-rgb)`
+- `BottomNav.tsx`, `ReleasesPage.tsx`, `MarketPage.tsx`, `DiscoverPage`, etc. — active tab, badge, pill accent colors use cycle vars
 
 ### Remove
-- Nothing removed permanently. `VaultTile` stays for sealed packs. `InlineDescPanel` can remain as a secondary detail layer or be removed if the expanded card fully replaces it.
+- Hardcoded mint accent hex/oklch strings scattered across components (replaced by CSS variables)
 
 ## Implementation Plan
-
-1. **Update `CollectionNFT` interface** in `CollectionContext.tsx`: add `capturedAt?: string` (ISO string) and `location?: string`. Update the 3–5 mock NFTs with sample values like `capturedAt: "2026-04-03T23:42:00Z"` and `location: "New York, NY"`.
-
-2. **Build `CollectibleCard` component** (`src/frontend/src/components/CollectibleCard.tsx`):
-   - Props: `nft: CollectionNFT`, `onExpand?: () => void`, `onViewMedia?: () => void`
-   - Internal `isExpanded` state; on tap, toggle between normal and scaled-up states using CSS `transform: scale()` + `transition` (spring-like cubic-bezier)
-   - Use `position: relative` for the card container; overlays are `position: absolute`
-   - Top scrim: linear-gradient from `rgba(0,0,0,0.45)` to transparent, ~40% height
-   - Bottom scrim: linear-gradient from transparent to `rgba(0,0,0,0.55)`, ~35% height
-   - Overlay pills: `backdrop-filter: blur(8px)`, `background: rgba(0,0,0,0.45)`, white text, `border-radius: 999px`, 4px vertical / 8px horizontal padding
-   - Card border: `1px solid rgba(0, 200, 160, 0.25)` (mint tint)
-   - Card shadow: `0 4px 20px rgba(0,0,0,0.35)`
-   - Expanded scale: `1.62` with `z-index: 50` so card lifts above siblings; `transform-origin: center center`
-   - When expanded, show a small "View" pill button at bottom-center that triggers full media viewer
-   - When expanded, also show a subtle close affordance (small ✕ or tap-outside handler)
-
-3. **Update `CollectionPage.tsx`**:
-   - In `VaultTile` or the SetSection render loop: when `isPack === false`, render `<CollectibleCard nft={nft} onViewMedia={() => openMediaViewer(nft)} />` instead of the current `VaultTile` path
-   - Wire `onViewMedia` to open the existing `MediaViewerModal` (video) or `NFTDetailSheet` (photo)
-   - Grid stays 3 columns; expanded cards overlap via `z-index` without reflowing the grid
-
-4. **Validate** — typecheck + build clean.
+1. Generate 6 pack wrapper images (mint/pink/blue/off-white/purple/gold foil variants)
+2. Create `src/frontend/src/context/CycleThemeContext.tsx` with theme config, state, and CSS injection
+3. Wrap app with `CycleThemeProvider` in `App.tsx`
+4. Update `index.css` — replace hardcoded mint in `minty-primary-btn` and glow utilities with cycle CSS vars
+5. Update `TopBar.tsx` logo glow + accent references
+6. Update `CollectionPage.tsx`, `PackOpeningOverlay.tsx`, `LibraryPage.tsx` to use cycle pack wrapper URL
+7. Update `BottomNav.tsx` active tab color
+8. Update `ReleasesPage.tsx`, `MarketPage.tsx`, `CollectionPage.tsx` inline accent styles
+9. Add cycle selector control (accessible from TopBar or admin area)
+10. Validate build

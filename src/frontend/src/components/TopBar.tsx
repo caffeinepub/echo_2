@@ -11,35 +11,47 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
 import { isAdminPrincipal } from "../config/admin";
+import {
+  CYCLE_THEMES,
+  type CycleId,
+  useCycleTheme,
+} from "../context/CycleThemeContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 const MINTY_LOGO = "/assets/minty-logo.png";
 
-// Mint teal glow — subtle, premium, cursive-logo-friendly
-const NEON_STYLES = `
+let neonStyleEl: HTMLStyleElement | null = null;
+
+function injectNeonStyles(r: number, g: number, b: number, filter: string) {
+  if (!neonStyleEl) {
+    neonStyleEl = document.createElement("style");
+    document.head.appendChild(neonStyleEl);
+  }
+  neonStyleEl.textContent = `
 @keyframes echo-neon-breathe {
-  0%   { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
-  50%  { filter: brightness(1.05) drop-shadow(0 0 3px rgba(52,211,153,0.75)) drop-shadow(0 0 12px rgba(52,211,153,0.35)) drop-shadow(0 0 24px rgba(52,211,153,0.18)); }
-  100% { filter: brightness(1.0)  drop-shadow(0 0 2px rgba(52,211,153,0.60)) drop-shadow(0 0 8px rgba(52,211,153,0.25)) drop-shadow(0 0 18px rgba(52,211,153,0.12)); }
+  0%   { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(1.0)  drop-shadow(0 0 2px rgba(${r},${g},${b},0.60)) drop-shadow(0 0 8px rgba(${r},${g},${b},0.25)) drop-shadow(0 0 18px rgba(${r},${g},${b},0.12)); }
+  50%  { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(1.05) drop-shadow(0 0 3px rgba(${r},${g},${b},0.75)) drop-shadow(0 0 12px rgba(${r},${g},${b},0.35)) drop-shadow(0 0 24px rgba(${r},${g},${b},0.18)); }
+  100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(1.0)  drop-shadow(0 0 2px rgba(${r},${g},${b},0.60)) drop-shadow(0 0 8px rgba(${r},${g},${b},0.25)) drop-shadow(0 0 18px rgba(${r},${g},${b},0.12)); }
+}
+
+@keyframes echo-neon-breathe-light {
+  0%,100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.92) drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
+  50%     { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.96) drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
 }
 
 .echo-logo-neon {
-  filter: drop-shadow(0 0 2px rgba(52,211,153,0.55)) drop-shadow(0 0 8px rgba(52,211,153,0.22)) drop-shadow(0 0 16px rgba(52,211,153,0.12));
+  filter: ${filter !== "none" ? `${filter} ` : ""}drop-shadow(0 0 2px rgba(${r},${g},${b},0.55)) drop-shadow(0 0 8px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 16px rgba(${r},${g},${b},0.12));
   animation: echo-neon-breathe 4s ease-in-out infinite;
   will-change: filter;
 }
-`;
 
-let styleInjected = false;
-function injectNeonStyles() {
-  if (styleInjected) return;
-  const el = document.createElement("style");
-  el.textContent = NEON_STYLES;
-  document.head.appendChild(el);
-  styleInjected = true;
+[data-theme="light"] .echo-logo-neon {
+  animation: echo-neon-breathe-light 3.8s ease-in-out infinite !important;
+}
+`;
 }
 
 // ─── Asset Data ────────────────────────────────────────────────────────────────
@@ -97,6 +109,165 @@ const ASSETS = [
 type AssetType = (typeof ASSETS)[number];
 type WalletView = "list" | "receive" | "send" | "info";
 
+// ─── Cycle Selector ────────────────────────────────────────────────────────────
+function CycleSelector() {
+  const { activeCycleId, activeCycle, setCycleId } = useCycleTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      {/* Trigger dot */}
+      <button
+        type="button"
+        data-ocid="topbar.cycle.button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Change cycle theme"
+        title="Change cycle theme"
+        style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "50%",
+          border: `2px solid rgba(${accentRgb},0.50)`,
+          background: `rgba(${accentRgb},0.15)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: `0 0 8px rgba(${accentRgb},0.25)`,
+          transition: "border-color 0.2s, box-shadow 0.2s",
+          flexShrink: 0,
+          padding: 0,
+        }}
+      >
+        <div
+          style={{
+            width: "12px",
+            height: "12px",
+            borderRadius: "50%",
+            background: `oklch(${activeCycle.accentOklchDark})`,
+            boxShadow: `0 0 6px rgba(${accentRgb},0.6)`,
+          }}
+        />
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          data-ocid="topbar.cycle.dropdown_menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 8px)",
+            right: 0,
+            zIndex: 200,
+            background: "oklch(0.12 0.04 165 / 0.97)",
+            border: `1px solid rgba(${accentRgb},0.25)`,
+            borderRadius: "14px",
+            padding: "10px",
+            width: "180px",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            boxShadow: `0 12px 40px rgba(0,0,0,0.45), 0 0 24px rgba(${accentRgb},0.12)`,
+          }}
+        >
+          <div
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+              marginBottom: "8px",
+              paddingLeft: "4px",
+            }}
+          >
+            Supply Cycle
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            {(
+              Object.values(CYCLE_THEMES) as (typeof CYCLE_THEMES)[CycleId][]
+            ).map((cycle) => {
+              const isActive = activeCycleId === cycle.id;
+              const cRgb = `${cycle.accentR},${cycle.accentG},${cycle.accentB}`;
+              return (
+                <button
+                  key={cycle.id}
+                  type="button"
+                  data-ocid={`topbar.cycle.item.${cycle.id}`}
+                  onClick={() => {
+                    setCycleId(cycle.id as CycleId);
+                    setOpen(false);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "9px",
+                    padding: "7px 8px",
+                    borderRadius: "9px",
+                    border: "none",
+                    cursor: "pointer",
+                    background: isActive ? `rgba(${cRgb},0.18)` : "transparent",
+                    transition: "background 0.15s",
+                    width: "100%",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive)
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        `rgba(${cRgb},0.10)`;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive)
+                      (e.currentTarget as HTMLButtonElement).style.background =
+                        "transparent";
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      background: `oklch(${cycle.accentOklchDark})`,
+                      flexShrink: 0,
+                      boxShadow: isActive
+                        ? `0 0 6px rgba(${cRgb},0.6)`
+                        : "none",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      color: isActive
+                        ? `oklch(${cycle.accentOklchDark})`
+                        : "rgba(255,255,255,0.65)",
+                      fontWeight: isActive ? 600 : 400,
+                    }}
+                  >
+                    {cycle.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Action pill button ────────────────────────────────────────────────────────
 function ActionPill({
   label,
@@ -119,25 +290,25 @@ function ActionPill({
         padding: "4px 10px",
         fontSize: "11px",
         fontWeight: 500,
-        color: isLight ? "oklch(0.52 0.18 160)" : "oklch(0.72 0.18 160)",
+        color: isLight ? "var(--cycle-accent)" : "var(--cycle-accent)",
         background: isLight
-          ? "rgba(52,211,153,0.08)"
-          : "oklch(0.45 0.16 160 / 0.10)",
+          ? "rgba(var(--cycle-accent-rgb),0.08)"
+          : "rgba(var(--cycle-accent-rgb),0.10)",
         border: isLight
-          ? "1px solid rgba(52,211,153,0.28)"
-          : "1px solid oklch(0.55 0.18 160 / 0.25)",
+          ? "1px solid rgba(var(--cycle-accent-rgb),0.28)"
+          : "1px solid rgba(var(--cycle-accent-rgb),0.25)",
         cursor: "pointer",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = isLight
-          ? "rgba(52,211,153,0.15)"
-          : "oklch(0.45 0.16 160 / 0.18)";
+          ? "rgba(var(--cycle-accent-rgb),0.15)"
+          : "rgba(var(--cycle-accent-rgb),0.18)";
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLButtonElement).style.background = isLight
-          ? "rgba(52,211,153,0.08)"
-          : "oklch(0.45 0.16 160 / 0.10)";
+          ? "rgba(var(--cycle-accent-rgb),0.08)"
+          : "rgba(var(--cycle-accent-rgb),0.10)";
       }}
     >
       {icon}
@@ -170,17 +341,16 @@ function AssetRow({
         background: isLight ? "#ffffff" : "oklch(0.18 0.06 165 / 0.85)",
         border: isLight
           ? "1px solid rgba(0,0,0,0.06)"
-          : "1px solid oklch(0.50 0.15 160 / 0.25)",
+          : "1px solid rgba(var(--cycle-accent-rgb),0.20)",
         boxShadow: isLight
           ? "0 2px 10px rgba(0,0,0,0.04)"
-          : "0 2px 12px oklch(0.65 0.18 160 / 0.06)",
+          : "0 2px 12px rgba(var(--cycle-accent-rgb),0.06)",
         padding: "12px 14px",
         display: "flex",
         alignItems: "center",
         gap: "12px",
       }}
     >
-      {/* Asset badge */}
       <div
         className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold"
         style={{
@@ -193,7 +363,6 @@ function AssetRow({
         {initials}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div
           className="font-semibold leading-tight truncate"
@@ -208,7 +377,7 @@ function AssetRow({
           className="mt-0.5"
           style={{
             fontSize: "11px",
-            color: isLight ? "#6b8a80" : "oklch(0.62 0.08 160)",
+            color: isLight ? "#6b8a80" : "rgba(var(--cycle-accent-rgb),0.55)",
           }}
         >
           Balance
@@ -217,7 +386,7 @@ function AssetRow({
           className="font-medium leading-tight"
           style={{
             fontSize: "13px",
-            color: isLight ? "#1a3a30" : "oklch(0.85 0.12 160)",
+            color: isLight ? "#1a3a30" : "var(--cycle-accent)",
           }}
         >
           {asset.balance < 0.01
@@ -227,7 +396,6 @@ function AssetRow({
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-col gap-1 flex-shrink-0">
         <ActionPill
           label="Receive"
@@ -291,14 +459,14 @@ function WalletModal({
   const panelStyle: React.CSSProperties = {
     background: isLight ? "#ffffff" : "oklch(0.14 0.05 165 / 0.97)",
     border: isLight
-      ? "1px solid rgba(52,211,153,0.20)"
-      : "1px solid oklch(0.55 0.18 160 / 0.30)",
+      ? "1px solid rgba(var(--cycle-accent-rgb),0.20)"
+      : "1px solid rgba(var(--cycle-accent-rgb),0.30)",
     boxShadow: isLight
       ? "0 20px 60px rgba(0,0,0,0.10)"
-      : "0 20px 60px rgba(0,0,0,0.55), 0 0 40px oklch(0.65 0.18 160 / 0.08)",
+      : "0 20px 60px rgba(0,0,0,0.55), 0 0 40px rgba(var(--cycle-accent-rgb),0.08)",
   };
 
-  const labelColor = isLight ? "#6b8a80" : "oklch(0.62 0.08 160)";
+  const labelColor = isLight ? "#6b8a80" : "rgba(var(--cycle-accent-rgb),0.55)";
   const titleColor = isLight ? "#0d1f1a" : "rgba(255,255,255,0.92)";
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -309,11 +477,10 @@ function WalletModal({
     background: isLight ? "rgba(0,0,0,0.03)" : "oklch(0.18 0.06 165 / 0.70)",
     border: isLight
       ? "1px solid rgba(0,0,0,0.10)"
-      : "1px solid oklch(0.50 0.15 160 / 0.30)",
+      : "1px solid rgba(var(--cycle-accent-rgb),0.25)",
     color: isLight ? "#0d1f1a" : "rgba(255,255,255,0.88)",
   };
 
-  // ── Sub-views ────────────────────────────────────────────────────────────────
   let content: React.ReactNode = null;
 
   if (view === "info" && activeAsset) {
@@ -325,7 +492,7 @@ function WalletModal({
           className="flex items-center gap-1.5 mb-5"
           style={{
             fontSize: "13px",
-            color: "oklch(0.68 0.18 160)",
+            color: "var(--cycle-accent)",
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -359,7 +526,7 @@ function WalletModal({
         <p
           style={{
             fontSize: "13px",
-            color: isLight ? "#3a5a50" : "oklch(0.75 0.10 160)",
+            color: isLight ? "#3a5a50" : "var(--cycle-accent)",
             lineHeight: 1.6,
             marginBottom: 20,
           }}
@@ -375,7 +542,7 @@ function WalletModal({
                 : "oklch(0.18 0.06 165 / 0.70)",
               border: isLight
                 ? "1px solid rgba(0,0,0,0.06)"
-                : "1px solid oklch(0.50 0.15 160 / 0.20)",
+                : "1px solid rgba(var(--cycle-accent-rgb),0.15)",
             }}
           >
             <div
@@ -397,7 +564,7 @@ function WalletModal({
                 : "oklch(0.18 0.06 165 / 0.70)",
               border: isLight
                 ? "1px solid rgba(0,0,0,0.06)"
-                : "1px solid oklch(0.50 0.15 160 / 0.20)",
+                : "1px solid rgba(var(--cycle-accent-rgb),0.15)",
             }}
           >
             <div
@@ -411,7 +578,7 @@ function WalletModal({
                 fontWeight: 700,
                 color:
                   activeAsset.change24h >= 0
-                    ? "oklch(0.68 0.18 160)"
+                    ? "var(--cycle-accent)"
                     : "oklch(0.60 0.18 25)",
               }}
             >
@@ -431,7 +598,7 @@ function WalletModal({
           className="flex items-center gap-1.5 mb-5"
           style={{
             fontSize: "13px",
-            color: "oklch(0.68 0.18 160)",
+            color: "var(--cycle-accent)",
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -451,20 +618,19 @@ function WalletModal({
           Receive {activeAsset.symbol}
         </div>
 
-        {/* QR Placeholder */}
         <div
           className="mx-auto mb-5 flex items-center justify-center rounded-2xl"
           style={{
             width: 140,
             height: 140,
             border: isLight
-              ? "2px solid rgba(52,211,153,0.40)"
-              : "2px solid oklch(0.60 0.18 160 / 0.45)",
+              ? "2px solid rgba(var(--cycle-accent-rgb),0.40)"
+              : "2px solid rgba(var(--cycle-accent-rgb),0.45)",
             background: isLight
-              ? "rgba(52,211,153,0.04)"
+              ? "rgba(var(--cycle-accent-rgb),0.04)"
               : "oklch(0.18 0.06 165 / 0.60)",
             fontSize: "13px",
-            color: isLight ? "oklch(0.62 0.14 160)" : "oklch(0.65 0.18 160)",
+            color: "var(--cycle-accent)",
             letterSpacing: "0.08em",
             fontWeight: 600,
           }}
@@ -491,14 +657,14 @@ function WalletModal({
               : "oklch(0.18 0.06 165 / 0.70)",
             border: isLight
               ? "1px solid rgba(0,0,0,0.08)"
-              : "1px solid oklch(0.50 0.15 160 / 0.20)",
+              : "1px solid rgba(var(--cycle-accent-rgb),0.15)",
           }}
         >
           <span
             className="flex-1 truncate font-mono"
             style={{
               fontSize: "11px",
-              color: isLight ? "#1a3a30" : "oklch(0.80 0.10 160)",
+              color: isLight ? "#1a3a30" : "var(--cycle-accent)",
             }}
           >
             {activeAsset.receiveAddress}
@@ -511,13 +677,9 @@ function WalletModal({
             style={{
               padding: "3px 8px",
               fontSize: "11px",
-              color: "oklch(0.68 0.18 160)",
-              background: isLight
-                ? "rgba(52,211,153,0.08)"
-                : "oklch(0.45 0.16 160 / 0.12)",
-              border: isLight
-                ? "1px solid rgba(52,211,153,0.28)"
-                : "1px solid oklch(0.55 0.18 160 / 0.25)",
+              color: "var(--cycle-accent)",
+              background: "rgba(var(--cycle-accent-rgb),0.08)",
+              border: "1px solid rgba(var(--cycle-accent-rgb),0.28)",
               cursor: "pointer",
             }}
           >
@@ -548,7 +710,7 @@ function WalletModal({
           className="flex items-center gap-1.5 mb-5"
           style={{
             fontSize: "13px",
-            color: "oklch(0.68 0.18 160)",
+            color: "var(--cycle-accent)",
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -607,7 +769,7 @@ function WalletModal({
               id="send-address"
               type="text"
               data-ocid="wallet.send.recipient_input"
-              placeholder="Enter address…"
+              placeholder="Enter address\u2026"
               value={sendAddress}
               onChange={(e) => setSendAddress(e.target.value)}
               style={{
@@ -628,24 +790,20 @@ function WalletModal({
               fontSize: "14px",
               marginTop: 4,
               background: canSend
-                ? isLight
-                  ? "rgba(52,211,153,0.14)"
-                  : "oklch(0.45 0.16 160 / 0.25)"
+                ? "rgba(var(--cycle-accent-rgb),0.14)"
                 : isLight
                   ? "rgba(0,0,0,0.04)"
                   : "oklch(0.20 0.03 165 / 0.50)",
               color: canSend
-                ? "oklch(0.65 0.18 160)"
+                ? "var(--cycle-accent)"
                 : isLight
                   ? "#aaa"
-                  : "oklch(0.45 0.05 160)",
+                  : "rgba(255,255,255,0.25)",
               border: canSend
-                ? isLight
-                  ? "1px solid rgba(52,211,153,0.40)"
-                  : "1px solid oklch(0.55 0.18 160 / 0.40)"
+                ? "1px solid rgba(var(--cycle-accent-rgb),0.40)"
                 : isLight
                   ? "1px solid rgba(0,0,0,0.08)"
-                  : "1px solid oklch(0.35 0.05 160 / 0.30)",
+                  : "1px solid rgba(255,255,255,0.08)",
               cursor: canSend ? "pointer" : "not-allowed",
               opacity: canSend ? 1 : 0.6,
             }}
@@ -656,10 +814,8 @@ function WalletModal({
       </>
     );
   } else {
-    // ── Main List View ─────────────────────────────────────────────────────────
     content = (
       <>
-        {/* Total Balance */}
         <div className="text-center mb-5">
           <div
             style={{
@@ -688,18 +844,16 @@ function WalletModal({
           </div>
         </div>
 
-        {/* Divider */}
         <div
           style={{
             height: 1,
             background: isLight
               ? "rgba(0,0,0,0.06)"
-              : "oklch(0.55 0.18 160 / 0.15)",
+              : "rgba(var(--cycle-accent-rgb),0.12)",
             marginBottom: 14,
           }}
         />
 
-        {/* Asset list */}
         <div className="space-y-2.5" data-ocid="wallet.asset.list">
           {ASSETS.map((asset, i) => (
             <div key={asset.id} data-ocid={`wallet.asset.item.${i + 1}`}>
@@ -723,7 +877,6 @@ function WalletModal({
           ))}
         </div>
 
-        {/* Sign Out */}
         <div className="text-center mt-5">
           <button
             type="button"
@@ -734,7 +887,7 @@ function WalletModal({
             }}
             style={{
               fontSize: "12px",
-              color: isLight ? "#a0b8b0" : "oklch(0.50 0.06 160)",
+              color: isLight ? "#a0b8b0" : "rgba(var(--cycle-accent-rgb),0.40)",
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -776,16 +929,11 @@ function WalletModal({
           position: "relative",
         }}
       >
-        {/* Modal Header */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <Wallet
               size={18}
-              style={{
-                color: isLight
-                  ? "oklch(0.60 0.18 160)"
-                  : "oklch(0.72 0.18 160)",
-              }}
+              style={{ color: "var(--cycle-accent)" }}
               strokeWidth={1.8}
             />
             <span
@@ -857,14 +1005,13 @@ function SignInModal({
         style={{
           background: isLight ? "#ffffff" : "oklch(0.14 0.05 165 / 0.97)",
           border: isLight
-            ? "1px solid rgba(52,211,153,0.20)"
-            : "1px solid oklch(0.55 0.18 160 / 0.30)",
+            ? "1px solid rgba(var(--cycle-accent-rgb),0.20)"
+            : "1px solid rgba(var(--cycle-accent-rgb),0.30)",
           boxShadow: isLight
             ? "0 20px 60px rgba(0,0,0,0.10)"
-            : "0 20px 60px rgba(0,0,0,0.50), 0 0 40px oklch(0.65 0.18 160 / 0.08)",
+            : "0 20px 60px rgba(0,0,0,0.50), 0 0 40px rgba(var(--cycle-accent-rgb),0.08)",
         }}
       >
-        {/* Close */}
         <button
           type="button"
           onClick={onClose}
@@ -880,22 +1027,17 @@ function SignInModal({
           <X size={14} />
         </button>
 
-        {/* Icon */}
         <div className="flex justify-center mb-4">
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center"
             style={{
-              background: isLight
-                ? "rgba(52,211,153,0.10)"
-                : "oklch(0.45 0.16 160 / 0.15)",
-              border: isLight
-                ? "1px solid rgba(52,211,153,0.25)"
-                : "1px solid oklch(0.55 0.18 160 / 0.35)",
+              background: "rgba(var(--cycle-accent-rgb),0.10)",
+              border: "1px solid rgba(var(--cycle-accent-rgb),0.25)",
             }}
           >
             <ShieldCheck
               size={26}
-              style={{ color: "oklch(0.70 0.18 160)" }}
+              style={{ color: "var(--cycle-accent)" }}
               strokeWidth={1.5}
             />
           </div>
@@ -914,7 +1056,7 @@ function SignInModal({
           className="text-center mb-6"
           style={{
             fontSize: "13px",
-            color: isLight ? "#6b8a80" : "oklch(0.62 0.08 160)",
+            color: isLight ? "#6b8a80" : "rgba(var(--cycle-accent-rgb),0.55)",
             lineHeight: "1.5",
           }}
         >
@@ -931,26 +1073,20 @@ function SignInModal({
             padding: "12px 16px",
             fontSize: "14px",
             background: isLoggingIn
-              ? isLight
-                ? "rgba(52,211,153,0.08)"
-                : "oklch(0.45 0.16 160 / 0.18)"
-              : isLight
-                ? "rgba(52,211,153,0.10)"
-                : "oklch(0.45 0.16 160 / 0.22)",
-            color: "oklch(0.68 0.18 160)",
+              ? "rgba(var(--cycle-accent-rgb),0.08)"
+              : "rgba(var(--cycle-accent-rgb),0.10)",
+            color: "var(--cycle-accent)",
             border: isLight
-              ? "1px solid rgba(52,211,153,0.35)"
-              : "1px solid oklch(0.55 0.18 160 / 0.45)",
-            boxShadow: isLight
-              ? "0 0 16px rgba(52,211,153,0.08)"
-              : "0 0 20px oklch(0.65 0.18 160 / 0.10)",
+              ? "1px solid rgba(var(--cycle-accent-rgb),0.35)"
+              : "1px solid rgba(var(--cycle-accent-rgb),0.45)",
+            boxShadow: "0 0 20px rgba(var(--cycle-accent-rgb),0.10)",
             cursor: isLoggingIn ? "not-allowed" : "pointer",
             opacity: isLoggingIn ? 0.7 : 1,
           }}
         >
           <ShieldCheck size={16} strokeWidth={1.8} />
           {isLoggingIn
-            ? "Opening Internet Identity…"
+            ? "Opening Internet Identity\u2026"
             : "Continue with Internet Identity"}
         </button>
 
@@ -958,7 +1094,7 @@ function SignInModal({
           className="text-center mt-4"
           style={{
             fontSize: "12px",
-            color: isLight ? "#a0b8b0" : "oklch(0.50 0.06 160)",
+            color: isLight ? "#a0b8b0" : "rgba(var(--cycle-accent-rgb),0.35)",
             lineHeight: "1.5",
           }}
         >
@@ -979,26 +1115,34 @@ interface TopBarProps {
 export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { theme, toggleTheme } = useTheme();
+  const { activeCycle } = useCycleTheme();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
-  injectNeonStyles();
+  // Reinject neon styles whenever cycle or theme changes
+  useEffect(() => {
+    injectNeonStyles(
+      activeCycle.accentR,
+      activeCycle.accentG,
+      activeCycle.accentB,
+      activeCycle.logoFilter,
+    );
+  }, [activeCycle]);
 
   const isLight = theme === "light";
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
 
-  // ── Shared style helpers ────────────────────────────────────────────────────
   const uploadBg = isLight
-    ? "rgba(52,211,153,0.07)"
-    : "oklch(0.55 0.18 160 / 0.08)";
+    ? "rgba(var(--cycle-accent-rgb),0.07)"
+    : "rgba(var(--cycle-accent-rgb),0.08)";
   const uploadBgHover = isLight
-    ? "rgba(52,211,153,0.12)"
-    : "oklch(0.55 0.18 160 / 0.14)";
+    ? "rgba(var(--cycle-accent-rgb),0.12)"
+    : "rgba(var(--cycle-accent-rgb),0.14)";
   const uploadBorder = isLight
-    ? "1px solid rgba(52,211,153,0.22)"
-    : "1px solid oklch(0.55 0.18 160 / 0.18)";
-  const uploadColor = isLight ? "oklch(0.52 0.18 160)" : "oklch(0.72 0.18 160)";
+    ? "1px solid rgba(var(--cycle-accent-rgb),0.22)"
+    : "1px solid rgba(var(--cycle-accent-rgb),0.18)";
+  const uploadColor = "var(--cycle-accent)";
   const uploadShadow = isLight
     ? "0 1px 3px rgba(0,0,0,0.06)"
     : "0 1px 4px rgba(0,0,0,0.18)";
@@ -1121,7 +1265,10 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
             </button>
           )}
 
-          {/* Theme toggle — circular, tactile */}
+          {/* Cycle Selector */}
+          <CycleSelector />
+
+          {/* Theme toggle */}
           <button
             type="button"
             onClick={toggleTheme}
@@ -1214,21 +1361,13 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
               <Wallet
                 size={17}
                 strokeWidth={1.6}
-                style={{
-                  color: isLight
-                    ? "oklch(0.60 0.18 160)"
-                    : "oklch(0.72 0.18 160)",
-                }}
+                style={{ color: "var(--cycle-accent)" }}
               />
             ) : (
               <ShieldCheck
                 size={17}
                 strokeWidth={1.6}
-                style={{
-                  color: isLight
-                    ? "oklch(0.60 0.18 160)"
-                    : "oklch(0.72 0.18 160)",
-                }}
+                style={{ color: "var(--cycle-accent)" }}
               />
             )}
             <span className="leading-none text-[13px]">
@@ -1252,38 +1391,6 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
         onSignOut={clear}
         isLight={isLight}
       />
-      {/* Debug overlay hidden in production */}
-      {false && (
-        <div
-          data-ocid="debug.principal.label"
-          style={{
-            position: "fixed",
-            bottom: "76px",
-            left: "8px",
-            zIndex: 999,
-            background: isLight ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0.85)",
-            color: "#ffffff",
-            fontSize: "10px",
-            fontFamily: "monospace",
-            padding: "5px 8px",
-            borderRadius: "6px",
-            lineHeight: "1.6",
-            pointerEvents: "none",
-            maxWidth: "260px",
-            wordBreak: "break-all",
-          }}
-        >
-          <div>
-            Principal: {identity?.getPrincipal()?.toText() ?? "anonymous"}
-          </div>
-          <div>
-            Admin:{" "}
-            <span style={{ color: isAdmin ? "#4ade80" : "#f87171" }}>
-              {isAdmin ? "Yes ✓" : "No"}
-            </span>
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -44,6 +44,13 @@
     --sidebar-accent-foreground: 0.96 0.005 155;
     --sidebar-border: 0.18 0.012 165;
     --sidebar-ring: 0.68 0.18 160;
+    /* Cycle theme defaults (overridden by JS) */
+    --cycle-accent: oklch(0.76 0.18 160);
+    --cycle-accent-r: 52;
+    --cycle-accent-g: 211;
+    --cycle-accent-b: 153;
+    --cycle-accent-rgb: 52, 211, 153;
+    --cycle-glow-color: 52, 211, 153;
 
     /* ── Minty semantic surface tokens (dark defaults) ── */
     --echo-bg: oklch(0.07 0.008 165);
@@ -64,12 +71,12 @@
     --echo-header-bg: oklch(0.07 0.008 165 / 0.9);
     --echo-header-border: oklch(0.16 0.01 163);
     /* Glow tokens — mint teal */
-    --glow-violet-shadow: 0 0 20px oklch(0.68 0.18 160 / 0.28), 0 0 60px
-      oklch(0.68 0.18 160 / 0.1);
-    --glow-cyan-shadow: 0 0 20px oklch(0.76 0.18 160 / 0.28);
+    --glow-violet-shadow: 0 0 20px rgba(var(--cycle-accent-rgb), 0.28), 0 0 60px
+      rgba(var(--cycle-accent-rgb), 0.1);
+    --glow-cyan-shadow: 0 0 20px rgba(var(--cycle-accent-rgb), 0.28);
     --glow-gold-shadow: 0 0 16px oklch(0.8 0.15 80 / 0.4);
-    --glow-blue-shadow: 0 0 40px 8px oklch(0.68 0.18 160 / 0.28), 0 0 80px 16px
-      oklch(0.68 0.18 160 / 0.12);
+    --glow-blue-shadow: 0 0 40px 8px rgba(var(--cycle-accent-rgb), 0.28), 0 0
+      80px 16px rgba(var(--cycle-accent-rgb), 0.12);
   }
 
   .dark {
@@ -157,12 +164,12 @@
     --echo-header-bg: rgba(255, 255, 255, 0.98);
     --echo-header-border: #d4ede6;
     /* Glow tokens — refined intensity for light */
-    --glow-violet-shadow: 0 0 10px oklch(0.55 0.18 160 / 0.12), 0 0 24px
-      oklch(0.55 0.18 160 / 0.05);
-    --glow-cyan-shadow: 0 0 10px oklch(0.76 0.18 160 / 0.12);
+    --glow-violet-shadow: 0 0 10px rgba(var(--cycle-accent-rgb), 0.12), 0 0 24px
+      rgba(var(--cycle-accent-rgb), 0.05);
+    --glow-cyan-shadow: 0 0 10px rgba(var(--cycle-accent-rgb), 0.12);
     --glow-gold-shadow: 0 0 8px oklch(0.8 0.15 80 / 0.18);
-    --glow-blue-shadow: 0 0 16px 4px oklch(0.55 0.18 160 / 0.1), 0 0 32px 8px
-      oklch(0.55 0.18 160 / 0.05);
+    --glow-blue-shadow: 0 0 16px 4px rgba(var(--cycle-accent-rgb), 0.1), 0 0
+      32px 8px rgba(var(--cycle-accent-rgb), 0.05);
   }
 
   * {
@@ -180,13 +187,14 @@
 @layer utilities {
   /* Glow utilities */
   .glow-violet {
-    box-shadow: var(--glow-violet-shadow);
+    box-shadow: 0 0 20px rgba(var(--cycle-accent-rgb), 0.28), 0 0 60px
+      rgba(var(--cycle-accent-rgb), 0.1);
   }
   .glow-cyan {
-    box-shadow: var(--glow-cyan-shadow);
+    box-shadow: 0 0 20px rgba(var(--cycle-accent-rgb), 0.28);
   }
   .glow-mint {
-    text-shadow: 0 0 8px oklch(0.76 0.18 160 / 0.6);
+    text-shadow: 0 0 8px rgba(var(--cycle-accent-rgb), 0.6);
   }
   .glow-magenta {
     text-shadow: 0 0 8px oklch(0.65 0.22 10 / 0.6);
@@ -195,7 +203,8 @@
     box-shadow: var(--glow-gold-shadow);
   }
   .glow-blue {
-    box-shadow: var(--glow-blue-shadow);
+    box-shadow: 0 0 40px 8px rgba(var(--cycle-accent-rgb), 0.28), 0 0 80px 16px
+      rgba(var(--cycle-accent-rgb), 0.12);
   }
   .glow-mixed {
     box-shadow: 0 0 40px 12px rgba(0, 0, 0, 0.04), 0 0 80px 24px
@@ -332,12 +341,14 @@
 @keyframes echo-neon-breathe-light {
   0%,
   100% {
-    filter: brightness(0.92) drop-shadow(0 0 1px rgba(52, 211, 153, 0.22))
-      drop-shadow(0 0 3px rgba(52, 211, 153, 0.12));
+    filter: brightness(0.92)
+      drop-shadow(0 0 1px rgba(var(--cycle-accent-rgb), 0.22))
+      drop-shadow(0 0 3px rgba(var(--cycle-accent-rgb), 0.12));
   }
   50% {
-    filter: brightness(0.96) drop-shadow(0 0 2px rgba(52, 211, 153, 0.3))
-      drop-shadow(0 0 6px rgba(52, 211, 153, 0.16));
+    filter: brightness(0.96)
+      drop-shadow(0 0 2px rgba(var(--cycle-accent-rgb), 0.3))
+      drop-shadow(0 0 6px rgba(var(--cycle-accent-rgb), 0.16));
   }
 }
 
@@ -578,25 +589,25 @@
 
 /* ── Minty Primary Button — premium mint gradient ── */
 .minty-primary-btn {
-  background: linear-gradient(180deg, #6de8c0 0%, #3ecfa0 100%);
+  background: var(--cycle-accent);
   color: #ffffff;
   font-weight: 600;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(62, 207, 160, 0.25), inset 0 1px 0
+  box-shadow: 0 4px 14px rgba(var(--cycle-accent-rgb), 0.25), inset 0 1px 0
     rgba(255, 255, 255, 0.25);
-  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   transform: scale(1);
 }
 .minty-primary-btn:hover {
-  background: linear-gradient(180deg, #5cd4b0 0%, #2dbe8f 100%);
-  box-shadow: 0 6px 18px rgba(62, 207, 160, 0.3), inset 0 1px 0
+  opacity: 0.88;
+  box-shadow: 0 6px 18px rgba(var(--cycle-accent-rgb), 0.3), inset 0 1px 0
     rgba(255, 255, 255, 0.2);
   transform: scale(0.98);
 }
 .minty-primary-btn:active {
   transform: scale(0.96);
-  box-shadow: 0 2px 8px rgba(62, 207, 160, 0.2), inset 0 1px 0
+  box-shadow: 0 2px 8px rgba(var(--cycle-accent-rgb), 0.2), inset 0 1px 0
     rgba(255, 255, 255, 0.2);
 }
 

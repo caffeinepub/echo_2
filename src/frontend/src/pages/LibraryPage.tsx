@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
+import { useCycleTheme } from "../context/CycleThemeContext";
 import { useMomentDraft } from "../context/MomentDraftContext";
 
 interface LibraryPageProps {
@@ -85,7 +86,10 @@ const BUTTON_BASE = {
   transition: "background 0.15s ease, transform 0.1s ease",
 } as const;
 
-function PackCard({ previewImage }: { previewImage?: string }) {
+function PackCard({
+  previewImage,
+  packWrapperUrl,
+}: { previewImage?: string; packWrapperUrl?: string }) {
   const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -99,7 +103,8 @@ function PackCard({ previewImage }: { previewImage?: string }) {
   // — otherwise fall back to the green pack artwork
   const displaySrc = previewImage
     ? previewImage
-    : "/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png";
+    : (packWrapperUrl ??
+      "/assets/generated/pack-wrapper-cycle1-mint-transparent.dim_400x560.png");
 
   return (
     <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
@@ -958,6 +963,7 @@ export function LibraryPage({
   const [showMintModal, setShowMintModal] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const { activeCycle } = useCycleTheme();
   const { hasDraft, startDraft, activeDraft } = useMomentDraft();
 
   // First captured photo from any active or completed draft
@@ -1144,7 +1150,10 @@ export function LibraryPage({
               }}
             >
               {/* Show pack card with first captured photo as preview */}
-              <PackCard previewImage={firstPhoto} />
+              <PackCard
+                previewImage={firstPhoto}
+                packWrapperUrl={activeCycle.packWrapperUrl}
+              />
               <div style={{ height: "20px" }} />
               <DraftLockedState onFinish={() => onCaptureMoment?.()} />
             </motion.div>
@@ -1247,7 +1256,10 @@ export function LibraryPage({
                         }}
                       >
                         {/* Pass first captured photo (if any) as the preview */}
-                        <PackCard previewImage={firstPhoto} />
+                        <PackCard
+                          previewImage={firstPhoto}
+                          packWrapperUrl={activeCycle.packWrapperUrl}
+                        />
                       </div>
 
                       {/* Layer 4b — BACK FACE */}

@@ -17,13 +17,14 @@ import {
   type SealedPack,
   useCollection,
 } from "../context/CollectionContext";
+import { useCycleTheme } from "../context/CycleThemeContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MINT = "oklch(0.70 0.18 160)";
-const MINT_SOFT = "rgba(52,168,132,0.12)";
-const MINT_TEXT = "#34a884";
+const MINT = "var(--cycle-accent)";
+const MINT_SOFT = "rgba(var(--cycle-accent-rgb),0.12)";
+const MINT_TEXT = "var(--cycle-accent)";
 const PACK_IMAGE =
-  "/assets/comfyui_00009-019d510a-371e-750b-b780-72fcb79d8ba5.png";
+  "/assets/generated/pack-wrapper-cycle1-mint-transparent.dim_400x560.png";
 
 const RARITY_COLORS: Record<string, string> = {
   Common: "#9B9B9B",
@@ -74,6 +75,7 @@ interface SetGroup {
 function buildSetGroups(
   sealedPacks: SealedPack[],
   nfts: CollectionNFT[],
+  packWrapperUrl: string = PACK_IMAGE,
 ): SetGroup[] {
   const map = new Map<string, SetGroup>();
 
@@ -82,7 +84,7 @@ function buildSetGroups(
     if (!map.has(key)) {
       map.set(key, {
         setName: key,
-        previewImageUrl: PACK_IMAGE,
+        previewImageUrl: packWrapperUrl,
         totalMinted: 0,
         sealedCount: 0,
         openedCount: 0,
@@ -97,7 +99,7 @@ function buildSetGroups(
     g.sealedCount += 1;
     g.totalMinted += 1;
     // Use the dedicated cover photo if available (set on first occurrence)
-    if (pack.coverPhotoUrl && g.previewImageUrl === PACK_IMAGE) {
+    if (pack.coverPhotoUrl && g.previewImageUrl === packWrapperUrl) {
       g.previewImageUrl = pack.coverPhotoUrl;
     }
     if (pack.createdAt > g.latestAt) g.latestAt = pack.createdAt;
@@ -108,7 +110,7 @@ function buildSetGroups(
     if (!map.has(key)) {
       map.set(key, {
         setName: key,
-        previewImageUrl: nft.imageUrl || PACK_IMAGE,
+        previewImageUrl: nft.imageUrl || packWrapperUrl,
         totalMinted: 0,
         sealedCount: 0,
         openedCount: 0,
@@ -122,7 +124,7 @@ function buildSetGroups(
     g.collectibles.push(nft);
     g.openedCount += 1;
     g.totalMinted += 1;
-    if (g.previewImageUrl === PACK_IMAGE && nft.imageUrl) {
+    if (g.previewImageUrl === packWrapperUrl && nft.imageUrl) {
       g.previewImageUrl = nft.imageUrl;
     }
     if (nft.addedAt > g.latestAt) g.latestAt = nft.addedAt;
@@ -2046,6 +2048,7 @@ export function CollectionPage({
 }: {
   onGoToLibrary?: () => void;
 }) {
+  const { activeCycle } = useCycleTheme();
   const { nfts, sealedPacks, burnedCounts, openPack, removeNFT, burnNFT } =
     useCollection();
 
@@ -2069,7 +2072,11 @@ export function CollectionPage({
   const [showBurnConfirm, setShowBurnConfirm] = useState(false);
   const [burnFeedback, setBurnFeedback] = useState(false);
 
-  const setGroups = buildSetGroups(sealedPacks, nfts);
+  const setGroups = buildSetGroups(
+    sealedPacks,
+    nfts,
+    activeCycle.packWrapperUrl,
+  );
   const isEmpty = setGroups.length === 0;
 
   function handleTap(id: string) {
