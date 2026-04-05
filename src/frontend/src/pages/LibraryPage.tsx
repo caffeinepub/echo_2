@@ -131,11 +131,12 @@ function PackCard({
         <span
           style={{
             fontSize: "11px",
-            letterSpacing: "0.14em",
-            color: accentText,
+            letterSpacing: "0.08em",
+            color: "#9B9B9B",
             fontWeight: 500,
             textTransform: "uppercase",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+            fontFamily: "'Inter', sans-serif",
           }}
         >
           MINTY PACK
@@ -182,12 +183,13 @@ function PackCard({
         <h2
           style={{
             fontSize: "22px",
-            fontWeight: 600,
+            fontWeight: 500,
             color: "#111111",
-            letterSpacing: "0.02em",
+            letterSpacing: "0.01em",
             margin: "16px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+            fontFamily: "'Inter', sans-serif",
           }}
         >
           Minty Pack
@@ -201,6 +203,10 @@ function PackCard({
             margin: "8px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+            fontWeight: 300,
+            opacity: 0.72,
+            letterSpacing: "0.01em",
+            fontFamily: "'Inter', sans-serif",
           }}
         >
           Contains 1 collectible
