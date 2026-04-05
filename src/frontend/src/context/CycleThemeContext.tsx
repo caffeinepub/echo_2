@@ -122,7 +122,7 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
     // Champagne-gold treatment: shift hue from mint-green toward warm amber-gold,
     // boost saturation for richness, slight brightness lift for glossy sheen.
     logoFilter:
-      "hue-rotate(-75deg) saturate(1.4) brightness(1.12) contrast(1.05)",
+      "hue-rotate(-75deg) saturate(1.6) brightness(1.15) contrast(1.08) sepia(0.15)",
   },
 };
 

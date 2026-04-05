@@ -41,8 +41,8 @@ function injectNeonStyles(
   const baseBreathe = isGold
     ? `
 @keyframes echo-neon-breathe-light {
-  0%,100% { filter: drop-shadow(0 0 3px rgba(212,175,55,0.40)) drop-shadow(0 0 8px rgba(212,175,55,0.20)); }
-  50%     { filter: drop-shadow(0 0 6px rgba(212,175,55,0.58)) drop-shadow(0 0 16px rgba(212,175,55,0.28)); }
+  0%,100% { filter: hue-rotate(-75deg) saturate(1.6) brightness(1.10) contrast(1.08) sepia(0.15) drop-shadow(0 0 3px rgba(212,175,55,0.40)) drop-shadow(0 0 8px rgba(212,175,55,0.20)); }
+  50%     { filter: hue-rotate(-75deg) saturate(1.6) brightness(1.18) contrast(1.08) sepia(0.15) drop-shadow(0 0 6px rgba(212,175,55,0.58)) drop-shadow(0 0 16px rgba(212,175,55,0.28)); }
 }
 `
     : `
@@ -1095,9 +1095,7 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const isGoldCycle = activeCycleId === 6;
 
   // Gold cycle uses dedicated champagne-gold logo; other cycles use original with CSS filter
-  const MINTY_LOGO = isGoldCycle
-    ? "/assets/generated/minty-logo-gold-prestige-transparent.dim_540x120.png"
-    : "/assets/minty-logo.png";
+  const MINTY_LOGO = "/assets/minty-logo.png"; // Always use the original logo — gold tint applied via CSS filter
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1105,10 +1103,10 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
       activeCycle.accentR,
       activeCycle.accentG,
       activeCycle.accentB,
-      isGoldCycle ? "" : activeCycle.logoFilter, // Gold uses dedicated image, no filter
+      activeCycle.logoFilter, // Always pass the cycle filter (gold filter applied here too)
       activeCycleId,
     );
-  }, [activeCycle, activeCycleId, isGoldCycle]);
+  }, [activeCycle, activeCycleId]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
   const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
@@ -1174,9 +1172,8 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
               imageRendering: "auto",
               display: "block",
               background: "transparent",
-              filter: isGoldCycle
-                ? undefined
-                : activeCycle.logoFilter !== "none"
+              filter:
+                activeCycle.logoFilter !== "none"
                   ? activeCycle.logoFilter
                   : undefined,
             }}
