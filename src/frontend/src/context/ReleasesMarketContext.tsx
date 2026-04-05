@@ -8,6 +8,21 @@ import {
 
 const LS_KEY = "minty_releases";
 const LS_SEEDED_KEY = "minty_releases_seeded";
+export const BONDING_CURVE_CONFIG = {
+  totalPacks: 300,
+  basePrice: 10,
+  maxPrice: 60,
+} as const;
+
+export function calcPackPrice(
+  packsSold: number,
+  totalPacks: number = BONDING_CURVE_CONFIG.totalPacks,
+  basePrice: number = BONDING_CURVE_CONFIG.basePrice,
+  maxPrice: number = BONDING_CURVE_CONFIG.maxPrice,
+): number {
+  const ratio = Math.min(packsSold / totalPacks, 1);
+  return basePrice + ratio * ratio * (maxPrice - basePrice);
+}
 
 export interface MarketRelease {
   id: string;
@@ -53,10 +68,10 @@ const SEED_RELEASES: MarketRelease[] = [
     title: "Sunset Ride",
     caption: "9 photos and 1 video from a late summer drive along the coast",
     setName: "Coastal Drift Vol. 1",
-    packsAvailable: 5,
-    packCount: 100,
+    packsAvailable: 247,
+    packCount: 300,
     packIds: [],
-    priceUsd: 3.5,
+    priceUsd: 10,
     listedAt: NOW - 2 * H,
     expiresAt: NOW - 2 * H + 24 * H,
     status: "active",
@@ -72,10 +87,10 @@ const SEED_RELEASES: MarketRelease[] = [
     title: "First Mint Moment",
     caption: "9 photos + 1 video from a late night drive",
     setName: "Night Drive Series",
-    packsAvailable: 3,
-    packCount: 100,
+    packsAvailable: 171,
+    packCount: 300,
     packIds: [],
-    priceUsd: 5.0,
+    priceUsd: 10,
     listedAt: NOW - 18 * H,
     expiresAt: NOW - 18 * H + 24 * H,
     status: "active",
@@ -91,10 +106,10 @@ const SEED_RELEASES: MarketRelease[] = [
     title: "Golden Hour",
     caption: "Limited Mint Moment \u2014 golden hour at the lake",
     setName: "Golden Hour Set",
-    packsAvailable: 8,
-    packCount: 100,
+    packsAvailable: 89,
+    packCount: 300,
     packIds: [],
-    priceUsd: 2.0,
+    priceUsd: 10,
     listedAt: NOW - 0.5 * H,
     expiresAt: NOW - 0.5 * H + 24 * H,
     status: "active",

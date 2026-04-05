@@ -17,7 +17,10 @@ import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
-import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import {
+  calcPackPrice,
+  useReleasesMarket,
+} from "../context/ReleasesMarketContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 
 import {
@@ -425,6 +428,8 @@ function ReleaseCard({
       : "#6b7280";
 
   const hasClip = !!release.previewClipUrl;
+  const packsSold = release.packCount - release.packsAvailable;
+  const currentPrice = calcPackPrice(packsSold, release.packCount);
 
   return (
     <>
@@ -670,7 +675,7 @@ function ReleaseCard({
             </span>
             <span style={{ fontSize: 11, color: "#d1d5db" }}>·</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>
-              ${release.priceUsd.toFixed(2)}
+              ${currentPrice.toFixed(2)}
               <span
                 style={{
                   fontSize: 10,
@@ -679,8 +684,16 @@ function ReleaseCard({
                   marginLeft: 2,
                 }}
               >
-                each
+                / pack
               </span>
+            </span>
+          </div>
+
+          {/* Row 4b — sold / remaining */}
+          <div style={{ marginBottom: 8, lineHeight: 1 }}>
+            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>
+              {packsSold} sold&nbsp;&middot;&nbsp;{release.packsAvailable}{" "}
+              remaining
             </span>
           </div>
 
@@ -1068,7 +1081,9 @@ function BuyPacksModal({
   const isDisabled =
     isBurned || release.status !== "active" || remaining === 0 || maxQty === 0;
 
-  const total = (qty * release.priceUsd).toFixed(2);
+  const packsSold = release.packCount - release.packsAvailable;
+  const currentPrice = calcPackPrice(packsSold, release.packCount);
+  const total = (qty * currentPrice).toFixed(2);
 
   function handleConfirmPurchase() {
     if (isDisabled) return;
@@ -1566,8 +1581,7 @@ function BuyPacksModal({
                 }}
               >
                 <span style={{ fontSize: 13, color: "#6b7280" }}>
-                  {qty} pack{qty > 1 ? "s" : ""} × $
-                  {release.priceUsd.toFixed(2)}
+                  {qty} pack{qty > 1 ? "s" : ""} × ${currentPrice.toFixed(2)}
                 </span>
                 <span
                   style={{
@@ -1590,6 +1604,19 @@ function BuyPacksModal({
                   </span>
                 </span>
               </div>
+
+              {/* Bonding curve note */}
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  textAlign: "center",
+                  marginBottom: 12,
+                  marginTop: -4,
+                }}
+              >
+                Price updates with each purchase
+              </p>
 
               {/* Rate limit warning when 0 remaining */}
               {remaining === 0 && (

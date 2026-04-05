@@ -1,38 +1,33 @@
-# Minty — Remove Supply Cycle, Add Pack Style Selector
+# Minty — Bonding Curve Pricing
 
 ## Current State
-- `CycleThemeContext.tsx` manages a `CycleId` (1–4) mapped to Mint/Pink/Purple/Blue themes
-- The context exports `useCycleTheme`, `CycleThemeProvider`, `CYCLE_THEMES`, `activeCycleId`, `setCycleId`
-- `TopBar.tsx` renders a `CycleSelector` component with a dropdown labeled "Supply Cycle"
-- Cycle items are labeled "Cycle 1 — Mint", "Cycle 2 — Pink", etc.
-- All consumer pages (LibraryPage, ReleasesPage, CollectionPage, MarketPage, BottomNav, CollectibleCard, PackOpeningOverlay) import from `CycleThemeContext`
-- CSS vars (`--cycle-accent`, `--cycle-accent-rgb`, etc.) drive UI accents app-wide
-- `packWrapperUrl` in each theme drives the sealed pack wrapper image
+- `MarketRelease` has a flat `priceUsd: number` field set at listing time and never updated.
+- `packCount` (total minted) and `packsAvailable` (remaining) already exist on each release.
+- Seed data uses `packCount: 100` with low `packsAvailable`.
+- Release cards display `${release.priceUsd.toFixed(2)} each` (static).
+- Buy modal multiplies `qty × priceUsd` (static).
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `PackStyleContext.tsx` replacing `CycleThemeContext.tsx` with renamed exports
-- `PackStyleSelector` component in TopBar (4 selectable color dots/pills, labeled "Pack Style")
-- localStorage key changes from `minty_active_cycle` to `minty_pack_style`
+- `BONDING_CURVE_CONFIG` constant: `{ totalPacks: 300, basePrice: 10, maxPrice: 60 }`
+- `calcPackPrice(packsSold, totalPacks, basePrice, maxPrice)` pure utility function using the quadratic formula
+- Derived `currentPrice` computed wherever a release is rendered, using `packCount - packsAvailable` as `packsSold`
+- Display on release cards: current pack price, packs sold, packs remaining
+- After a successful purchase, `packsAvailable` decrements → price auto-updates on next render
 
 ### Modify
-- `CycleThemeContext.tsx` → `PackStyleContext.tsx`: rename `CycleId` → `PackStyleId`, `CycleTheme` → `PackStyle`, `CYCLE_THEMES` → `PACK_STYLES`, `activeCycleId` → `activeStyleId`, `activeCycle` → `activeStyle`, `setCycleId` → `setStyleId`, `CycleThemeProvider` → `PackStyleProvider`, `useCycleTheme` → `usePackStyle`
-- Theme labels: "Cycle 1 — Mint" → "Mint", "Cycle 2 — Pink" → "Pink", etc.
-- `TopBar.tsx`: replace `CycleSelector` dropdown with `PackStyleSelector` (4 color dots, no dropdown label, title shows "Pack Style")
-- All consumer files: update imports from `CycleThemeContext` → `PackStyleContext`, rename `useCycleTheme` → `usePackStyle`, `activeCycle` → `activeStyle`
-- `App.tsx`: replace `CycleThemeProvider` with `PackStyleProvider`
-- BottomNav, LibraryPage, ReleasesPage, CollectionPage, MarketPage, CollectibleCard, PackOpeningOverlay: update import/usage
+- Seed data: update `packCount` to 300 so default releases match the new config
+- `ReleaseCard` price display: replace static `priceUsd` with computed `calcPackPrice(...)`
+- `BuyPacksModal`: replace static `priceUsd` with computed current price at time of purchase
+- `MarketRelease`: keep `priceUsd` as the initial/listed price (used as `basePrice` fallback if needed), no schema change needed — computed price is derived, not stored
 
 ### Remove
-- `CycleThemeContext.tsx` (replaced by `PackStyleContext.tsx`)
-- All "cycle" wording in UI (labels, aria-labels, data-ocid strings)
-- "Supply Cycle" dropdown label from TopBar
-- Cycle numbering from theme labels
+- Nothing removed; flat `priceUsd` kept as the initial base price anchor for listings that don't use the default config
 
 ## Implementation Plan
-1. Create `src/frontend/src/context/PackStyleContext.tsx` with renamed exports, same logic
-2. Update `TopBar.tsx` — new `PackStyleSelector` with 4 color dots/pills, title "Pack Style"
-3. Update all consumer files to use new context/hook names
-4. Update `App.tsx` to use `PackStyleProvider`
-5. Remove `CycleThemeContext.tsx`
+1. Add `calcPackPrice` utility and `BONDING_CURVE_CONFIG` in `ReleasesMarketContext.tsx` (exported)
+2. Update seed releases to use `packCount: 300` with realistic `packsAvailable` values
+3. Update `ReleaseCard` to compute and display current price, packs sold, packs remaining
+4. Update `BuyPacksModal` to use computed price for per-pack cost and total
+5. Ensure purchase flow decrements `packsAvailable` (already does) so price updates automatically
