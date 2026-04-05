@@ -1694,16 +1694,19 @@ function SectionHeader({
 
 function TrendingHashtagsSection({
   hashtags,
-  accentBg,
-  accentBorder,
-  accentText,
+  accentRgb,
 }: {
   hashtags: TrendingHashtag[];
-  accentBg: string;
-  accentBorder: string;
-  accentText: string;
+  accentRgb: string;
 }) {
   if (hashtags.length === 0) return null;
+
+  // Secondary, lightweight styling — intentionally softer than filter pills
+  const [r, g, b] = accentRgb.split(",").map(Number);
+  const tagBg = `rgba(${accentRgb},0.06)`;
+  const tagBorder = `rgba(${accentRgb},0.13)`;
+  // Muted text: darken the accent toward 45% brightness
+  const tagText = `rgba(${Math.round(r * 0.5)},${Math.round(g * 0.5)},${Math.round(b * 0.5)},0.85)`;
 
   return (
     <div style={{ marginBottom: 2 }}>
@@ -1713,7 +1716,7 @@ function TrendingHashtagsSection({
         style={{
           display: "flex",
           flexWrap: "nowrap",
-          gap: 7,
+          gap: 6,
           overflowX: "auto",
           msOverflowStyle: "none",
           scrollbarWidth: "none",
@@ -1728,19 +1731,26 @@ function TrendingHashtagsSection({
               display: "inline-flex",
               alignItems: "center",
               gap: 3,
-              padding: "5px 12px",
+              padding: "4px 9px",
+              height: 28,
+              boxSizing: "border-box",
               borderRadius: 20,
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: 500,
               letterSpacing: "0.01em",
               cursor: "default",
-              background: accentBg,
-              border: `1px solid ${accentBorder}`,
-              color: accentText,
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              background: tagBg,
+              border: `1px solid ${tagBorder}`,
+              color: tagText,
             }}
           >
-            {tag}
-            {hot ? " 🔥" : ""}
+            <span style={{ opacity: 0.55, fontSize: 10 }}>#</span>
+            {tag.replace(/^#/, "")}
+            {hot ? (
+              <span style={{ fontSize: 10, marginLeft: 2 }}>🔥</span>
+            ) : null}
           </span>
         ))}
       </div>
@@ -2008,9 +2018,7 @@ export function ReleasesPage() {
         <div style={{ paddingTop: 6 }}>
           <TrendingHashtagsSection
             hashtags={trendingHashtags}
-            accentBg={accentBg}
-            accentBorder={accentBorder}
-            accentText={accentText}
+            accentRgb={accentRgb}
           />
         </div>
       </div>
