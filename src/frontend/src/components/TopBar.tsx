@@ -38,6 +38,23 @@ function injectNeonStyles(r: number, g: number, b: number, filter: string) {
   animation: echo-neon-breathe-light 3.8s ease-in-out infinite;
   will-change: filter;
 }
+
+@keyframes cow-sway {
+  0%, 100% { transform: translateX(0px) rotate(0deg); }
+  25% { transform: translateX(1.5px) rotate(0.8deg); }
+  75% { transform: translateX(-1.5px) rotate(-0.8deg); }
+}
+
+@keyframes cow-bounce {
+  0%, 100% { transform: translateY(0px); }
+  40% { transform: translateY(-4px); }
+  60% { transform: translateY(-2px); }
+}
+
+@keyframes cow-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0px rgba(${r},${g},${b},0)); }
+  50% { filter: drop-shadow(0 0 6px rgba(${r},${g},${b},0.35)); }
+}
 `;
 }
 
@@ -980,6 +997,258 @@ function SignInModal({
   );
 }
 
+// ─── Cow Info Modal ───────────────────────────────────────────────────────────
+function CowInfoModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "11px",
+    color: "#8BAEC8",
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+    marginBottom: "6px",
+    display: "block",
+    fontFamily: "DM Sans, sans-serif",
+    fontWeight: 500,
+  };
+
+  const bodyTextStyle: React.CSSProperties = {
+    fontSize: "13px",
+    color: "#5B7FA6",
+    lineHeight: 1.6,
+    fontFamily: "DM Sans, sans-serif",
+  };
+
+  const bulletItems = (items: string[]) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {items.map((item) => (
+        <div
+          key={item}
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <span
+            style={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              background: "var(--cycle-accent)",
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: "13px",
+              color: "#0D1520",
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            {item}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)" }}
+      data-ocid="cow.modal"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (
+          e.key === "Escape" ||
+          (e.key === "Enter" && e.target === e.currentTarget)
+        )
+          onClose();
+      }}
+    >
+      <div
+        className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl"
+        style={{
+          background: "#ffffff",
+          border: "1px solid rgba(var(--cycle-accent-rgb),0.18)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.10)",
+          padding: "20px 16px 24px",
+          maxHeight: "85dvh",
+          overflowY: "auto",
+          position: "relative",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between"
+          style={{ marginBottom: "18px" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <img
+              src="/assets/generated/minty-cow-helper-transparent.dim_200x200.png"
+              alt="Cow helper"
+              style={{ width: "24px", height: "24px", objectFit: "contain" }}
+              draggable={false}
+            />
+            <span
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "#0D1520",
+                fontFamily: "DM Sans, sans-serif",
+                lineHeight: 1,
+              }}
+            >
+              Wallet Info
+            </span>
+          </div>
+          <button
+            type="button"
+            data-ocid="cow.modal.close_button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full"
+            style={{
+              background: "rgba(0,0,0,0.05)",
+              color: "#666",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* Section 1 */}
+          <p style={bodyTextStyle}>
+            This BTC wallet is used for Minty deposits and purchasing assets
+            inside Minty.
+          </p>
+
+          {/* Section 2 */}
+          <div>
+            <span style={labelStyle}>Funds stored here are used for:</span>
+            {bulletItems([
+              "minting moments",
+              "buying packs",
+              "bidding on video NFTs",
+            ])}
+          </div>
+
+          {/* Section 3 */}
+          <p style={bodyTextStyle}>
+            This wallet is not intended as a primary external crypto wallet.
+          </p>
+
+          {/* Divider */}
+          <div
+            style={{
+              height: "1px",
+              background: "rgba(0,0,0,0.06)",
+              margin: "0",
+            }}
+          />
+
+          {/* Section 4 */}
+          <div>
+            <span style={labelStyle}>
+              Your Principal ID is used to send and receive:
+            </span>
+            {bulletItems(["photos", "videos", "packs", "collectibles"])}
+          </div>
+
+          {/* Section 5 */}
+          <p style={bodyTextStyle}>between Minty users.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cow Helper ───────────────────────────────────────────────────────────────
+function CowHelper({ onClick }: { onClick: () => void }) {
+  const [isBouncing, setIsBouncing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Trigger bounce every 7 seconds
+    intervalRef.current = setInterval(() => {
+      setIsBouncing(true);
+      setTimeout(() => setIsBouncing(false), 800);
+    }, 7000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  let animation = "cow-sway 3.5s ease-in-out infinite";
+  if (isBouncing) {
+    animation = "cow-bounce 0.8s ease-in-out";
+  }
+
+  const glowFilter = isHovered
+    ? "drop-shadow(0 0 6px rgba(var(--cycle-accent-rgb),0.35))"
+    : "none";
+
+  return (
+    <button
+      type="button"
+      data-ocid="cow.open_modal_button"
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      aria-label="Wallet info"
+      title="Wallet info"
+      style={{
+        width: "36px",
+        height: "36px",
+        background: "none",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        userSelect: "none",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <img
+        src="/assets/generated/minty-cow-helper-transparent.dim_200x200.png"
+        alt="Cow helper"
+        draggable={false}
+        style={{
+          width: "36px",
+          height: "36px",
+          objectFit: "contain",
+          animation,
+          filter: glowFilter,
+          transition: "filter 0.3s ease",
+          willChange: "transform, filter",
+          userSelect: "none",
+        }}
+      />
+    </button>
+  );
+}
+
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 interface TopBarProps {
   onProfileClick?: () => void;
@@ -990,6 +1259,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const { activeStyle: activeCycle } = usePackStyle();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
   const MINTY_LOGO = "/assets/minty-logo.png";
 
@@ -1144,6 +1414,9 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               {isSignedIn ? "Wallet" : "Sign In"}
             </span>
           </button>
+
+          {/* Cow Helper — sits quietly to the right of the Wallet button */}
+          <CowHelper onClick={() => setCowInfoOpen(true)} />
         </div>
       </header>
 
@@ -1159,6 +1432,8 @@ export function TopBar({ onProfileClick }: TopBarProps) {
         onClose={() => setWalletOpen(false)}
         onSignOut={clear}
       />
+
+      <CowInfoModal open={cowInfoOpen} onClose={() => setCowInfoOpen(false)} />
     </>
   );
 }
