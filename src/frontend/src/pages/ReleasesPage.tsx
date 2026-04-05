@@ -167,6 +167,11 @@ function TickerBar({
           60%  { opacity: 0.9; transform: translateY(-4px); }
           100% { opacity: 0; transform: translateY(-8px); }
         }
+        @keyframes tileBidPulse {
+          0%   { box-shadow: 0 0 0 0px rgba(var(--tile-accent-rgb), 0.45); }
+          50%  { box-shadow: 0 0 0 4px rgba(var(--tile-accent-rgb), 0.25); }
+          100% { box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04); }
+        }
       `}</style>
       <div
         style={{
@@ -2536,6 +2541,7 @@ function PlaceBidModal({
 
 // ─── Auction Card ─────────────────────────────────────────────────────────────
 
+// biome-ignore lint/correctness/noUnusedVariables: kept for reference, not used in grid view
 function AuctionCard({
   listing,
   accentGradient,
@@ -2778,6 +2784,231 @@ function AuctionCard({
   );
 }
 
+// ─── Auction Grid Tile ────────────────────────────────────────────────────────
+
+function AuctionGridTile({
+  listing,
+  accentGradient,
+  accentGlow,
+  accentSolid,
+  accentRgb,
+  accentBg,
+  accentBorder,
+  accentText,
+}: {
+  listing: AuctionListing;
+  accentGradient: string;
+  accentGlow: string;
+  accentSolid: string;
+  accentRgb: string;
+  accentBg: string;
+  accentBorder: string;
+  accentText: string;
+}) {
+  const [showBidModal, setShowBidModal] = useState(false);
+  const [isPulsing, setIsPulsing] = useState(false);
+  const prevBidCountRef = useRef(listing.bids.length);
+  const countdown = useAuctionCountdown(listing.endsAt);
+  const isEnded = countdown === "Auction ended";
+
+  // Suppress unused vars to avoid lint errors
+  void accentGlow;
+  void accentSolid;
+
+  useEffect(() => {
+    if (listing.bids.length > prevBidCountRef.current) {
+      setIsPulsing(true);
+      const t = setTimeout(() => setIsPulsing(false), 600);
+      prevBidCountRef.current = listing.bids.length;
+      return () => clearTimeout(t);
+    }
+    prevBidCountRef.current = listing.bids.length;
+  }, [listing.bids.length]);
+
+  return (
+    <>
+      <div
+        data-ocid="releases.item.1"
+        tabIndex={isEnded ? -1 : 0}
+        onClick={() => !isEnded && setShowBidModal(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (!isEnded) setShowBidModal(true);
+          }
+        }}
+        style={{
+          background: "#fff",
+          borderRadius: 16,
+          border: "1.5px solid rgba(0,0,0,0.05)",
+          overflow: "hidden",
+          cursor: isEnded ? "default" : "pointer",
+          opacity: isEnded ? 0.55 : 1,
+          transition: "transform 0.15s, box-shadow 0.15s",
+          animation: isPulsing ? "tileBidPulse 0.6s ease-out" : "none",
+          // @ts-expect-error CSS custom property
+          "--tile-accent-rgb": accentRgb,
+          boxShadow: isPulsing
+            ? undefined
+            : "0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)",
+        }}
+        onMouseEnter={(e) => {
+          if (!isEnded) {
+            (e.currentTarget as HTMLDivElement).style.transform =
+              "translateY(-2px)";
+            (e.currentTarget as HTMLDivElement).style.boxShadow =
+              "0 6px 20px rgba(0,0,0,0.11), 0 2px 6px rgba(0,0,0,0.06)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.transform = "";
+          (e.currentTarget as HTMLDivElement).style.boxShadow =
+            "0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)";
+        }}
+      >
+        {/* Image / media */}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "1/1",
+            overflow: "hidden",
+            background: "#f3f4f6",
+          }}
+        >
+          <img
+            src={listing.nftImageUrl}
+            alt={listing.nftTitle}
+            loading="lazy"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          {/* Gradient overlay */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, transparent 55%, rgba(0,0,0,0.22) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Video badge */}
+          {listing.mediaType === "video" && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 7,
+                right: 7,
+                background: "rgba(0,0,0,0.48)",
+                backdropFilter: "blur(4px)",
+                borderRadius: 20,
+                padding: "2px 7px",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 9,
+                  color: "rgba(255,255,255,0.85)",
+                  fontWeight: 600,
+                }}
+              >
+                ▷ Video
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom info */}
+        <div style={{ padding: "10px 10px 12px" }}>
+          {/* Title */}
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#111",
+              margin: "0 0 4px",
+              lineHeight: 1.3,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {listing.nftTitle}
+          </p>
+
+          {/* Bid amount */}
+          <p
+            style={{
+              fontSize: 16,
+              fontWeight: 800,
+              color: listing.highestBid > 0 ? "#111" : "#9ca3af",
+              fontVariantNumeric: "tabular-nums",
+              margin: "0 0 3px",
+              lineHeight: 1,
+            }}
+          >
+            {listing.highestBid > 0
+              ? `$${listing.highestBid.toFixed(2)}`
+              : "No bids"}
+          </p>
+
+          {/* Timer row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              marginBottom: listing.bids.length > 0 ? 2 : 0,
+            }}
+          >
+            <Timer size={10} color={isEnded ? "#9ca3af" : accentText} />
+            <span
+              style={{ fontSize: 11, color: isEnded ? "#9ca3af" : accentText }}
+            >
+              {countdown}
+            </span>
+          </div>
+
+          {/* Bid count */}
+          {listing.bids.length > 0 && (
+            <p
+              style={{
+                fontSize: 11,
+                color: "#9ca3af",
+                margin: 0,
+                lineHeight: 1,
+              }}
+            >
+              {listing.bids.length} {listing.bids.length === 1 ? "bid" : "bids"}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {showBidModal && (
+        <PlaceBidModal
+          listing={listing}
+          onClose={() => setShowBidModal(false)}
+          accentRgb={accentRgb}
+          accentSolid={accentSolid}
+          accentBg={accentBg}
+          accentBorder={accentBorder}
+          accentText={accentText}
+          accentGradient={accentGradient}
+        />
+      )}
+    </>
+  );
+}
+
 // ─── Filter pills ─────────────────────────────────────────────────────────────
 
 type FilterMode = "live" | "ending" | "new";
@@ -2991,16 +3222,27 @@ export function ReleasesPage() {
           ) : (
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 16,
+                display: "grid",
+                gridTemplateColumns: "repeat(2, 1fr)",
+                gap: 10,
                 paddingTop: 12,
               }}
             >
-              {auctionListings
+              {[...auctionListings]
                 .filter((l) => l.status === "active")
+                .sort((a, b) => {
+                  const latestA =
+                    a.bids.length > 0
+                      ? Math.max(...a.bids.map((bid) => bid.placedAt))
+                      : 0;
+                  const latestB =
+                    b.bids.length > 0
+                      ? Math.max(...b.bids.map((bid) => bid.placedAt))
+                      : 0;
+                  return latestB - latestA;
+                })
                 .map((listing) => (
-                  <AuctionCard
+                  <AuctionGridTile
                     key={listing.id}
                     listing={listing}
                     accentGradient={accentGradient}

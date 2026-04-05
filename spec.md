@@ -1,52 +1,39 @@
-# Minty — Market Toggle in Releases Tab
+# Minty — Market Grid Layout
 
 ## Current State
-
-- `ReleasesPage.tsx` shows a single view of pack releases with filter tabs (Newest Moments, Hot Packs, Newly Released), a scrollable hashtag row, and release cards with bonding curve pricing.
-- `CollectionPage.tsx` shows the user's sealed packs and opened NFT collectibles grouped by set. NFTDetailSheet has action buttons (Send to Wallet, Burn Collectible), but "Sell · Coming Soon" and "List for Sale · Coming Soon" are disabled stubs.
-- `CollectionContext.tsx` holds `CollectionNFT` and `SealedPack` state.
-- `ReleasesMarketContext.tsx` holds `MarketRelease` state for pack releases.
-- No auction system exists yet.
+The Market tab (inside ReleasesPage.tsx, `viewMode === 'market'`) renders auction listings as a vertical column of full-width `AuctionCard` components. Each card is a tall portrait card (4:5 image ratio) followed by a large info block with creator row, title, highest bid, bid count, time remaining, and a full-width Place Bid button. Cards are sorted by insertion order (no live reordering). The `PlaceBidModal` and `SlideToConfirm` components are unchanged and working.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `AuctionContext.tsx` — new context to store `AuctionListing[]` in localStorage, with methods to `createAuction`, `placeBid`, and compute auction state.
-- `AuctionListing` type: `{ id, nftId, nftTitle, nftImageUrl, nftSetName, nftRarity, mediaType, creatorName, highestBid, bids: Bid[], endsAt, listingFee, status: 'active'|'ended' }`
-- `Bid` type: `{ id, bidderName, amountUsd, placedAt }`
-- Segmented toggle `Packs | Market` at the top of `ReleasesPage.tsx` (directly above where the ticker/tabs currently sit).
-- `MarketView` component inside `ReleasesPage.tsx` — shown when Market is selected. Displays auction listing cards.
-- Auction listing card displays: preview clip/image (2s loop), NFT title, current highest bid, number of bids, time remaining, Place Bid button.
-- `SendToAuctionModal` component in `CollectionPage.tsx` — triggered from NFT detail sheet via a new "Send to Auction" button (replaces the disabled "Sell · Coming Soon" button).
-  - Modal shows: title "Send to Auction", listing fee "Auction listing fee: $100", description text, slide-to-confirm slider.
-  - On confirm: deducts $100 from wallet balance (mock), removes NFT from collection, creates auction listing in AuctionContext.
-- `PlaceBidModal` component inside `ReleasesPage.tsx` — opens when user taps Place Bid on a Market card. Shows NFT info, current highest bid, input for bid amount, slide-to-confirm.
-- Seed 2–3 mock auction listings in AuctionContext for demo purposes.
+- 2-column CSS grid layout for the Market view container (gap ~8–10px, padding 12px)
+- New compact `AuctionGridTile` component to replace the existing `AuctionCard` for the Market view only
+  - Top: NFT image (square or 1:1 aspect ratio) with lazy loading (`loading="lazy"`), soft gradient overlay at bottom, video badge if mediaType === "video"
+  - Bottom info block: NFT title (truncated 1 line, ~13px semibold), current highest bid ($XX.XX bold ~15px, or "No bids" muted), time remaining (small, with timer icon, accent-colored), bid count (small muted optional text)
+  - Tap anywhere on tile opens the existing `PlaceBidModal` (unchanged)
+  - Rounded corners (~16px), soft shadow, white background, thin border
+- Auto-reorder: sort active listings by `mostRecentBidTimestamp` descending (most recent bid → top-left). Use `Math.max(...bids.map(b => b.placedAt))` or fallback to listing creation order
+- Live pulse: on each sort update (when `listings` changes), briefly flash a subtle accent-colored ring or scale on the newly moved tile (CSS animation, 600ms, optional)
+- `useIntersectionObserver` or native `loading="lazy"` on images for scroll-based lazy loading
 
 ### Modify
-- `ReleasesPage.tsx`: add segmented toggle state (`view: 'packs' | 'market'`). Wrap existing content in `view === 'packs'` condition. Add `view === 'market'` branch rendering `MarketView`.
-- `CollectionPage.tsx` / `NFTDetailSheet`: replace the disabled "Sell · Coming Soon" button with an enabled "Send to Auction" button that opens `SendToAuctionModal`. Auction eligibility: only opened NFTs (not sealed packs), not already listed.
+- Market view container: replace `flexDirection: column` with `display: grid, gridTemplateColumns: repeat(2, 1fr)` 
+- Sort `auctionListings` before mapping: sort by latest bid timestamp descending
+- Keep the empty state (no auctions) unchanged
+- `AuctionCard` component stays in the file — it is not deleted — just not used for the Market grid (can be kept as-is for potential future use, or renamed)
 
 ### Remove
-- The disabled "Sell · Coming Soon" button stub in `NFTDetailSheet` (replaced by "Send to Auction").
+- The existing `AuctionCard` component usage in the Market view (replaced by `AuctionGridTile`)
+- No sorting dropdowns or filter pills in the Market view
 
 ## Implementation Plan
-
-1. Create `src/frontend/src/context/AuctionContext.tsx` with `AuctionListing`, `Bid` types, localStorage persistence, `createAuction`, `placeBid`, `isListed` helpers, seed mock listings, and `AuctionProvider`/`useAuctions` hook.
-2. Wire `AuctionProvider` into `App.tsx`.
-3. Update `ReleasesPage.tsx`:
-   - Import and use `useAuctions`.
-   - Add `view` state toggle (`'packs' | 'market'`).
-   - Render segmented toggle (`Packs | Market`) at top, styled consistently with existing filter pills.
-   - Conditionally render existing content for `packs` view.
-   - Render `MarketView` for `market` view — grid of `AuctionCard` components.
-   - Add `AuctionCard` component: image/clip area (4/5 aspect), title, highest bid, bid count, countdown timer, Place Bid button.
-   - Add `PlaceBidModal` with bid input, current bid info, slide-to-confirm.
-4. Update `CollectionPage.tsx` `NFTDetailSheet`:
-   - Replace disabled "Sell · Coming Soon" with "Send to Auction" button (enabled for opened NFTs not already listed).
-   - Add `SendToAuctionModal` with fee display, description, slide-to-confirm. On confirm: call `createAuction`, mock-deduct $100, close sheet.
-5. Auction business rules enforced in UI:
-   - Only opened NFTs (from `nfts` array, not `sealedPacks`) can be listed.
-   - NFT must not already be in an active auction (`isListed(nftId)`).
-   - Auction duration = 24 hours from creation.
-   - Highest bid wins (read-only display; no cancellation UI after first bid).
+1. Add a sort helper in the Market view section that sorts `auctionListings` by `Math.max(...bids.map(b => b.placedAt), 0)` descending — so listings with most recent bids appear first
+2. Change the Market view container div from `flexDirection: column` to `display: grid, gridTemplateColumns: repeat(2, 1fr), gap: 10`
+3. Create `AuctionGridTile` component inline (above or below `AuctionCard`) with:
+   - Compact square/portrait image top section (aspect-ratio 1/1 or 4/5, `loading="lazy"`)
+   - Bottom info: title (1 line clamp), bid amount, time remaining, bid count
+   - `onClick` → `setShowBidModal(true)` → renders existing `PlaceBidModal`
+   - Styled with white bg, 16px border-radius, soft shadow, 1.5px accent border on hover
+4. Replace `<AuctionCard ... />` in the Market grid render with `<AuctionGridTile ... />`
+5. Add `@keyframes tilePulse` (brief scale + ring flash) triggered when a tile receives a new bid (track `listing.bids.length` in a ref)
+6. Verify PlaceBidModal opens correctly from tile tap and all bid functionality remains unchanged
