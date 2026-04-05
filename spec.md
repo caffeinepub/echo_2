@@ -1,37 +1,29 @@
-# Minty — Releases Tab Colorway Theming
+# Minty — Releases Tab Layout Update
 
 ## Current State
-ReleasesPage.tsx uses hardcoded mint/green hex values (`#10b981`, `#059669`, `rgba(16,185,129,...)`) throughout its components: TickerBar, ReleaseCard hover shadows, Buy Pack button gradient, SlideToBuy track/fill/knob, BuyPacksModal qty pills, payment pills, success state, and TrendingHashtagsSection pills. The CycleThemeContext already provides `--cycle-accent`, `--cycle-accent-rgb`, and per-cycle RGB values (accentR/G/B) that the Library page already uses for its themed styling.
+- Filter tabs: "Live Releases", "Ending Soon", "Newly Released" in that order
+- `TrendingHashtagsSection` uses `flexWrap: "wrap"` — hashtags stack into multiple rows
+- Hashtags section sits below filter tabs inside the sticky header with `paddingTop: 10`
+- Hashtag section has `marginBottom: 4` inside component
 
 ## Requested Changes (Diff)
 
 ### Add
-- Import and consume `useCycleTheme()` in ReleasesPage.tsx
-- Derive cycle-aware color variables (accent hex, glow rgba, tinted bg, border color, text accent) from activeCycle at the top of the ReleasesPage component and pass them down as props to all sub-components
+- Horizontal scroll behavior to hashtag row (`overflowX: "auto"`, `flexWrap: "nowrap"`, hide scrollbar)
+- Tighter vertical padding on hashtag container to reduce height used
 
 ### Modify
-- **TickerBar**: replace hardcoded `#10b981`/`rgba(16,185,129,...)` colors with cycle accent colors
-- **ReleaseCard**: hover box-shadow glow → cycle accent glow; Buy Pack button gradient → cycle accent gradient; Buy Pack button box-shadow → cycle accent glow; sold-out badge color uses cycle accent
-- **SlideToBuy**: track background, fill gradient, border, label text, knob chevron color, complete state → all use cycle accent
-- **BuyPacksModal**: modal border/shadow, qty pills (selected border/bg/text), payment pills (selected border/bg/text), success checkmark circle, success glow pulse, set name accent text, info box (bg/border/icon/text), close-to-collection pill → all use cycle accent
-- **TrendingHashtagsSection**: pill background tint, pill border, hashtag text color → all use cycle accent
-- **SectionHeader**: count badge background tint → subtle cycle accent tint
-- **BuyPacksModal animation** `glowPulse` keyframes: replace hardcoded green rgba with cycle accent via CSS custom property
+- `FILTER_LABELS`: rename `"Live Releases"` → `"Newest Moments"`, `"Ending Soon"` → `"Hot Packs"`
+- `TrendingHashtagsSection`: change `flexWrap: "wrap"` to `flexWrap: "nowrap"`, add `overflowX: "auto"`, add scrollbar-hide CSS
+- Hashtag wrapper `paddingTop: 10` → `paddingTop: 6` to tighten vertical space
+- Reduce `marginBottom` inside `TrendingHashtagsSection` from 4 to 2
+- Reduce pill padding slightly to keep them compact in the single row
 
 ### Remove
-- All hardcoded `#10b981`, `#059669`, `#047857`, `rgba(16,185,129,...)` references in ReleasesPage.tsx — replace with cycle-derived values
+- Multi-row hashtag wrapping behavior
 
 ## Implementation Plan
-1. Read `CycleThemeContext.tsx` to confirm the shape of `activeCycle` (accentR, accentG, accentB, accentOklchLight fields)
-2. In `ReleasesPage.tsx`, add `useCycleTheme()` call and derive:
-   - `accentHex` — computed from RGB as `rgb(R,G,B)` or inline style color
-   - `accentRgb` — `"R,G,B"` string for rgba usage
-   - `accentBg` — `rgba(R,G,B,0.09)` for tinted pill backgrounds
-   - `accentBorder` — `rgba(R,G,B,0.28)` for pill outlines
-   - `accentText` — `rgba(R,G,B,0.85)` or darkened shade for text on light bg
-   - `accentGlow` — `rgba(R,G,B,0.25)` for shadows and glows
-   - `accentStrong` — `rgb(R,G,B)` for buttons and active states
-   - `accentGradient` — `linear-gradient(135deg, rgb(R,G,B) 0%, rgba(R*0.8,G*0.8,B*0.8) 100%)` for button fill
-3. Pass these through to sub-components that are defined in the same file (TickerBar, SlideToBuy, TrendingHashtagsSection). For ReleaseCard and BuyPacksModal, also pass accent props.
-4. Replace all green hardcodes with the derived variables
-5. Validate and build
+1. In `FILTER_LABELS` array, update the two label strings
+2. In `TrendingHashtagsSection`, replace `flexWrap: "wrap"` with `flexWrap: "nowrap"` + `overflowX: "auto"` on the flex container, add `-webkit-overflow-scrolling: touch`, hide scrollbar via className or inline style hack
+3. Reduce vertical spacing on the hashtag wrapper div from `paddingTop: 10` to `paddingTop: 6` and `marginBottom` from 4 to 2
+4. Ensure pills stay same size/style — only change is they scroll horizontally instead of wrapping

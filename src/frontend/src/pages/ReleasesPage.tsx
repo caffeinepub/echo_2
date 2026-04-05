@@ -1706,8 +1706,21 @@ function TrendingHashtagsSection({
   if (hashtags.length === 0) return null;
 
   return (
-    <div style={{ marginBottom: 4 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+    <div style={{ marginBottom: 2 }}>
+      <style>{".hashtag-scroll::-webkit-scrollbar { display: none }"}</style>
+      <div
+        className="hashtag-scroll"
+        style={{
+          display: "flex",
+          flexWrap: "nowrap",
+          gap: 7,
+          overflowX: "auto",
+          msOverflowStyle: "none",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: 2,
+        }}
+      >
         {hashtags.map(({ tag, hot }) => (
           <span
             key={tag}
@@ -1740,8 +1753,8 @@ function TrendingHashtagsSection({
 type FilterMode = "live" | "ending" | "new";
 
 const FILTER_LABELS: { key: FilterMode; label: string }[] = [
-  { key: "live", label: "Live Releases" },
-  { key: "ending", label: "Ending Soon" },
+  { key: "live", label: "Newest Moments" },
+  { key: "ending", label: "Hot Packs" },
   { key: "new", label: "Newly Released" },
 ];
 
@@ -1992,7 +2005,7 @@ export function ReleasesPage() {
         </div>
 
         {/* Trending Hashtags */}
-        <div style={{ paddingTop: 10 }}>
+        <div style={{ paddingTop: 6 }}>
           <TrendingHashtagsSection
             hashtags={trendingHashtags}
             accentBg={accentBg}
