@@ -288,7 +288,7 @@ export function ReleaseFlowModal({
       <div
         style={{
           position: "relative",
-          background: "#FAFAF8",
+          background: "var(--echo-surface, #FCFCFC)",
           borderRadius: "28px 28px 0 0",
           width: "100%",
           maxWidth: 520,

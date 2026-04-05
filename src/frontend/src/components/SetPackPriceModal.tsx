@@ -74,7 +74,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
           exit={{ opacity: 0, scale: 0.95, y: 8 }}
           transition={{ type: "spring", stiffness: 380, damping: 32 }}
           style={{
-            background: "#FAFAF8",
+            background: "var(--echo-surface, #FCFCFC)",
             borderRadius: "24px",
             maxWidth: "440px",
             width: "100%",

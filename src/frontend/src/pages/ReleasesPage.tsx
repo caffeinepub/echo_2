@@ -302,7 +302,7 @@ function VideoPreviewModal({
       <div
         style={{
           position: "relative",
-          background: "#FAFAF8",
+          background: "var(--echo-surface, #FCFCFC)",
           borderRadius: 24,
           overflow: "hidden",
           maxWidth: 480,
@@ -1207,7 +1207,7 @@ function BuyPacksModal({
       >
         <div
           style={{
-            background: "#FAFAF8",
+            background: "var(--echo-surface, #FCFCFC)",
             borderRadius: 24,
             width: "100%",
             maxWidth: 420,

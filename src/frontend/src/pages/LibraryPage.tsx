@@ -396,7 +396,7 @@ function RevealedCard({
     <div
       style={{
         width: "280px",
-        background: "#FAFAF8",
+        background: "var(--echo-surface, #FCFCFC)",
         border: "1px solid rgba(0,0,0,0.06)",
         borderRadius: "20px",
         boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
@@ -1405,7 +1405,7 @@ export function LibraryPage({
               style={{
                 width: "280px",
                 height: "373px",
-                background: "#FAFAF8",
+                background: "var(--echo-surface, #FCFCFC)",
                 borderRadius: "20px",
               }}
             />
