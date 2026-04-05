@@ -1099,7 +1099,7 @@ function CowInfoModal({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <img
-              src="/assets/generated/minty-cow-helper-transparent.dim_200x200.png"
+              src="/assets/generated/minty-cow-mascot-transparent.dim_200x200.png"
               alt="Cow helper"
               style={{ width: "24px", height: "24px", objectFit: "contain" }}
               draggable={false}
@@ -1231,7 +1231,7 @@ function CowHelper({ onClick }: { onClick: () => void }) {
       }}
     >
       <img
-        src="/assets/generated/minty-cow-helper-transparent.dim_200x200.png"
+        src="/assets/generated/minty-cow-mascot-transparent.dim_200x200.png"
         alt="Cow helper"
         draggable={false}
         style={{
@@ -1261,7 +1261,8 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [walletOpen, setWalletOpen] = useState(false);
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
-  const MINTY_LOGO = "/assets/minty-logo.png";
+  const MINTY_LOGO =
+    "/assets/generated/minty-wordmark-logo-transparent.dim_600x180.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1311,6 +1312,9 @@ export function TopBar({ onProfileClick }: TopBarProps) {
             src={MINTY_LOGO}
             alt="Minty"
             className="echo-logo-neon select-none"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
             style={{
               width: "180px",
               height: "auto",
