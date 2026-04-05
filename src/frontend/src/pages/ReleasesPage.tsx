@@ -1238,11 +1238,39 @@ function SlideToBuy({
   );
 }
 
+function useBtcPriceInModal(): number | null {
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+  const lastRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    async function fetchPrice() {
+      try {
+        const res = await fetch(
+          "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const parsed = Number.parseFloat(data?.data?.amount);
+          if (!Number.isNaN(parsed)) {
+            lastRef.current = parsed;
+            setBtcPrice(parsed);
+          }
+        } else if (lastRef.current !== null) {
+          setBtcPrice(lastRef.current);
+        }
+      } catch {
+        if (lastRef.current !== null) setBtcPrice(lastRef.current);
+      }
+    }
+    fetchPrice();
+    const id = setInterval(fetchPrice, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return btcPrice;
+}
+
 // ─── Buy Packs Modal ──────────────────────────────────────────────────────────
-
-type PaymentMethod = "USDC" | "BTC" | "ETH" | "SOL";
-
-const PAYMENT_METHODS: PaymentMethod[] = ["USDC", "BTC", "ETH", "SOL"];
 
 function BuyPacksModal({
   release,
@@ -1279,7 +1307,7 @@ function BuyPacksModal({
   const maxQty = Math.min(remaining, release.packsAvailable, RL_MAX);
 
   const [qty, setQty] = useState<number>(() => Math.min(1, maxQty));
-  const [payment, setPayment] = useState<PaymentMethod>("USDC");
+  const btcPrice = useBtcPriceInModal();
   const [purchaseState, setPurchaseState] = useState<"idle" | "success">(
     "idle",
   );
@@ -1323,6 +1351,14 @@ function BuyPacksModal({
 
     // Update releases market (decrement supply)
     buyPacks(release.id, qty);
+
+    // Store transaction: USD ref + BTC amount
+    const btcAmount = btcPrice !== null ? Number(total) / btcPrice : null;
+    console.log("[MintyBuy] purchase", {
+      usdPrice: Number(total),
+      btcAmount,
+      btcPriceAtPurchase: btcPrice,
+    });
 
     // Create sealed packs in Collection
     const totalPacks = release.packsAvailable;
@@ -1762,34 +1798,23 @@ function BuyPacksModal({
                 >
                   Pay with
                 </span>
-                <div style={{ display: "flex", gap: 8 }}>
-                  {PAYMENT_METHODS.map((method) => {
-                    const isSelected = payment === method;
-                    return (
-                      <button
-                        key={method}
-                        type="button"
-                        data-ocid="releases.toggle"
-                        onClick={() => setPayment(method)}
-                        style={{
-                          flex: 1,
-                          padding: "10px 0",
-                          borderRadius: 12,
-                          border: isSelected
-                            ? `2px solid ${accentBorderStrong}`
-                            : "1.5px solid rgba(0,0,0,0.09)",
-                          background: isSelected ? accentBg : "#fff",
-                          color: isSelected ? accentText : "#374151",
-                          fontSize: 12,
-                          fontWeight: isSelected ? 700 : 500,
-                          cursor: "pointer",
-                          transition: "all 0.12s",
-                        }}
-                      >
-                        {method}
-                      </button>
-                    );
-                  })}
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 16px",
+                    borderRadius: 12,
+                    border: `2px solid ${accentBorderStrong}`,
+                    background: accentBg,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>₿</span>
+                  <span
+                    style={{ fontSize: 13, fontWeight: 700, color: accentText }}
+                  >
+                    Bitcoin (BTC)
+                  </span>
                 </div>
               </div>
 
@@ -1803,32 +1828,38 @@ function BuyPacksModal({
                   marginBottom: 16,
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
+                  alignItems: "flex-end",
                 }}
               >
                 <span style={{ fontSize: 13, color: "#6b7280" }}>
                   {qty} pack{qty > 1 ? "s" : ""} × ${currentPrice.toFixed(2)}
                 </span>
-                <span
+                <div
                   style={{
-                    fontSize: 22,
-                    fontWeight: 800,
-                    color: "#111",
-                    letterSpacing: "-0.02em",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: 2,
                   }}
                 >
-                  ${total}
                   <span
                     style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: "#9ca3af",
-                      marginLeft: 4,
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "#111",
+                      letterSpacing: "-0.02em",
                     }}
                   >
-                    {payment}
+                    ${total}
                   </span>
-                </span>
+                  <span
+                    style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}
+                  >
+                    {btcPrice !== null
+                      ? `≈ ${(Number(total) / btcPrice).toFixed(8)} BTC`
+                      : "≈ ... BTC"}
+                  </span>
+                </div>
               </div>
 
               {/* Bonding curve note */}
