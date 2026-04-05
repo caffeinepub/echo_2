@@ -69,7 +69,7 @@ function loadFromStorage(): MomentDraft | null {
     const parsed = JSON.parse(raw) as MomentDraft;
     if (parsed.packSupply === undefined || parsed.packSupply < 10)
       parsed.packSupply = 300;
-    if (parsed.pricePerPackUsd === undefined) parsed.pricePerPackUsd = 10;
+    if (parsed.pricePerPackUsd === undefined) parsed.pricePerPackUsd = 1;
     if (parsed.coverImageIndex === undefined) parsed.coverImageIndex = 0;
     if (parsed.imageCount === undefined) parsed.imageCount = 0;
     if (parsed.hasVideo === undefined) parsed.hasVideo = false;
@@ -140,7 +140,7 @@ export function MomentDraftProvider({
         explicit: false,
         hashtags: [],
         packSupply: 300,
-        pricePerPackUsd: 10,
+        pricePerPackUsd: 1,
         coverImageIndex: 0,
         createdAt: Date.now(),
         completed: false,
@@ -227,10 +227,10 @@ export function MomentDraftProvider({
     });
   }, []);
 
-  const setPricePerPackUsd = useCallback((n: number) => {
+  const setPricePerPackUsd = useCallback((_n: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, pricePerPackUsd: Math.max(1, Math.min(100, n)) };
+      return { ...prev, pricePerPackUsd: 1 };
     });
   }, []);
 

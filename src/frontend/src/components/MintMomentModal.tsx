@@ -19,7 +19,7 @@ const EARNINGS_SCENARIOS = [
 ];
 
 /** Fixed-price earnings estimate (pricePerPack × packs × 0.95) */
-function estimateRevenue(packs: number, pricePerPack = 10): number {
+function estimateRevenue(packs: number, pricePerPack = 1): number {
   return packs * pricePerPack * 0.95;
 }
 
@@ -731,11 +731,11 @@ export function MintMomentModal({
                       fontFamily: "var(--font-ui)",
                     }}
                   >
-                    You set a{" "}
+                    Each pack costs{" "}
                     <span style={{ color: accentColorDark, fontWeight: 600 }}>
-                      fixed price per pack
-                    </span>{" "}
-                    at mint time.
+                      $1
+                    </span>
+                    .
                   </p>
                   <p
                     style={{
@@ -746,8 +746,8 @@ export function MintMomentModal({
                       fontFamily: "var(--font-ui)",
                     }}
                   >
-                    Maximum $100 per pack. All 300 packs sell at the same price.
-                    After the listing period, unsold packs are burned.
+                    All 300 packs are priced at $1 each. After the listing
+                    period, unsold packs are burned.
                   </p>
                 </div>
               </div>
@@ -898,7 +898,7 @@ export function MintMomentModal({
                     lineHeight: 1.5,
                   }}
                 >
-                  Estimated creator proceeds at $10/pack (default price):
+                  Estimated creator proceeds at $1 per pack:
                 </p>
                 <div
                   style={{
@@ -908,7 +908,7 @@ export function MintMomentModal({
                   }}
                 >
                   {EARNINGS_SCENARIOS.map(({ packs, label }) => {
-                    const usd = estimateRevenue(packs, 10);
+                    const usd = estimateRevenue(packs, 1);
                     const btc = btcPrice ? (usd / btcPrice).toFixed(6) : "...";
                     return (
                       <div
