@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 
-type Theme = "dark" | "light";
+type Theme = "light";
 
 interface ThemeContextValue {
   theme: Theme;
@@ -8,42 +8,22 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "dark",
+  theme: "light",
   toggleTheme: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("echo-theme") as Theme | null;
-    if (saved === "light" || saved === "dark") return saved;
-    // Respect system preference
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: light)").matches
-    ) {
-      return "light";
-    }
-    return "dark";
-  });
-
+  // Always force light mode — dark mode has been removed.
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === "light") {
-      root.setAttribute("data-theme", "light");
-      root.classList.remove("dark");
-    } else {
-      root.removeAttribute("data-theme");
-      root.classList.add("dark");
-    }
-    localStorage.setItem("echo-theme", theme);
-  }, [theme]);
-
-  function toggleTheme() {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
-  }
+    root.setAttribute("data-theme", "light");
+    root.classList.remove("dark");
+    // Remove any stale localStorage preference
+    localStorage.removeItem("echo-theme");
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme: "light", toggleTheme: () => {} }}>
       {children}
     </ThemeContext.Provider>
   );

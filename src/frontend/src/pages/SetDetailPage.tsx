@@ -1,7 +1,6 @@
 import { ArrowLeft, Package, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useState } from "react";
-import { useTheme } from "../ThemeContext";
 import type { MockCard, MockSet } from "../store/mockCatalog";
 import { getCards, getCategories, getSets } from "../store/mockCatalog";
 
@@ -564,8 +563,7 @@ function SectionHeader({ label, isDark }: { label: string; isDark: boolean }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = false; // always light mode
   const [selectedCard, setSelectedCard] = useState<MockCard | null>(null);
 
   // Load data

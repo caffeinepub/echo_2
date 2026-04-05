@@ -5,7 +5,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useTheme } from "../ThemeContext";
 
 export type CycleId = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -62,17 +61,17 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
     id: 3,
     name: "blue",
     label: "Cycle 3 — Blue",
-    accentOklch: "0.78 0.10 240",
-    accentOklchDark: "0.82 0.12 240",
-    accentOklchLight: "0.60 0.12 240",
-    accentR: 147,
-    accentG: 197,
-    accentB: 253,
+    accentOklch: "0.58 0.18 240",
+    accentOklchDark: "0.62 0.18 240",
+    accentOklchLight: "0.58 0.18 240",
+    accentR: 75,
+    accentG: 130,
+    accentB: 220,
     packWrapperUrl:
-      "/assets/generated/pack-wrapper-cycle3-blue-transparent.dim_400x560.png",
-    glowDark: "rgba(147,197,253,",
-    glowLight: "rgba(110,160,220,",
-    logoFilter: "hue-rotate(80deg) saturate(0.9)",
+      "/assets/generated/pack-wrapper-cycle3-blue-v2-transparent.dim_400x560.png",
+    glowDark: "rgba(75,130,220,",
+    glowLight: "rgba(75,130,220,",
+    logoFilter: "none",
   },
   4: {
     id: 4,
@@ -131,14 +130,15 @@ interface CycleThemeContextValue {
 }
 
 const CycleThemeContext = createContext<CycleThemeContextValue>({
-  activeCycleId: 1,
-  activeCycle: CYCLE_THEMES[1],
+  activeCycleId: 3,
+  activeCycle: CYCLE_THEMES[3],
   setCycleId: () => {},
 });
 
-function applyThemeVars(cycle: CycleTheme, isDark: boolean) {
+// Always light mode — dark mode has been removed.
+function applyThemeVars(cycle: CycleTheme) {
   const root = document.documentElement;
-  const accent = isDark ? cycle.accentOklchDark : cycle.accentOklchLight;
+  const accent = cycle.accentOklchLight;
   root.style.setProperty("--cycle-accent", `oklch(${accent})`);
   root.style.setProperty("--cycle-accent-oklch", accent);
   root.style.setProperty("--cycle-accent-r", String(cycle.accentR));
@@ -148,10 +148,7 @@ function applyThemeVars(cycle: CycleTheme, isDark: boolean) {
     "--cycle-accent-rgb",
     `${cycle.accentR},${cycle.accentG},${cycle.accentB}`,
   );
-  root.style.setProperty(
-    "--cycle-glow-color",
-    isDark ? cycle.glowDark : cycle.glowLight,
-  );
+  root.style.setProperty("--cycle-glow-color", cycle.glowLight);
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--ring", accent);
 }
@@ -159,21 +156,19 @@ function applyThemeVars(cycle: CycleTheme, isDark: boolean) {
 export function CycleThemeProvider({
   children,
 }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
   const [activeCycleId, setActiveCycleId] = useState<CycleId>(() => {
     const saved = localStorage.getItem("minty_active_cycle");
-    const parsed = saved ? Number.parseInt(saved, 10) : 1;
+    const parsed = saved ? Number.parseInt(saved, 10) : 3;
     if (parsed >= 1 && parsed <= 6) return parsed as CycleId;
-    return 1;
+    return 3; // default blue
   });
 
   const activeCycle = CYCLE_THEMES[activeCycleId];
-  const isDark = theme === "dark";
 
-  // Inject CSS vars whenever cycle or theme changes
+  // Inject CSS vars whenever cycle changes (always light)
   useEffect(() => {
-    applyThemeVars(activeCycle, isDark);
-  }, [activeCycle, isDark]);
+    applyThemeVars(activeCycle);
+  }, [activeCycle]);
 
   const setCycleId = useCallback((id: CycleId) => {
     setActiveCycleId(id);

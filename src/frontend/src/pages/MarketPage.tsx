@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useTheme } from "../ThemeContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 import {
   type MintMomentSetRank,
@@ -887,8 +886,7 @@ export function MarketPage({
   onAlbumClick: _onAlbumClick,
   onSetClick: _onSetClick,
 }: MarketPageProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = false; // always light mode
   const { explicitModeOn } = useUserSettings();
   const [timeRange, setTimeRange] = useState<TimeRange>("ALL_TIME");
   const [selectedSet, setSelectedSet] = useState<MintMomentSetRank | null>(

@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { useTheme } from "../ThemeContext";
 import { isAdminPrincipal } from "../config/admin";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
@@ -1427,8 +1426,7 @@ function CardsTab({ isDark }: { isDark: boolean }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function ManageCatalogPage({ onBack }: { onBack: () => void }) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = false; // always light mode
   const { identity } = useInternetIdentity();
   const [activeTab, setActiveTab] = useState<CatalogTab>("categories");
 

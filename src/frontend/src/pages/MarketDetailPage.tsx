@@ -1,6 +1,5 @@
 import { ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
-import { useTheme } from "../ThemeContext";
 
 interface MarketDetailPageProps {
   id: string;
@@ -8,8 +7,7 @@ interface MarketDetailPageProps {
 }
 
 export function MarketDetailPage({ id, onBack }: MarketDetailPageProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = false; // always light mode
 
   const textPrimary = isDark ? "rgba(220, 248, 235, 0.92)" : "#111";
   const textSecondary = isDark ? "rgba(150, 210, 185, 0.65)" : "#6b7280";

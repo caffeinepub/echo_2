@@ -1,7 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { useTheme } from "../ThemeContext";
 import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
 import { getCards, getCategories, getSets } from "../store/mockCatalog";
 
@@ -72,8 +71,7 @@ function StatCell({
 }
 
 export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const isDark = false; // always light mode
   const [card, setCard] = useState<MockCard | null>(null);
   const [parentSet, setParentSet] = useState<MockSet | null>(null);
   const [parentCategory, setParentCategory] = useState<MockCategory | null>(
