@@ -748,7 +748,7 @@ export function PackOpeningOverlay({
           >
             {isVideo ? (
               <video
-                src={nft.imageUrl}
+                src={nft.previewClipUrl || nft.imageUrl}
                 autoPlay
                 loop
                 muted
@@ -765,6 +765,15 @@ export function PackOpeningOverlay({
               <img
                 src={nft.imageUrl}
                 alt={nft.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "/assets/generated/minty-pack-wrapper.png";
+                  (e.currentTarget as HTMLImageElement).style.objectFit =
+                    "contain";
+                  (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                  (e.currentTarget as HTMLImageElement).style.background =
+                    "#F9F9F7";
+                }}
                 style={{
                   width: "100%",
                   display: "block",

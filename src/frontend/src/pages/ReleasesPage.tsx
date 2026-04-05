@@ -602,6 +602,15 @@ function ReleaseCard({
             <img
               src={release.coverImageUrl}
               alt={release.title}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "/assets/generated/minty-pack-wrapper.png";
+                (e.currentTarget as HTMLImageElement).style.objectFit =
+                  "contain";
+                (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                (e.currentTarget as HTMLImageElement).style.background =
+                  "#F9F9F7";
+              }}
               style={{
                 width: "100%",
                 height: "100%",
@@ -1548,6 +1557,15 @@ function BuyPacksModal({
               <img
                 src={release.coverImageUrl}
                 alt={release.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "/assets/generated/minty-pack-wrapper.png";
+                  (e.currentTarget as HTMLImageElement).style.objectFit =
+                    "contain";
+                  (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                  (e.currentTarget as HTMLImageElement).style.background =
+                    "#F9F9F7";
+                }}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -2377,6 +2395,15 @@ function PlaceBidModal({
             <img
               src={listing.nftImageUrl}
               alt={listing.nftTitle}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "/assets/generated/minty-pack-wrapper.png";
+                (e.currentTarget as HTMLImageElement).style.objectFit =
+                  "contain";
+                (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                (e.currentTarget as HTMLImageElement).style.background =
+                  "#F9F9F7";
+              }}
               style={{
                 width: "100%",
                 height: "100%",
@@ -2734,6 +2761,15 @@ function AuctionDetailModal({
               <img
                 src={listing.nftImageUrl}
                 alt={listing.nftTitle}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "/assets/generated/minty-pack-wrapper.png";
+                  (e.currentTarget as HTMLImageElement).style.objectFit =
+                    "contain";
+                  (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                  (e.currentTarget as HTMLImageElement).style.background =
+                    "#F9F9F7";
+                }}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -3248,6 +3284,15 @@ function AuctionListCard({
             <img
               src={listing.nftImageUrl}
               alt={listing.nftTitle}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "/assets/generated/minty-pack-wrapper.png";
+                (e.currentTarget as HTMLImageElement).style.objectFit =
+                  "contain";
+                (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                (e.currentTarget as HTMLImageElement).style.background =
+                  "#F9F9F7";
+              }}
               style={{
                 width: "100%",
                 height: "100%",

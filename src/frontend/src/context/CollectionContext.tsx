@@ -11,6 +11,7 @@ const LS_SEEDED_KEY = "minty_collection_seeded";
 const LS_PACKS_KEY = "minty_sealed_packs";
 const LS_PACKS_SEEDED_KEY = "minty_packs_seeded";
 const LS_BURNED_KEY = "minty_burned_counts";
+const LS_LB_SEEDED_KEY = "minty_lb_seeded";
 // Track packs that are currently being opened (atomicity guard)
 const OPENING_KEY = "minty_opening_packs";
 
@@ -35,6 +36,12 @@ export interface CollectionNFT {
   capturedAt?: string;
   /** Human-readable location, e.g. "New York, NY" */
   location?: string;
+  /** Highest historical purchase price paid (USD) */
+  purchasePrice?: number;
+  /** Short description or caption */
+  caption?: string;
+  /** URL for a muted looping 2-second preview clip */
+  previewClipUrl?: string;
 }
 
 export interface SealedPack {
@@ -78,7 +85,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     editionNumber: 3,
     totalSupply: 100,
     mediaType: "photo",
-    imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=60",
     rarity: "Common",
     mintDate: new Date(Date.now() - 86400000 * 5).toISOString(),
     creator: "minty.xyz",
@@ -97,7 +105,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     editionNumber: 7,
     totalSupply: 50,
     mediaType: "video",
-    imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=60",
     rarity: "Rare",
     mintDate: new Date(Date.now() - 86400000 * 12).toISOString(),
     creator: "minty.xyz",
@@ -116,7 +125,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     editionNumber: 22,
     totalSupply: 200,
     mediaType: "photo",
-    imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=60",
     rarity: "Common",
     mintDate: new Date(Date.now() - 86400000 * 20).toISOString(),
     creator: "minty.xyz",
@@ -135,7 +145,8 @@ const MOCK_NFTS: CollectionNFT[] = [
     editionNumber: 1,
     totalSupply: 25,
     mediaType: "photo",
-    imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+    imageUrl:
+      "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&q=60",
     rarity: "Common",
     mintDate: new Date(Date.now() - 86400000 * 30).toISOString(),
     creator: "minty.xyz",
@@ -165,7 +176,8 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
       editionNumber: 4,
       totalSupply: 100,
       mediaType: "photo",
-      imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+      imageUrl:
+        "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?w=400&q=60",
       rarity: "Common",
       mintDate: new Date().toISOString(),
       creator: "minty.xyz",
@@ -192,7 +204,8 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
       editionNumber: 2,
       totalSupply: 50,
       mediaType: "video",
-      imageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
+      imageUrl:
+        "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=60",
       rarity: "Rare",
       mintDate: new Date().toISOString(),
       creator: "minty.xyz",
@@ -203,6 +216,223 @@ const MOCK_SEALED_PACKS: SealedPack[] = [
       addedAt: Date.now() - 500,
     },
     createdAt: Date.now() - 1000 * 60 * 30,
+  },
+];
+
+// Leaderboard seed data — top 10 most valuable moments
+const LEADERBOARD_SEED: CollectionNFT[] = [
+  {
+    id: "lb_1",
+    title: "Mountain Twilight",
+    setName: "Golden Horizons",
+    editionNumber: 1,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    purchasePrice: 285.0,
+    caption:
+      "A stunning golden twilight over jagged peaks — captured in perfect stillness.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 3).toISOString(),
+    creator: "naturemints",
+    owners: ["0xabc1"],
+    views: 8420,
+    isLeader: true,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 3,
+  },
+  {
+    id: "lb_2",
+    title: "City Pulse",
+    setName: "Urban Nights",
+    editionNumber: 7,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    purchasePrice: 241.5,
+    caption: "Neon-lit streets blur into rivers of light at 2 AM.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 7).toISOString(),
+    creator: "urbanvisions",
+    owners: ["0xdef2"],
+    views: 5310,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 7,
+  },
+  {
+    id: "lb_3",
+    title: "Aurora Veil",
+    setName: "Northern Lights Series",
+    editionNumber: 2,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    purchasePrice: 198.75,
+    caption: "Dancing ribbons of green and violet drape the Arctic sky.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 10).toISOString(),
+    creator: "aurorachaser",
+    owners: ["0xghi3"],
+    views: 9102,
+    isLeader: true,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 10,
+  },
+  {
+    id: "lb_4",
+    title: "Desert Bloom",
+    setName: "Rare Earth Drops",
+    editionNumber: 12,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    purchasePrice: 167.2,
+    caption: "One brief week when the Sahara edge erupts in wildflowers.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 14).toISOString(),
+    creator: "earthdrifter",
+    owners: ["0xjkl4"],
+    views: 3780,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 14,
+  },
+  {
+    id: "lb_5",
+    title: "Fog Season Arrival",
+    setName: "Pacific Moments",
+    editionNumber: 5,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    purchasePrice: 142.0,
+    caption: "The bay disappears under the first fog bank of November.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 18).toISOString(),
+    creator: "baywatch.nft",
+    owners: ["0xmno5"],
+    views: 2940,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 18,
+  },
+  {
+    id: "lb_6",
+    title: "Summit Break",
+    setName: "Golden Horizons",
+    editionNumber: 3,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    purchasePrice: 118.5,
+    caption: "Breaking through cloud cover after a 6-hour ascent.",
+    rarity: "Rare",
+    mintDate: new Date(Date.now() - 86400000 * 22).toISOString(),
+    creator: "highaltitude",
+    owners: ["0xpqr6"],
+    views: 4210,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 22,
+  },
+  {
+    id: "lb_7",
+    title: "Late Night Drive",
+    setName: "Urban Nights",
+    editionNumber: 14,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    purchasePrice: 95.0,
+    caption:
+      "Midnight cruise with the windows down and city lights streaming past.",
+    rarity: "Common",
+    mintDate: new Date(Date.now() - 86400000 * 25).toISOString(),
+    creator: "nightdrive.eth",
+    owners: ["0xstu7"],
+    views: 1870,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 25,
+  },
+  {
+    id: "lb_8",
+    title: "Tundra Silence",
+    setName: "Northern Lights Series",
+    editionNumber: 9,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    purchasePrice: 72.3,
+    caption:
+      "Thirty below zero, no wind, just white stillness as far as you can see.",
+    rarity: "Common",
+    mintDate: new Date(Date.now() - 86400000 * 30).toISOString(),
+    creator: "aurorachaser",
+    owners: ["0xvwx8"],
+    views: 1450,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 30,
+  },
+  {
+    id: "lb_9",
+    title: "Golden Ratio",
+    setName: "Rare Earth Drops",
+    editionNumber: 21,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    purchasePrice: 48.9,
+    caption: "Symmetry found in a sun-drenched canyon wall at midday.",
+    rarity: "Common",
+    mintDate: new Date(Date.now() - 86400000 * 35).toISOString(),
+    creator: "earthdrifter",
+    owners: ["0xyza9"],
+    views: 990,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 35,
+  },
+  {
+    id: "lb_10",
+    title: "Harbor First Light",
+    setName: "Pacific Moments",
+    editionNumber: 18,
+    totalSupply: 300,
+    mediaType: "video",
+    imageUrl:
+      "https://images.unsplash.com/photo-1519181245277-cffeb31da2e3?w=200&q=60",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    purchasePrice: 27.0,
+    caption: "The harbor glows amber seconds before the sun clears the hills.",
+    rarity: "Common",
+    mintDate: new Date(Date.now() - 86400000 * 40).toISOString(),
+    creator: "baywatch.nft",
+    owners: ["0xbcd10"],
+    views: 620,
+    isLeader: false,
+    hasOwnershipHistory: true,
+    addedAt: Date.now() - 86400000 * 40,
   },
 ];
 
@@ -295,6 +525,23 @@ function unmarkPackOpening(packId: string) {
   }
 }
 
+// Migrate: clear old pokemon TCG image URLs from localStorage before component mounts
+function migrateLegacyData() {
+  try {
+    const raw = localStorage.getItem("minty_collection");
+    const rawPacks = localStorage.getItem("minty_sealed_packs");
+    if (raw?.includes("pokemontcg.io") || rawPacks?.includes("pokemontcg.io")) {
+      localStorage.removeItem("minty_collection");
+      localStorage.removeItem("minty_collection_seeded");
+      localStorage.removeItem("minty_sealed_packs");
+      localStorage.removeItem("minty_packs_seeded");
+    }
+  } catch {
+    // ignore
+  }
+}
+migrateLegacyData();
+
 export function CollectionProvider({
   children,
 }: { children: React.ReactNode }) {
@@ -323,6 +570,15 @@ export function CollectionProvider({
     if (!alreadySeeded) {
       setSealedPacks((prev) => [...MOCK_SEALED_PACKS, ...prev]);
       localStorage.setItem(LS_PACKS_SEEDED_KEY, "1");
+    }
+  }, []);
+
+  // Seed leaderboard NFTs once on first mount
+  useEffect(() => {
+    const alreadySeeded = localStorage.getItem(LS_LB_SEEDED_KEY);
+    if (!alreadySeeded) {
+      setNfts((prev) => [...LEADERBOARD_SEED, ...prev]);
+      localStorage.setItem(LS_LB_SEEDED_KEY, "1");
     }
   }, []);
 

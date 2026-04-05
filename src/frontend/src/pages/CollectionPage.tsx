@@ -267,6 +267,14 @@ function VaultTile({
           <img
             src={imageUrl}
             alt="Collectible"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "/assets/generated/minty-pack-wrapper.png";
+              (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
+              (e.currentTarget as HTMLImageElement).style.padding = "12px";
+              (e.currentTarget as HTMLImageElement).style.background =
+                "#F9F9F7";
+            }}
             style={{
               position: "absolute",
               inset: 0,
@@ -930,6 +938,14 @@ function MediaViewerModal({
           <img
             src={nft.imageUrl}
             alt={nft.title}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "/assets/generated/minty-pack-wrapper.png";
+              (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
+              (e.currentTarget as HTMLImageElement).style.padding = "12px";
+              (e.currentTarget as HTMLImageElement).style.background =
+                "#F9F9F7";
+            }}
             style={{
               maxWidth: "90vw",
               maxHeight: "80vh",
@@ -1491,6 +1507,14 @@ function SendToAuctionModal({
           <img
             src={nft.imageUrl}
             alt={nft.title}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "/assets/generated/minty-pack-wrapper.png";
+              (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
+              (e.currentTarget as HTMLImageElement).style.padding = "12px";
+              (e.currentTarget as HTMLImageElement).style.background =
+                "#F9F9F7";
+            }}
             style={{
               width: "100%",
               height: "100%",
@@ -1810,6 +1834,15 @@ function NFTDetailSheet({
               <img
                 src={nft.imageUrl}
                 alt={nft.title}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "/assets/generated/minty-pack-wrapper.png";
+                  (e.currentTarget as HTMLImageElement).style.objectFit =
+                    "contain";
+                  (e.currentTarget as HTMLImageElement).style.padding = "12px";
+                  (e.currentTarget as HTMLImageElement).style.background =
+                    "#F9F9F7";
+                }}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -2400,6 +2433,256 @@ function EmptyState({ onGoToLibrary }: { onGoToLibrary?: () => void }) {
   );
 }
 
+// ─── Leaderboard Components ───────────────────────────────────────────────────
+
+function LeaderboardCard({ nft, rank }: { nft: CollectionNFT; rank: number }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || !videoRef.current) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) videoRef.current?.play().catch(() => {});
+        else videoRef.current?.pause();
+      },
+      { threshold: 0.3 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const rankColor =
+    rank === 1
+      ? "#C9A84C"
+      : rank === 2
+        ? "#9B9B9B"
+        : rank === 3
+          ? "#CD7F32"
+          : "rgba(0,0,0,0.22)";
+  const rankEmoji =
+    rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+  const price = nft.purchasePrice ?? 0;
+
+  return (
+    <div
+      ref={wrapperRef}
+      data-ocid={`collection.leaderboard.item.${rank}`}
+      style={{
+        background: "#fff",
+        borderRadius: "14px",
+        padding: "12px 14px",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+        border:
+          rank === 1
+            ? "1px solid rgba(201,168,76,0.35)"
+            : "1px solid rgba(0,0,0,0.05)",
+        borderLeft:
+          rank === 1
+            ? "3px solid #C9A84C"
+            : rank === 2
+              ? "3px solid #9B9B9B"
+              : rank === 3
+                ? "3px solid #CD7F32"
+                : "1px solid rgba(0,0,0,0.05)",
+      }}
+    >
+      {/* Rank */}
+      <div
+        style={{
+          minWidth: 28,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: rank <= 3 ? 18 : 15,
+            fontWeight: 800,
+            color: rankColor,
+            lineHeight: 1,
+          }}
+        >
+          {rank}
+        </span>
+        {rankEmoji && <span style={{ fontSize: 12 }}>{rankEmoji}</span>}
+      </div>
+
+      {/* Mini preview */}
+      <div
+        style={{
+          width: 64,
+          height: 80,
+          borderRadius: 10,
+          overflow: "hidden",
+          flexShrink: 0,
+          background: "#f0f0f0",
+        }}
+      >
+        {nft.previewClipUrl ? (
+          <video
+            ref={videoRef}
+            src={nft.previewClipUrl}
+            poster={nft.imageUrl}
+            muted
+            loop
+            playsInline
+            preload="none"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <img
+            src={nft.imageUrl}
+            alt={nft.title}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "/assets/generated/minty-pack-wrapper.png";
+              (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
+              (e.currentTarget as HTMLImageElement).style.padding = "12px";
+              (e.currentTarget as HTMLImageElement).style.background =
+                "#F9F9F7";
+            }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        )}
+      </div>
+
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#111",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {nft.title}
+        </div>
+        <div
+          style={{
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: 11,
+            fontWeight: 500,
+            color: "rgba(0,0,0,0.4)",
+            marginTop: 2,
+          }}
+        >
+          @{nft.creator}
+        </div>
+        {nft.caption && (
+          <div
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: 11,
+              color: "rgba(0,0,0,0.35)",
+              marginTop: 2,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {nft.caption}
+          </div>
+        )}
+        <div
+          style={{
+            marginTop: 6,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 5,
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--cycle-accent)",
+            }}
+          >
+            $
+            {price.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+          <span
+            style={{
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: 10,
+              color: "rgba(0,0,0,0.28)",
+              fontWeight: 500,
+            }}
+          >
+            highest sale
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeaderboardView({ nfts }: { nfts: CollectionNFT[] }) {
+  const ranked = [...nfts]
+    .filter((n) => (n.purchasePrice ?? 0) > 0)
+    .sort((a, b) => (b.purchasePrice ?? 0) - (a.purchasePrice ?? 0))
+    .slice(0, 10);
+
+  if (ranked.length === 0) {
+    return (
+      <div
+        data-ocid="collection.leaderboard.empty_state"
+        style={{
+          textAlign: "center",
+          padding: "60px 20px",
+          color: "rgba(0,0,0,0.35)",
+          fontFamily: "DM Sans, sans-serif",
+          fontSize: "14px",
+        }}
+      >
+        No purchase history yet
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+        paddingBottom: "20px",
+      }}
+    >
+      {ranked.map((nft, idx) => (
+        <LeaderboardCard key={nft.id} nft={nft} rank={idx + 1} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Main CollectionPage ──────────────────────────────────────────────────────
 export function CollectionPage({
   onGoToLibrary,
@@ -2428,6 +2711,10 @@ export function CollectionPage({
   const [burnTarget, setBurnTarget] = useState<CollectionNFT | null>(null);
   const [showBurnConfirm, setShowBurnConfirm] = useState(false);
   const [burnFeedback, setBurnFeedback] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"collection" | "leaderboard">(
+    "collection",
+  );
 
   const setGroups = buildSetGroups(sealedPacks, nfts);
   const isEmpty = setGroups.length === 0;
@@ -2519,7 +2806,50 @@ export function CollectionPage({
     >
       <style>{KEYFRAMES}</style>
 
-      {isEmpty ? (
+      {/* ── Collection / Leaderboard segmented toggle ── */}
+      <div
+        style={{
+          display: "flex",
+          background: "rgba(var(--cycle-accent-rgb),0.08)",
+          borderRadius: "100px",
+          padding: "3px",
+          margin: "0 auto 20px",
+          width: "fit-content",
+        }}
+      >
+        {(["collection", "leaderboard"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            data-ocid={
+              tab === "collection"
+                ? "collection.tab"
+                : "collection.leaderboard.tab"
+            }
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "8px 20px",
+              borderRadius: "100px",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "13px",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              transition: "all 0.18s ease",
+              background:
+                activeTab === tab ? "var(--cycle-accent)" : "transparent",
+              color: activeTab === tab ? "#fff" : "rgba(0,0,0,0.45)",
+            }}
+          >
+            {tab === "collection" ? "Collection" : "Leaderboard"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "leaderboard" ? (
+        <LeaderboardView nfts={nfts} />
+      ) : isEmpty ? (
         <EmptyState onGoToLibrary={onGoToLibrary} />
       ) : (
         <div>
