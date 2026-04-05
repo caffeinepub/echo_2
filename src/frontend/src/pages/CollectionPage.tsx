@@ -52,10 +52,6 @@ function formatDate(isoStr: string): string {
   }
 }
 
-function formatTimestamp(ts: number): string {
-  return formatDate(new Date(ts).toISOString());
-}
-
 function shortenAddress(addr: string): string {
   if (addr.length <= 12) return addr;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -172,6 +168,7 @@ const KEYFRAMES = `
     80%  { opacity: 1; transform: translateX(-50%) translateY(0); }
     100% { opacity: 0; transform: translateX(-50%) translateY(0); }
   }
+  .pack-scroll-row::-webkit-scrollbar { display: none; }
 `;
 
 // ─── Vault Tile ───────────────────────────────────────────────────────────────
@@ -402,312 +399,6 @@ function VaultTile({
   );
 }
 
-// ─── Inline Description Panel ─────────────────────────────────────────────────
-interface InlineDescPanelProps {
-  type: "pack" | "nft";
-  pack?: SealedPack;
-  nft?: CollectionNFT;
-  burnedCount?: number;
-  onClose: () => void;
-  onSecondTap: () => void;
-  onBurn?: () => void;
-}
-
-function InlineDescPanel({
-  type,
-  pack,
-  nft,
-  burnedCount = 0,
-  onClose,
-  onSecondTap,
-  onBurn,
-}: InlineDescPanelProps) {
-  const rc = nft ? rarityColor(nft.rarity) : MINT_TEXT;
-
-  return (
-    <div
-      data-ocid="collection.panel"
-      style={{
-        background: "#FFFFFF",
-        borderRadius: "12px",
-        border: "1px solid rgba(var(--cycle-accent-rgb) / 0.18)",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-        padding: "14px 14px 16px",
-        margin: "4px 0 4px",
-        animation: "panelReveal 0.28s cubic-bezier(0.32,0,0.12,1)",
-        position: "relative",
-      }}
-    >
-      {/* Close */}
-      <button
-        type="button"
-        data-ocid="collection.close_button"
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          background: "rgba(0,0,0,0.06)",
-          border: "none",
-          borderRadius: "50%",
-          width: "22px",
-          height: "22px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          color: "#666",
-          padding: 0,
-        }}
-      >
-        <X size={12} />
-      </button>
-
-      {/* Header row */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "8px",
-          marginBottom: "10px",
-          paddingRight: "28px",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#111",
-              marginBottom: "2px",
-            }}
-          >
-            {type === "pack" ? "Sealed Pack" : nft?.title}
-          </div>
-          <div style={{ fontSize: "11px", color: MINT_TEXT, fontWeight: 600 }}>
-            {type === "pack" ? pack?.setName : nft?.setName}
-          </div>
-        </div>
-        <div
-          style={{
-            background: type === "pack" ? MINT_SOFT : "rgba(123,108,246,0.10)",
-            color:
-              type === "pack"
-                ? MINT_TEXT
-                : nft?.mediaType === "video"
-                  ? "#7B6CF6"
-                  : MINT_TEXT,
-            borderRadius: "20px",
-            padding: "3px 8px",
-            fontSize: "9px",
-            fontWeight: 700,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            flexShrink: 0,
-            marginTop: "1px",
-          }}
-        >
-          {type === "pack"
-            ? "SEALED"
-            : nft?.mediaType === "video"
-              ? "VIDEO 30s"
-              : "PHOTO"}
-        </div>
-        {type === "nft" && nft?.rarity && (
-          <div
-            style={{
-              background:
-                nft.rarity === "Rare"
-                  ? "rgba(var(--cycle-accent-rgb) / 0.10)"
-                  : "rgba(0,0,0,0.05)",
-              color: nft.rarity === "Rare" ? "var(--cycle-accent)" : "#9B9B9B",
-              border:
-                nft.rarity === "Rare"
-                  ? "1px solid rgba(var(--cycle-accent-rgb) / 0.25)"
-                  : "1px solid rgba(0,0,0,0.08)",
-              borderRadius: "20px",
-              padding: "3px 8px",
-              fontSize: "9px",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase" as const,
-              flexShrink: 0,
-              marginTop: "1px",
-            }}
-          >
-            {nft.rarity === "Rare" ? "RARE" : "COMMON"}
-          </div>
-        )}
-      </div>
-
-      {/* Separator */}
-      <div
-        style={{
-          height: "1px",
-          background: "rgba(0,0,0,0.06)",
-          marginBottom: "10px",
-        }}
-      />
-
-      {/* Metadata rows */}
-      {type === "pack" && pack && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "6px 12px",
-          }}
-        >
-          <MetaCell
-            label="Print"
-            value={`#${pack.editionNumber} of ${pack.totalSupply}`}
-          />
-          <MetaCell label="Contains" value="1 collectible" />
-          <MetaCell label="Minted" value={formatTimestamp(pack.createdAt)} />
-          <MetaCell
-            label="Type"
-            value={
-              pack.collectibleType === "video" ? "Video Moment" : "Photo Moment"
-            }
-          />
-        </div>
-      )}
-
-      {type === "nft" && nft && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "6px 12px",
-          }}
-        >
-          <MetaCell
-            label="Print"
-            value={`#${nft.editionNumber} of ${nft.totalSupply}`}
-          />
-          <MetaCell label="Rarity" value={nft.rarity} valueColor={rc} />
-          <MetaCell label="Minted" value={String(nft.totalSupply)} />
-          <MetaCell label="Burned" value={String(burnedCount)} />
-          <MetaCell
-            label="Remaining"
-            value={String(nft.totalSupply - burnedCount)}
-          />
-          <MetaCell label="Creator" value={nft.creator} />
-        </div>
-      )}
-
-      {/* Separator */}
-      <div
-        style={{
-          height: "1px",
-          background: "rgba(0,0,0,0.06)",
-          margin: "10px 0 8px",
-        }}
-      />
-
-      {/* Hint */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "8px",
-        }}
-      >
-        <button
-          type="button"
-          data-ocid="collection.secondary_button"
-          onClick={onSecondTap}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontSize: "10px",
-            color: MINT_TEXT,
-            fontWeight: 600,
-            letterSpacing: "0.02em",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
-          <span>→</span>
-          <span>
-            {type === "pack"
-              ? "Tap again to open pack detail"
-              : "Tap again to view full image"}
-          </span>
-        </button>
-
-        {type === "nft" && onBurn && (
-          <button
-            type="button"
-            data-ocid="collection.delete_button"
-            onClick={onBurn}
-            style={{
-              background: "none",
-              border: "none",
-              padding: "2px 0",
-              cursor: "pointer",
-              fontSize: "10px",
-              color: "rgba(var(--cycle-accent-rgb) / 0.60)",
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-              display: "flex",
-              alignItems: "center",
-              gap: "3px",
-              flexShrink: 0,
-            }}
-          >
-            <Flame size={9} style={{ opacity: 0.7 }} />
-            Burn
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MetaCell({
-  label,
-  value,
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: "10px",
-          color: "#9B9B9B",
-          textTransform: "uppercase",
-          letterSpacing: "0.07em",
-          fontWeight: 600,
-          marginBottom: "2px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "12px",
-          fontWeight: 600,
-          color: valueColor ?? "#111",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 // ─── Tile Row Renderer (3-col grid with inline panel) ─────────────────────────
 interface TileItem {
   id: string;
@@ -716,15 +407,113 @@ interface TileItem {
   nft?: CollectionNFT;
 }
 
+// ─── Pack Scroll Card (horizontal scroll row) ─────────────────────────────────
+interface PackScrollCardProps {
+  item: TileItem;
+  ocidIndex: number;
+  onTap: (id: string) => void;
+}
+
+function PackScrollCard({ item, ocidIndex, onTap }: PackScrollCardProps) {
+  return (
+    <button
+      type="button"
+      data-ocid={`collection.item.${ocidIndex}`}
+      onClick={() => onTap(item.id)}
+      style={{
+        width: "110px",
+        height: "138px",
+        flexShrink: 0,
+        borderRadius: "12px",
+        background: "#F9F9F7",
+        border: "1.5px solid rgba(0,0,0,0.08)",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.10)",
+        position: "relative",
+        overflow: "hidden",
+        cursor: "pointer",
+        padding: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Pack wrapper image */}
+      <img
+        src="/assets/generated/minty-pack-wrapper.png"
+        alt="Sealed pack"
+        draggable={false}
+        style={{
+          width: "75%",
+          height: "75%",
+          objectFit: "contain",
+          display: "block",
+          filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.18))",
+        }}
+      />
+
+      {/* SEALED badge — top-left */}
+      <div
+        style={{
+          position: "absolute",
+          top: "6px",
+          left: "6px",
+          background: "rgba(var(--cycle-accent-rgb),0.90)",
+          borderRadius: "20px",
+          padding: "2px 6px",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "7px",
+            color: "#fff",
+            fontWeight: 700,
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+          }}
+        >
+          SEALED
+        </span>
+      </div>
+
+      {/* Edition number — bottom-left */}
+      {item.pack?.editionNumber !== undefined && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "6px",
+            left: "6px",
+            background: "rgba(0,0,0,0.42)",
+            borderRadius: "20px",
+            padding: "2px 6px",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "8px",
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 600,
+            }}
+          >
+            #{item.pack.editionNumber}
+          </span>
+        </div>
+      )}
+    </button>
+  );
+}
+
 function TileRows({
   items,
   selectedTileId,
   ocidOffset,
-  burnedCounts,
+  burnedCounts: _burnedCounts,
   onTap,
   onSecondTap,
-  onClosePanel,
-  onBurn,
+  onClosePanel: _onClosePanel,
+  onBurn: _onBurn,
 }: {
   items: TileItem[];
   selectedTileId: string | null;
@@ -743,11 +532,6 @@ function TileRows({
   return (
     <div>
       {rows.map((row, rowIdx) => {
-        const rowHasSelected = row.some((item) => item.id === selectedTileId);
-        const selectedItem = rowHasSelected
-          ? row.find((item) => item.id === selectedTileId)
-          : undefined;
-
         return (
           <div key={row[0]?.id ?? `row-${rowIdx}`}>
             {/* Tile grid row — position:relative so expanded CollectibleCards (z-50) display above siblings */}
@@ -755,8 +539,8 @@ function TileRows({
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "8px",
-                marginBottom: rowHasSelected ? "0" : "8px",
+                gap: "6px",
+                marginBottom: "6px",
                 position: "relative",
               }}
             >
@@ -809,28 +593,8 @@ function TileRows({
               {row.length === 2 && <div />}
             </div>
 
-            {/* Inline panel after matching row */}
-            {rowHasSelected && selectedItem && (
-              <div style={{ marginBottom: "8px" }}>
-                <InlineDescPanel
-                  type={selectedItem.isPack ? "pack" : "nft"}
-                  pack={selectedItem.pack}
-                  nft={selectedItem.nft}
-                  burnedCount={
-                    selectedItem.nft
-                      ? (burnedCounts[selectedItem.nft.id] ?? 0)
-                      : 0
-                  }
-                  onClose={onClosePanel}
-                  onSecondTap={() => onSecondTap(selectedItem.id)}
-                  onBurn={
-                    selectedItem.nft
-                      ? () => onBurn(selectedItem.nft!)
-                      : undefined
-                  }
-                />
-              </div>
-            )}
+            {/* Note: NFT items use CollectibleCard which handles inline expansion natively.
+                 Packs now use horizontal scroll row (PackScrollCard), so inline panel is not used. */}
           </div>
         );
       })}
@@ -972,9 +736,9 @@ function SetSection({
         )}
       </div>
 
-      {/* Sealed packs grid */}
+      {/* Sealed packs — horizontal scroll row */}
       {packItems.length > 0 && (
-        <div style={{ marginBottom: "10px" }}>
+        <div style={{ marginBottom: "12px" }}>
           <div
             style={{
               fontSize: "10px",
@@ -982,7 +746,7 @@ function SetSection({
               letterSpacing: "0.10em",
               color: MINT_TEXT,
               fontWeight: 700,
-              marginBottom: "8px",
+              marginBottom: "10px",
               display: "flex",
               alignItems: "center",
               gap: "5px",
@@ -991,16 +755,27 @@ function SetSection({
             <Package size={10} />
             SEALED PACKS · {packItems.length}
           </div>
-          <TileRows
-            items={packItems}
-            selectedTileId={selectedTileId}
-            ocidOffset={0}
-            burnedCounts={burnedCounts}
-            onTap={onTap}
-            onSecondTap={onSecondTap}
-            onClosePanel={onClosePanel}
-            onBurn={onBurn}
-          />
+          {/* Horizontal scroll row */}
+          <div
+            className="pack-scroll-row"
+            style={{
+              display: "flex",
+              gap: "12px",
+              overflowX: "auto",
+              paddingBottom: "8px",
+              scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {packItems.map((item, idx) => (
+              <PackScrollCard
+                key={item.id}
+                item={item}
+                ocidIndex={idx + 1}
+                onTap={onTap}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -1010,7 +785,7 @@ function SetSection({
           style={{
             height: "1px",
             background: "rgba(0,0,0,0.06)",
-            margin: "4px 0 12px",
+            margin: "12px 0 16px",
           }}
         />
       )}
@@ -1026,6 +801,7 @@ function SetSection({
               color: MINT_TEXT,
               fontWeight: 700,
               marginBottom: "8px",
+              marginTop: packItems.length > 0 ? "0" : "0",
               display: "flex",
               alignItems: "center",
               gap: "5px",
@@ -2744,14 +2520,14 @@ export function CollectionPage({
       <style>{KEYFRAMES}</style>
 
       {/* Page header */}
-      <div style={{ marginBottom: "20px" }}>
+      <div style={{ marginBottom: "20px", paddingTop: "4px" }}>
         <h1
           style={{
-            fontSize: "24px",
+            fontSize: "22px",
             fontWeight: 500,
-            color: "#333",
+            color: "#111",
             margin: 0,
-            fontFamily: "var(--font-ui)",
+            fontFamily: "DM Sans, sans-serif",
             lineHeight: 1.1,
             letterSpacing: "0.08em",
             textTransform: "uppercase" as const,
@@ -2759,9 +2535,6 @@ export function CollectionPage({
         >
           Collection
         </h1>
-        <p style={{ fontSize: "12px", color: "#6B6B6B", margin: "3px 0 0" }}>
-          Your digital vault
-        </p>
       </div>
 
       {isEmpty ? (

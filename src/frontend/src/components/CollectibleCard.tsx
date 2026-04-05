@@ -5,7 +5,6 @@ import type { CollectionNFT } from "../context/CollectionContext";
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MINT_ACCENT = "var(--cycle-accent)";
 const MINT_BORDER = "rgba(var(--cycle-accent-rgb) / 0.25)";
-const MINT_GLOW = "rgba(var(--cycle-accent-rgb) / 0.18)";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export function formatCapturedAt(isoStr: string): string {
@@ -46,8 +45,8 @@ function Pill({
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
         borderRadius: "999px",
-        padding: "3px 8px",
-        fontSize: "10px",
+        padding: "3px 7px",
+        fontSize: "9px",
         color: "rgba(255,255,255,0.92)",
         fontWeight: 500,
         letterSpacing: "0.02em",
@@ -92,19 +91,21 @@ export function CollectibleCard({
         // Layout: hold the grid slot, never cause reflow
         position: "relative",
         aspectRatio: "4/5",
-        borderRadius: "16px",
+        borderRadius: "14px",
         overflow: "hidden",
         cursor: "pointer",
-        // Borders & shadows
-        border: `1px solid ${isExpanded ? "rgba(var(--cycle-accent-rgb) / 0.55)" : MINT_BORDER}`,
+        // Borders & shadows — subtle inspect-mode expansion
+        border: `1px solid ${
+          isExpanded ? "rgba(var(--cycle-accent-rgb) / 0.45)" : MINT_BORDER
+        }`,
         boxShadow: isExpanded
-          ? `0 8px 48px rgba(0,0,0,0.70), 0 0 0 1px ${MINT_GLOW}, 0 0 32px ${MINT_GLOW}`
-          : "0 4px 24px rgba(0,0,0,0.45)",
-        // Scale expand — CSS transform only, no layout shift
-        transform: isExpanded ? "scale(1.62)" : "scale(1)",
+          ? "0 6px 24px rgba(0,0,0,0.28), 0 0 0 1px rgba(var(--cycle-accent-rgb) / 0.20)"
+          : "0 2px 12px rgba(0,0,0,0.18)",
+        // Subtle scale — inspect mode, not fullscreen takeover
+        transform: isExpanded ? "scale(1.12)" : "scale(1)",
         transformOrigin: "center center",
         transition:
-          "transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 300ms ease, border-color 200ms ease",
+          "transform 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 280ms ease, border-color 180ms ease",
         zIndex: isExpanded ? 50 : 1,
         // Prevent bleed of scaled card outside parent
         isolation: "isolate",
@@ -146,8 +147,8 @@ export function CollectibleCard({
           >
             <div
               style={{
-                width: "28px",
-                height: "28px",
+                width: "24px",
+                height: "24px",
                 borderRadius: "50%",
                 background: "rgba(0,0,0,0.55)",
                 backdropFilter: "blur(6px)",
@@ -159,7 +160,7 @@ export function CollectibleCard({
               }}
             >
               <Play
-                size={12}
+                size={10}
                 style={{ color: "#fff", marginLeft: "1px" }}
                 fill="#fff"
               />
@@ -188,9 +189,9 @@ export function CollectibleCard({
         style={{
           position: "absolute",
           inset: "0 0 auto 0",
-          height: "45%",
+          height: "40%",
           background:
-            "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, transparent 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0.48) 0%, transparent 100%)",
           pointerEvents: "none",
         }}
       />
@@ -199,9 +200,9 @@ export function CollectibleCard({
         style={{
           position: "absolute",
           inset: "auto 0 0 0",
-          height: "45%",
+          height: "40%",
           background:
-            "linear-gradient(to top, rgba(0,0,0,0.62) 0%, transparent 100%)",
+            "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
           pointerEvents: "none",
         }}
       />
@@ -210,23 +211,25 @@ export function CollectibleCard({
       <div
         style={{
           position: "absolute",
-          top: 7,
-          left: 7,
+          top: 6,
+          left: 6,
           display: "flex",
           alignItems: "center",
-          gap: "4px",
+          gap: "3px",
           pointerEvents: "none",
         }}
       >
         {isVideo && (
           <Pill>
-            <Play size={7} fill="currentColor" style={{ opacity: 0.9 }} />
-            <span style={{ fontSize: "9px" }}>VIDEO</span>
+            <Play size={6} fill="currentColor" style={{ opacity: 0.9 }} />
+            <span style={{ fontSize: "8px" }}>VIDEO</span>
           </Pill>
         )}
-        {nft.capturedAt && (
+        {nft.capturedAt && !isVideo && (
           <Pill>
-            <span>{formatCapturedAt(nft.capturedAt)}</span>
+            <span style={{ fontSize: "8px" }}>
+              {formatCapturedAt(nft.capturedAt)}
+            </span>
           </Pill>
         )}
       </div>
@@ -235,8 +238,8 @@ export function CollectibleCard({
       <div
         style={{
           position: "absolute",
-          top: 7,
-          right: 7,
+          top: 6,
+          right: 6,
           pointerEvents: "none",
         }}
       >
@@ -266,19 +269,20 @@ export function CollectibleCard({
         <div
           style={{
             position: "absolute",
-            bottom: 7,
-            left: 7,
+            bottom: 6,
+            left: 6,
             pointerEvents: "none",
           }}
         >
           <Pill>
-            <MapPin size={7} style={{ opacity: 0.85, flexShrink: 0 }} />
+            <MapPin size={6} style={{ opacity: 0.85, flexShrink: 0 }} />
             <span
               style={{
-                maxWidth: "80px",
+                maxWidth: "70px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                fontSize: "8px",
               }}
             >
               {nft.location}
@@ -291,51 +295,64 @@ export function CollectibleCard({
       <div
         style={{
           position: "absolute",
-          bottom: 7,
-          right: 7,
+          bottom: 6,
+          right: 6,
           pointerEvents: "none",
         }}
       >
         <Pill>
           <span style={{ color: MINT_ACCENT, fontWeight: 700 }}>#</span>
-          <span>
+          <span style={{ fontSize: "9px" }}>
             {nft.editionNumber}&nbsp;/&nbsp;{nft.totalSupply}
           </span>
         </Pill>
       </div>
 
-      {/* ── Expanded: View CTA ───────────────────────────────── */}
-      {isExpanded && onViewMedia && (
-        <button
-          type="button"
-          data-ocid={`collection.secondary_button.${ocidIndex}`}
-          aria-label="View full media"
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewMedia();
-          }}
+      {/* ── Expanded: View CTA + collapse hint ───────────────── */}
+      {isExpanded && (
+        <div
           style={{
             position: "absolute",
-            bottom: 12,
+            bottom: 10,
             left: "50%",
             transform: "translateX(-50%)",
-            background: "var(--cycle-accent)",
-            border: "none",
-            borderRadius: "999px",
-            padding: "5px 14px",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "#fff",
-            cursor: "pointer",
-            letterSpacing: "0.04em",
-            boxShadow: "0 2px 12px rgba(var(--cycle-accent-rgb) / 0.45)",
-            whiteSpace: "nowrap",
-            pointerEvents: "auto",
-            zIndex: 10,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "5px",
+            pointerEvents: "none",
+            width: "100%",
           }}
         >
-          View ↗
-        </button>
+          {onViewMedia && (
+            <button
+              type="button"
+              data-ocid={`collection.secondary_button.${ocidIndex}`}
+              aria-label="View full media"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewMedia();
+              }}
+              style={{
+                background: "var(--cycle-accent)",
+                border: "none",
+                borderRadius: "999px",
+                padding: "5px 13px",
+                fontSize: "9px",
+                fontWeight: 700,
+                color: "#fff",
+                cursor: "pointer",
+                letterSpacing: "0.04em",
+                boxShadow: "0 2px 10px rgba(var(--cycle-accent-rgb) / 0.40)",
+                whiteSpace: "nowrap",
+                pointerEvents: "auto",
+                zIndex: 10,
+              }}
+            >
+              View ↗
+            </button>
+          )}
+        </div>
       )}
     </button>
   );

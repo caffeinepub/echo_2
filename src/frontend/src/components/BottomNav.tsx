@@ -1,4 +1,5 @@
 import { BookOpen, LayoutGrid, Sparkles } from "lucide-react";
+import { usePackStyle } from "../context/PackStyleContext";
 
 export type Tab = "library" | "releases" | "collection";
 
@@ -13,10 +14,14 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "collection", label: "Collection", Icon: LayoutGrid },
 ];
 
-const ACTIVE_COLOR = "#7ED6B1";
-const INACTIVE_COLOR = "#8FA3B2";
+const INACTIVE_COLOR = "#8E8E93";
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  const { activeStyle } = usePackStyle();
+  const { accentR, accentG, accentB } = activeStyle;
+  const activeColor = `rgb(${accentR},${accentG},${accentB})`;
+  const activeGlow = `rgba(${accentR},${accentG},${accentB},0.45)`;
+
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch justify-around h-[68px] backdrop-blur-xl border-t"
@@ -27,7 +32,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     >
       {tabs.map(({ id, label, Icon }) => {
         const isActive = activeTab === id;
-        const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
+        const color = isActive ? activeColor : INACTIVE_COLOR;
+        const opacity = isActive ? 1 : 0.65;
         return (
           <button
             type="button"
@@ -35,14 +41,14 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             data-ocid={`nav.${id}.tab`}
             onClick={() => onTabChange(id)}
             className="flex flex-col items-center justify-center gap-1 flex-1 transition-all relative"
-            style={{ color }}
+            style={{ color, opacity }}
           >
             {isActive && (
               <span
                 className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                 style={{
-                  background: ACTIVE_COLOR,
-                  boxShadow: "0 0 10px rgba(126,214,177,0.45)",
+                  background: activeColor,
+                  boxShadow: `0 0 10px ${activeGlow}`,
                 }}
               />
             )}

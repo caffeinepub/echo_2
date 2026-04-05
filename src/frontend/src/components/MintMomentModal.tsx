@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useAnimationControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMomentDraft } from "../context/MomentDraftContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 interface MintMomentModalProps {
   open: boolean;
@@ -8,141 +9,53 @@ interface MintMomentModalProps {
   onConfirm: () => void;
 }
 
-const MINT_GREEN = "rgba(52,168,132,1)";
-const MINT_TRACK_BG = "rgba(52,168,132,0.12)";
-const MINT_TRACK_BORDER = "rgba(52,168,132,0.25)";
-const MINT_FILL = "rgba(52,168,132,0.18)";
-const MINT_LABEL = "rgba(52,168,132,0.75)";
-
-const SECTION_LABEL_STYLE: React.CSSProperties = {
-  fontSize: "10px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  fontWeight: 600,
-  color: MINT_GREEN,
-  marginBottom: "10px",
-  display: "block",
-};
-
-const DIVIDER_STYLE: React.CSSProperties = {
-  height: "1px",
-  background: "rgba(52,168,132,0.18)",
-  margin: "20px 0",
-  border: "none",
-};
-
-type PaymentOption = "USDC" | "BTC" | "ETH" | "SOL";
-
-const PAYMENT_OPTIONS: PaymentOption[] = ["USDC", "BTC", "ETH", "SOL"];
-
-const DETAILS = [
-  "9 photos → Common collectibles",
-  "1 video → Rare collectible",
-  "Collectibles = pack supply × 90% photos / 10% video",
-];
-
-const STEPS = [
-  "Capture 9 photos",
-  "Record 1 video (max 30 seconds)",
-  "Capture 1 cover photo for the pack art",
-  "Mint into sealed collectible packs",
-];
-
 const THUMB_DIAMETER = 48;
 const THUMB_RADIUS = THUMB_DIAMETER / 2;
 
-const PARTICLES = [
-  {
-    id: "p1",
-    w: 320,
-    h: 320,
-    top: "8%",
-    left: "5%",
-    color: "rgba(52,200,140,1)",
-    blur: 80,
-    opacity: 0.06,
-    drift: "driftA",
-    duration: 14,
-  },
-  {
-    id: "p2",
-    w: 240,
-    h: 240,
-    top: "60%",
-    left: "70%",
-    color: "rgba(80,220,160,1)",
-    blur: 70,
-    opacity: 0.05,
-    drift: "driftB",
-    duration: 18,
-  },
-  {
-    id: "p3",
-    w: 180,
-    h: 180,
-    top: "30%",
-    left: "80%",
-    color: "rgba(52,168,132,1)",
-    blur: 60,
-    opacity: 0.04,
-    drift: "driftA",
-    duration: 12,
-  },
-  {
-    id: "p4",
-    w: 280,
-    h: 200,
-    top: "75%",
-    left: "10%",
-    color: "rgba(100,230,180,1)",
-    blur: 90,
-    opacity: 0.05,
-    drift: "driftB",
-    duration: 20,
-  },
-  {
-    id: "p5",
-    w: 150,
-    h: 150,
-    top: "15%",
-    left: "55%",
-    color: "rgba(52,168,132,1)",
-    blur: 50,
-    opacity: 0.04,
-    drift: "driftA",
-    duration: 16,
-  },
-  {
-    id: "p6",
-    w: 200,
-    h: 260,
-    top: "45%",
-    left: "25%",
-    color: "rgba(70,200,150,1)",
-    blur: 75,
-    opacity: 0.05,
-    drift: "driftB",
-    duration: 22,
-  },
-  {
-    id: "p7",
-    w: 120,
-    h: 120,
-    top: "85%",
-    left: "85%",
-    color: "rgba(52,168,132,1)",
-    blur: 45,
-    opacity: 0.06,
-    drift: "driftA",
-    duration: 10,
-  },
+// Quadratic bonding curve: same formula used in Releases
+function bondingCurvePrice(
+  packsSold: number,
+  totalPacks = 300,
+  basePrice = 10,
+  maxPrice = 60,
+): number {
+  return basePrice + (packsSold / totalPacks) ** 2 * (maxPrice - basePrice);
+}
+
+function estimateRevenue(packsSold: number): number {
+  let total = 0;
+  for (let i = 0; i < packsSold; i++) {
+    total += bondingCurvePrice(i);
+  }
+  // Creator keeps 95%
+  return total * 0.95;
+}
+
+const EARNINGS_SCENARIOS = [
+  { packs: 25, label: "25 packs sold" },
+  { packs: 100, label: "100 packs sold" },
+  { packs: 300, label: "300 packs sold" },
 ];
 
-function SlideToMint({ onComplete }: { onComplete: () => void }) {
+function SlideToMint({
+  onComplete,
+  accentRgb,
+  accentOklch,
+}: {
+  onComplete: () => void;
+  accentRgb: string;
+  accentOklch: string;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [completed, setCompleted] = useState(false);
+
+  const accentColor = `oklch(${accentOklch})`;
+  const trackBg = `rgba(${accentRgb},0.12)`;
+  const trackBorder = `rgba(${accentRgb},0.25)`;
+  const fillGradient = `linear-gradient(90deg, rgba(${accentRgb},0.18), rgba(${accentRgb},0.28))`;
+  const labelColor = `rgba(${accentRgb},0.75)`;
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -193,8 +106,8 @@ function SlideToMint({ onComplete }: { onComplete: () => void }) {
         width: "100%",
         height: THUMB_DIAMETER + 4,
         borderRadius: (THUMB_DIAMETER + 4) / 2,
-        background: MINT_TRACK_BG,
-        border: `1.5px solid ${MINT_TRACK_BORDER}`,
+        background: trackBg,
+        border: `1.5px solid ${trackBorder}`,
         overflow: "hidden",
         cursor: completed ? "default" : "grab",
         userSelect: "none",
@@ -209,9 +122,7 @@ function SlideToMint({ onComplete }: { onComplete: () => void }) {
           top: 0,
           bottom: 0,
           width: `calc(${progress * 100}% - ${progress * THUMB_DIAMETER}px + ${THUMB_DIAMETER}px)`,
-          background: completed
-            ? MINT_GREEN
-            : `linear-gradient(90deg, ${MINT_FILL}, rgba(52,168,132,0.28))`,
+          background: completed ? accentColor : fillGradient,
           transition: completed ? "background 0.3s" : "none",
           pointerEvents: "none",
         }}
@@ -232,13 +143,14 @@ function SlideToMint({ onComplete }: { onComplete: () => void }) {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              color: MINT_LABEL,
+              color: labelColor,
               letterSpacing: "0.04em",
               opacity: 1 - progress * 2,
               transition: "opacity 0.1s",
+              fontFamily: "var(--font-ui)",
             }}
           >
-            Slide to start
+            Slide to mint
           </span>
         </div>
       )}
@@ -260,9 +172,10 @@ function SlideToMint({ onComplete }: { onComplete: () => void }) {
               fontWeight: 600,
               color: "#fff",
               letterSpacing: "0.04em",
+              fontFamily: "var(--font-ui)",
             }}
           >
-            ✓ Starting…
+            ✓ Minting…
           </span>
         </div>
       )}
@@ -276,10 +189,10 @@ function SlideToMint({ onComplete }: { onComplete: () => void }) {
             width: THUMB_DIAMETER,
             height: THUMB_DIAMETER,
             borderRadius: "50%",
-            background: `linear-gradient(145deg, ${MINT_GREEN}, rgba(42,144,112,1))`,
+            background: `linear-gradient(145deg, oklch(${accentOklch}), rgba(${accentRgb},0.85))`,
             boxShadow: isDragging
-              ? "0 4px 18px rgba(52,168,132,0.45)"
-              : "0 2px 10px rgba(52,168,132,0.28)",
+              ? `0 4px 18px rgba(${accentRgb},0.45)`
+              : `0 2px 10px rgba(${accentRgb},0.28)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -316,8 +229,32 @@ export function MintMomentModal({
   onConfirm,
 }: MintMomentModalProps) {
   const { hasDraft } = useMomentDraft();
+  const { activeStyle } = usePackStyle();
   const controls = useAnimationControls();
-  const [selectedPayment, setSelectedPayment] = useState<PaymentOption>("USDC");
+  const [btcPrice, setBtcPrice] = useState<number | null>(null);
+
+  const accentRgb = `${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB}`;
+  const accentColor = `oklch(${activeStyle.accentOklch})`;
+  const accentColorDark = `oklch(${activeStyle.accentOklchDark})`;
+  const dividerColor = `rgba(${accentRgb},0.15)`;
+  const sectionLabelColor = `oklch(${activeStyle.accentOklchDark})`;
+
+  // Fetch BTC price from Coinbase
+  useEffect(() => {
+    if (!open) return;
+    async function fetchBtcPrice() {
+      try {
+        const res = await fetch(
+          "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+        );
+        const data = await res.json();
+        setBtcPrice(Number.parseFloat(data.data.amount));
+      } catch {
+        setBtcPrice(null);
+      }
+    }
+    fetchBtcPrice();
+  }, [open]);
 
   // Inject keyframes once
   useEffect(() => {
@@ -336,11 +273,6 @@ export function MintMomentModal({
         33%       { transform: translate(-14px, 10px) scale(1.03); }
         66%       { transform: translate(12px, -8px) scale(0.98); }
       }
-      @keyframes pulseRing {
-        0%   { transform: scale(0.88); opacity: 0.8; }
-        60%  { transform: scale(1.10); opacity: 0.35; }
-        100% { transform: scale(0.88); opacity: 0.8; }
-      }
     `;
     document.head.appendChild(style);
   }, []);
@@ -352,6 +284,103 @@ export function MintMomentModal({
     });
     setTimeout(onConfirm, 480);
   }, [controls, onConfirm]);
+
+  function usdToBtc(usd: number): string {
+    if (!btcPrice) return "...";
+    return (usd / btcPrice).toFixed(6);
+  }
+
+  const SECTION_LABEL: React.CSSProperties = {
+    fontSize: "10px",
+    letterSpacing: "0.14em",
+    textTransform: "uppercase",
+    fontWeight: 600,
+    color: sectionLabelColor,
+    marginBottom: "12px",
+    display: "block",
+    fontFamily: "var(--font-ui)",
+  };
+
+  const DIVIDER: React.CSSProperties = {
+    height: "1px",
+    background: dividerColor,
+    margin: "22px 0",
+    border: "none",
+  };
+
+  // Ambient particles — tinted to accent color
+  const PARTICLES = [
+    {
+      id: "p1",
+      w: 320,
+      h: 320,
+      top: "8%",
+      left: "5%",
+      blur: 80,
+      opacity: 0.06,
+      drift: "driftA",
+      duration: 14,
+    },
+    {
+      id: "p2",
+      w: 240,
+      h: 240,
+      top: "60%",
+      left: "70%",
+      blur: 70,
+      opacity: 0.05,
+      drift: "driftB",
+      duration: 18,
+    },
+    {
+      id: "p3",
+      w: 180,
+      h: 180,
+      top: "30%",
+      left: "80%",
+      blur: 60,
+      opacity: 0.04,
+      drift: "driftA",
+      duration: 12,
+    },
+    {
+      id: "p4",
+      w: 280,
+      h: 200,
+      top: "75%",
+      left: "10%",
+      blur: 90,
+      opacity: 0.05,
+      drift: "driftB",
+      duration: 20,
+    },
+    {
+      id: "p5",
+      w: 150,
+      h: 150,
+      top: "15%",
+      left: "55%",
+      blur: 50,
+      opacity: 0.04,
+      drift: "driftA",
+      duration: 16,
+    },
+  ];
+
+  const STEPS = [
+    "Capture 9 photos",
+    "Record 1 video",
+    "Choose a cover image for the moment",
+    "Mint the moment into sealed packs",
+  ];
+
+  // Bonding curve milestones
+  const milestones = [
+    { pack: 1, price: bondingCurvePrice(0) },
+    { pack: 100, price: bondingCurvePrice(100) },
+    { pack: 200, price: bondingCurvePrice(200) },
+    { pack: 300, price: bondingCurvePrice(299) },
+  ];
 
   return (
     <AnimatePresence>
@@ -412,7 +441,7 @@ export function MintMomentModal({
                     width: p.w,
                     height: p.h,
                     borderRadius: "50%",
-                    background: p.color,
+                    background: `rgba(${accentRgb},1)`,
                     filter: `blur(${p.blur}px)`,
                     opacity: p.opacity,
                     animation: `${p.drift} ${p.duration}s ease-in-out infinite`,
@@ -427,7 +456,7 @@ export function MintMomentModal({
                 position: "relative",
                 zIndex: 1,
                 overflowY: "auto",
-                padding: "28px 24px 32px",
+                padding: "28px 24px 36px",
                 flex: 1,
               }}
             >
@@ -442,15 +471,16 @@ export function MintMomentModal({
                 }}
               />
 
-              {/* Title */}
-              <div style={{ marginBottom: 24 }}>
+              {/* ── Title ─────────────────────────────────────────────────── */}
+              <div style={{ marginBottom: 6 }}>
                 <h2
                   style={{
                     fontSize: "22px",
                     fontWeight: 800,
                     color: "#fff",
-                    margin: "0 0 6px",
+                    margin: "0 0 8px",
                     letterSpacing: "-0.02em",
+                    fontFamily: "var(--font-ui)",
                   }}
                 >
                   Mint a Moment
@@ -460,18 +490,20 @@ export function MintMomentModal({
                     fontSize: "13px",
                     color: "rgba(255,255,255,0.50)",
                     margin: 0,
-                    lineHeight: 1.5,
+                    lineHeight: 1.55,
+                    fontFamily: "var(--font-ui)",
                   }}
                 >
-                  Capture 9 photos + 1 video to create a sealed collectible set.
+                  Create a sealed collectible moment and distribute it through
+                  limited packs.
                 </p>
               </div>
 
-              <hr style={DIVIDER_STYLE} />
+              <hr style={DIVIDER} />
 
-              {/* Steps */}
-              <div style={{ marginBottom: 24 }}>
-                <span style={SECTION_LABEL_STYLE}>Creation Flow</span>
+              {/* ── How It Works ──────────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>How It Works</span>
                 <div
                   style={{
                     display: "flex",
@@ -494,8 +526,8 @@ export function MintMomentModal({
                           width: 20,
                           height: 20,
                           borderRadius: "50%",
-                          background: "rgba(52,168,132,0.15)",
-                          border: "1px solid rgba(52,168,132,0.35)",
+                          background: `rgba(${accentRgb},0.15)`,
+                          border: `1px solid rgba(${accentRgb},0.35)`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -506,7 +538,8 @@ export function MintMomentModal({
                           style={{
                             fontSize: "10px",
                             fontWeight: 700,
-                            color: MINT_GREEN,
+                            color: accentColor,
+                            fontFamily: "var(--font-ui)",
                           }}
                         >
                           {i + 1}
@@ -518,6 +551,7 @@ export function MintMomentModal({
                           color: "rgba(255,255,255,0.80)",
                           lineHeight: 1.5,
                           paddingTop: "2px",
+                          fontFamily: "var(--font-ui)",
                         }}
                       >
                         {step}
@@ -527,11 +561,22 @@ export function MintMomentModal({
                 </div>
               </div>
 
-              <hr style={DIVIDER_STYLE} />
+              <hr style={DIVIDER} />
 
-              {/* Collectible Details */}
-              <div style={{ marginBottom: 24 }}>
-                <span style={SECTION_LABEL_STYLE}>Collectible Contents</span>
+              {/* ── Pack Structure ────────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Pack Structure</span>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.45)",
+                    margin: "0 0 12px",
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  Each Mint a Moment creates:
+                </p>
                 <div
                   style={{
                     display: "flex",
@@ -539,9 +584,13 @@ export function MintMomentModal({
                     gap: "8px",
                   }}
                 >
-                  {DETAILS.map((d) => (
+                  {[
+                    { label: "300 total packs", accent: false },
+                    { label: "299 photo collectibles", accent: false },
+                    { label: "1 rare video collectible", accent: true },
+                  ].map(({ label, accent }) => (
                     <div
-                      key={d}
+                      key={label}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -550,63 +599,433 @@ export function MintMomentModal({
                     >
                       <div
                         style={{
-                          width: 4,
-                          height: 4,
+                          width: 5,
+                          height: 5,
                           borderRadius: "50%",
-                          background: MINT_GREEN,
+                          background: accent
+                            ? accentColor
+                            : "rgba(255,255,255,0.30)",
                           flexShrink: 0,
                         }}
                       />
                       <span
                         style={{
-                          fontSize: "12px",
-                          color: "rgba(255,255,255,0.55)",
+                          fontSize: "13px",
+                          color: accent
+                            ? accentColorDark
+                            : "rgba(255,255,255,0.75)",
+                          fontWeight: accent ? 600 : 400,
+                          fontFamily: "var(--font-ui)",
                         }}
                       >
-                        {d}
+                        {label}
                       </span>
+                    </div>
+                  ))}
+                </div>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.35)",
+                    margin: "12px 0 0",
+                    lineHeight: 1.55,
+                    fontStyle: "italic",
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  The rare video appears only once across the 300 pack supply.
+                </p>
+              </div>
+
+              <hr style={DIVIDER} />
+
+              {/* ── Mint Cost ─────────────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Mint Cost</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "16px",
+                    padding: "14px 16px",
+                    borderRadius: "14px",
+                    background: `rgba(${accentRgb},0.06)`,
+                    border: `1px solid rgba(${accentRgb},0.18)`,
+                  }}
+                >
+                  {/* BTC icon */}
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "rgba(247,147,26,0.15)",
+                      border: "1px solid rgba(247,147,26,0.30)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: 700,
+                        color: "#f7931a",
+                      }}
+                    >
+                      ₿
+                    </span>
+                  </div>
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: "6px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "24px",
+                          fontWeight: 800,
+                          color: "#fff",
+                          letterSpacing: "-0.02em",
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        $10
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "rgba(255,255,255,0.40)",
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        USD
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "rgba(255,255,255,0.45)",
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      ≈ {usdToBtc(10)} BTC
+                    </span>
+                  </div>
+                  <div style={{ marginLeft: "auto" }}>
+                    <div
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "20px",
+                        background: "rgba(247,147,26,0.12)",
+                        border: "1px solid rgba(247,147,26,0.25)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: "#f7931a",
+                          letterSpacing: "0.04em",
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        BTC only
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr style={DIVIDER} />
+
+              {/* ── Bonding Curve ─────────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Pack Pricing</span>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.65)",
+                    margin: "0 0 4px",
+                    lineHeight: 1.55,
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  Pack pricing uses a bonding curve — early packs cost less,
+                  later packs cost more as demand increases.
+                </p>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.38)",
+                    margin: "0 0 14px",
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  Starting at $10, price increases gradually toward $60 as all
+                  300 packs are purchased.
+                </p>
+                {/* Milestones */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                    gap: "6px",
+                  }}
+                >
+                  {milestones.map(({ pack, price }) => (
+                    <div
+                      key={pack}
+                      style={{
+                        padding: "10px 8px",
+                        borderRadius: "10px",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "4px",
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        Pack {pack}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          color: `rgba(${accentRgb},0.90)`,
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        ${price.toFixed(2)}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <hr style={DIVIDER_STYLE} />
+              <hr style={DIVIDER} />
 
-              {/* Payment preference */}
-              <div style={{ marginBottom: 28 }}>
-                <span style={SECTION_LABEL_STYLE}>Preferred Payment</span>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {PAYMENT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setSelectedPayment(opt)}
+              {/* ── Creator Earnings ──────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Creator Earnings</span>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
+                  }}
+                >
+                  {/* Pack sales */}
+                  <div
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <p
                       style={{
-                        padding: "7px 16px",
-                        borderRadius: "20px",
-                        border:
-                          selectedPayment === opt
-                            ? `1.5px solid ${MINT_GREEN}`
-                            : "1.5px solid rgba(255,255,255,0.12)",
-                        background:
-                          selectedPayment === opt
-                            ? "rgba(52,168,132,0.15)"
-                            : "rgba(255,255,255,0.05)",
-                        color:
-                          selectedPayment === opt
-                            ? MINT_GREEN
-                            : "rgba(255,255,255,0.55)",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
+                        fontSize: "13px",
+                        color: "rgba(255,255,255,0.75)",
+                        margin: "0 0 4px",
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
                       }}
                     >
-                      {opt}
-                    </button>
-                  ))}
+                      <span style={{ color: accentColorDark, fontWeight: 600 }}>
+                        95%
+                      </span>{" "}
+                      of pack sales go directly to you.
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "rgba(255,255,255,0.38)",
+                        margin: 0,
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      Minty receives 5%. Proceeds are deposited automatically to
+                      your Minty wallet in BTC.
+                    </p>
+                  </div>
+                  {/* Video resale */}
+                  <div
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(255,255,255,0.75)",
+                        margin: "0 0 4px",
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      When the rare video NFT is resold:
+                    </p>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          background: `rgba(${accentRgb},0.08)`,
+                          border: `1px solid rgba(${accentRgb},0.18)`,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: 800,
+                            color: accentColor,
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          4%
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "rgba(255,255,255,0.45)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          to you
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: 800,
+                            color: "rgba(255,255,255,0.55)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          1%
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "rgba(255,255,255,0.30)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          to Minty
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              <hr style={DIVIDER} />
+
+              {/* ── Earnings Estimator ────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Earnings Estimator</span>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.35)",
+                    margin: "0 0 12px",
+                    fontFamily: "var(--font-ui)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Estimated creator proceeds deposited to your Minty wallet
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                  }}
+                >
+                  {EARNINGS_SCENARIOS.map(({ packs, label }) => {
+                    const usd = estimateRevenue(packs);
+                    const btc = btcPrice ? (usd / btcPrice).toFixed(6) : "...";
+                    return (
+                      <div
+                        key={packs}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                          gap: "8px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.45)",
+                            fontFamily: "var(--font-ui)",
+                            minWidth: "90px",
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: "rgba(255,255,255,0.85)",
+                              fontFamily: "var(--font-ui)",
+                            }}
+                          >
+                            ≈ ${usd.toFixed(0)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: `rgba(${accentRgb},0.70)`,
+                              fontFamily: "var(--font-ui)",
+                            }}
+                          >
+                            ≈ {btc} BTC
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <hr style={DIVIDER} />
 
               {/* Draft warning */}
               {hasDraft && (
@@ -650,6 +1069,7 @@ export function MintMomentModal({
                       color: "rgba(245,158,11,0.85)",
                       margin: 0,
                       lineHeight: 1.5,
+                      fontFamily: "var(--font-ui)",
                     }}
                   >
                     You have an active draft. Starting a new Moment will resume
@@ -658,8 +1078,12 @@ export function MintMomentModal({
                 </div>
               )}
 
-              {/* Slide to start */}
-              <SlideToMint onComplete={handleSlideComplete} />
+              {/* Slide to mint */}
+              <SlideToMint
+                onComplete={handleSlideComplete}
+                accentRgb={accentRgb}
+                accentOklch={activeStyle.accentOklch}
+              />
             </div>
           </motion.div>
         </motion.div>
