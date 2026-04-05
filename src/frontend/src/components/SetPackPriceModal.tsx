@@ -1,5 +1,31 @@
 import { Check, Timer } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
+
+const PRICE_OPTIONS = [1, 5, 20, 50, 100];
+
+const PRICE_LABELS: Record<number, string> = {
+  1: "24h",
+  5: "12h",
+  20: "8h",
+  50: "4h",
+  100: "1h",
+};
+
+const DURATION_ROWS = [
+  { price: "$1", duration: "24 hours", value: 1 },
+  { price: "$5", duration: "12 hours", value: 5 },
+  { price: "$20", duration: "8 hours", value: 20 },
+  { price: "$50", duration: "4 hours", value: 50 },
+  { price: "$100", duration: "1 hour", value: 100 },
+];
+
+const SET_SUMMARY = [
+  "100 total packs",
+  "9 photo collectibles",
+  "1 video collectible",
+  "each pack contains 1 random collectible",
+];
 
 export interface SetPackPriceModalProps {
   onConfirm: (priceUsd: number) => void;
@@ -7,8 +33,10 @@ export interface SetPackPriceModalProps {
 }
 
 export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
+  const [selectedPrice, setSelectedPrice] = useState<number>(1);
+
   function handleConfirm() {
-    onConfirm(1);
+    onConfirm(selectedPrice);
   }
 
   function handleMouseDown(e: React.MouseEvent<HTMLButtonElement>) {
@@ -67,7 +95,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 letterSpacing: "-0.01em",
               }}
             >
-              Pack Price
+              Set Pack Price
             </h2>
             <p
               style={{
@@ -77,45 +105,70 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 margin: 0,
               }}
             >
-              Each pack in your release is priced at a fixed rate.
+              Choose how much each pack will cost.
+              <br />
+              Your price affects how long this set stays live on the Releases
+              tab before unsold packs burn.
             </p>
           </div>
 
-          {/* Fixed Price Display */}
+          {/* Price Selector */}
           <div style={{ padding: "0 24px 20px" }}>
-            <div
+            <p
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "12px",
-                padding: "20px",
-                borderRadius: "16px",
-                background: "rgba(126,214,177,0.08)",
-                border: "1.5px solid rgba(126,214,177,0.30)",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#374151",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                margin: "0 0 12px",
               }}
             >
-              <span
-                style={{
-                  fontSize: "40px",
-                  fontWeight: 800,
-                  color: "#047857",
-                  letterSpacing: "-0.03em",
-                  fontFamily: "var(--font-ui, DM Sans, sans-serif)",
-                }}
-              >
-                $1
-              </span>
-              <span
-                style={{
-                  fontSize: "13px",
-                  color: "#5FC49A",
-                  fontWeight: 600,
-                  fontFamily: "var(--font-ui, DM Sans, sans-serif)",
-                }}
-              >
-                per pack
-              </span>
+              Price per pack
+            </p>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {PRICE_OPTIONS.map((price, idx) => {
+                const isSelected = selectedPrice === price;
+                return (
+                  <button
+                    type="button"
+                    key={price}
+                    data-ocid={`pack_price.button.${idx + 1}`}
+                    onClick={() => setSelectedPrice(price)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 0 8px",
+                      borderRadius: "14px",
+                      border: isSelected
+                        ? "2px solid #7ED6B1"
+                        : "1.5px solid rgba(0,0,0,0.09)",
+                      background: isSelected ? "rgba(16,185,129,0.09)" : "#fff",
+                      color: isSelected ? "#047857" : "#374151",
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: "15px",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "4px",
+                      transition:
+                        "border-color 0.15s, background 0.15s, color 0.15s",
+                      outline: "none",
+                    }}
+                  >
+                    <span>${price}</span>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 400,
+                        color: isSelected ? "#5FC49A" : "#9ca3af",
+                      }}
+                    >
+                      {PRICE_LABELS[price]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -153,11 +206,75 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                   fontSize: "12px",
                   color: "#374151",
                   lineHeight: 1.6,
-                  margin: 0,
+                  margin: "0 0 12px",
                 }}
               >
-                Your release stays live for 24 hours. Unsold packs are
-                permanently burned when the timer ends.
+                Higher pack prices shorten how long the set stays live on
+                Releases.
+                <br />
+                Unsold packs are permanently burned when the timer ends.
+              </p>
+
+              {/* Duration table */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px",
+                  marginBottom: "10px",
+                }}
+              >
+                {DURATION_ROWS.map((row) => {
+                  const isActive = selectedPrice === row.value;
+                  return (
+                    <div
+                      key={row.value}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "5px 8px",
+                        borderRadius: "8px",
+                        background: isActive
+                          ? "rgba(16,185,129,0.10)"
+                          : "transparent",
+                        transition: "background 0.15s",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: isActive ? 700 : 600,
+                          color: isActive ? "#047857" : "#111",
+                        }}
+                      >
+                        {row.price}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "#5FC49A",
+                        }}
+                      >
+                        {row.duration}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p
+                style={{
+                  fontSize: "11px",
+                  fontStyle: "italic",
+                  color: "#6b7280",
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                Lower prices give the set more time to sell. Higher prices
+                increase burn risk.
               </p>
             </div>
           </div>
@@ -183,12 +300,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 gap: "6px 12px",
               }}
             >
-              {[
-                "300 total packs",
-                "1 video collectible per pack",
-                "$1 per pack — fixed",
-                "24h listing window",
-              ].map((item) => (
+              {SET_SUMMARY.map((item) => (
                 <div
                   key={item}
                   style={{
@@ -247,7 +359,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 transition: "transform 0.1s, box-shadow 0.1s",
               }}
             >
-              List on Releases — $1/pack
+              List on Releases
             </button>
             <p
               style={{

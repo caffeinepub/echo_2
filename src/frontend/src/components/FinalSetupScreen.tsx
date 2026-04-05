@@ -7,14 +7,18 @@ const MINT_BORDER = "rgba(52,168,132,0.3)";
 const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
-  onBack: () => void;
+  photos: string[];
+  onBack: () => void; // go back to video capture step
   onSubmit: (draft: MomentDraft) => void;
 }
 
-export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
+export function FinalSetupScreen({
+  photos: _photos,
+  onBack,
+  onSubmit,
+}: FinalSetupScreenProps) {
   const {
     activeDraft,
-    media,
     setTitle,
     setCaption,
     setExplicit,
@@ -33,6 +37,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
   const [hashtagInput, setHashtagInput] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
 
+  // Sync to draft context on every change
   useEffect(() => {
     setTitle(localTitle);
   }, [localTitle, setTitle]);
@@ -47,6 +52,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
   }, [localHashtags, setHashtags]);
 
   function normalizeHashtag(raw: string): string {
+    // Strip leading # symbols (including multiple), trim, lowercase
     return raw.replace(/^#+/, "").trim().toLowerCase();
   }
 
@@ -69,7 +75,9 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
       return;
     }
     if (!activeDraft) return;
+    // completeDraft marks it done so LibraryPage resets to idle
     completeDraft();
+    // Snapshot the draft with updated fields before it's cleared
     const snapshot: MomentDraft = {
       ...activeDraft,
       title: localTitle.trim(),
@@ -83,8 +91,6 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
 
   const titleEmpty = !localTitle.trim();
   const showTitleError = titleTouched && titleEmpty;
-  const imageCount = media.images.length;
-  const hasVideo = media.videoFile !== null;
 
   return (
     <div
@@ -152,6 +158,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
         >
           Final Setup
         </h2>
+        {/* Step indicator */}
         <span
           style={{
             fontSize: "11px",
@@ -161,7 +168,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
             color: "rgba(52,168,132,0.70)",
           }}
         >
-          2 / 2
+          11 / 11
         </span>
       </div>
 
@@ -178,7 +185,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           alignSelf: "center",
         }}
       >
-        {/* Title */}
+        {/* ── Set Title ── */}
         <div>
           <label
             htmlFor="set-title"
@@ -205,14 +212,15 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
             }}
             onBlur={() => setTitleTouched(true)}
             maxLength={60}
-            data-ocid="capture.input"
             style={{
               width: "100%",
               padding: "13px 14px",
               borderRadius: "14px",
               border: showTitleError
                 ? "2px solid #ef4444"
-                : `1.5px solid ${localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
+                : `1.5px solid ${
+                    localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"
+                  }`,
               background: "#fff",
               fontSize: "15px",
               fontWeight: 500,
@@ -244,7 +252,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           </div>
         </div>
 
-        {/* Caption */}
+        {/* ── Caption ── */}
         <div>
           <label
             htmlFor="set-caption"
@@ -278,7 +286,6 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
             onChange={(e) => setLocalCaption(e.target.value)}
             rows={3}
             maxLength={200}
-            data-ocid="capture.textarea"
             style={{
               width: "100%",
               padding: "13px 14px",
@@ -315,7 +322,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           </div>
         </div>
 
-        {/* Hashtags */}
+        {/* ── Hashtags ── */}
         <div>
           <label
             htmlFor="hashtag-input"
@@ -342,6 +349,8 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
               (optional · max 3)
             </span>
           </label>
+
+          {/* Pill chips */}
           {localHashtags.length > 0 && (
             <div
               style={{
@@ -361,7 +370,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
                     background: "rgba(52,168,132,0.10)",
                     border: "1.5px solid rgba(52,168,132,0.30)",
                     borderRadius: "20px",
-                    padding: "4px 10px",
+                    padding: "4px 10px 4px 10px",
                     fontSize: "12px",
                     fontWeight: 600,
                     color: MINT_GREEN,
@@ -391,6 +400,8 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
               ))}
             </div>
           )}
+
+          {/* Input row */}
           {localHashtags.length < 3 && (
             <div style={{ display: "flex", gap: "8px" }}>
               <input
@@ -451,6 +462,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
               </button>
             </div>
           )}
+
           {localHashtags.length >= 3 && (
             <p
               style={{ fontSize: "11px", color: "#9ca3af", margin: "4px 0 0" }}
@@ -460,7 +472,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           )}
         </div>
 
-        {/* Explicit toggle */}
+        {/* ── Explicit Content Toggle ── */}
         <div
           style={{
             background: "#fff",
@@ -503,11 +515,12 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
                 enabled.
               </p>
             </div>
+
+            {/* Toggle switch */}
             <button
               type="button"
               role="switch"
               aria-checked={localExplicit}
-              data-ocid="capture.switch"
               onClick={() => setLocalExplicit(!localExplicit)}
               style={{
                 flexShrink: 0,
@@ -540,9 +553,52 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
               />
             </button>
           </div>
+
+          {/* Warning chip when explicit is ON */}
+          {localExplicit && (
+            <div
+              style={{
+                marginTop: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "rgba(245,158,11,0.08)",
+                borderRadius: "8px",
+                padding: "8px 10px",
+                border: "1px solid rgba(245,158,11,0.20)",
+              }}
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 13 13"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6.5 1.5L11.5 10H1.5L6.5 1.5z"
+                  stroke="#f59e0b"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.5 5v3"
+                  stroke="#f59e0b"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+                <circle cx="6.5" cy="9.5" r="0.6" fill="#f59e0b" />
+              </svg>
+              <span
+                style={{ fontSize: "11px", color: "#92400e", fontWeight: 500 }}
+              >
+                This set will be hidden from viewers with safe viewing enabled.
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Summary */}
+        {/* ── Summary ── */}
         <div
           style={{
             background: "rgba(52,168,132,0.05)",
@@ -566,6 +622,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           >
             Ready to publish
           </p>
+
           <div
             style={{
               display: "grid",
@@ -574,9 +631,9 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
             }}
           >
             {[
-              `${imageCount} image${imageCount !== 1 ? "s" : ""} captured`,
-              hasVideo ? "1 video captured" : "No video yet",
-              "300 packs will be minted",
+              "9 photos captured",
+              "1 video captured",
+              "100 packs will be minted",
               localExplicit ? "Marked as explicit" : "Standard content",
             ].map((item) => (
               <div
@@ -600,7 +657,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           </div>
         </div>
 
-        {/* Submit */}
+        {/* ── Submit Button ── */}
         <button
           type="button"
           onClick={handleSubmit}
@@ -626,7 +683,7 @@ export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
           }}
           aria-disabled={titleEmpty}
         >
-          Confirm Mint
+          Continue to Set Price
         </button>
 
         {titleEmpty && titleTouched && (

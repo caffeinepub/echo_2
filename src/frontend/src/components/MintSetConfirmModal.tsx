@@ -1,4 +1,4 @@
-import { Check, Package } from "lucide-react";
+import { Check, ChevronRight, Package, TrendingUp } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 
@@ -118,10 +118,11 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
               transition: "opacity 0.1s",
             }}
           >
-            Slide to confirm mint
+            Slide to confirm payment
           </span>
         </div>
       )}
+      {/* Completed label */}
       {completed && (
         <div
           style={{
@@ -141,7 +142,7 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
               letterSpacing: "0.04em",
             }}
           >
-            Minting… ✓
+            Payment confirmed ✓
           </span>
         </div>
       )}
@@ -174,21 +175,7 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
         {completed ? (
           <Check size={20} color="#fff" strokeWidth={2.5} />
         ) : (
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M7 10h6M10 7l3 3-3 3"
-              stroke="#fff"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ChevronRight size={20} color="#fff" strokeWidth={2.5} />
         )}
       </div>
     </div>
@@ -238,8 +225,9 @@ export function MintSetConfirmModal({
           {/* Header */}
           <div
             style={{
-              padding: "28px 24px 20px",
+              padding: "28px 24px 0",
               borderBottom: "1px solid rgba(52,168,132,0.12)",
+              paddingBottom: "20px",
             }}
           >
             <div
@@ -265,18 +253,20 @@ export function MintSetConfirmModal({
               >
                 <Package size={18} color={MINT_GREEN} />
               </div>
-              <h2
-                style={{
-                  fontSize: "26px",
-                  fontWeight: 700,
-                  color: "#111",
-                  margin: 0,
-                  lineHeight: 1.1,
-                  fontFamily: "DM Sans, sans-serif",
-                }}
-              >
-                Mint Set
-              </h2>
+              <div>
+                <h2
+                  style={{
+                    fontSize: "26px",
+                    fontWeight: 700,
+                    color: "#111",
+                    margin: 0,
+                    lineHeight: 1.1,
+                    fontFamily: "DM Sans, sans-serif",
+                  }}
+                >
+                  Mint Set
+                </h2>
+              </div>
             </div>
             <p
               style={{
@@ -286,8 +276,8 @@ export function MintSetConfirmModal({
                 margin: 0,
               }}
             >
-              Minting a set costs <strong style={{ color: "#111" }}>$1</strong>.
-              Paid in BTC.
+              Minting a set costs{" "}
+              <strong style={{ color: "#111" }}>$100</strong>.
             </p>
           </div>
 
@@ -300,7 +290,7 @@ export function MintSetConfirmModal({
                 border: "1.5px solid rgba(52,168,132,0.15)",
                 borderRadius: "14px",
                 padding: "14px 16px",
-                marginBottom: "20px",
+                marginBottom: "16px",
               }}
             >
               <p
@@ -318,6 +308,103 @@ export function MintSetConfirmModal({
               </p>
             </div>
 
+            {/* Pack economics — informational */}
+            <p
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#6b7280",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                margin: "0 0 10px",
+              }}
+            >
+              Pack Economics
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+                marginBottom: "16px",
+              }}
+            >
+              {[
+                { icon: "📦", label: "Total Packs", value: "300" },
+                { icon: "💵", label: "Starting Price", value: "$10" },
+                { icon: "🎯", label: "Max Price", value: "$60" },
+                { icon: "📈", label: "Pricing Model", value: "Bonding Curve" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    background: "#fff",
+                    border: "1px solid rgba(0,0,0,0.07)",
+                    borderRadius: "12px",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                  }}
+                >
+                  <span style={{ fontSize: "13px" }}>{item.icon}</span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      color: "#9ca3af",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "#111",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Bonding curve note */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "8px",
+                marginBottom: "20px",
+                padding: "10px 12px",
+                background: "rgba(52,168,132,0.04)",
+                borderRadius: "10px",
+                border: "1px solid rgba(52,168,132,0.12)",
+              }}
+            >
+              <TrendingUp
+                size={14}
+                color={MINT_GREEN}
+                style={{ marginTop: "1px", flexShrink: 0 }}
+              />
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "#6b7280",
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}
+              >
+                Price increases with each purchase — early collectors get the
+                best rate. Price formula:{" "}
+                <span style={{ fontFamily: "monospace", color: "#374151" }}>
+                  $10 + (sold/300)² × $50
+                </span>
+              </p>
+            </div>
+
             {/* What's included */}
             <p
               style={{
@@ -329,7 +416,7 @@ export function MintSetConfirmModal({
                 margin: "0 0 10px",
               }}
             >
-              What&apos;s included
+              What's included
             </p>
             <div
               style={{
@@ -340,10 +427,10 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                "9 images → Common collectibles",
+                "9 photos → Common collectibles",
                 "1 video → Rare collectible",
                 "Each pack contains 1 random collectible",
-                "300 packs auto-listed in Releases",
+                "90% photo packs · 10% video packs",
               ].map((item) => (
                 <div
                   key={item}
@@ -372,11 +459,12 @@ export function MintSetConfirmModal({
             </div>
           </div>
 
-          {/* Footer */}
+          {/* Footer / slider */}
           <div
             style={{
-              padding: "16px 24px 28px",
+              padding: "0 24px 28px",
               borderTop: "1px solid rgba(0,0,0,0.06)",
+              paddingTop: "16px",
             }}
           >
             {/* Fee summary */}
@@ -405,7 +493,7 @@ export function MintSetConfirmModal({
                   letterSpacing: "-0.02em",
                 }}
               >
-                $1
+                $100
               </span>
             </div>
 

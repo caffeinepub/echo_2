@@ -3,50 +3,43 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
-const LS_KEY = "minty_active_draft_v2";
+const LS_KEY = "minty_active_draft";
+
+export interface CaptureMetadataItem {
+  sequenceIndex: number; // 0-8 for photos, 9 for video
+  capturedAt: number; // Date.now() at capture time
+  mediaType: "photo" | "video";
+}
 
 export interface MomentDraft {
   id: string;
-  // Serializable metadata — persisted to localStorage
+  photos: string[]; // data URLs or object URLs
+  video: string | null;
+  completed: boolean;
+  createdAt: number;
+  captureMetadata: CaptureMetadataItem[];
+  packSupply: number; // how many packs the creator wants to mint
+  // Content labeling fields (filled in FinalSetupScreen)
   title: string;
   caption: string;
   explicit: boolean;
-  hashtags: string[];
-  packSupply: number; // always 300
-  pricePerPackUsd: number; // creator-set price per pack (1–100)
-  coverImageIndex: number; // which of the 9 images is the cover
-  createdAt: number;
-  completed: boolean;
-  // Image count (only count is persisted; actual File objects are in-memory)
-  imageCount: number;
-  hasVideo: boolean;
-}
-
-// In-memory only — not persisted (File/Blob can't be JSON serialized)
-export interface MomentDraftMedia {
-  images: File[]; // up to 9 image files
-  imagePreviewUrls: string[]; // ephemeral object URLs for display
-  videoFile: Blob | null; // actual video blob for upload
-  videoPreviewUrl: string | null; // ephemeral object URL for display
+  hashtags: string[]; // structured array, e.g. ["nightdrive", "citylights"]
 }
 
 interface MomentDraftCtx {
   activeDraft: MomentDraft | null;
-  media: MomentDraftMedia;
-  hasDraft: boolean;
+  hasDraft: boolean; // exists and !completed
   startDraft: () => void;
-  addImage: (file: File) => void;
-  removeImage: (index: number) => void;
-  setCoverImageIndex: (n: number) => void;
-  setVideoFile: (blob: Blob, previewUrl: string) => void;
+  addPhoto: (dataUrl: string, capturedAt?: number) => void;
+  removePhoto: (index: number) => void;
+  addVideo: (dataUrl: string, capturedAt?: number) => void;
   removeVideo: () => void;
-  setPricePerPackUsd: (n: number) => void;
   completeDraft: () => void;
   clearDraft: () => void;
+  setPackSupply: (n: number) => void;
   setTitle: (title: string) => void;
   setCaption: (caption: string) => void;
   setExplicit: (explicit: boolean) => void;
@@ -55,27 +48,24 @@ interface MomentDraftCtx {
 
 const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
 
-const EMPTY_MEDIA: MomentDraftMedia = {
-  images: [],
-  imagePreviewUrls: [],
-  videoFile: null,
-  videoPreviewUrl: null,
-};
-
 function loadFromStorage(): MomentDraft | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as MomentDraft;
-    if (parsed.packSupply === undefined || parsed.packSupply < 10)
-      parsed.packSupply = 300;
-    if (parsed.pricePerPackUsd === undefined) parsed.pricePerPackUsd = 1;
-    if (parsed.coverImageIndex === undefined) parsed.coverImageIndex = 0;
-    if (parsed.imageCount === undefined) parsed.imageCount = 0;
-    if (parsed.hasVideo === undefined) parsed.hasVideo = false;
-    if (!parsed.title) parsed.title = "";
-    if (!parsed.caption) parsed.caption = "";
+    // Backfill captureMetadata for drafts saved before this field existed
+    if (!parsed.captureMetadata) {
+      parsed.captureMetadata = [];
+    }
+    // Backfill packSupply for drafts saved before this field existed
+    if (!parsed.packSupply || parsed.packSupply < 10) {
+      parsed.packSupply = 100;
+    }
+    // Backfill content labeling fields
+    if (parsed.title === undefined) parsed.title = "";
+    if (parsed.caption === undefined) parsed.caption = "";
     if (parsed.explicit === undefined) parsed.explicit = false;
+    // Backfill hashtags
     if (!parsed.hashtags) parsed.hashtags = [];
     return parsed;
   } catch {
@@ -91,7 +81,7 @@ function saveToStorage(draft: MomentDraft | null) {
       localStorage.setItem(LS_KEY, JSON.stringify(draft));
     }
   } catch {
-    // ignore
+    // ignore storage errors
   }
 }
 
@@ -101,136 +91,104 @@ export function MomentDraftProvider({
   const [activeDraft, setActiveDraft] = useState<MomentDraft | null>(() =>
     loadFromStorage(),
   );
-  const [media, setMedia] = useState<MomentDraftMedia>(EMPTY_MEDIA);
-  // Track revoked URLs to avoid double-revoke
-  const revokedUrls = useRef<Set<string>>(new Set());
 
   const hasDraft = activeDraft !== null && !activeDraft.completed;
 
+  // Persist whenever draft changes
   useEffect(() => {
     saveToStorage(activeDraft);
   }, [activeDraft]);
 
-  // Cleanup object URLs when media changes or component unmounts
-  useEffect(() => {
-    return () => {
-      for (const url of media.imagePreviewUrls) {
-        if (!revokedUrls.current.has(url)) {
-          URL.revokeObjectURL(url);
-          revokedUrls.current.add(url);
-        }
-      }
-      if (
-        media.videoPreviewUrl &&
-        !revokedUrls.current.has(media.videoPreviewUrl)
-      ) {
-        URL.revokeObjectURL(media.videoPreviewUrl);
-        revokedUrls.current.add(media.videoPreviewUrl);
-      }
-    };
-  }, [media]);
-
   const startDraft = useCallback(() => {
     setActiveDraft((prev) => {
+      // Idempotent — if an active incomplete draft already exists, keep it
       if (prev !== null && !prev.completed) return prev;
-      return {
+      const draft: MomentDraft = {
         id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        photos: [],
+        video: null,
+        completed: false,
+        createdAt: Date.now(),
+        captureMetadata: [],
+        packSupply: 100,
         title: "",
         caption: "",
         explicit: false,
         hashtags: [],
-        packSupply: 300,
-        pricePerPackUsd: 1,
-        coverImageIndex: 0,
-        createdAt: Date.now(),
-        completed: false,
-        imageCount: 0,
-        hasVideo: false,
       };
+      return draft;
     });
-    setMedia(EMPTY_MEDIA);
   }, []);
 
-  const addImage = useCallback((file: File) => {
-    setMedia((prev) => {
-      if (prev.images.length >= 9) return prev;
-      const url = URL.createObjectURL(file);
+  const addPhoto = useCallback((dataUrl: string, capturedAt?: number) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      if (prev.photos.length >= 9) return prev;
+      const sequenceIndex = prev.photos.length;
+      const meta: CaptureMetadataItem = {
+        sequenceIndex,
+        capturedAt: capturedAt ?? Date.now(),
+        mediaType: "photo",
+      };
       return {
         ...prev,
-        images: [...prev.images, file],
-        imagePreviewUrls: [...prev.imagePreviewUrls, url],
+        photos: [...prev.photos, dataUrl],
+        captureMetadata: [...prev.captureMetadata, meta],
       };
     });
+  }, []);
+
+  const removePhoto = useCallback((index: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, imageCount: Math.min((prev.imageCount ?? 0) + 1, 9) };
+      const updatedPhotos = [...prev.photos];
+      updatedPhotos.splice(index, 1);
+      // Remove matching metadata entry
+      const updatedMeta = prev.captureMetadata.filter(
+        (m) => !(m.mediaType === "photo" && m.sequenceIndex === index),
+      );
+      // Re-index remaining photo metadata
+      let photoIdx = 0;
+      const reIndexedMeta = updatedMeta.map((m) => {
+        if (m.mediaType === "photo") {
+          return { ...m, sequenceIndex: photoIdx++ };
+        }
+        return m;
+      });
+      return { ...prev, photos: updatedPhotos, captureMetadata: reIndexedMeta };
     });
   }, []);
 
-  const removeImage = useCallback((index: number) => {
-    setMedia((prev) => {
-      const url = prev.imagePreviewUrls[index];
-      if (url && !revokedUrls.current.has(url)) {
-        URL.revokeObjectURL(url);
-        revokedUrls.current.add(url);
-      }
-      const newImages = [...prev.images];
-      const newUrls = [...prev.imagePreviewUrls];
-      newImages.splice(index, 1);
-      newUrls.splice(index, 1);
-      return { ...prev, images: newImages, imagePreviewUrls: newUrls };
-    });
+  const addVideo = useCallback((dataUrl: string, capturedAt?: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, imageCount: Math.max(0, (prev.imageCount ?? 1) - 1) };
-    });
-  }, []);
-
-  const setCoverImageIndex = useCallback((n: number) => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return { ...prev, coverImageIndex: n };
-    });
-  }, []);
-
-  const setVideoFile = useCallback((blob: Blob, previewUrl: string) => {
-    setMedia((prev) => {
-      if (
-        prev.videoPreviewUrl &&
-        !revokedUrls.current.has(prev.videoPreviewUrl)
-      ) {
-        URL.revokeObjectURL(prev.videoPreviewUrl);
-        revokedUrls.current.add(prev.videoPreviewUrl);
-      }
-      return { ...prev, videoFile: blob, videoPreviewUrl: previewUrl };
-    });
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return { ...prev, hasVideo: true };
+      const meta: CaptureMetadataItem = {
+        sequenceIndex: 9,
+        capturedAt: capturedAt ?? Date.now(),
+        mediaType: "video",
+      };
+      // Remove any existing video metadata entry first
+      const filteredMeta = prev.captureMetadata.filter(
+        (m) => m.mediaType !== "video",
+      );
+      return {
+        ...prev,
+        video: dataUrl,
+        captureMetadata: [...filteredMeta, meta],
+      };
     });
   }, []);
 
   const removeVideo = useCallback(() => {
-    setMedia((prev) => {
-      if (
-        prev.videoPreviewUrl &&
-        !revokedUrls.current.has(prev.videoPreviewUrl)
-      ) {
-        URL.revokeObjectURL(prev.videoPreviewUrl);
-        revokedUrls.current.add(prev.videoPreviewUrl);
-      }
-      return { ...prev, videoFile: null, videoPreviewUrl: null };
-    });
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, hasVideo: false };
-    });
-  }, []);
-
-  const setPricePerPackUsd = useCallback((_n: number) => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return { ...prev, pricePerPackUsd: 1 };
+      return {
+        ...prev,
+        video: null,
+        captureMetadata: prev.captureMetadata.filter(
+          (m) => m.mediaType !== "video",
+        ),
+      };
     });
   }, []);
 
@@ -243,7 +201,13 @@ export function MomentDraftProvider({
 
   const clearDraft = useCallback(() => {
     setActiveDraft(null);
-    setMedia(EMPTY_MEDIA);
+  }, []);
+
+  const setPackSupply = useCallback((n: number) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, packSupply: Math.max(10, Math.min(10000, n)) };
+    });
   }, []);
 
   const setTitle = useCallback((title: string) => {
@@ -278,17 +242,15 @@ export function MomentDraftProvider({
     <MomentDraftContext.Provider
       value={{
         activeDraft,
-        media,
         hasDraft,
         startDraft,
-        addImage,
-        removeImage,
-        setCoverImageIndex,
-        setVideoFile,
+        addPhoto,
+        removePhoto,
+        addVideo,
         removeVideo,
-        setPricePerPackUsd,
         completeDraft,
         clearDraft,
+        setPackSupply,
         setTitle,
         setCaption,
         setExplicit,
@@ -302,7 +264,8 @@ export function MomentDraftProvider({
 
 export function useMomentDraft(): MomentDraftCtx {
   const ctx = useContext(MomentDraftContext);
-  if (!ctx)
+  if (!ctx) {
     throw new Error("useMomentDraft must be used inside MomentDraftProvider");
+  }
   return ctx;
 }

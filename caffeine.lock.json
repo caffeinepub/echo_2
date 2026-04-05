@@ -11,8 +11,7 @@
     "github-export-icp-cli": "1.0.1",
     "camera": "1.0.1",
     "qr-code": "1.0.1",
-    "authorization": "4.0.1",
-    "blob-storage": "4.0.0"
+    "authorization": "4.0.1"
   },
   "tags": [],
   "aiCoreVersion": "0.dev"

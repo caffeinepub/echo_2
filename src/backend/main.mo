@@ -10,14 +10,9 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import MixinStorage "blob-storage/Mixin";
-
-
-// --- ACTOR ---
-
 
 actor {
-  include MixinStorage();
+  // --- TYPES ---
 
   type Track = {
     title : Text;
@@ -214,64 +209,6 @@ actor {
     packCount : Nat;
   };
 
-  // --- MINTY MOMENTS TYPES ---
-
-  public type MediaAsset = {
-    assetId : Text;
-    setId : Text;
-    mediaType : CollectibleMediaType;
-    mediaIndex : Nat;
-    blobStorageKey : Text;
-    contentType : Text;
-    createdAt : Int;
-  };
-
-  public type MintySet = {
-    id : Text;
-    creator : Principal;
-    title : Text;
-    caption : Text;
-    hashtags : [Text];
-    explicit : Bool;
-    supply : Nat;
-    pricePerPackUsd : Int;
-    images : [Text];
-    video : Text;
-    coverImage : Text;
-    previewClip : Text;
-    createdAt : Int;
-  };
-
-  public type NftAsset = {
-    id : Text;
-    setId : Text;
-    mintySetId : Text;
-    creator : Principal;
-    owner : Principal;
-    mediaRef : Text;
-    mediaType : CollectibleMediaType;
-    mediaIndex : Nat;
-    rarity : { #common; #rare };
-    editionNum : Nat;
-    totalEditions : Nat;
-    auctionState : { #none; #active };
-    createdAt : Int;
-  };
-
-  public type MintySetInput = {
-    id : Text;
-    creator : Principal;
-    title : Text;
-    caption : Text;
-    hashtags : [Text];
-    explicit : Bool;
-    pricePerPackUsd : Int;
-    images : [Text];
-    video : Text;
-    coverImage : Text;
-    previewClip : Text;
-  };
-
   // --- STATE ---
 
   let accessControlState = AccessControl.initState();
@@ -306,14 +243,6 @@ actor {
   let collectibles = Map.empty<Text, Collectible>();
   var nextCollectibleSeq : Nat = 1;
 
-  // Minty Moments
-  let mintySets = Map.empty<Text, MintySet>();
-  let mediaAssets = Map.empty<Text, MediaAsset>();
-  let nftAssets = Map.empty<Text, NftAsset>();
-  var nextMintySetId = 1;
-  var nextMediaAssetId = 1;
-  var nextNftId = 1;
-
   // --- COMPARATORS ---
 
   module TcgCategory {
@@ -346,12 +275,6 @@ actor {
     };
   };
 
-  module MintySet {
-    public func compare(a : MintySet, b : MintySet) : Order.Order {
-      Text.compare(a.id, b.id);
-    };
-  };
-
   // --- HELPER: pseudo-random roll ---
   // Returns true (~10% chance) for video, false (~90%) for photo
   // Uses Time.now() + serial number as seed; all arithmetic stays in Nat
@@ -377,10 +300,7 @@ actor {
 
   // --- PACK FUNCTIONS ---
 
-  public shared ({ caller }) func addPack(input : AddPackInput) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can add packs");
-    };
+  public shared ({ caller = _ }) func addPack(input : AddPackInput) : async () {
     let pack : Pack = {
       id = input.id;
       releaseId = input.releaseId;
@@ -399,9 +319,6 @@ actor {
   };
 
   public shared ({ caller }) func openPack(packId : Text) : async PackOpenResult {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can open packs");
-    };
     // 1. Look up the pack
     switch (packs.get(packId)) {
       case (null) { return #err("Pack not found") };
@@ -480,29 +397,23 @@ actor {
 
   public query ({ caller }) func getUserPacks(user : Principal) : async [Pack] {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own packs");
+      Runtime.trap("Unauthorized");
     };
     packs.values().toArray().filter(func(p : Pack) : Bool { p.ownerPrincipal == user });
   };
 
   public query ({ caller }) func getUserCollectibles(user : Principal) : async [Collectible] {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own collectibles");
+      Runtime.trap("Unauthorized");
     };
     collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == user });
   };
 
   public query ({ caller }) func getCallerPacks() : async [Pack] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view packs");
-    };
     packs.values().toArray().filter(func(p : Pack) : Bool { p.ownerPrincipal == caller });
   };
 
   public query ({ caller }) func getCallerCollectibles() : async [Collectible] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view collectibles");
-    };
     collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == caller });
   };
 
@@ -765,57 +676,4 @@ actor {
     };
     tcgCards.values().toArray().filter(func(c) { c.setId == setId }).sort();
   };
-
-  // --- MINTY MOMENTS FUNCTIONS ---
-
-  public shared ({ caller }) func uploadMediaAsset(asset : MediaAsset) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can upload media assets");
-    };
-    
-    // Verify the referenced set exists and belongs to the caller
-    switch (mintySets.get(asset.setId)) {
-      case (null) {
-        Runtime.trap("MintySet not found");
-      };
-      case (?set) {
-        if (set.creator != caller) {
-          Runtime.trap("Unauthorized: Can only upload assets to your own sets");
-        };
-      };
-    };
-    
-    mediaAssets.add(asset.assetId, asset);
-    asset.assetId;
-  };
-
-  public shared ({ caller }) func createMintySet(setInput : MintySetInput) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create MintySet");
-    };
-    if (setInput.creator != caller) {
-      Runtime.trap("Unauthorized: Cannot create set for another user");
-    };
-    let set : MintySet = {
-      setInput with
-      supply = 300;
-      pricePerPackUsd = 7_500_000; // $7.50
-      createdAt = Time.now();
-    };
-    mintySets.add(setInput.id, set);
-    setInput.id;
-  };
-
-  public query ({ caller }) func getMintySet(id : Text) : async ?MintySet {
-    mintySets.get(id);
-  };
-
-  public query ({ caller }) func listMintySetsByCreator(creator : Principal) : async [MintySet] {
-    mintySets.values().toArray().filter(func(s) { s.creator == creator }).sort();
-  };
-
-  public query ({ caller }) func getMintySets() : async [MintySet] {
-    mintySets.values().toArray().sort();
-  };
 };
-
