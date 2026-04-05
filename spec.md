@@ -1,83 +1,72 @@
-# Minty — White Cycle Theme (Cycle 7)
+# Minty — White Cycle Refinement
 
 ## Current State
 
-The app has 6 supply cycle themes (Mint, Pink, Blue, Off-white, Purple, Gold), each stored in `CycleThemeContext.tsx` as a record keyed by `CycleId = 1 | 2 | 3 | 4 | 5 | 6`. Each cycle defines: `accentOklch`, `accentOklchDark`, `accentOklchLight`, `accentR/G/B`, `packWrapperUrl`, `glowDark/Light`, `logoFilter`. The `CycleSelector` in `TopBar.tsx` iterates `CYCLE_THEMES` to render the picker. `BottomNav` and `TopBar` have special-cased logic for Cycle 6 (Gold) to render white buttons with gold text/borders. CSS semantic tokens (`--echo-bg`, `--echo-surface`, etc.) are currently hardcoded to blue values in `index.css`.
+The app has a 7-cycle global theme system managed via `CycleThemeContext.tsx`. Cycle 4 is named "Off-white" and Cycle 7 is named "White". The existing White (Cycle 7) uses warm off-white backgrounds (#F7F7F5, #FAFAF8) with a black/gray accent system and a black badge logo with white lettering.
+
+The `[data-white-cycle]` CSS block in `index.css` sets warm off-white surface tokens. The `CycleThemeContext.tsx` stores cycle names and labels. `TopBar.tsx` has explicit `isWhiteCycle` branching for logo and button styling.
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Cycle 7 — White** entry in `CYCLE_THEMES` with:
-  - Accent: near-black (`#111111`, `oklch(0.14 0 0)`) — black is the accent for White cycle
-  - RGB: 17, 17, 17
-  - Pack wrapper: new white/off-white foil image `/assets/generated/pack-wrapper-cycle7-white-transparent.dim_400x560.png`
-  - Logo: special treatment — black badge style with white lettering and subtle sparkle overlay (rendered in CSS/JSX, similar to gold shimmer approach)
-  - `logoFilter`: custom black-badge CSS treatment (not a simple hue-rotate)
-  - Glow: very subtle dark gray glow: `rgba(17,17,17,`
-- **`CycleId` type** expanded to `1 | 2 | 3 | 4 | 5 | 6 | 7`
-- **White cycle semantic surface tokens** injected by `applyThemeVars()` when Cycle 7 is active:
-  - `--echo-bg`: `#F7F7F5` (primary off-white background)
-  - `--echo-surface`: `#FAFAF8`
-  - `--echo-surface-alt`: `#F5F5F3`
-  - `--echo-elevated`: `#EFEFED`
-  - `--echo-border`: `#E8E8E6`
-  - `--echo-border-subtle`: `#EFEFED`
-  - `--echo-border-faint`: `#F2F2F0`
-  - `--echo-text`: `#111111`
-  - `--echo-text-dim`: `#1A1A1A`
-  - `--echo-text-secondary`: `#444444`
-  - `--echo-text-muted`: `#777777`
-  - `--echo-text-dark`: `#777777` (inactive tab color)
-  - `--echo-nav-bg`: `rgba(247,247,245,0.98)`
-  - `--echo-nav-border`: `#E8E8E6`
-  - `--echo-header-bg`: `rgba(250,250,248,0.98)`
-  - `--echo-header-border`: `#E8E8E6`
-- **White cycle global CSS class** `[data-white-cycle]` scoped overrides for:
-  - Primary buttons: black fill, white text, no glow
-  - Secondary buttons: off-white fill, black outline, black text
-  - Pill/hashtag chips: soft off-white fill, thin gray border, dark text
-  - Cards: `#F7F7F5` fill, `#E8E8E6` border, soft 0 4px 12px rgba(0,0,0,0.06) shadow
-  - Inputs: off-white fill, `#E8E8E6` border, `#111111` text
-  - Active tab: `#111111` icon/text
-  - Inactive tab: `#777777` icon/text
-- **White logo treatment** in `TopBar.tsx`: `data-white-cycle` on root → CSS injects black badge wrapper behind the logo image with subtle sparkle CSS animation (similar to gold gleams approach, but extremely subtle — 2 tiny star points, very low opacity, long duration)
-- **`injectNeonStyles`** in `TopBar.tsx` — add White cycle branch (Cycle 7): no breathe glow on logo; instead, minimal subtle sparkle flicker animation
+- New pure-white/near-white surface tokens for Cycle 7: `#FFFFFF`, `#FCFCFC`, `#F8F8F8`
+- Hard black dividers/borders: `#EAEAEA` for dividers, `#000000` / `#1A1A1A` for primary borders
+- White cycle button overrides: primary = black fill + white text (no gradient), secondary = white fill + thin black outline + black text
+- Pill buttons: white fill + thin black border
+- Active tab states: black icon + black text
+- Inactive tab states: gray icon + gray text
+- Card surfaces: pure white with very subtle shadow or thin outline
+- Input fields: white fill + thin gray border + black text
+- Icons: black or dark gray only (remove colored icon accents in white cycle)
+- Sharp, high-contrast typography: primary text #000000, secondary #444444, tertiary #777777
 
 ### Modify
-- **`CycleThemeContext.tsx`**:
-  - Expand `CycleId` union to include `7`
-  - Add Cycle 7 `CYCLE_THEMES[7]` entry
-  - In `applyThemeVars()`: add White cycle branch (like Gold's special branch) that sets `data-white-cycle` attribute and injects white-specific semantic tokens onto `:root`
-  - In `applyThemeVars()`: remove `data-white-cycle` when switching away
-  - Update localStorage validation: `parsed >= 1 && parsed <= 7`
-- **`TopBar.tsx`**:
-  - Update `isGoldCycle` → keep as-is; add `isWhiteCycle = activeCycleId === 7`
-  - White cycle logo: render with a thin black badge container behind the logo (not cropped; just a rounded pill/container that provides the dark background for the logo to show white lettering)
-  - Since the original logo likely has mint-green lettering, White cycle needs `logoFilter` to invert to white: use `brightness(0) invert(1)` on the logo image to turn it white, inside a black-filled container
-  - Profile and Wallet buttons in White cycle: black fill, white text/icon (like gold has gold text/borders)
-  - Cycle dot indicator in White cycle: use black swatch color
-  - `injectNeonStyles`: White cycle branch — simplified subtle sparkle at very low frequency
-- **`BottomNav.tsx`**:
-  - Add `isWhite = activeCycleId === 7` branch
-  - Active tab color: `#111111` (near-black)
-  - Active indicator: solid `#111111` line (no glow or minimal glow)
-  - Inactive tab color: `#777777`
-- **`index.css`**:
-  - Add `[data-white-cycle]` block with full semantic token overrides (off-white surfaces, black text, gray borders)
+- **Cycle 4**: Rename from "Off-white" (`label: "Cycle 4 — Off-white"`) to "White" (`label: "Cycle 4 — White"`). Also update `name` from `"offwhite"` to `"white4"` to avoid naming conflict with Cycle 7.
+- **Cycle 7**: Rename label from `"Cycle 7 — White"` to keep "White" but differentiate — since Cycle 4 becomes "White", Cycle 7 should be renamed to something distinct. Actually per user request: Cycle 4 (formerly Off-white) becomes "White". The existing Cycle 7 (currently called "White") should have its UI updated per the new spec. Rename Cycle 7 label to remain "White" since Cycle 4 is being renamed to take the "White" name — wait, re-reading: user says "Rename the Off-white theme to White" and "Update the White cycle" — this means: rename Cycle 4 to "White", and update Cycle 7 (which is already named White) with the new design. So Cycle 4 label becomes "Cycle 4 — White" and Cycle 7 keeps "Cycle 7 — White" but with updated design. Both will be named White but at different cycle numbers.
+- **`[data-white-cycle]` CSS** (`index.css`): Replace warm off-white surface tokens with pure white/crisp tokens:
+  - `--echo-bg: #FFFFFF` (was `#f7f7f5`)
+  - `--echo-bg-alpha: rgba(255,255,255,0.98)` 
+  - `--echo-surface: #FCFCFC` (was `#fafaf8`)
+  - `--echo-surface-alt: #F8F8F8` (was `#f5f5f3`)
+  - `--echo-elevated: #F0F0F0` (was `#efefed`)
+  - `--echo-border: #EAEAEA` (was `#e8e8e6`)
+  - `--echo-border-subtle: #F0F0F0`
+  - `--echo-border-faint: #F5F5F5`
+  - `--echo-text: #000000` (was `#111111`)
+  - `--echo-text-dim: #111111`
+  - `--echo-text-secondary: #444444`
+  - `--echo-text-muted: #777777`
+  - `--echo-nav-bg: rgba(255,255,255,0.98)`
+  - `--echo-nav-border: #EAEAEA`
+  - `--echo-header-bg: rgba(255,255,255,0.98)`
+  - `--echo-header-border: #EAEAEA`
+- **White cycle button overrides** (`index.css`): Update button styles — primary: black fill (#000000), white text, no warm tint. Secondary variant: white fill, thin black border. Remove any warm tint.
+- **White cycle card styles**: Pure white surfaces, thin `#EAEAEA` or `#000000` borders, minimal box-shadow.
+- **CycleThemeContext Cycle 7 surface vars**: Update `applyThemeVars` to use new pure-white tokens for Cycle 7.
+- **TopBar.tsx**: Logo badge background changes from `#111111` to `#000000` for sharper black. Button styles in white cycle: pure black fill `#000000`, white text. Border on buttons: `1px solid #000000`.
 
 ### Remove
-- Nothing removed — all existing cycles preserved
+- Warm beige/cream tones from white cycle (no `#F7F7F5`, `#FAFAF8`, `#F5F5F3` warm variants)
+- Any colored accents in white cycle (no colored icon tints, no RGB glow effects)
+- Warm-tinted button backgrounds in white cycle
 
 ## Implementation Plan
 
-1. Generate White cycle pack wrapper image (off-white/pearl foil)
-2. Expand `CycleId` type to include `7` in `CycleThemeContext.tsx`
-3. Add Cycle 7 config object to `CYCLE_THEMES`
-4. In `applyThemeVars()`, add White cycle branch to inject all off-white semantic tokens and `data-white-cycle` attribute
-5. Update localStorage parsing bounds to `<= 7`
-6. Add `[data-white-cycle]` CSS block in `index.css` overriding surfaces, buttons, borders, text
-7. In `TopBar.tsx`, handle White cycle logo: black badge container + inverted logo filter (`brightness(0) invert(1)`) + optional subtle sparkle CSS
-8. Update Profile/Wallet button styles in `TopBar.tsx` for White cycle (black fill, white text)
-9. Update `BottomNav.tsx` for White cycle active/inactive tab colors
-10. Update `CycleSelector` dot rendering — White cycle dot should be near-black
-11. Validate and build
+1. **`CycleThemeContext.tsx`**: 
+   - Cycle 4: change `name` to `"white4"`, `label` to `"Cycle 4 — White"`
+   - Cycle 7: Update `applyThemeVars` white cycle block to use pure white tokens (#FFFFFF, #FCFCFC)
+   - Update `--echo-bg`, `--echo-surface`, `--echo-header-bg`, `--echo-nav-bg`, and related border tokens to pure white/crisp values
+   - Keep `--echo-text: #000000`, `--echo-text-secondary: #444444`, `--echo-text-muted: #777777`
+
+2. **`index.css`**: 
+   - Update `[data-white-cycle]` block: replace warm off-white hex values with pure white (#FFFFFF, #FCFCFC, #F8F8F8)
+   - Update button overrides: `background: #000000`, `border-color: #000000`, hover: `#111111`
+   - Update pill/filter styles: white fill (#FFFFFF), thin black border (#000000 at 20% opacity)
+   - Add card surface override: white background, #EAEAEA border
+   - Add input override: white fill, #EAEAEA border, #000000 text
+
+3. **`TopBar.tsx`**: 
+   - Logo badge: change background from `#111111` to `#000000` for crisp stamp look
+   - Upload/Profile button in white cycle: `#000000` fill, white text, `1px solid #000000` border
+   - Auth button in white cycle: `#000000` fill, white text
+   - Remove any warm tint references

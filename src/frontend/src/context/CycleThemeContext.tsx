@@ -75,8 +75,8 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
   },
   4: {
     id: 4,
-    name: "offwhite",
-    label: "Cycle 4 — Off-white",
+    name: "white4",
+    label: "Cycle 4 — White",
     accentOklch: "0.92 0.03 80",
     accentOklchDark: "0.94 0.03 80",
     accentOklchLight: "0.70 0.04 80",
@@ -131,13 +131,13 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
     accentOklch: "0.14 0 0",
     accentOklchDark: "0.10 0 0",
     accentOklchLight: "0.14 0 0",
-    accentR: 17,
-    accentG: 17,
-    accentB: 17,
+    accentR: 0,
+    accentG: 0,
+    accentB: 0,
     packWrapperUrl:
       "/assets/generated/pack-wrapper-cycle7-white-transparent.dim_400x560.png",
-    glowDark: "rgba(17,17,17,",
-    glowLight: "rgba(17,17,17,",
+    glowDark: "rgba(0,0,0,",
+    glowLight: "rgba(0,0,0,",
     logoFilter: "white-cycle-badge", // special marker — handled in TopBar
   },
 };
@@ -200,26 +200,26 @@ function applyThemeVars(cycle: CycleTheme) {
   if (cycle.id === 7) {
     root.setAttribute("data-white-cycle", "true");
     root.classList.add("white-cycle");
-    root.style.setProperty("--echo-bg", "#F7F7F5");
-    root.style.setProperty("--echo-bg-alpha", "rgba(247,247,245,0.97)");
-    root.style.setProperty("--echo-surface", "#FAFAF8");
-    root.style.setProperty("--echo-surface-alt", "#F5F5F3");
-    root.style.setProperty("--echo-elevated", "#EFEFED");
-    root.style.setProperty("--echo-border", "#E8E8E6");
-    root.style.setProperty("--echo-border-subtle", "#EFEFED");
-    root.style.setProperty("--echo-border-faint", "#F2F2F0");
-    root.style.setProperty("--echo-text", "#111111");
-    root.style.setProperty("--echo-text-dim", "#1A1A1A");
+    root.style.setProperty("--echo-bg", "#FFFFFF");
+    root.style.setProperty("--echo-bg-alpha", "rgba(255,255,255,0.98)");
+    root.style.setProperty("--echo-surface", "#FCFCFC");
+    root.style.setProperty("--echo-surface-alt", "#F8F8F8");
+    root.style.setProperty("--echo-elevated", "#F0F0F0");
+    root.style.setProperty("--echo-border", "#EAEAEA");
+    root.style.setProperty("--echo-border-subtle", "#F0F0F0");
+    root.style.setProperty("--echo-border-faint", "#F5F5F5");
+    root.style.setProperty("--echo-text", "#000000");
+    root.style.setProperty("--echo-text-dim", "#111111");
     root.style.setProperty("--echo-text-secondary", "#444444");
     root.style.setProperty("--echo-text-muted", "#777777");
     root.style.setProperty("--echo-text-dark", "#777777");
-    root.style.setProperty("--echo-nav-bg", "rgba(247,247,245,0.98)");
-    root.style.setProperty("--echo-nav-border", "#E8E8E6");
-    root.style.setProperty("--echo-header-bg", "rgba(250,250,248,0.98)");
-    root.style.setProperty("--echo-header-border", "#E8E8E6");
-    root.style.setProperty("--white-text", "#111111");
-    root.style.setProperty("--white-border", "rgba(17,17,17,0.25)");
-    root.style.setProperty("--white-bg", "#F7F7F5");
+    root.style.setProperty("--echo-nav-bg", "rgba(255,255,255,0.98)");
+    root.style.setProperty("--echo-nav-border", "#EAEAEA");
+    root.style.setProperty("--echo-header-bg", "rgba(255,255,255,0.98)");
+    root.style.setProperty("--echo-header-border", "#EAEAEA");
+    root.style.setProperty("--white-text", "#000000");
+    root.style.setProperty("--white-border", "rgba(0,0,0,0.18)");
+    root.style.setProperty("--white-bg", "#FFFFFF");
   } else {
     root.removeAttribute("data-white-cycle");
     root.classList.remove("white-cycle");

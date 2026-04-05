@@ -1122,17 +1122,17 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const uploadBg = isGoldCycle
     ? "#FFFFFF"
     : isWhiteCycle
-      ? "#111111"
+      ? "#000000"
       : "rgba(var(--cycle-accent-rgb),0.07)";
   const uploadBgHover = isGoldCycle
     ? "#FFFEF8"
     : isWhiteCycle
-      ? "#1A1A1A"
+      ? "#111111"
       : "rgba(var(--cycle-accent-rgb),0.12)";
   const uploadBorder = isGoldCycle
     ? "1px solid rgba(201,162,55,0.58)"
     : isWhiteCycle
-      ? "1px solid rgba(17,17,17,0.85)"
+      ? "1px solid #000000"
       : "1px solid rgba(var(--cycle-accent-rgb),0.20)";
   const uploadColor = isGoldCycle
     ? "#8B6914"
@@ -1142,7 +1142,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const uploadShadow = isGoldCycle
     ? "0 0 10px rgba(201,162,55,0.18), 0 0 3px rgba(201,162,55,0.08), 0 1px 3px rgba(0,0,0,0.05)"
     : isWhiteCycle
-      ? "0 1px 4px rgba(0,0,0,0.15)"
+      ? "0 1px 3px rgba(0,0,0,0.12)"
       : "0 1px 3px rgba(0,0,0,0.06)";
 
   function handleAuthButtonClick() {
@@ -1185,7 +1185,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                background: "#111111",
+                background: "#000000",
                 borderRadius: "10px",
                 padding: "5px 12px",
                 position: "relative",
@@ -1322,7 +1322,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               backgroundColor: isGoldCycle
                 ? "#FFFFFF"
                 : isWhiteCycle
-                  ? "#111111"
+                  ? "#000000"
                   : "rgba(247, 249, 252, 1)",
               color: isGoldCycle
                 ? "#8B6914"
@@ -1332,12 +1332,12 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               border: isGoldCycle
                 ? "1px solid rgba(201,162,55,0.58)"
                 : isWhiteCycle
-                  ? "1px solid #111111"
+                  ? "1px solid #000000"
                   : "1px solid #D0DFEF",
               boxShadow: isGoldCycle
                 ? "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)"
                 : isWhiteCycle
-                  ? "0 1px 4px rgba(0,0,0,0.15)"
+                  ? "0 1px 3px rgba(0,0,0,0.12)"
                   : "0 1px 3px rgba(0,0,0,0.06)",
               cursor: "pointer",
             }}
@@ -1349,8 +1349,8 @@ export function TopBar({ onProfileClick }: TopBarProps) {
                 el.style.boxShadow =
                   "0 0 16px rgba(201,162,55,0.26), 0 0 5px rgba(201,162,55,0.14), 0 1px 4px rgba(0,0,0,0.07)";
               } else if (isWhiteCycle) {
-                el.style.backgroundColor = "#222222";
-                el.style.borderColor = "#222222";
+                el.style.backgroundColor = "#000000";
+                el.style.borderColor = "#000000";
               } else {
                 el.style.backgroundColor = "rgba(240, 244, 250, 1)";
                 el.style.borderColor = "#C0D4EC";
@@ -1364,8 +1364,8 @@ export function TopBar({ onProfileClick }: TopBarProps) {
                 el.style.boxShadow =
                   "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)";
               } else if (isWhiteCycle) {
-                el.style.backgroundColor = "#111111";
-                el.style.borderColor = "#111111";
+                el.style.backgroundColor = "#000000";
+                el.style.borderColor = "#000000";
               } else {
                 el.style.backgroundColor = "rgba(247, 249, 252, 1)";
                 el.style.borderColor = "#D0DFEF";
