@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { SetPackPriceModal } from "./components/SetPackPriceModal";
+import { MintSetConfirmModal } from "./components/MintSetConfirmModal";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
@@ -43,21 +43,13 @@ type View =
   | { type: "capture-moment" }
   | { type: "profile" };
 
-const PRICE_TO_HOURS: Record<number, number> = {
-  1: 24,
-  5: 12,
-  20: 8,
-  50: 4,
-  100: 1,
-};
-
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
   const [pendingMintDraft, setPendingMintDraft] = useState<MomentDraft | null>(
     null,
   );
-  const [showPackPriceModal, setShowPackPriceModal] = useState(false);
+  const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
 
@@ -88,17 +80,19 @@ function AppContent() {
 
   function handleMintComplete(draft: MomentDraft) {
     setPendingMintDraft(draft);
-    setShowPackPriceModal(true);
+    setShowMintSetConfirmModal(true);
     setView({ type: "tab", tab: "library" });
   }
 
-  function handleConfirmPackPrice(priceUsd: number) {
+  function handleMintSetConfirm() {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
     const now = Date.now();
-    const totalPacks = 100;
+    const totalPacks = 300;
+    const priceUsd = 10; // bonding curve starting price
 
-    const hours = PRICE_TO_HOURS[priceUsd] ?? 24;
+    // Simulate $100 minting fee payment
+    console.log("[Minty] Minting fee: $100 deducted");
 
     const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
     const photoCount = totalPacks - videoCount;
@@ -150,7 +144,8 @@ function AppContent() {
       packIds,
       priceUsd,
       listedAt: now,
-      expiresAt: now + hours * 3600000,
+      // Standardized releases: 1 year expiry (no burn for normal releases)
+      expiresAt: now + 365 * 24 * 3600000,
       status: "active",
       collectibleType: "photo",
       explicit: draft.explicit ?? false,
@@ -158,19 +153,21 @@ function AppContent() {
 
     addRelease(release);
     setPendingMintDraft(null);
-    setShowPackPriceModal(false);
+    setShowMintSetConfirmModal(false);
   }
 
   return (
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
 
-      {showPackPriceModal && pendingMintDraft && (
-        <SetPackPriceModal
-          onConfirm={handleConfirmPackPrice}
-          onClose={() => handleConfirmPackPrice(1)}
-        />
-      )}
+      <MintSetConfirmModal
+        open={showMintSetConfirmModal && pendingMintDraft !== null}
+        onClose={() => {
+          setShowMintSetConfirmModal(false);
+          setPendingMintDraft(null);
+        }}
+        onConfirm={handleMintSetConfirm}
+      />
 
       <TopBar onProfileClick={() => setView({ type: "profile" })} />
       <main className="pt-16 pb-[68px] min-h-screen">

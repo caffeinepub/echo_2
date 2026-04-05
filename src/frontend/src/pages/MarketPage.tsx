@@ -1,21 +1,312 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
-import { useUserSettings } from "../context/UserSettingsContext";
-import {
-  type MintMomentSetRank,
-  getDiscoverSets,
-} from "../store/mockDiscoverSets";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+interface SoldNFT {
+  id: string;
+  title: string;
+  setName: string;
+  creator: string;
+  imageUrl: string;
+  mediaType: "photo" | "video";
+  rarity: "Common" | "Rare";
+  salePrice: number;
+  soldAt: number;
 }
 
-// ─── Signal Card ────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatUSD(n: number): string {
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
+  return `$${n.toFixed(2)}`;
+}
+
+// ─── Mock Sold NFT Data ───────────────────────────────────────────────────────
+
+const NOW = Date.now();
+const D = 86400000;
+const H = 3600000;
+
+const SOLD_NFTS: SoldNFT[] = [
+  {
+    id: "sold_1",
+    title: "Golden Hour #1",
+    setName: "Golden Hour Set",
+    creator: "light.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 520,
+    soldAt: NOW - 3 * H,
+  },
+  {
+    id: "sold_2",
+    title: "Night Drive #7",
+    setName: "Night Drive Series",
+    creator: "neon_rider.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 410,
+    soldAt: NOW - 18 * H,
+  },
+  {
+    id: "sold_3",
+    title: "Sunset Ride #3",
+    setName: "Coastal Drift Vol. 1",
+    creator: "mintcreator.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 380,
+    soldAt: NOW - 6 * H,
+  },
+  {
+    id: "sold_4",
+    title: "Alpine Glow #2",
+    setName: "Alpine Series",
+    creator: "peak.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 245,
+    soldAt: NOW - 2 * D,
+  },
+  {
+    id: "sold_5",
+    title: "Forest Walk #12",
+    setName: "Forest Walks",
+    creator: "woodsy.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 190,
+    soldAt: NOW - 4 * D,
+  },
+  {
+    id: "sold_6",
+    title: "City Lights #5",
+    setName: "Urban Pulse",
+    creator: "citymuse.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 175,
+    soldAt: NOW - 1 * D,
+  },
+  {
+    id: "sold_7",
+    title: "Desert Wind #4",
+    setName: "Desert Wind",
+    creator: "sandstorm.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 140,
+    soldAt: NOW - 3 * D,
+  },
+  {
+    id: "sold_8",
+    title: "Ocean Horizon #8",
+    setName: "Coastal Drift Vol. 1",
+    creator: "mintcreator.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1433360405326-e50f909805b3?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 120,
+    soldAt: NOW - 8 * H,
+  },
+  {
+    id: "sold_9",
+    title: "Golden Hour #3",
+    setName: "Golden Hour Set",
+    creator: "light.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 98,
+    soldAt: NOW - 5 * D,
+  },
+  {
+    id: "sold_10",
+    title: "Summit View #1",
+    setName: "Alpine Series",
+    creator: "peak.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 89,
+    soldAt: NOW - 10 * D,
+  },
+  {
+    id: "sold_11",
+    title: "Night Drive #3",
+    setName: "Night Drive Series",
+    creator: "neon_rider.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 75,
+    soldAt: NOW - 15 * D,
+  },
+  {
+    id: "sold_12",
+    title: "River Bend #6",
+    setName: "River Moments",
+    creator: "flowstate.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 62,
+    soldAt: NOW - 20 * D,
+  },
+  {
+    id: "sold_13",
+    title: "Coastal Sunset #9",
+    setName: "Coastal Drift Vol. 2",
+    creator: "mintcreator.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 55,
+    soldAt: NOW - 25 * D,
+  },
+  {
+    id: "sold_14",
+    title: "Mountain Mist #2",
+    setName: "Alpine Series",
+    creator: "peak.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 48,
+    soldAt: NOW - 40 * D,
+  },
+  {
+    id: "sold_15",
+    title: "Urban Nights #11",
+    setName: "Urban Pulse",
+    creator: "citymuse.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 42,
+    soldAt: NOW - 60 * D,
+  },
+  {
+    id: "sold_16",
+    title: "Forest Dawn #5",
+    setName: "Forest Walks",
+    creator: "woodsy.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 310,
+    soldAt: NOW - 80 * D,
+  },
+  {
+    id: "sold_17",
+    title: "Dusk Horizon #2",
+    setName: "Golden Hour Set",
+    creator: "light.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 33,
+    soldAt: NOW - 120 * D,
+  },
+  {
+    id: "sold_18",
+    title: "Canyon Echo #1",
+    setName: "Desert Wind",
+    creator: "sandstorm.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1433360405326-e50f909805b3?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 280,
+    soldAt: NOW - 200 * D,
+  },
+  {
+    id: "sold_19",
+    title: "River Rush #3",
+    setName: "River Moments",
+    creator: "flowstate.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
+    mediaType: "photo",
+    rarity: "Common",
+    salePrice: 22,
+    soldAt: NOW - 280 * D,
+  },
+  {
+    id: "sold_20",
+    title: "City Grid #7",
+    setName: "Urban Pulse",
+    creator: "citymuse.icp",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
+    mediaType: "video",
+    rarity: "Rare",
+    salePrice: 195,
+    soldAt: NOW - 350 * D,
+  },
+];
+
+// ─── Time Filter ──────────────────────────────────────────────────────────────
+
+type TimeRange = "24H" | "7D" | "1M" | "1Y" | "ALL_TIME";
+
+const TIME_RANGES: { label: string; value: TimeRange }[] = [
+  { label: "24H", value: "24H" },
+  { label: "7D", value: "7D" },
+  { label: "1M", value: "1M" },
+  { label: "1Y", value: "1Y" },
+  { label: "All Time", value: "ALL_TIME" },
+];
+
+function getTimeThreshold(range: TimeRange): number {
+  switch (range) {
+    case "24H":
+      return NOW - D;
+    case "7D":
+      return NOW - 7 * D;
+    case "1M":
+      return NOW - 30 * D;
+    case "1Y":
+      return NOW - 365 * D;
+    default:
+      return 0;
+  }
+}
+
+function filterAndSortNFTs(range: TimeRange): SoldNFT[] {
+  const threshold = getTimeThreshold(range);
+  return SOLD_NFTS.filter((nft) => nft.soldAt >= threshold).sort(
+    (a, b) => b.salePrice - a.salePrice,
+  );
+}
+
+// ─── Signal Card ─────────────────────────────────────────────────────────────
 
 function SignalCard({
   label,
@@ -60,269 +351,7 @@ function SignalCard({
   );
 }
 
-// ─── Preview Thumbnail ──────────────────────────────────────────────────────────
-
-function PreviewThumb({
-  set,
-  isHighlight,
-  highlightColor,
-  size = "sm",
-}: {
-  set: MintMomentSetRank;
-  isHighlight: boolean;
-  highlightColor: string;
-  size?: "sm" | "lg";
-}) {
-  const containerStyle: React.CSSProperties =
-    size === "sm"
-      ? {
-          width: "36px",
-          height: "45px",
-          flexShrink: 0,
-          borderRadius: "8px",
-          overflow: "hidden",
-          border: isHighlight
-            ? `1.5px solid ${highlightColor}`
-            : "1px solid #e5e7eb",
-        }
-      : {
-          width: "100%",
-          aspectRatio: "4/5",
-          borderRadius: "12px",
-          overflow: "hidden",
-          maxHeight: "210px",
-        };
-
-  return (
-    <div style={containerStyle}>
-      {set.previewClipUrl ? (
-        <video
-          src={set.previewClipUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
-      ) : (
-        <img
-          src={set.coverImageUrl}
-          alt={set.title}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Set Rank Row ────────────────────────────────────────────────────────────────
-
-const RANK_COLORS = ["#f59e0b", "#94a3b8", "#b45309"];
-
-function SetRankRow({
-  set,
-  rank,
-  accentColor,
-  accentRgb,
-  onClick,
-  sectionRank,
-  explicitModeOn = false,
-}: {
-  set: MintMomentSetRank;
-  rank: number;
-  accentColor: string;
-  accentRgb: string;
-  onClick: () => void;
-  sectionRank: number;
-  explicitModeOn?: boolean;
-}) {
-  const isHighlight = sectionRank <= 3;
-  const rankColor = isHighlight ? RANK_COLORS[sectionRank - 1] : accentColor;
-
-  const rowStyle = {
-    background: "white",
-    border: isHighlight
-      ? `1px solid rgba(${accentRgb}, 0.22)`
-      : "1px solid oklch(0.92 0.004 185)",
-    boxShadow: isHighlight
-      ? `0 2px 12px rgba(${accentRgb}, 0.08)`
-      : "0 1px 4px rgba(0,0,0,0.05)",
-  };
-
-  const textPrimary = "#1a1a1a";
-  const textSecondary = "#9ca3af";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(sectionRank * 0.04, 0.5) }}
-      className="flex items-center gap-3 rounded-2xl px-3 py-2.5 cursor-pointer"
-      onClick={onClick}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
-      data-ocid={`discover.item.${rank}`}
-      style={{
-        ...rowStyle,
-        position: "relative",
-        filter: set.explicit && !explicitModeOn ? "blur(4px)" : "none",
-        userSelect: set.explicit && !explicitModeOn ? "none" : "auto",
-        transition: "filter 0.2s",
-      }}
-    >
-      {/* Explicit overlay badge */}
-      {set.explicit && !explicitModeOn && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            borderRadius: "inherit",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2,
-            cursor: "default",
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <span
-            style={{
-              fontSize: "9px",
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              background: "rgba(245,158,11,0.90)",
-              color: "#fff",
-              borderRadius: "10px",
-              padding: "2px 8px",
-              backdropFilter: "blur(4px)",
-              border: "1px solid rgba(245,158,11,0.40)",
-            }}
-          >
-            EXPLICIT
-          </span>
-        </div>
-      )}
-      {/* Rank */}
-      <span
-        className="font-bold tabular-nums shrink-0"
-        style={{
-          fontSize: "13px",
-          color: rankColor,
-          width: "22px",
-          textAlign: "center",
-        }}
-      >
-        #{sectionRank}
-      </span>
-
-      {/* Thumbnail 4:5 portrait */}
-      <PreviewThumb
-        set={set}
-        isHighlight={isHighlight}
-        highlightColor={rankColor}
-        size="sm"
-      />
-
-      {/* Set info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <p
-            className="font-semibold truncate"
-            style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
-          >
-            {set.title}
-          </p>
-          {set.trendingTag && (
-            <span
-              style={{
-                fontSize: "9px",
-                fontWeight: 700,
-                padding: "1px 6px",
-                borderRadius: "8px",
-                background: "rgba(245, 158, 11, 0.12)",
-                color: "#f59e0b",
-                border: "1px solid rgba(245, 158, 11, 0.25)",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              🔥 trending
-            </span>
-          )}
-        </div>
-        <p
-          className="truncate"
-          style={{ fontSize: "11px", color: textSecondary, lineHeight: 1.3 }}
-        >
-          by {set.creator}
-        </p>
-      </div>
-
-      {/* Engagement stats */}
-      <div className="shrink-0 text-right">
-        <p
-          className="font-semibold tabular-nums"
-          style={{ fontSize: "12px", color: accentColor, lineHeight: 1.3 }}
-        >
-          {formatCount(set.packOpens)} opens
-        </p>
-        <p
-          className="tabular-nums"
-          style={{ fontSize: "10px", color: textSecondary, lineHeight: 1.3 }}
-        >
-          {formatCount(set.uniqueCollectors)} collectors
-        </p>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Section Header ───────────────────────────────────────────────────────────
-
-function SectionHeader({
-  icon,
-  label,
-  accentColor,
-  accentRgb,
-}: {
-  icon: string;
-  label: string;
-  accentColor: string;
-  accentRgb: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 mt-6 mb-2.5">
-      <span style={{ fontSize: "16px" }}>{icon}</span>
-      <p
-        className="text-[11px] uppercase tracking-[0.14em] font-semibold"
-        style={{ color: accentColor }}
-      >
-        {label}
-      </p>
-      <div
-        style={{
-          flex: 1,
-          height: "1px",
-          background: `rgba(${accentRgb}, 0.15)`,
-          marginLeft: "4px",
-        }}
-      />
-    </div>
-  );
-}
-
 // ─── Time Filter Pills ────────────────────────────────────────────────────────
-
-type TimeRange = "ALL_TIME" | "24H" | "7D" | "30D";
-const TIME_RANGES: { label: string; value: TimeRange }[] = [
-  { label: "All Time", value: "ALL_TIME" },
-  { label: "24H", value: "24H" },
-  { label: "7D", value: "7D" },
-  { label: "30D", value: "30D" },
-];
 
 function TimeFilterPills({
   active,
@@ -377,445 +406,202 @@ function TimeFilterPills({
   );
 }
 
-// ─── Set Detail Sheet ────────────────────────────────────────────────────────────
+// ─── Rank Badge ───────────────────────────────────────────────────────────────
 
-function SetDetailSheet({
-  set,
-  accentColor,
-  accentRgb,
-  onClose,
-}: {
-  set: MintMomentSetRank;
-  accentColor: string;
-  accentRgb: string;
-  onClose: () => void;
-}) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+const RANK_BADGE_COLORS: Record<number, { bg: string; color: string }> = {
+  1: { bg: "#FEF3C7", color: "#D97706" },
+  2: { bg: "#F1F5F9", color: "#64748B" },
+  3: { bg: "#FDF4E7", color: "#B45309" },
+};
 
-  useEffect(() => {
-    const t = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(t);
-  }, []);
-
-  const sheetBg = "#ffffff";
-  const textPrimary = "#1a1a1a";
-  const textSecondary = "#9ca3af";
-  const dividerColor = "#f0f0f0";
-
+function RankBadge({ rank }: { rank: number }) {
+  const style = RANK_BADGE_COLORS[rank];
+  if (style) {
+    return (
+      <div
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: "50%",
+          background: style.bg,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            fontSize: "11px",
+            fontWeight: 800,
+            color: style.color,
+          }}
+        >
+          {rank}
+        </span>
+      </div>
+    );
+  }
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
+        width: 26,
+        height: 26,
         display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
       }}
-      data-ocid="discover.modal"
     >
-      {/* Backdrop */}
-      <button
-        type="button"
-        aria-label="Close"
+      <span
         style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(0,0,0,0.35)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
-          transition: "opacity 0.3s",
-          opacity: visible ? 1 : 0,
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-        }}
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div
-        ref={sheetRef}
-        style={{
-          position: "relative",
-          background: sheetBg,
-          borderRadius: "24px 24px 0 0",
-          maxHeight: "88vh",
-          overflowY: "auto",
-          transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
-          transform: visible ? "translateY(0)" : "translateY(100%)",
-          boxShadow: "0 -4px 40px rgba(0,0,0,0.12)",
+          fontSize: "11px",
+          fontWeight: 700,
+          color: "#9ca3af",
         }}
       >
-        {/* Handle */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            paddingTop: "12px",
-            paddingBottom: "8px",
-          }}
-        >
-          <div
-            style={{
-              width: "36px",
-              height: "4px",
-              borderRadius: "2px",
-              background: "rgba(0,0,0,0.15)",
-            }}
-          />
-        </div>
-
-        {/* Close button */}
-        <button
-          type="button"
-          data-ocid="discover.close_button"
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: "16px",
-            right: "16px",
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.06)",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: textPrimary,
-            fontSize: "16px",
-            lineHeight: 1,
-          }}
-        >
-          ×
-        </button>
-
-        <div style={{ padding: "0 16px 32px" }}>
-          {/* Preview clip / cover image */}
-          <div
-            style={{
-              width: "100%",
-              aspectRatio: "4/5",
-              maxHeight: "210px",
-              borderRadius: "16px",
-              overflow: "hidden",
-              marginBottom: "16px",
-              background: "#f3f4f6",
-            }}
-          >
-            {set.previewClipUrl ? (
-              <video
-                src={set.previewClipUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <img
-                src={set.coverImageUrl}
-                alt={set.title}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            )}
-          </div>
-
-          {/* Title + creator + trending */}
-          <div className="flex items-start justify-between gap-2 mb-0.5">
-            <h2
-              style={{
-                fontSize: "20px",
-                fontWeight: 700,
-                color: textPrimary,
-                lineHeight: 1.2,
-              }}
-            >
-              {set.title}
-            </h2>
-            {set.trendingTag && (
-              <span
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  padding: "3px 8px",
-                  borderRadius: "10px",
-                  background: "rgba(245, 158, 11, 0.12)",
-                  color: "#f59e0b",
-                  border: "1px solid rgba(245, 158, 11, 0.25)",
-                  whiteSpace: "nowrap",
-                  flexShrink: 0,
-                  marginTop: "2px",
-                }}
-              >
-                🔥 trending
-              </span>
-            )}
-          </div>
-          <p
-            style={{
-              fontSize: "13px",
-              color: textSecondary,
-              marginBottom: "16px",
-            }}
-          >
-            by {set.creator}
-          </p>
-
-          {/* Engagement stats row */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "8px",
-              marginBottom: "16px",
-            }}
-          >
-            {[
-              { label: "Opens", value: formatCount(set.packOpens) },
-              { label: "Collectors", value: formatCount(set.uniqueCollectors) },
-              { label: "Plays", value: formatCount(set.previewPlays) },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                style={{
-                  background: `rgba(${accentRgb}, 0.06)`,
-                  border: `1px solid rgba(${accentRgb}, 0.15)`,
-                  borderRadius: "12px",
-                  padding: "10px 8px",
-                  textAlign: "center",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: accentColor,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {stat.value}
-                </p>
-                <p
-                  style={{
-                    fontSize: "10px",
-                    color: textSecondary,
-                    marginTop: "2px",
-                  }}
-                >
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Volume as secondary line */}
-          <p
-            style={{
-              fontSize: "11px",
-              color: textSecondary,
-              marginBottom: "12px",
-            }}
-          >
-            Volume: ${set.totalVolume.toLocaleString()} &nbsp;·&nbsp;{" "}
-            {set.salesCount} sales
-          </p>
-
-          {/* Pack info */}
-          <div
-            style={{
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              borderRadius: "14px",
-              padding: "12px 14px",
-              marginBottom: "14px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              {[
-                { label: "Total Packs", value: set.totalPacks },
-                { label: "Remaining", value: set.remainingPacks },
-                {
-                  label: "Price/Pack",
-                  value: `$${set.pricePerPack.toFixed(2)}`,
-                },
-              ].map((item) => (
-                <div key={item.label} style={{ flex: 1, textAlign: "center" }}>
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: textPrimary,
-                    }}
-                  >
-                    {item.value}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "10px",
-                      color: textSecondary,
-                      marginTop: "1px",
-                    }}
-                  >
-                    {item.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Description */}
-          {set.description && (
-            <p
-              style={{
-                fontSize: "13px",
-                color: textSecondary,
-                lineHeight: 1.6,
-                marginBottom: "14px",
-              }}
-            >
-              {set.description}
-            </p>
-          )}
-
-          {/* Recent activity */}
-          {set.recentSales.length > 0 && (
-            <div style={{ marginBottom: "16px" }}>
-              <p
-                style={{
-                  fontSize: "10px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  fontWeight: 600,
-                  color: textSecondary,
-                  marginBottom: "8px",
-                }}
-              >
-                Recent Activity
-              </p>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-              >
-                {set.recentSales.slice(0, 5).map((sale, idx) => (
-                  <div
-                    key={`${sale.itemTitle}-${sale.timeAgo}-${idx}`}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px 10px",
-                      background: "rgba(0,0,0,0.02)",
-                      borderRadius: "10px",
-                      border: "1px solid #f0f0f0",
-                    }}
-                    data-ocid={`discover.activity.item.${idx + 1}`}
-                  >
-                    <span style={{ fontSize: "12px", color: textPrimary }}>
-                      {sale.itemTitle}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "10px",
-                        color: textSecondary,
-                      }}
-                    >
-                      {sale.timeAgo}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Activity velocity blip */}
-          {set.recentActivityVelocity > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                marginBottom: "14px",
-                padding: "8px 10px",
-                background: `rgba(${accentRgb}, 0.05)`,
-                borderRadius: "10px",
-                border: `1px solid rgba(${accentRgb}, 0.15)`,
-              }}
-            >
-              <span
-                className="animate-pulse"
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  background: accentColor,
-                  display: "inline-block",
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: accentColor,
-                  fontWeight: 600,
-                }}
-              >
-                {set.recentActivityVelocity} events in the last 2 hours
-              </span>
-            </div>
-          )}
-
-          {/* Divider */}
-          <div
-            style={{
-              height: "1px",
-              background: dividerColor,
-              marginBottom: "16px",
-            }}
-          />
-
-          {/* CTA */}
-          <button
-            type="button"
-            data-ocid="discover.buy_packs.primary_button"
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "14px",
-              background: set.remainingPacks === 0 ? "#f3f4f6" : accentColor,
-              color: set.remainingPacks === 0 ? textSecondary : "white",
-              border: "none",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: set.remainingPacks === 0 ? "default" : "pointer",
-              boxShadow:
-                set.remainingPacks === 0
-                  ? "none"
-                  : `0 4px 16px rgba(${accentRgb}, 0.32), inset 0 1px 0 rgba(255,255,255,0.15)`,
-              letterSpacing: "0.01em",
-            }}
-            disabled={set.remainingPacks === 0}
-          >
-            {set.remainingPacks === 0
-              ? "Sold Out"
-              : `Buy Packs · $${set.pricePerPack.toFixed(2)} / pack`}
-          </button>
-        </div>
-      </div>
+        {rank}
+      </span>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────────
+// ─── Sold NFT Row ─────────────────────────────────────────────────────────────
+
+function SoldNFTRow({
+  nft,
+  rank,
+  accentColor,
+  accentRgb,
+}: {
+  nft: SoldNFT;
+  rank: number;
+  accentColor: string;
+  accentRgb: string;
+}) {
+  const isTop3 = rank <= 3;
+  const textPrimary = "#1a1a1a";
+  const textSecondary = "#9ca3af";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.22, delay: Math.min(rank * 0.04, 0.5) }}
+      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
+      data-ocid={`discover.item.${rank}`}
+      style={{
+        background: "white",
+        border: isTop3
+          ? `1px solid rgba(${accentRgb}, 0.22)`
+          : "1px solid #f0f0f0",
+        boxShadow: isTop3
+          ? `0 2px 12px rgba(${accentRgb}, 0.08)`
+          : "0 1px 4px rgba(0,0,0,0.04)",
+      }}
+    >
+      <RankBadge rank={rank} />
+
+      {/* Thumbnail */}
+      <div
+        style={{
+          width: 36,
+          height: 45,
+          flexShrink: 0,
+          borderRadius: 8,
+          overflow: "hidden",
+          border: isTop3
+            ? `1.5px solid rgba(${accentRgb}, 0.30)`
+            : "1px solid #e5e7eb",
+        }}
+      >
+        <img
+          src={nft.imageUrl}
+          alt={nft.title}
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.background = "#f3f4f6";
+            (e.target as HTMLImageElement).style.display = "block";
+          }}
+        />
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1 flex-wrap">
+          <p
+            className="font-semibold truncate"
+            style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
+          >
+            {nft.title}
+          </p>
+          <span
+            style={{
+              fontSize: "9px",
+              fontWeight: 700,
+              padding: "1px 5px",
+              borderRadius: "6px",
+              background:
+                nft.mediaType === "video"
+                  ? "rgba(88,130,233,0.12)"
+                  : "rgba(0,0,0,0.06)",
+              color: nft.mediaType === "video" ? "#3b5ec6" : "#6b7280",
+              flexShrink: 0,
+            }}
+          >
+            {nft.mediaType === "video" ? "🎬" : "📷"}
+          </span>
+        </div>
+        <p
+          className="truncate"
+          style={{ fontSize: "10px", color: textSecondary, lineHeight: 1.4 }}
+        >
+          {nft.setName} · by {nft.creator}
+        </p>
+        {/* Rarity badge */}
+        <span
+          style={{
+            display: "inline-block",
+            marginTop: "2px",
+            fontSize: "9px",
+            fontWeight: 700,
+            padding: "1px 6px",
+            borderRadius: "6px",
+            background:
+              nft.rarity === "Rare"
+                ? `rgba(${accentRgb}, 0.10)`
+                : "rgba(0,0,0,0.04)",
+            color: nft.rarity === "Rare" ? accentColor : "#9ca3af",
+            border:
+              nft.rarity === "Rare"
+                ? `1px solid rgba(${accentRgb}, 0.22)`
+                : "1px solid rgba(0,0,0,0.08)",
+          }}
+        >
+          {nft.rarity}
+        </span>
+      </div>
+
+      {/* Sale price */}
+      <div className="shrink-0 text-right">
+        <p
+          className="font-bold tabular-nums"
+          style={{
+            fontSize: "14px",
+            color: accentColor,
+            lineHeight: 1.2,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {formatUSD(nft.salePrice)}
+        </p>
+        <p style={{ fontSize: "9px", color: textSecondary }}>sold</p>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 interface MarketPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -830,44 +616,50 @@ export function MarketPage({
   const accentColor = `oklch(${activeCycle.accentOklchLight})`;
   const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
 
-  const { explicitModeOn } = useUserSettings();
   const [timeRange, setTimeRange] = useState<TimeRange>("ALL_TIME");
-  const [selectedSet, setSelectedSet] = useState<MintMomentSetRank | null>(
-    null,
+
+  const filteredNFTs = filterAndSortNFTs(timeRange);
+
+  // Compute total volume and other metrics from sold data
+  const allTimeSales = SOLD_NFTS.reduce((sum, n) => sum + n.salePrice, 0);
+  const last24hSales = SOLD_NFTS.filter((n) => n.soldAt >= NOW - D).reduce(
+    (sum, n) => sum + n.salePrice,
+    0,
   );
+  const totalTx = SOLD_NFTS.length;
 
-  const top100Sets = getDiscoverSets(timeRange);
-  const textSecondary = "#9ca3af";
-
-  const hasAnySets = top100Sets.length > 0;
+  const timeLabel =
+    TIME_RANGES.find((t) => t.value === timeRange)?.label ?? "All Time";
 
   return (
     <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
       {/* ── Signal cards ── */}
       <div className="grid grid-cols-2 gap-2.5 mb-2">
         <SignalCard
-          label="Total Opens"
-          plainValue="842K opens"
+          label="Total Volume"
+          plainValue={`$${allTimeSales.toLocaleString()}`}
           index={0}
           accentColor={accentColor}
           accentRgb={accentRgb}
         />
         <SignalCard
-          label="Active Collectors"
-          plainValue="12.4K collectors"
+          label="24H Volume"
+          plainValue={
+            last24hSales > 0 ? `$${last24hSales.toLocaleString()}` : "$0"
+          }
           index={1}
           accentColor={accentColor}
           accentRgb={accentRgb}
         />
         <SignalCard
-          label="Moments Live"
-          plainValue="100 moments"
+          label="Total Transactions"
+          plainValue={`${totalTx} sales`}
           index={2}
           accentColor={accentColor}
           accentRgb={accentRgb}
         />
         <SignalCard
-          label="Active Now"
+          label="Live Users"
           plainValue="1,284 active"
           index={3}
           accentColor={accentColor}
@@ -883,32 +675,29 @@ export function MarketPage({
         accentRgb={accentRgb}
       />
 
-      {/* ── Subtle live note ── */}
-      <div className="flex items-center justify-end mt-1 mb-1">
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            fontSize: "10px",
-            color: "#9ca3af",
-          }}
+      {/* ── Section header ── */}
+      <div
+        className="flex items-center gap-2 mt-5 mb-3"
+        data-ocid="discover.rankings.section"
+      >
+        <span style={{ fontSize: "16px" }}>🏆</span>
+        <p
+          className="text-[11px] uppercase tracking-[0.14em] font-semibold"
+          style={{ color: accentColor }}
         >
-          <span
-            className="animate-pulse"
-            style={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              background: accentColor,
-              display: "inline-block",
-            }}
-          />
-          100 moments · live
-        </span>
+          Highest Sales · {timeLabel}
+        </p>
+        <div
+          style={{
+            flex: 1,
+            height: "1px",
+            background: `rgba(${accentRgb}, 0.15)`,
+            marginLeft: "4px",
+          }}
+        />
       </div>
 
-      {/* ── Sections ── */}
+      {/* ── Leaderboard ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={timeRange}
@@ -917,7 +706,7 @@ export function MarketPage({
           exit={{ opacity: 0, y: -4 }}
           transition={{ duration: 0.22 }}
         >
-          {!hasAnySets ? (
+          {filteredNFTs.length === 0 ? (
             <div
               className="flex flex-col items-center justify-center py-14 text-center"
               data-ocid="discover.rankings.empty_state"
@@ -930,52 +719,26 @@ export function MarketPage({
                   marginBottom: "4px",
                 }}
               >
-                No active moments in this period
+                No sales recorded in this period
               </p>
-              <p style={{ color: textSecondary, fontSize: "12px" }}>
-                Try a broader time range to see trending Mint Moment sets.
+              <p style={{ color: "#9ca3af", fontSize: "12px" }}>
+                Try a broader time range to see top sold NFTs.
               </p>
             </div>
           ) : (
-            <div>
-              {/* ── Top 100 ── */}
-              <div className="mt-4">
-                <SectionHeader
-                  icon="🏆"
-                  label="Top 100"
+            <div className="flex flex-col gap-2">
+              {filteredNFTs.map((nft, i) => (
+                <SoldNFTRow
+                  key={nft.id}
+                  nft={nft}
+                  rank={i + 1}
                   accentColor={accentColor}
                   accentRgb={accentRgb}
                 />
-                <div className="flex flex-col gap-2">
-                  {top100Sets.map((set, i) => (
-                    <SetRankRow
-                      key={set.id}
-                      set={set}
-                      rank={i + 1}
-                      sectionRank={i + 1}
-                      accentColor={accentColor}
-                      accentRgb={accentRgb}
-                      onClick={() => setSelectedSet(set)}
-                      explicitModeOn={explicitModeOn}
-                    />
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           )}
         </motion.div>
-      </AnimatePresence>
-
-      {/* ── Set Detail Sheet ── */}
-      <AnimatePresence>
-        {selectedSet && (
-          <SetDetailSheet
-            set={selectedSet}
-            accentColor={accentColor}
-            accentRgb={accentRgb}
-            onClose={() => setSelectedSet(null)}
-          />
-        )}
       </AnimatePresence>
     </div>
   );

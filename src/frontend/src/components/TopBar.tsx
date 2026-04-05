@@ -8,7 +8,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PACK_STYLES,
   type PackStyle,
@@ -41,63 +41,108 @@ function injectNeonStyles(r: number, g: number, b: number, filter: string) {
 `;
 }
 
-// ─── Asset Data ──────────────────────────────────────────────────────────────────────────────────
+// ─── BTC Asset Constant ───────────────────────────────────────────────────────
 
-const ASSETS = [
-  {
-    id: "usdc",
-    name: "USDC",
-    symbol: "USDC",
-    balance: 245.5,
-    usdValue: 245.5,
-    color: "#2775CA",
-    description: "USD Coin — a fully-backed US dollar stablecoin.",
-    price: 1.0,
-    change24h: 0.01,
-    receiveAddress: "0x1a2b3c4d5e6f7890abcdef1234567890abcdef12",
-  },
-  {
-    id: "btc",
-    name: "Bitcoin",
-    symbol: "BTC",
-    balance: 0.00412,
-    usdValue: 412.87,
-    color: "#F7931A",
-    description: "Bitcoin — the original decentralized cryptocurrency.",
-    price: 100211.65,
-    change24h: 2.34,
-    receiveAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  },
-  {
-    id: "eth",
-    name: "Ethereum",
-    symbol: "ETH",
-    balance: 0.185,
-    usdValue: 389.4,
-    color: "#627EEA",
-    description: "Ethereum — a decentralized platform for smart contracts.",
-    price: 2105.41,
-    change24h: -1.12,
-    receiveAddress: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-  },
-  {
-    id: "sol",
-    name: "Solana",
-    symbol: "SOL",
-    balance: 14.2,
-    usdValue: 198.8,
-    color: "#9945FF",
-    description: "Solana — high-performance blockchain for decentralized apps.",
-    price: 13.99,
-    change24h: 0.88,
-    receiveAddress: "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV1",
-  },
-];
+const BTC_ASSET = {
+  id: "btc",
+  name: "Bitcoin",
+  symbol: "BTC",
+  balance: 0.00412,
+  color: "#F7931A",
+  description: "Bitcoin — the original decentralized cryptocurrency.",
+  receiveAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+} as const;
 
-type AssetType = (typeof ASSETS)[number];
+type BtcAssetType = typeof BTC_ASSET;
 type WalletView = "list" | "receive" | "send" | "info";
 
-// ─── Pack Style Selector ──────────────────────────────────────────────────────────────────────────────
+// ─── Live BTC Price Hook ──────────────────────────────────────────────────────
+
+interface BtcPriceState {
+  price: number | null;
+  change24h: number;
+  loading: boolean;
+  error: boolean;
+}
+
+function useBtcPrice(): BtcPriceState {
+  const [state, setState] = useState<BtcPriceState>({
+    price: null,
+    change24h: 2.34,
+    loading: true,
+    error: false,
+  });
+  const lastPriceRef = useRef<number | null>(null);
+
+  const fetchPrice = useCallback(async () => {
+    try {
+      const [spotRes, histRes] = await Promise.allSettled([
+        fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot"),
+        fetch("https://api.coinbase.com/v2/prices/BTC-USD/historic?period=day"),
+      ]);
+
+      let price: number | null = null;
+      if (spotRes.status === "fulfilled" && spotRes.value.ok) {
+        const data = await spotRes.value.json();
+        const parsed = Number.parseFloat(data?.data?.amount);
+        if (!Number.isNaN(parsed)) {
+          price = parsed;
+          lastPriceRef.current = parsed;
+        }
+      }
+
+      // Fallback to last known price on fetch failure
+      if (price === null) {
+        price = lastPriceRef.current;
+      }
+
+      let change24h = 2.34; // static fallback
+      if (histRes.status === "fulfilled" && histRes.value.ok) {
+        try {
+          const hData = await histRes.value.json();
+          const prices: { price: string }[] = hData?.data?.prices ?? [];
+          if (prices.length >= 2) {
+            const latest = Number.parseFloat(prices[0]?.price ?? "0");
+            const oldest = Number.parseFloat(
+              prices[prices.length - 1]?.price ?? "0",
+            );
+            if (oldest > 0 && latest > 0) {
+              change24h = Number.parseFloat(
+                (((latest - oldest) / oldest) * 100).toFixed(2),
+              );
+            }
+          }
+        } catch {
+          // keep static fallback
+        }
+      }
+
+      setState({
+        price,
+        change24h,
+        loading: false,
+        error: price === null,
+      });
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        price: lastPriceRef.current,
+        loading: false,
+        error: lastPriceRef.current === null,
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchPrice]);
+
+  return state;
+}
+
+// ─── Pack Style Selector ──────────────────────────────────────────────────────
 function PackStyleSelector() {
   const { activeStyleId, setStyleId } = usePackStyle();
 
@@ -139,7 +184,7 @@ function PackStyleSelector() {
   );
 }
 
-// ─── Action pill button ───────────────────────────────────────────────────────────────────────────────────────────
+// ─── Action pill button ───────────────────────────────────────────────────────
 function ActionPill({
   label,
   icon,
@@ -180,19 +225,21 @@ function ActionPill({
   );
 }
 
-// ─── Asset Row ──────────────────────────────────────────────────────────────────────────────────────────────
+// ─── Asset Row ────────────────────────────────────────────────────────────────
 function AssetRow({
   asset,
+  btcPrice,
   onReceive,
   onSend,
   onInfo,
 }: {
-  asset: AssetType;
+  asset: BtcAssetType;
+  btcPrice: number | null;
   onReceive: () => void;
   onSend: () => void;
   onInfo: () => void;
 }) {
-  const initials = asset.symbol.slice(0, 2).toUpperCase();
+  const usdEquivalent = btcPrice !== null ? asset.balance * btcPrice : null;
 
   return (
     <div
@@ -208,6 +255,7 @@ function AssetRow({
         gap: "12px",
       }}
     >
+      {/* BTC Icon */}
       <div
         className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold"
         style={{
@@ -217,7 +265,7 @@ function AssetRow({
           boxShadow: `0 2px 8px ${asset.color}44`,
         }}
       >
-        {initials}
+        ₿
       </div>
 
       <div className="flex-1 min-w-0">
@@ -234,10 +282,28 @@ function AssetRow({
           className="font-medium leading-tight"
           style={{ fontSize: "13px", color: "var(--cycle-accent)" }}
         >
-          {asset.balance < 0.01
-            ? asset.balance.toFixed(5)
-            : asset.balance.toLocaleString()}{" "}
-          {asset.symbol}
+          {asset.balance.toFixed(5)} {asset.symbol}
+        </div>
+        {/* USD equivalent line */}
+        <div
+          style={{
+            fontSize: "11px",
+            color: "#8BAEC8",
+            marginTop: "2px",
+          }}
+        >
+          {usdEquivalent !== null ? (
+            <>
+              ≈ $
+              {usdEquivalent.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}{" "}
+              USD
+            </>
+          ) : (
+            <span style={{ opacity: 0.5 }}>≈ $— USD</span>
+          )}
         </div>
       </div>
 
@@ -254,7 +320,7 @@ function AssetRow({
   );
 }
 
-// ─── Wallet Modal ───────────────────────────────────────────────────────────────────────────────────────────
+// ─── Wallet Modal ─────────────────────────────────────────────────────────────
 function WalletModal({
   open,
   onClose,
@@ -265,18 +331,18 @@ function WalletModal({
   onSignOut: () => void;
 }) {
   const [view, setView] = useState<WalletView>("list");
-  const [activeAsset, setActiveAsset] = useState<AssetType | null>(null);
   const [sendAmount, setSendAmount] = useState("");
   const [sendAddress, setSendAddress] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const { price: btcPrice, change24h, loading: priceLoading } = useBtcPrice();
+
   if (!open) return null;
 
-  const totalBalance = ASSETS.reduce((sum, a) => sum + a.usdValue, 0);
+  const totalBalance = btcPrice !== null ? BTC_ASSET.balance * btcPrice : null;
 
   function goBack() {
     setView("list");
-    setActiveAsset(null);
     setSendAmount("");
     setSendAddress("");
     setCopied(false);
@@ -309,7 +375,7 @@ function WalletModal({
 
   let content: React.ReactNode = null;
 
-  if (view === "info" && activeAsset) {
+  if (view === "info") {
     content = (
       <>
         <button
@@ -331,21 +397,21 @@ function WalletModal({
           <div
             className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold"
             style={{
-              background: activeAsset.color,
-              fontSize: "12px",
-              boxShadow: `0 2px 10px ${activeAsset.color}55`,
+              background: BTC_ASSET.color,
+              fontSize: "16px",
+              boxShadow: `0 2px 10px ${BTC_ASSET.color}55`,
             }}
           >
-            {activeAsset.symbol.slice(0, 2)}
+            ₿
           </div>
           <div>
             <div
               style={{ fontSize: "17px", fontWeight: 700, color: titleColor }}
             >
-              {activeAsset.name}
+              {BTC_ASSET.name}
             </div>
             <div style={{ fontSize: "12px", color: labelColor }}>
-              {activeAsset.symbol}
+              {BTC_ASSET.symbol}
             </div>
           </div>
         </div>
@@ -357,7 +423,7 @@ function WalletModal({
             marginBottom: 20,
           }}
         >
-          {activeAsset.description}
+          {BTC_ASSET.description}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div
@@ -375,7 +441,22 @@ function WalletModal({
             <div
               style={{ fontSize: "15px", fontWeight: 700, color: titleColor }}
             >
-              ${activeAsset.price.toLocaleString()}
+              {priceLoading && btcPrice === null ? (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "70px",
+                    height: "16px",
+                    borderRadius: "4px",
+                    background: "rgba(0,0,0,0.08)",
+                    animation: "pulse 1.4s ease-in-out infinite",
+                  }}
+                />
+              ) : btcPrice !== null ? (
+                `$${btcPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              ) : (
+                "$—"
+              )}
             </div>
           </div>
           <div
@@ -395,19 +476,19 @@ function WalletModal({
                 fontSize: "15px",
                 fontWeight: 700,
                 color:
-                  activeAsset.change24h >= 0
+                  change24h >= 0
                     ? "var(--cycle-accent)"
                     : "oklch(0.60 0.18 25)",
               }}
             >
-              {activeAsset.change24h >= 0 ? "+" : ""}
-              {activeAsset.change24h}%
+              {change24h >= 0 ? "+" : ""}
+              {change24h}%
             </div>
           </div>
         </div>
       </>
     );
-  } else if (view === "receive" && activeAsset) {
+  } else if (view === "receive") {
     content = (
       <>
         <button
@@ -433,7 +514,7 @@ function WalletModal({
             marginBottom: 16,
           }}
         >
-          Receive {activeAsset.symbol}
+          Receive {BTC_ASSET.symbol}
         </div>
 
         <div
@@ -474,12 +555,12 @@ function WalletModal({
             className="flex-1 truncate font-mono"
             style={{ fontSize: "11px", color: "var(--cycle-accent)" }}
           >
-            {activeAsset.receiveAddress}
+            {BTC_ASSET.receiveAddress}
           </span>
           <button
             type="button"
             data-ocid="wallet.receive.copy_button"
-            onClick={() => handleCopy(activeAsset.receiveAddress)}
+            onClick={() => handleCopy(BTC_ASSET.receiveAddress)}
             className="flex-shrink-0 flex items-center gap-1 rounded-lg transition-all"
             style={{
               padding: "3px 8px",
@@ -503,11 +584,11 @@ function WalletModal({
             lineHeight: 1.5,
           }}
         >
-          Only send {activeAsset.symbol} to this address.
+          Only send {BTC_ASSET.symbol} to this address.
         </p>
       </>
     );
-  } else if (view === "send" && activeAsset) {
+  } else if (view === "send") {
     const canSend = sendAmount.trim() !== "" && sendAddress.trim() !== "";
     content = (
       <>
@@ -534,7 +615,7 @@ function WalletModal({
             marginBottom: 18,
           }}
         >
-          Send {activeAsset.symbol}
+          Send {BTC_ASSET.symbol}
         </div>
 
         <div className="space-y-3">
@@ -554,7 +635,7 @@ function WalletModal({
               id="send-amount"
               type="number"
               data-ocid="wallet.send.amount_input"
-              placeholder={`0.00 ${activeAsset.symbol}`}
+              placeholder={`0.00 ${BTC_ASSET.symbol}`}
               value={sendAmount}
               onChange={(e) => setSendAmount(e.target.value)}
               style={inputStyle}
@@ -613,6 +694,7 @@ function WalletModal({
       </>
     );
   } else {
+    // list view
     content = (
       <>
         <div className="text-center mb-5">
@@ -635,11 +717,26 @@ function WalletModal({
               letterSpacing: "-0.02em",
             }}
           >
-            $
-            {totalBalance.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {priceLoading && totalBalance === null ? (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: "120px",
+                  height: "28px",
+                  borderRadius: "6px",
+                  background: "rgba(0,0,0,0.06)",
+                  animation: "pulse 1.4s ease-in-out infinite",
+                  verticalAlign: "middle",
+                }}
+              />
+            ) : totalBalance !== null ? (
+              `$${totalBalance.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            ) : (
+              "$—"
+            )}
           </div>
         </div>
 
@@ -652,25 +749,15 @@ function WalletModal({
         />
 
         <div className="space-y-2.5" data-ocid="wallet.asset.list">
-          {ASSETS.map((asset, i) => (
-            <div key={asset.id} data-ocid={`wallet.asset.item.${i + 1}`}>
-              <AssetRow
-                asset={asset}
-                onReceive={() => {
-                  setActiveAsset(asset);
-                  setView("receive");
-                }}
-                onSend={() => {
-                  setActiveAsset(asset);
-                  setView("send");
-                }}
-                onInfo={() => {
-                  setActiveAsset(asset);
-                  setView("info");
-                }}
-              />
-            </div>
-          ))}
+          <div data-ocid="wallet.asset.item.1">
+            <AssetRow
+              asset={BTC_ASSET}
+              btcPrice={btcPrice}
+              onReceive={() => setView("receive")}
+              onSend={() => setView("send")}
+              onInfo={() => setView("info")}
+            />
+          </div>
         </div>
 
         <div className="text-center mt-5">
@@ -763,7 +850,7 @@ function WalletModal({
   );
 }
 
-// ─── Sign In Modal ────────────────────────────────────────────────────────────────────────────────────
+// ─── Sign In Modal ────────────────────────────────────────────────────────────
 function SignInModal({
   open,
   onClose,
@@ -877,7 +964,7 @@ function SignInModal({
   );
 }
 
-// ─── TopBar ────────────────────────────────────────────────────────────────────────────────────────────────────
+// ─── TopBar ───────────────────────────────────────────────────────────────────
 interface TopBarProps {
   onProfileClick?: () => void;
 }
@@ -991,7 +1078,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
             </button>
           )}
 
-          {/* Cycle Selector */}
+          {/* Pack Style Selector */}
           <PackStyleSelector />
 
           {/* Auth / Wallet button */}

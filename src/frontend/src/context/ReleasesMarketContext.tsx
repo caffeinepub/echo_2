@@ -57,6 +57,7 @@ const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
 
 const NOW = Date.now();
 const H = 3600000; // 1 hour in ms
+const YEAR_MS = 365 * 24 * H; // 1 year
 
 const SEED_RELEASES: MarketRelease[] = [
   {
@@ -74,7 +75,7 @@ const SEED_RELEASES: MarketRelease[] = [
     packIds: [],
     priceUsd: 10,
     listedAt: NOW - 2 * H,
-    expiresAt: NOW - 2 * H + 24 * H,
+    expiresAt: NOW + YEAR_MS,
     status: "active",
     collectibleType: "photo",
     explicit: false,
@@ -94,7 +95,7 @@ const SEED_RELEASES: MarketRelease[] = [
     packIds: [],
     priceUsd: 10,
     listedAt: NOW - 18 * H,
-    expiresAt: NOW - 18 * H + 24 * H,
+    expiresAt: NOW + YEAR_MS,
     status: "active",
     collectibleType: "photo",
     explicit: false,
@@ -114,7 +115,7 @@ const SEED_RELEASES: MarketRelease[] = [
     packIds: [],
     priceUsd: 10,
     listedAt: NOW - 0.5 * H,
-    expiresAt: NOW - 0.5 * H + 24 * H,
+    expiresAt: NOW + YEAR_MS,
     status: "active",
     collectibleType: "photo",
     explicit: false,
@@ -127,7 +128,7 @@ function loadReleasesFromStorage(): MarketRelease[] {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
     const releases = JSON.parse(raw) as MarketRelease[];
-    // Backfill explicit field for releases stored before this feature
+    // Backfill fields for releases stored before feature additions
     return releases.map((r) => ({
       ...r,
       explicit: r.explicit ?? false,

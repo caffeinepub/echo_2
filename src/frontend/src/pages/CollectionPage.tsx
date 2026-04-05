@@ -1346,6 +1346,24 @@ function SendToAuctionButton({ nft }: { nft: CollectionNFT }) {
   const [showAuctionModal, setShowAuctionModal] = useState(false);
   const listed = isListed(nft.id);
 
+  // Only video NFTs are eligible for auction
+  if (nft.mediaType !== "video") {
+    return (
+      <div
+        style={{
+          width: "100%",
+          padding: "10px 0",
+          textAlign: "center",
+          fontSize: "12px",
+          color: "#9ca3af",
+          letterSpacing: "0.01em",
+        }}
+      >
+        Auctions are available for video NFTs only
+      </div>
+    );
+  }
+
   return (
     <>
       <button

@@ -3170,6 +3170,17 @@ export function ReleasesPage() {
   );
   const [filterMode, setFilterMode] = useState<FilterMode>("live");
   const [viewMode, setViewMode] = useState<"packs" | "market">("packs");
+  const [filtersExpanded, setFiltersExpanded] = useState<boolean>(() => {
+    const saved = sessionStorage.getItem("minty_filters_expanded");
+    return saved === null ? true : saved === "true";
+  });
+  const toggleFilters = () => {
+    setFiltersExpanded((prev) => {
+      const next = !prev;
+      sessionStorage.setItem("minty_filters_expanded", String(next));
+      return next;
+    });
+  };
   const trendingHashtags = getTrendingHashtags("ALL_TIME");
   const { listings: auctionListings } = useAuctions();
 
@@ -3307,7 +3318,9 @@ export function ReleasesPage() {
       {/* ── Market view ─────────────────────────────────────────────────── */}
       {viewMode === "market" && (
         <div style={{ padding: "12px 16px 24px" }}>
-          {auctionListings.filter((l) => l.status === "active").length === 0 ? (
+          {auctionListings.filter(
+            (l) => l.status === "active" && l.mediaType === "video",
+          ).length === 0 ? (
             <div
               data-ocid="releases.empty_state"
               style={{
@@ -3368,7 +3381,7 @@ export function ReleasesPage() {
               }}
             >
               {[...auctionListings]
-                .filter((l) => l.status === "active")
+                .filter((l) => l.status === "active" && l.mediaType === "video")
                 .sort((a, b) => {
                   const latestA =
                     a.bids.length > 0
@@ -3501,79 +3514,139 @@ export function ReleasesPage() {
               </button>
             </div>
 
-            {/* Filter pills */}
+            {/* Filter collapse toggle */}
             <div
               style={{
                 display: "flex",
-                gap: 7,
-                overflowX: "auto",
-                scrollbarWidth: "none",
-                paddingBottom: 2,
+                justifyContent: "flex-end",
+                marginBottom: filtersExpanded ? 4 : 0,
               }}
             >
-              {FILTER_LABELS.map(({ key, label }) => {
-                const isActive = filterMode === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    data-ocid="releases.tab"
-                    onClick={() => setFilterMode(key)}
-                    style={{
-                      flexShrink: 0,
-                      padding: "7px 14px",
-                      borderRadius: 20,
-                      border: isActive
-                        ? `1.5px solid ${accentBorder}`
-                        : `1.5px solid ${
-                            isLight
-                              ? "rgba(0,0,0,0.09)"
-                              : "rgba(255,255,255,0.08)"
-                          }`,
-                      background: isActive
-                        ? accentBg
-                        : isLight
-                          ? "rgba(255,255,255,0.7)"
-                          : "rgba(255,255,255,0.05)",
-                      color: isActive
-                        ? accentSolid
-                        : isLight
-                          ? "#374151"
-                          : "rgba(255,255,255,0.7)",
-                      fontSize: 13,
-                      fontWeight: isActive ? 700 : 500,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {label}
-                    {key === "ending" && endingSoon.length > 0 && (
-                      <span
-                        style={{
-                          marginLeft: 5,
-                          background: "#f59e0b",
-                          color: "#fff",
-                          fontSize: 9,
-                          fontWeight: 700,
-                          borderRadius: 20,
-                          padding: "1px 5px",
-                        }}
-                      >
-                        {endingSoon.length}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+              <button
+                type="button"
+                onClick={toggleFilters}
+                data-ocid="releases.toggle"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "2px 4px",
+                  borderRadius: 6,
+                  color: `rgba(${accentRgb}, 0.55)`,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  letterSpacing: "0.01em",
+                }}
+                aria-label={filtersExpanded ? "Hide filters" : "Show filters"}
+              >
+                {filtersExpanded ? "Hide filters" : "Show filters"}
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {filtersExpanded ? (
+                    <polyline points="18 15 12 9 6 15" />
+                  ) : (
+                    <polyline points="6 9 12 15 18 9" />
+                  )}
+                </svg>
+              </button>
             </div>
 
-            {/* Trending Hashtags */}
-            <div style={{ paddingTop: 6 }}>
-              <TrendingHashtagsSection
-                hashtags={trendingHashtags}
-                accentRgb={accentRgb}
-              />
+            {/* Collapsible: filter pills + hashtags */}
+            <div
+              style={{
+                overflow: "hidden",
+                maxHeight: filtersExpanded ? 200 : 0,
+                opacity: filtersExpanded ? 1 : 0,
+                transition: "max-height 0.28s ease, opacity 0.2s ease",
+              }}
+            >
+              {/* Filter pills */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 7,
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  paddingBottom: 2,
+                }}
+              >
+                {FILTER_LABELS.map(({ key, label }) => {
+                  const isActive = filterMode === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      data-ocid="releases.tab"
+                      onClick={() => setFilterMode(key)}
+                      style={{
+                        flexShrink: 0,
+                        padding: "7px 14px",
+                        borderRadius: 20,
+                        border: isActive
+                          ? `1.5px solid ${accentBorder}`
+                          : `1.5px solid ${
+                              isLight
+                                ? "rgba(0,0,0,0.09)"
+                                : "rgba(255,255,255,0.08)"
+                            }`,
+                        background: isActive
+                          ? accentBg
+                          : isLight
+                            ? "rgba(255,255,255,0.7)"
+                            : "rgba(255,255,255,0.05)",
+                        color: isActive
+                          ? accentSolid
+                          : isLight
+                            ? "#374151"
+                            : "rgba(255,255,255,0.7)",
+                        fontSize: 13,
+                        fontWeight: isActive ? 700 : 500,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {label}
+                      {key === "ending" && endingSoon.length > 0 && (
+                        <span
+                          style={{
+                            marginLeft: 5,
+                            background: "#f59e0b",
+                            color: "#fff",
+                            fontSize: 9,
+                            fontWeight: 700,
+                            borderRadius: 20,
+                            padding: "1px 5px",
+                          }}
+                        >
+                          {endingSoon.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Trending Hashtags */}
+              <div style={{ paddingTop: 6 }}>
+                <TrendingHashtagsSection
+                  hashtags={trendingHashtags}
+                  accentRgb={accentRgb}
+                />
+              </div>
             </div>
+            {/* end collapsible */}
           </div>
 
           {/* Main content */}

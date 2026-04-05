@@ -53,7 +53,7 @@ const SEED_LISTINGS: AuctionListing[] = [
     nftImageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
     nftSetName: "Mint Moments Vol. 1",
     nftRarity: "Common",
-    mediaType: "photo",
+    mediaType: "video",
     creatorName: "mintcreator.icp",
     highestBid: 42.5,
     bids: [
@@ -115,7 +115,7 @@ const SEED_LISTINGS: AuctionListing[] = [
     nftImageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
     nftSetName: "Nature Drop",
     nftRarity: "Common",
-    mediaType: "photo",
+    mediaType: "video",
     creatorName: "sage_creator.icp",
     highestBid: 0,
     bids: [],
