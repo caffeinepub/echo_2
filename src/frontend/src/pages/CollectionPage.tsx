@@ -220,11 +220,11 @@ function VaultTile({
         overflow: isPack ? "visible" : "hidden",
         border: isPack
           ? "none"
-          : `1.5px solid ${isSelected ? "rgba(52,168,132,0.6)" : "rgba(0,0,0,0.07)"}`,
+          : `1.5px solid ${isSelected ? "rgba(var(--cycle-accent-rgb) / 0.6)" : "rgba(0,0,0,0.07)"}`,
         boxShadow: isPack
           ? "none"
           : isSelected
-            ? "0 0 0 2px rgba(52,168,132,0.25), 0 4px 16px rgba(0,0,0,0.10)"
+            ? "0 0 0 2px rgba(var(--cycle-accent-rgb) / 0.25), 0 4px 16px rgba(0,0,0,0.10)"
             : "0 1px 4px rgba(0,0,0,0.06)",
         background: isPack ? "transparent" : "#fff",
         position: "relative",
@@ -278,7 +278,7 @@ function VaultTile({
             background: "rgba(255,255,255,0.95)",
             borderRadius: "20px",
             padding: "2px 6px",
-            border: "1px solid rgba(52,168,132,0.25)",
+            border: "1px solid rgba(var(--cycle-accent-rgb) / 0.25)",
             zIndex: 10,
           }}
         >
@@ -322,7 +322,7 @@ function VaultTile({
             background: "rgba(255,255,255,0.92)",
             border:
               rarity === "Rare"
-                ? "1px solid rgba(52,168,132,0.35)"
+                ? "1px solid rgba(var(--cycle-accent-rgb) / 0.35)"
                 : "1px solid rgba(0,0,0,0.10)",
             borderRadius: "20px",
             padding: "2px 6px",
@@ -334,7 +334,7 @@ function VaultTile({
               fontWeight: 700,
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              color: rarity === "Rare" ? "#34a884" : "#9B9B9B",
+              color: rarity === "Rare" ? "var(--cycle-accent)" : "#9B9B9B",
             }}
           >
             {rarity === "Rare" ? "RARE" : "COMMON"}
@@ -417,7 +417,7 @@ function InlineDescPanel({
       style={{
         background: "#FFFFFF",
         borderRadius: "12px",
-        border: "1px solid rgba(52,168,132,0.18)",
+        border: "1px solid rgba(var(--cycle-accent-rgb) / 0.18)",
         boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         padding: "14px 14px 16px",
         margin: "4px 0 4px",
@@ -505,12 +505,12 @@ function InlineDescPanel({
             style={{
               background:
                 nft.rarity === "Rare"
-                  ? "rgba(52,168,132,0.10)"
+                  ? "rgba(var(--cycle-accent-rgb) / 0.10)"
                   : "rgba(0,0,0,0.05)",
-              color: nft.rarity === "Rare" ? "#34a884" : "#9B9B9B",
+              color: nft.rarity === "Rare" ? "var(--cycle-accent)" : "#9B9B9B",
               border:
                 nft.rarity === "Rare"
-                  ? "1px solid rgba(52,168,132,0.25)"
+                  ? "1px solid rgba(var(--cycle-accent-rgb) / 0.25)"
                   : "1px solid rgba(0,0,0,0.08)",
               borderRadius: "20px",
               padding: "3px 8px",
@@ -638,7 +638,7 @@ function InlineDescPanel({
               padding: "2px 0",
               cursor: "pointer",
               fontSize: "10px",
-              color: "rgba(52,168,132,0.60)",
+              color: "rgba(var(--cycle-accent-rgb) / 0.60)",
               fontWeight: 600,
               letterSpacing: "0.02em",
               display: "flex",
@@ -943,7 +943,7 @@ function SetSection({
               fontSize: "11px",
               padding: "5px 10px",
               borderRadius: "20px",
-              border: "1px solid rgba(52,168,132,0.25)",
+              border: "1px solid rgba(var(--cycle-accent-rgb) / 0.25)",
               fontWeight: 700,
               cursor: "pointer",
               flexShrink: 0,
@@ -1308,7 +1308,7 @@ function SendToWalletModal({
                   borderRadius: "10px",
                   border: "none",
                   background: address.trim()
-                    ? "linear-gradient(160deg, #34A884, #2a9070)"
+                    ? "linear-gradient(160deg, var(--cycle-accent), #2a9070)"
                     : "#e0e0e0",
                   color: address.trim() ? "#fff" : "#aaa",
                   fontSize: "14px",
@@ -1700,7 +1700,8 @@ function NFTDetailSheet({
                   height: "48px",
                   borderRadius: "12px",
                   border: "none",
-                  background: "linear-gradient(160deg, #34A884, #2a9070)",
+                  background:
+                    "linear-gradient(160deg, var(--cycle-accent), #2a9070)",
                   color: "#fff",
                   fontSize: "14px",
                   fontWeight: 600,
@@ -1720,7 +1721,7 @@ function NFTDetailSheet({
                   height: "44px",
                   borderRadius: "12px",
                   background: "transparent",
-                  border: "1.5px solid rgba(52,168,132,0.40)",
+                  border: "1.5px solid rgba(var(--cycle-accent-rgb) / 0.40)",
                   color: MINT_TEXT,
                   fontSize: "13px",
                   fontWeight: 600,
@@ -1745,8 +1746,8 @@ function NFTDetailSheet({
                   height: "44px",
                   borderRadius: "12px",
                   background: "transparent",
-                  border: "1.5px solid rgba(52,168,132,0.20)",
-                  color: "rgba(52,168,132,0.35)",
+                  border: "1.5px solid rgba(var(--cycle-accent-rgb) / 0.20)",
+                  color: "rgba(var(--cycle-accent-rgb) / 0.35)",
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: "not-allowed",
@@ -1854,7 +1855,7 @@ function BurnConfirmModal({
         <div
           style={{
             background: MINT_SOFT,
-            border: "1px solid rgba(52,168,132,0.25)",
+            border: "1px solid rgba(var(--cycle-accent-rgb) / 0.25)",
             borderRadius: "12px",
             padding: "12px 14px",
             marginBottom: "18px",
@@ -1918,7 +1919,8 @@ function BurnConfirmModal({
               height: "44px",
               borderRadius: "10px",
               border: "none",
-              background: "linear-gradient(160deg, #34A884, #2a9070)",
+              background:
+                "linear-gradient(160deg, var(--cycle-accent), #2a9070)",
               color: "#fff",
               fontSize: "14px",
               fontWeight: 600,
@@ -2285,7 +2287,7 @@ export function CollectionPage({
             transform: "translateX(-50%)",
             zIndex: 600,
             background: "#fff",
-            border: "1px solid rgba(52,168,132,0.35)",
+            border: "1px solid rgba(var(--cycle-accent-rgb) / 0.35)",
             borderRadius: "100px",
             padding: "10px 20px",
             display: "flex",

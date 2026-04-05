@@ -3,9 +3,9 @@ import { useState } from "react";
 import type { CollectionNFT } from "../context/CollectionContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MINT_ACCENT = "#00C8A0";
-const MINT_BORDER = "rgba(0, 200, 160, 0.25)";
-const MINT_GLOW = "rgba(0, 200, 160, 0.18)";
+const MINT_ACCENT = "var(--cycle-accent)";
+const MINT_BORDER = "rgba(var(--cycle-accent-rgb) / 0.25)";
+const MINT_GLOW = "rgba(var(--cycle-accent-rgb) / 0.18)";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export function formatCapturedAt(isoStr: string): string {
@@ -96,7 +96,7 @@ export function CollectibleCard({
         overflow: "hidden",
         cursor: "pointer",
         // Borders & shadows
-        border: `1px solid ${isExpanded ? "rgba(0,200,160,0.55)" : MINT_BORDER}`,
+        border: `1px solid ${isExpanded ? "rgba(var(--cycle-accent-rgb) / 0.55)" : MINT_BORDER}`,
         boxShadow: isExpanded
           ? `0 8px 48px rgba(0,0,0,0.70), 0 0 0 1px ${MINT_GLOW}, 0 0 32px ${MINT_GLOW}`
           : "0 4px 24px rgba(0,0,0,0.45)",
@@ -243,7 +243,7 @@ export function CollectibleCard({
         <Pill
           style={{
             border: isRare
-              ? "1px solid rgba(0,200,160,0.45)"
+              ? "1px solid rgba(var(--cycle-accent-rgb) / 0.45)"
               : "1px solid rgba(255,255,255,0.12)",
           }}
         >
@@ -319,7 +319,7 @@ export function CollectibleCard({
             bottom: 12,
             left: "50%",
             transform: "translateX(-50%)",
-            background: `linear-gradient(135deg, ${MINT_ACCENT}, #00a882)`,
+            background: "var(--cycle-accent)",
             border: "none",
             borderRadius: "999px",
             padding: "5px 14px",
@@ -328,7 +328,7 @@ export function CollectibleCard({
             color: "#fff",
             cursor: "pointer",
             letterSpacing: "0.04em",
-            boxShadow: "0 2px 12px rgba(0,200,160,0.45)",
+            boxShadow: "0 2px 12px rgba(var(--cycle-accent-rgb) / 0.45)",
             whiteSpace: "nowrap",
             pointerEvents: "auto",
             zIndex: 10,
