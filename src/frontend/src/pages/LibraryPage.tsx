@@ -60,8 +60,7 @@ const BUTTON_BASE = {
   transition: "background 0.15s ease, transform 0.1s ease",
 } as const;
 
-const WRAPPER_IMG =
-  "/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png";
+const WRAPPER_IMG = "/assets/generated/minty-pack-wrapper.png";
 
 function PackCard({
   accentRgb: _accentRgb,

@@ -329,7 +329,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+              src="/assets/generated/minty-pack-wrapper.png"
               alt="Minty Pack"
               style={{
                 width: "100%",
@@ -534,7 +534,7 @@ export function PackOpeningOverlay({
           }}
         >
           <img
-            src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+            src="/assets/generated/minty-pack-wrapper.png"
             alt="Minty Pack"
             style={{
               width: "100%",
@@ -580,7 +580,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+              src="/assets/generated/minty-pack-wrapper.png"
               alt=""
               style={{
                 width: "240px",
@@ -605,7 +605,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+              src="/assets/generated/minty-pack-wrapper.png"
               alt=""
               style={{
                 width: "240px",

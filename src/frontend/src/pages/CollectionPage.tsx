@@ -254,7 +254,7 @@ function VaultTile({
           }}
         >
           <img
-            src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+            src="/assets/generated/minty-pack-wrapper.png"
             alt="Sealed pack"
             style={{
               width: "80%",
