@@ -1321,7 +1321,7 @@ function SendToWalletModal({
                   borderRadius: "10px",
                   border: "none",
                   background: address.trim()
-                    ? "linear-gradient(160deg, var(--cycle-accent), #2a9070)"
+                    ? "linear-gradient(160deg, var(--cycle-accent), #3BA882)"
                     : "#e0e0e0",
                   color: address.trim() ? "#fff" : "#aaa",
                   fontSize: "14px",
@@ -1747,11 +1747,12 @@ function SendToAuctionModal({
             </p>
             <h2
               style={{
-                fontSize: 20,
-                fontWeight: 800,
+                fontSize: 24,
+                fontWeight: 700,
                 color: "#fff",
                 margin: 0,
-                lineHeight: 1.2,
+                lineHeight: 1.1,
+                fontFamily: "var(--font-brand)",
               }}
             >
               {nft.title}
@@ -1799,10 +1800,12 @@ function SendToAuctionModal({
           <div style={{ padding: "20px 20px 28px" }}>
             <h3
               style={{
-                fontSize: 20,
-                fontWeight: 800,
+                fontSize: 26,
+                fontWeight: 700,
                 color: "#111",
                 margin: "0 0 18px",
+                fontFamily: "var(--font-brand)",
+                lineHeight: 1.1,
               }}
             >
               Send to Auction
@@ -2071,11 +2074,12 @@ function NFTDetailSheet({
 
             <h2
               style={{
-                fontSize: "20px",
+                fontSize: "26px",
                 fontWeight: 700,
                 color: "#111",
                 margin: "0 0 8px",
-                letterSpacing: "-0.01em",
+                fontFamily: "var(--font-brand)",
+                lineHeight: 1.1,
               }}
             >
               {nft.title}
@@ -2275,7 +2279,7 @@ function NFTDetailSheet({
                   borderRadius: "12px",
                   border: "none",
                   background:
-                    "linear-gradient(160deg, var(--cycle-accent), #2a9070)",
+                    "linear-gradient(160deg, var(--cycle-accent), #3BA882)",
                   color: "#fff",
                   fontSize: "14px",
                   fontWeight: 600,
@@ -2413,10 +2417,12 @@ function BurnConfirmModal({
         {/* Title */}
         <h3
           style={{
-            fontSize: "16px",
+            fontSize: "22px",
             fontWeight: 700,
             color: "#111",
             marginBottom: "6px",
+            fontFamily: "var(--font-brand)",
+            lineHeight: 1.1,
           }}
         >
           Burn Collectible?
@@ -2494,7 +2500,7 @@ function BurnConfirmModal({
               borderRadius: "10px",
               border: "none",
               background:
-                "linear-gradient(160deg, var(--cycle-accent), #2a9070)",
+                "linear-gradient(160deg, var(--cycle-accent), #3BA882)",
               color: "#fff",
               fontSize: "14px",
               fontWeight: 600,
@@ -2741,11 +2747,12 @@ export function CollectionPage({
       <div style={{ marginBottom: "20px" }}>
         <h1
           style={{
-            fontSize: "18px",
+            fontSize: "28px",
             fontWeight: 700,
             color: "#111",
             margin: 0,
-            letterSpacing: "-0.02em",
+            fontFamily: "var(--font-brand)",
+            lineHeight: 1.1,
           }}
         >
           Collection

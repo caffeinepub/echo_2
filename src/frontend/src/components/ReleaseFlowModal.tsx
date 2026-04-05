@@ -13,7 +13,7 @@ import { useCollection } from "../context/CollectionContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
 
-const MINT = "#10b981";
+const MINT = "#7ED6B1";
 const MINT_LIGHT = "rgba(16,185,129,0.10)";
 const MINT_BORDER = "rgba(16,185,129,0.30)";
 
@@ -490,7 +490,7 @@ export function ReleaseFlowModal({
                 width: "100%",
                 padding: "14px",
                 borderRadius: 14,
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                background: "linear-gradient(135deg, #7ED6B1 0%, #5FC49A 100%)",
                 color: "#fff",
                 fontSize: 15,
                 fontWeight: 700,
@@ -664,7 +664,7 @@ export function ReleaseFlowModal({
                         padding: "10px 22px",
                         borderRadius: 10,
                         background:
-                          "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          "linear-gradient(135deg, #7ED6B1 0%, #5FC49A 100%)",
                         border: "none",
                         color: "#fff",
                         fontSize: 13,
@@ -1136,7 +1136,7 @@ export function ReleaseFlowModal({
                   padding: "13px",
                   borderRadius: 14,
                   background:
-                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    "linear-gradient(135deg, #7ED6B1 0%, #5FC49A 100%)",
                   color: "#fff",
                   fontSize: 15,
                   fontWeight: 700,
@@ -1173,7 +1173,7 @@ export function ReleaseFlowModal({
                     width: 56,
                     height: 56,
                     borderRadius: "50%",
-                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    background: "linear-gradient(135deg, #7ED6B1, #5FC49A)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1372,7 +1372,7 @@ export function ReleaseFlowModal({
                       padding: "13px",
                       borderRadius: 14,
                       background:
-                        "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        "linear-gradient(135deg, #7ED6B1 0%, #5FC49A 100%)",
                       color: "#fff",
                       fontSize: 15,
                       fontWeight: 700,

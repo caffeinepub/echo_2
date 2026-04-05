@@ -69,7 +69,7 @@ function SignalCard({
     >
       <p
         className="text-xs font-semibold tracking-widest uppercase mb-1"
-        style={{ color: isDark ? "rgba(110,230,180,0.7)" : "#6ee7b7" }}
+        style={{ color: isDark ? "rgba(126,214,177,0.7)" : "#7ED6B1" }}
       >
         {label}
       </p>
@@ -158,7 +158,7 @@ function CardRow({
       <div className="text-right flex-shrink-0">
         <p
           className="text-sm font-bold"
-          style={{ color: isDark ? "#6ee7b7" : "#059669" }}
+          style={{ color: isDark ? "#7ED6B1" : "#5FC49A" }}
         >
           {formatUSD(volume)}
         </p>
@@ -342,7 +342,7 @@ function CardDetailModal({
                     className="inline-block mt-2 text-xs font-medium px-2 py-0.5 rounded-full"
                     style={{
                       background: isDark ? "rgba(110,230,180,0.15)" : "#ecfdf5",
-                      color: isDark ? "#6ee7b7" : "#059669",
+                      color: isDark ? "#7ED6B1" : "#5FC49A",
                     }}
                   >
                     {card.rarity}
@@ -494,7 +494,7 @@ function CardDetailModal({
                     {/* Price */}
                     <p
                       className="text-sm font-bold"
-                      style={{ color: isDark ? "#6ee7b7" : "#059669" }}
+                      style={{ color: isDark ? "#7ED6B1" : "#5FC49A" }}
                     >
                       ${sale.priceUsd.toLocaleString()}
                     </p>
@@ -506,7 +506,7 @@ function CardDetailModal({
                         background: isDark
                           ? "rgba(110,230,180,0.12)"
                           : "#ecfdf5",
-                        color: isDark ? "#6ee7b7" : "#059669",
+                        color: isDark ? "#7ED6B1" : "#5FC49A",
                       }}
                     >
                       {sale.grade}
@@ -531,7 +531,7 @@ function CardDetailModal({
             >
               <p
                 className="text-xs font-semibold tracking-widest uppercase mb-1"
-                style={{ color: isDark ? "rgba(110,230,180,0.5)" : "#6ee7b7" }}
+                style={{ color: isDark ? "rgba(126,214,177,0.5)" : "#7ED6B1" }}
               >
                 Velocity · Liquidity · Supply Pressure
               </p>
@@ -553,7 +553,7 @@ function SectionHeader({ label, isDark }: { label: string; isDark: boolean }) {
   return (
     <p
       className="text-xs font-semibold tracking-widest uppercase mb-3"
-      style={{ color: isDark ? "rgba(110,230,180,0.6)" : "#6ee7b7" }}
+      style={{ color: isDark ? "rgba(126,214,177,0.6)" : "#7ED6B1" }}
     >
       {label}
     </p>
@@ -623,7 +623,7 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
           data-ocid="set.back_button"
           onClick={onBack}
           className="mt-4 text-sm underline"
-          style={{ color: isDark ? "#6ee7b7" : "#059669" }}
+          style={{ color: isDark ? "#7ED6B1" : "#5FC49A" }}
         >
           Go back
         </button>
@@ -646,7 +646,7 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
           data-ocid="set.back_button"
           onClick={onBack}
           className="flex items-center gap-1.5 text-sm font-medium"
-          style={{ color: isDark ? "#6ee7b7" : "#059669" }}
+          style={{ color: isDark ? "#7ED6B1" : "#5FC49A" }}
         >
           <ArrowLeft size={16} />
           Back
@@ -708,7 +708,7 @@ export default function SetDetailPage({ slug, onBack }: SetDetailPageProps) {
                   className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1.5"
                   style={{
                     background: isDark ? "rgba(110,230,180,0.15)" : "#ecfdf5",
-                    color: isDark ? "#6ee7b7" : "#059669",
+                    color: isDark ? "#7ED6B1" : "#5FC49A",
                   }}
                 >
                   {category.name}

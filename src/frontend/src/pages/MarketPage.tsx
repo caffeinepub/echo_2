@@ -682,8 +682,13 @@ export function MarketPage({
       >
         <span style={{ fontSize: "16px" }}>🏆</span>
         <p
-          className="text-[11px] uppercase tracking-[0.14em] font-semibold"
-          style={{ color: accentColor }}
+          style={{
+            color: accentColor,
+            fontFamily: "var(--font-brand)",
+            fontSize: "18px",
+            fontWeight: 600,
+            lineHeight: 1,
+          }}
         >
           Highest Sales · {timeLabel}
         </p>

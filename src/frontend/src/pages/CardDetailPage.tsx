@@ -47,7 +47,7 @@ function StatCell({
           fontSize: "20px",
           fontWeight: 700,
           fontFamily: "monospace",
-          color: accent ? "#10b981" : isDark ? "rgba(220,248,235,0.9)" : "#111",
+          color: accent ? "#5FC49A" : isDark ? "rgba(220,248,235,0.9)" : "#111",
           lineHeight: 1,
           marginBottom: "4px",
         }}
@@ -264,7 +264,7 @@ export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
                     background: isDark
                       ? "rgba(16,185,129,0.12)"
                       : "rgba(16,185,129,0.08)",
-                    color: "#10b981",
+                    color: "#5FC49A",
                     border: "1px solid rgba(16,185,129,0.25)",
                   }}
                 >
@@ -300,7 +300,7 @@ export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
               style={{
                 fontSize: "9px",
                 fontWeight: 600,
-                color: "#10b981",
+                color: "#5FC49A",
                 textTransform: "uppercase",
                 letterSpacing: "0.16em",
                 marginBottom: "14px",
@@ -351,7 +351,7 @@ export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
               style={{
                 fontSize: "9px",
                 fontWeight: 600,
-                color: "#10b981",
+                color: "#5FC49A",
                 textTransform: "uppercase",
                 letterSpacing: "0.16em",
                 marginBottom: "14px",
@@ -460,7 +460,7 @@ export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
                   background: isDark
                     ? "rgba(16,185,129,0.12)"
                     : "rgba(16,185,129,0.08)",
-                  color: "#10b981",
+                  color: "#5FC49A",
                   border: "1px solid rgba(16,185,129,0.25)",
                 }}
               >
@@ -472,7 +472,7 @@ export function CardDetailPage({ id, onBack }: CardDetailPageProps) {
               style={{
                 fontSize: "9px",
                 fontWeight: 600,
-                color: "#10b981",
+                color: "#5FC49A",
                 textTransform: "uppercase",
                 letterSpacing: "0.16em",
                 marginBottom: "14px",

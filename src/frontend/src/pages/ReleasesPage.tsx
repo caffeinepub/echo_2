@@ -1582,12 +1582,13 @@ function BuyPacksModal({
               </p>
               <h2
                 style={{
-                  fontSize: 20,
-                  fontWeight: 800,
+                  fontSize: 26,
+                  fontWeight: 700,
                   color: "#fff",
                   margin: 0,
-                  lineHeight: 1.2,
+                  lineHeight: 1.1,
                   textShadow: "0 1px 6px rgba(0,0,0,0.35)",
+                  fontFamily: "var(--font-brand)",
                 }}
               >
                 {release.title}
@@ -1674,10 +1675,12 @@ function BuyPacksModal({
               <div style={{ marginBottom: 16 }}>
                 <h3
                   style={{
-                    fontSize: 18,
+                    fontSize: 24,
                     fontWeight: 700,
                     color: "#111",
                     margin: "0 0 6px",
+                    fontFamily: "var(--font-brand)",
+                    lineHeight: 1.1,
                   }}
                 >
                   Buy Packs
@@ -2410,11 +2413,12 @@ function PlaceBidModal({
               </p>
               <h2
                 style={{
-                  fontSize: 20,
-                  fontWeight: 800,
+                  fontSize: 26,
+                  fontWeight: 700,
                   color: "#fff",
                   margin: 0,
-                  lineHeight: 1.2,
+                  lineHeight: 1.1,
+                  fontFamily: "var(--font-brand)",
                 }}
               >
                 {listing.nftTitle}
@@ -2465,10 +2469,12 @@ function PlaceBidModal({
               <>
                 <h3
                   style={{
-                    fontSize: 18,
+                    fontSize: 24,
                     fontWeight: 700,
                     color: "#111",
                     margin: "0 0 4px",
+                    fontFamily: "var(--font-brand)",
+                    lineHeight: 1.1,
                   }}
                 >
                   Place a Bid

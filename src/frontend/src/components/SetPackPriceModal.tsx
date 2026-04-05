@@ -140,7 +140,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                       padding: "12px 0 8px",
                       borderRadius: "14px",
                       border: isSelected
-                        ? "2px solid #10b981"
+                        ? "2px solid #7ED6B1"
                         : "1.5px solid rgba(0,0,0,0.09)",
                       background: isSelected ? "rgba(16,185,129,0.09)" : "#fff",
                       color: isSelected ? "#047857" : "#374151",
@@ -161,7 +161,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                       style={{
                         fontSize: "11px",
                         fontWeight: 400,
-                        color: isSelected ? "#10b981" : "#9ca3af",
+                        color: isSelected ? "#5FC49A" : "#9ca3af",
                       }}
                     >
                       {PRICE_LABELS[price]}
@@ -254,7 +254,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                         style={{
                           fontSize: "12px",
                           fontWeight: 600,
-                          color: "#10b981",
+                          color: "#5FC49A",
                         }}
                       >
                         {row.duration}
@@ -311,7 +311,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 >
                   <Check
                     size={12}
-                    color="#10b981"
+                    color="#5FC49A"
                     style={{ marginTop: "2px", flexShrink: 0 }}
                   />
                   <span
@@ -348,7 +348,7 @@ export function SetPackPriceModal({ onConfirm }: SetPackPriceModalProps) {
                 width: "100%",
                 height: "52px",
                 borderRadius: "14px",
-                background: "linear-gradient(160deg, #10b981, #059669)",
+                background: "linear-gradient(160deg, #7ED6B1, #5FC49A)",
                 color: "#fff",
                 fontSize: "15px",
                 fontWeight: 700,

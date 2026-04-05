@@ -5,6 +5,8 @@
 @layer base {
   :root {
     --radius: 1rem;
+    --font-brand: "Dancing Script", cursive;
+    --font-ui: "DM Sans", system-ui, sans-serif;
     /* Light mode — permanent (Blue supply cycle) */
     --background: 0.978 0.003 240;
     --foreground: 0.12 0.025 240;
@@ -139,7 +141,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", sans-serif;
+    font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

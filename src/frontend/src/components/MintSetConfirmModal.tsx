@@ -256,12 +256,12 @@ export function MintSetConfirmModal({
               <div>
                 <h2
                   style={{
-                    fontSize: "20px",
-                    fontWeight: 800,
+                    fontSize: "26px",
+                    fontWeight: 700,
                     color: "#111",
                     margin: 0,
-                    letterSpacing: "-0.02em",
-                    lineHeight: 1.2,
+                    lineHeight: 1.1,
+                    fontFamily: "var(--font-brand)",
                   }}
                 >
                   Mint Set

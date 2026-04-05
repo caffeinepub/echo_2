@@ -508,10 +508,12 @@ function WalletModal({
         </button>
         <div
           style={{
-            fontSize: "17px",
+            fontSize: "24px",
             fontWeight: 700,
             color: titleColor,
             marginBottom: 16,
+            fontFamily: "var(--font-brand)",
+            lineHeight: 1.1,
           }}
         >
           Receive {BTC_ASSET.symbol}
@@ -609,10 +611,12 @@ function WalletModal({
         </button>
         <div
           style={{
-            fontSize: "17px",
+            fontSize: "24px",
             fontWeight: 700,
             color: titleColor,
             marginBottom: 18,
+            fontFamily: "var(--font-brand)",
+            lineHeight: 1.1,
           }}
         >
           Send {BTC_ASSET.symbol}
@@ -820,7 +824,13 @@ function WalletModal({
               strokeWidth={1.8}
             />
             <span
-              style={{ fontSize: "16px", fontWeight: 700, color: "#0D1520" }}
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "#0D1520",
+                fontFamily: "var(--font-brand)",
+                lineHeight: 1,
+              }}
             >
               Wallet
             </span>
@@ -915,8 +925,14 @@ function SignInModal({
         </div>
 
         <h2
-          className="text-center font-semibold mb-1"
-          style={{ fontSize: "17px", color: "#0D1520" }}
+          className="text-center mb-1"
+          style={{
+            fontSize: "26px",
+            color: "#0D1520",
+            fontFamily: "var(--font-brand)",
+            fontWeight: 700,
+            lineHeight: 1.1,
+          }}
         >
           Sign in to Minty
         </h2>

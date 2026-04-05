@@ -136,7 +136,7 @@ function PackCard({
             fontWeight: 500,
             textTransform: "uppercase",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-ui)",
           }}
         >
           MINTY PACK
@@ -182,14 +182,15 @@ function PackCard({
         {/* Main name */}
         <h2
           style={{
-            fontSize: "22px",
-            fontWeight: 500,
+            fontSize: "28px",
+            fontWeight: 600,
             color: "#111111",
-            letterSpacing: "0.01em",
             margin: "16px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-ui)",
+            letterSpacing: "0.04em",
+            lineHeight: 1.1,
           }}
         >
           Minty Pack
@@ -204,9 +205,9 @@ function PackCard({
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontWeight: 300,
-            opacity: 0.72,
+            opacity: 0.65,
             letterSpacing: "0.01em",
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-ui)",
           }}
         >
           Contains 1 collectible
@@ -221,6 +222,8 @@ function PackCard({
             margin: "8px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
+            fontFamily: "var(--font-ui)",
+            letterSpacing: "0.02em",
           }}
         >
           $1 per pack
@@ -306,12 +309,13 @@ function RevealedCard({
         {/* Card name */}
         <h2
           style={{
-            fontSize: "20px",
-            fontWeight: 600,
+            fontSize: "26px",
+            fontWeight: 700,
             color: "#111111",
-            letterSpacing: "0.01em",
             margin: 0,
             textAlign: "center",
+            fontFamily: "var(--font-brand)",
+            lineHeight: 1.1,
           }}
         >
           {collectible.name}

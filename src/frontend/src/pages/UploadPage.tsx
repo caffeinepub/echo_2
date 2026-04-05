@@ -111,7 +111,7 @@ export function UploadPage({ onBack }: UploadPageProps) {
                       ? "oklch(0.65 0.18 160)"
                       : i === step
                         ? isLight
-                          ? "rgba(52,211,153,0.15)"
+                          ? "rgba(126,214,177,0.15)"
                           : "oklch(0.45 0.16 160 / 0.25)"
                         : isLight
                           ? "rgba(0,0,0,0.06)"
@@ -175,7 +175,7 @@ export function UploadPage({ onBack }: UploadPageProps) {
               height: "56px",
               borderRadius: "50%",
               background: isLight
-                ? "rgba(52,211,153,0.12)"
+                ? "rgba(126,214,177,0.12)"
                 : "oklch(0.45 0.16 160 / 0.20)",
               border: `1px solid ${mintColor}`,
               display: "flex",
@@ -214,10 +214,10 @@ export function UploadPage({ onBack }: UploadPageProps) {
               padding: "11px 28px",
               borderRadius: "20px",
               background: isLight
-                ? "rgba(52,211,153,0.10)"
+                ? "rgba(126,214,177,0.10)"
                 : "oklch(0.45 0.16 160 / 0.20)",
               color: mintColor,
-              border: `1px solid ${isLight ? "rgba(52,211,153,0.30)" : "oklch(0.55 0.18 160 / 0.35)"}`,
+              border: `1px solid ${isLight ? "rgba(126,214,177,0.30)" : "oklch(0.73 0.11 160 / 0.35)"}`,
               fontSize: "14px",
               fontWeight: 600,
               cursor: "pointer",
@@ -296,9 +296,9 @@ export function UploadPage({ onBack }: UploadPageProps) {
           <div
             style={{
               background: isLight
-                ? "rgba(52,211,153,0.06)"
+                ? "rgba(126,214,177,0.06)"
                 : "oklch(0.45 0.16 160 / 0.10)",
-              border: `1px solid ${isLight ? "rgba(52,211,153,0.20)" : "oklch(0.55 0.18 160 / 0.25)"}`,
+              border: `1px solid ${isLight ? "rgba(126,214,177,0.20)" : "oklch(0.73 0.11 160 / 0.25)"}`,
               borderRadius: "12px",
               padding: "14px 16px",
               marginBottom: "20px",
@@ -360,7 +360,7 @@ export function UploadPage({ onBack }: UploadPageProps) {
                     background:
                       grader === g
                         ? isLight
-                          ? "rgba(52,211,153,0.08)"
+                          ? "rgba(126,214,177,0.08)"
                           : "oklch(0.45 0.16 160 / 0.15)"
                         : inputBg,
                     color: grader === g ? mintColor : textPrimary,
@@ -418,9 +418,9 @@ export function UploadPage({ onBack }: UploadPageProps) {
                   width: "100%",
                   padding: "32px 16px",
                   borderRadius: "12px",
-                  border: `1px dashed ${isLight ? "rgba(52,211,153,0.40)" : "oklch(0.55 0.18 160 / 0.40)"}`,
+                  border: `1px dashed ${isLight ? "rgba(126,214,177,0.40)" : "oklch(0.73 0.11 160 / 0.40)"}`,
                   background: isLight
-                    ? "rgba(52,211,153,0.04)"
+                    ? "rgba(126,214,177,0.04)"
                     : "oklch(0.45 0.16 160 / 0.08)",
                   display: "flex",
                   flexDirection: "column",
@@ -529,9 +529,9 @@ export function UploadPage({ onBack }: UploadPageProps) {
             <div
               style={{
                 background: isLight
-                  ? "rgba(52,211,153,0.06)"
+                  ? "rgba(126,214,177,0.06)"
                   : "oklch(0.45 0.16 160 / 0.12)",
-                border: `1px solid ${isLight ? "rgba(52,211,153,0.20)" : "oklch(0.55 0.18 160 / 0.25)"}`,
+                border: `1px solid ${isLight ? "rgba(126,214,177,0.20)" : "oklch(0.73 0.11 160 / 0.25)"}`,
                 borderRadius: "12px",
                 padding: "14px 16px",
               }}
@@ -631,7 +631,7 @@ export function UploadPage({ onBack }: UploadPageProps) {
                           : `1px dashed ${borderColor}`,
                         background: photos[i]
                           ? isLight
-                            ? "rgba(52,211,153,0.06)"
+                            ? "rgba(126,214,177,0.06)"
                             : "oklch(0.45 0.16 160 / 0.12)"
                           : inputBg,
                         cursor: "pointer",
@@ -834,7 +834,7 @@ export function UploadPage({ onBack }: UploadPageProps) {
                           background:
                             paymentRail === rail
                               ? isLight
-                                ? "rgba(52,211,153,0.10)"
+                                ? "rgba(126,214,177,0.10)"
                                 : "oklch(0.45 0.16 160 / 0.20)"
                               : inputBg,
                           color:

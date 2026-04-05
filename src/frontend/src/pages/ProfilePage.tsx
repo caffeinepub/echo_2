@@ -160,7 +160,7 @@ function SetCard({
   const labelColor = isLight ? "#6b8a80" : "oklch(0.62 0.08 160)";
   const titleColor = isLight ? "#0d1f1a" : "rgba(255,255,255,0.92)";
   const analyticsAccent = isLight
-    ? "rgba(52,211,153,0.60)"
+    ? "rgba(126,214,177,0.60)"
     : "oklch(0.62 0.18 160 / 0.50)";
 
   return (
@@ -372,11 +372,11 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
     : "oklch(0.50 0.15 160 / 0.18)";
 
   const revenuePanelBg = isLight
-    ? "rgba(52,211,153,0.05)"
+    ? "rgba(126,214,177,0.05)"
     : "oklch(0.20 0.08 160 / 0.60)";
   const revenuePanelBorder = isLight
-    ? "1px solid rgba(52,211,153,0.18)"
-    : "1px solid oklch(0.55 0.18 160 / 0.22)";
+    ? "1px solid rgba(126,214,177,0.18)"
+    : "1px solid oklch(0.73 0.11 160 / 0.22)";
 
   return (
     <div
@@ -414,8 +414,14 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
         </button>
 
         <h1
-          className="absolute left-1/2 -translate-x-1/2 font-semibold"
-          style={{ fontSize: 15, color: titleColor, letterSpacing: "0.01em" }}
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{
+            fontSize: 22,
+            color: titleColor,
+            fontFamily: "var(--font-brand)",
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
         >
           Profile
         </h1>
@@ -443,11 +449,11 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                 width: 56,
                 height: 56,
                 background: isLight
-                  ? "rgba(52,211,153,0.08)"
+                  ? "rgba(126,214,177,0.08)"
                   : "oklch(0.45 0.16 160 / 0.14)",
                 border: isLight
-                  ? "1.5px solid rgba(52,211,153,0.22)"
-                  : "1.5px solid oklch(0.55 0.18 160 / 0.28)",
+                  ? "1.5px solid rgba(126,214,177,0.22)"
+                  : "1.5px solid oklch(0.73 0.11 160 / 0.28)",
               }}
             >
               <UserCircle
@@ -491,11 +497,11 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
               className="flex-1 flex flex-col items-center rounded-xl py-2.5"
               style={{
                 background: isLight
-                  ? "rgba(52,211,153,0.06)"
+                  ? "rgba(126,214,177,0.06)"
                   : "oklch(0.20 0.08 160 / 0.40)",
                 border: isLight
-                  ? "1px solid rgba(52,211,153,0.14)"
-                  : "1px solid oklch(0.55 0.18 160 / 0.18)",
+                  ? "1px solid rgba(126,214,177,0.14)"
+                  : "1px solid oklch(0.73 0.11 160 / 0.18)",
               }}
             >
               <span style={{ fontSize: 18, fontWeight: 800, color: mintColor }}>
@@ -509,11 +515,11 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
               className="flex-1 flex flex-col items-center rounded-xl py-2.5"
               style={{
                 background: isLight
-                  ? "rgba(52,211,153,0.06)"
+                  ? "rgba(126,214,177,0.06)"
                   : "oklch(0.20 0.08 160 / 0.40)",
                 border: isLight
-                  ? "1px solid rgba(52,211,153,0.14)"
-                  : "1px solid oklch(0.55 0.18 160 / 0.18)",
+                  ? "1px solid rgba(126,214,177,0.14)"
+                  : "1px solid oklch(0.73 0.11 160 / 0.18)",
               }}
             >
               <span style={{ fontSize: 18, fontWeight: 800, color: mintColor }}>

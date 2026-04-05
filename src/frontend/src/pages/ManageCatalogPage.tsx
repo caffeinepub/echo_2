@@ -1192,7 +1192,7 @@ function CardsTab({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: "10px",
                 fontWeight: 600,
-                color: "#10b981",
+                color: "#5FC49A",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 marginBottom: "10px",
@@ -1245,7 +1245,7 @@ function CardsTab({ isDark }: { isDark: boolean }) {
               style={{
                 fontSize: "10px",
                 fontWeight: 600,
-                color: "#10b981",
+                color: "#5FC49A",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
                 marginBottom: "10px",
@@ -1355,7 +1355,7 @@ function CardsTab({ isDark }: { isDark: boolean }) {
                       <p
                         style={{
                           fontSize: "9px",
-                          color: "#10b981",
+                          color: "#5FC49A",
                           fontFamily: "monospace",
                           marginTop: "2px",
                         }}

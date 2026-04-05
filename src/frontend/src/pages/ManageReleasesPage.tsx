@@ -83,7 +83,7 @@ function StatusBadge({ status }: { status: ReleaseStatus }) {
     },
     live: {
       background: "rgba(16,185,129,0.15)",
-      color: "#10b981",
+      color: "#5FC49A",
       border: "1px solid rgba(16,185,129,0.3)",
     },
     archived: {
@@ -143,9 +143,9 @@ function VisibilityBadge({ visibility }: { visibility: Visibility }) {
       border: "1px solid rgba(251,191,36,0.25)",
     },
     public: {
-      color: "#34d399",
-      background: "rgba(52,211,153,0.12)",
-      border: "1px solid rgba(52,211,153,0.25)",
+      color: "#7ED6B1",
+      background: "rgba(126,214,177,0.12)",
+      border: "1px solid rgba(126,214,177,0.25)",
     },
   };
   return (
@@ -1588,7 +1588,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                       activeSection === sec
                         ? "rgba(16,185,129,0.15)"
                         : "transparent",
-                    color: activeSection === sec ? "#10b981" : textSecondary,
+                    color: activeSection === sec ? "#5FC49A" : textSecondary,
                     border:
                       activeSection === sec
                         ? "1px solid rgba(16,185,129,0.3)"
@@ -1977,7 +1977,7 @@ export function ManageReleasesPage({ onBack }: ManageReleasesPageProps) {
                                 padding: "5px 12px",
                                 borderRadius: "6px",
                                 background: "rgba(16,185,129,0.15)",
-                                color: "#10b981",
+                                color: "#5FC49A",
                                 border: "1px solid rgba(16,185,129,0.3)",
                                 fontSize: "12px",
                                 fontWeight: 600,
@@ -2509,7 +2509,7 @@ function ActionButton({
     },
     publish: {
       background: "rgba(16,185,129,0.12)",
-      color: "#10b981",
+      color: "#5FC49A",
       border: "1px solid rgba(16,185,129,0.3)",
     },
     danger: {
@@ -2741,7 +2741,7 @@ function SetsManagementSection({
             padding: "7px 14px",
             borderRadius: "8px",
             background: "rgba(16,185,129,0.15)",
-            color: "#10b981",
+            color: "#5FC49A",
             fontSize: "12px",
             fontWeight: 600,
             border: "1px solid rgba(16,185,129,0.3)",
