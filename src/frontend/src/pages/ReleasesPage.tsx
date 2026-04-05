@@ -25,10 +25,8 @@ import {
 } from "../context/ReleasesMarketContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 
-import {
-  type TrendingHashtag,
-  getTrendingHashtags,
-} from "../store/mockDiscoverSets";
+import { useTrendingHashtags } from "../hooks/useTrendingHashtags";
+import type { TrendingHashtag } from "../store/mockDiscoverSets";
 // ─── Countdown helper ─────────────────────────────────────────────────────────
 
 function formatCountdown(msLeft: number): string {
@@ -3212,7 +3210,7 @@ export function ReleasesPage() {
       return next;
     });
   };
-  const trendingHashtags = getTrendingHashtags("ALL_TIME");
+  const trendingHashtags = useTrendingHashtags();
   const { listings: auctionListings } = useAuctions();
 
   const isLight = theme === "light";

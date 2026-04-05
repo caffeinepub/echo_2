@@ -233,6 +233,7 @@ export function ReleaseFlowModal({
       creatorId: "you",
       packCount: quantity,
       explicit: false,
+      hashtags: [],
     };
     addRelease(release);
     removeSealedPacks(selectedPacks.map((p) => p.id));

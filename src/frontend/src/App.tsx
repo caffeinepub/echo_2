@@ -149,6 +149,7 @@ function AppContent() {
       status: "active",
       collectibleType: "photo",
       explicit: draft.explicit ?? false,
+      hashtags: draft.hashtags ?? [],
     };
 
     addRelease(release);

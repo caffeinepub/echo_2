@@ -28,6 +28,7 @@ export interface MomentDraft {
   caption: string;
   coverIndex: number; // index into photos[] chosen as cover (legacy fallback)
   explicit: boolean;
+  hashtags: string[]; // structured array, e.g. ["nightdrive", "citylights"]
 }
 
 interface MomentDraftCtx {
@@ -46,6 +47,7 @@ interface MomentDraftCtx {
   setCoverIndex: (index: number) => void;
   setCoverPhoto: (url: string) => void;
   setExplicit: (explicit: boolean) => void;
+  setHashtags: (tags: string[]) => void;
 }
 
 const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
@@ -70,6 +72,8 @@ function loadFromStorage(): MomentDraft | null {
     if (parsed.explicit === undefined) parsed.explicit = false;
     // Backfill coverPhoto (new field)
     if (parsed.coverPhoto === undefined) parsed.coverPhoto = null;
+    // Backfill hashtags
+    if (!parsed.hashtags) parsed.hashtags = [];
     return parsed;
   } catch {
     return null;
@@ -119,6 +123,7 @@ export function MomentDraftProvider({
         caption: "",
         coverIndex: 0,
         explicit: false,
+        hashtags: [],
       };
       return draft;
     });
@@ -249,6 +254,13 @@ export function MomentDraftProvider({
     });
   }, []);
 
+  const setHashtags = useCallback((tags: string[]) => {
+    setActiveDraft((prev) => {
+      if (!prev || prev.completed) return prev;
+      return { ...prev, hashtags: tags.slice(0, 3) };
+    });
+  }, []);
+
   return (
     <MomentDraftContext.Provider
       value={{
@@ -267,6 +279,7 @@ export function MomentDraftProvider({
         setCoverIndex,
         setCoverPhoto,
         setExplicit,
+        setHashtags,
       }}
     >
       {children}

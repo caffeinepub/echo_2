@@ -17,14 +17,24 @@ export function FinalSetupScreen({
   onBack,
   onSubmit,
 }: FinalSetupScreenProps) {
-  const { activeDraft, setTitle, setCaption, setExplicit, completeDraft } =
-    useMomentDraft();
+  const {
+    activeDraft,
+    setTitle,
+    setCaption,
+    setExplicit,
+    setHashtags,
+    completeDraft,
+  } = useMomentDraft();
 
   const [localTitle, setLocalTitle] = useState(activeDraft?.title ?? "");
   const [localCaption, setLocalCaption] = useState(activeDraft?.caption ?? "");
   const [localExplicit, setLocalExplicit] = useState(
     activeDraft?.explicit ?? false,
   );
+  const [localHashtags, setLocalHashtags] = useState<string[]>(
+    activeDraft?.hashtags ?? [],
+  );
+  const [hashtagInput, setHashtagInput] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
 
   // Sync to draft context on every change
@@ -37,6 +47,27 @@ export function FinalSetupScreen({
   useEffect(() => {
     setExplicit(localExplicit);
   }, [localExplicit, setExplicit]);
+  useEffect(() => {
+    setHashtags(localHashtags);
+  }, [localHashtags, setHashtags]);
+
+  function normalizeHashtag(raw: string): string {
+    // Strip leading # symbols (including multiple), trim, lowercase
+    return raw.replace(/^#+/, "").trim().toLowerCase();
+  }
+
+  function handleAddHashtag() {
+    const normalized = normalizeHashtag(hashtagInput);
+    if (!normalized) return;
+    if (localHashtags.length >= 3) return;
+    if (localHashtags.includes(normalized)) return;
+    setLocalHashtags([...localHashtags, normalized]);
+    setHashtagInput("");
+  }
+
+  function handleRemoveHashtag(tag: string) {
+    setLocalHashtags(localHashtags.filter((t) => t !== tag));
+  }
 
   function handleSubmit() {
     if (!localTitle.trim()) {
@@ -51,6 +82,7 @@ export function FinalSetupScreen({
       ...activeDraft,
       title: localTitle.trim(),
       caption: localCaption.trim(),
+      hashtags: localHashtags,
       explicit: localExplicit,
       completed: true,
     };
@@ -291,6 +323,156 @@ export function FinalSetupScreen({
               {localCaption.length}/200
             </span>
           </div>
+        </div>
+
+        {/* ── Hashtags ── */}
+        <div>
+          <label
+            htmlFor="hashtag-input"
+            style={{
+              display: "block",
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "#374151",
+              textTransform: "uppercase",
+              letterSpacing: "0.07em",
+              marginBottom: "8px",
+            }}
+          >
+            Hashtags{" "}
+            <span
+              style={{
+                color: "#9ca3af",
+                fontWeight: 400,
+                fontSize: "11px",
+                textTransform: "none",
+                letterSpacing: 0,
+              }}
+            >
+              (optional · max 3)
+            </span>
+          </label>
+
+          {/* Pill chips */}
+          {localHashtags.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px",
+                marginBottom: "10px",
+              }}
+            >
+              {localHashtags.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    background: "rgba(52,168,132,0.10)",
+                    border: "1.5px solid rgba(52,168,132,0.30)",
+                    borderRadius: "20px",
+                    padding: "4px 10px 4px 10px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: MINT_GREEN,
+                    lineHeight: 1,
+                  }}
+                >
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveHashtag(tag)}
+                    aria-label={`Remove #${tag}`}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0 0 0 2px",
+                      color: "rgba(52,168,132,0.60)",
+                      fontSize: "14px",
+                      lineHeight: 1,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Input row */}
+          {localHashtags.length < 3 && (
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                id="hashtag-input"
+                type="text"
+                placeholder="#hashtag"
+                value={hashtagInput}
+                onChange={(e) => setHashtagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleAddHashtag();
+                  }
+                }}
+                maxLength={32}
+                style={{
+                  flex: 1,
+                  padding: "11px 14px",
+                  borderRadius: "12px",
+                  border: "1.5px solid rgba(0,0,0,0.10)",
+                  background: "#fff",
+                  fontSize: "14px",
+                  fontWeight: 400,
+                  color: "#111",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = MINT_BORDER_STRONG;
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
+                  handleAddHashtag();
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleAddHashtag}
+                disabled={!hashtagInput.trim()}
+                data-ocid="hashtag.add_button"
+                style={{
+                  padding: "11px 16px",
+                  borderRadius: "12px",
+                  border: `1.5px solid ${hashtagInput.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
+                  background: hashtagInput.trim()
+                    ? "rgba(52,168,132,0.10)"
+                    : "rgba(0,0,0,0.04)",
+                  color: hashtagInput.trim() ? MINT_GREEN : "#9ca3af",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: hashtagInput.trim() ? "pointer" : "default",
+                  transition: "all 0.15s",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Add
+              </button>
+            </div>
+          )}
+
+          {localHashtags.length >= 3 && (
+            <p
+              style={{ fontSize: "11px", color: "#9ca3af", margin: "4px 0 0" }}
+            >
+              Maximum of 3 hashtags reached.
+            </p>
+          )}
         </div>
 
         {/* ── Explicit Content Toggle ── */}

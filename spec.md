@@ -1,44 +1,33 @@
-# Minty — Buy Packs Modal: BTC-Only Payment
+# Minty Pack Visuals Update
 
 ## Current State
-
-The `BuyPacksModal` in `ReleasesPage.tsx` has:
-- A `PaymentMethod` type with four options: `"USDC" | "BTC" | "ETH" | "SOL"`
-- A `PAYMENT_METHODS` array with all four options
-- A `payment` state defaulting to `"USDC"`
-- A multi-button "Pay with" selector rendered with `PAYMENT_METHODS.map(...)`
-- A price summary showing USD total with the selected payment ticker as a small suffix label
-- Slider text: generic confirmation
-
-No live BTC price conversion exists in ReleasesPage.
+Sealed packs across the app use a CSS-only off-white rectangle with "MINTY PACK" text as a placeholder. The Library page has a complex flipping card system (PackCard front + PackBackside back) with a glass pedestal container. An off-white wrapper image already exists at `/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png`.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A `useBtcPriceForModal` hook (inline, same pattern as `TopBar.tsx`) that fetches live BTC/USD spot price from Coinbase
-- BTC conversion display: `≈ 0.00015 BTC` beneath the USD total
-- A locked "PAY WITH / Bitcoin (BTC)" label section (static, non-interactive pill)
-- Store `usdPrice`, `btcAmount`, and `btcPrice` in `handleConfirmPurchase` logic
+- Off-white wrapper image displayed in LibraryPage as the main pack visual
+- Wrapper image in CollectionPage sealed pack thumbnails (VaultTile)
+- Wrapper image in PackOpeningOverlay during idle/anticipation/tear phases
 
 ### Modify
-- Remove `PaymentMethod` type and `PAYMENT_METHODS` array
-- Remove `payment` state
-- Replace multi-button payment selector with a single locked BTC label/pill
-- Price summary: keep `{qty} packs × $X.XX` as primary, add `≈ X.XXXXX BTC` as secondary line
-- Slider label: `"Slide to confirm purchase"` (already correct, confirm no change needed)
+- LibraryPage: Remove flip card component (PackBackside), remove glass pedestal square, replace with wrapper image centered in card area behind text labels
+- CollectionPage (VaultTile): Replace CSS text placeholder with wrapper image
+- PackOpeningOverlay: Replace CSS text placeholder with wrapper image in idle, anticipation, and tear phases
 
 ### Remove
-- `PaymentMethod` type
-- `PAYMENT_METHODS` constant
-- `payment` useState
-- The `{PAYMENT_METHODS.map(...)}` button group rendering
-- The `{payment}` ticker suffix in price summary
+- PackBackside component entirely
+- Flip hint SVG (top-right corner of PackCard)
+- isFlipped state and all flip-related handlers
+- Glass pedestal container div with its accentRgb border/glow
+- 3D flip layer structure (Layer 1-4b)
+- handleCardAreaClick, handleTouchStart/End for swipe
+- Flip-related aria attributes
 
 ## Implementation Plan
-
-1. Add a `useBtcPriceInModal` hook at the top of `ReleasesPage.tsx` (after existing helpers) that fetches from Coinbase spot endpoint, caches last known price, refreshes every 60s
-2. In `BuyPacksModal`: call `useBtcPriceInModal()` to get live BTC price
-3. Remove `PaymentMethod` / `PAYMENT_METHODS` / `payment` state
-4. Replace the multi-button "Pay with" section with a static label + locked BTC pill
-5. In price summary block: keep USD line, add BTC equivalent line below
-6. Pass `btcAmount` to `handleConfirmPurchase` and log/store alongside USD price
+1. Add wrapper image path constant
+2. Rewrite PackCard in LibraryPage to display wrapper image behind text (no pedestal, no flip hint)
+3. Remove PackBackside component
+4. Simplify LibraryPage: replace 3D flip structure with simple card display
+5. Update VaultTile in CollectionPage to use wrapper image for isPack tiles
+6. Update PackOpeningOverlay idle/anticipation/tear phase pack visuals to use wrapper image

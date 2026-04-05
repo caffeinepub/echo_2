@@ -133,7 +133,6 @@ export function PackOpeningOverlay({
   ensureOverlayStyles();
 
   const { activeStyle: activeCycle } = usePackStyle();
-  const wrapperImageUrl = activeCycle.packWrapperUrl;
   const r = activeCycle.accentR;
   const g = activeCycle.accentG;
   const b = activeCycle.accentB;
@@ -330,8 +329,8 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src={wrapperImageUrl}
-              alt="Sealed Pack"
+              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+              alt="Minty Pack"
               style={{
                 width: "100%",
                 height: "100%",
@@ -535,8 +534,8 @@ export function PackOpeningOverlay({
           }}
         >
           <img
-            src={wrapperImageUrl}
-            alt="Sealed Pack"
+            src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+            alt="Minty Pack"
             style={{
               width: "100%",
               height: "100%",
@@ -581,14 +580,12 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src={wrapperImageUrl}
+              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
               alt=""
-              aria-hidden="true"
               style={{
                 width: "240px",
                 height: "calc(240px * 4 / 3)",
-                objectFit: "cover",
-                objectPosition: "top",
+                objectFit: "contain",
                 display: "block",
               }}
             />
@@ -608,16 +605,14 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src={wrapperImageUrl}
+              src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
               alt=""
-              aria-hidden="true"
               style={{
                 width: "240px",
                 height: "calc(240px * 4 / 3)",
-                objectFit: "cover",
-                objectPosition: "bottom",
+                objectFit: "contain",
                 display: "block",
-                transform: "translateY(-100%)",
+                transform: "translateY(-50%)",
               }}
             />
           </div>

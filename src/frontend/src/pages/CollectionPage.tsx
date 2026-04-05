@@ -27,8 +27,6 @@ import { usePackStyle } from "../context/PackStyleContext";
 const MINT = "var(--cycle-accent)";
 const MINT_SOFT = "rgba(var(--cycle-accent-rgb),0.12)";
 const MINT_TEXT = "var(--cycle-accent)";
-const PACK_IMAGE =
-  "/assets/generated/pack-wrapper-cycle1-mint-transparent.dim_400x560.png";
 
 const RARITY_COLORS: Record<string, string> = {
   Common: "#9B9B9B",
@@ -79,7 +77,6 @@ interface SetGroup {
 function buildSetGroups(
   sealedPacks: SealedPack[],
   nfts: CollectionNFT[],
-  packWrapperUrl: string = PACK_IMAGE,
 ): SetGroup[] {
   const map = new Map<string, SetGroup>();
 
@@ -88,7 +85,7 @@ function buildSetGroups(
     if (!map.has(key)) {
       map.set(key, {
         setName: key,
-        previewImageUrl: packWrapperUrl,
+        previewImageUrl: "",
         totalMinted: 0,
         sealedCount: 0,
         openedCount: 0,
@@ -103,7 +100,7 @@ function buildSetGroups(
     g.sealedCount += 1;
     g.totalMinted += 1;
     // Use the dedicated cover photo if available (set on first occurrence)
-    if (pack.coverPhotoUrl && g.previewImageUrl === packWrapperUrl) {
+    if (pack.coverPhotoUrl && g.previewImageUrl === "") {
       g.previewImageUrl = pack.coverPhotoUrl;
     }
     if (pack.createdAt > g.latestAt) g.latestAt = pack.createdAt;
@@ -114,7 +111,7 @@ function buildSetGroups(
     if (!map.has(key)) {
       map.set(key, {
         setName: key,
-        previewImageUrl: nft.imageUrl || packWrapperUrl,
+        previewImageUrl: nft.imageUrl || "",
         totalMinted: 0,
         sealedCount: 0,
         openedCount: 0,
@@ -128,7 +125,7 @@ function buildSetGroups(
     g.collectibles.push(nft);
     g.openedCount += 1;
     g.totalMinted += 1;
-    if (g.previewImageUrl === packWrapperUrl && nft.imageUrl) {
+    if (g.previewImageUrl === "" && nft.imageUrl) {
       g.previewImageUrl = nft.imageUrl;
     }
     if (nft.addedAt > g.latestAt) g.latestAt = nft.addedAt;
@@ -244,18 +241,30 @@ function VaultTile({
     >
       {/* Image */}
       {isPack ? (
-        <img
-          src="/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png"
-          alt="Sealed Pack"
+        <div
           style={{
             position: "absolute",
             inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            zIndex: 0,
+            borderRadius: "8px",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#F9F9F7",
           }}
-        />
+        >
+          <img
+            src="/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png"
+            alt="Sealed pack"
+            style={{
+              width: "80%",
+              height: "80%",
+              objectFit: "contain",
+              display: "block",
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.14))",
+            }}
+          />
+        </div>
       ) : (
         imageUrl && (
           <img
@@ -2615,7 +2624,6 @@ export function CollectionPage({
 }: {
   onGoToLibrary?: () => void;
 }) {
-  const { activeStyle: activeCycle } = usePackStyle();
   const { nfts, sealedPacks, burnedCounts, openPack, removeNFT, burnNFT } =
     useCollection();
 
@@ -2639,11 +2647,7 @@ export function CollectionPage({
   const [showBurnConfirm, setShowBurnConfirm] = useState(false);
   const [burnFeedback, setBurnFeedback] = useState(false);
 
-  const setGroups = buildSetGroups(
-    sealedPacks,
-    nfts,
-    activeCycle.packWrapperUrl,
-  );
+  const setGroups = buildSetGroups(sealedPacks, nfts);
   const isEmpty = setGroups.length === 0;
 
   function handleTap(id: string) {

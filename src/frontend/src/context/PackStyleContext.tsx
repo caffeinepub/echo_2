@@ -18,7 +18,6 @@ export interface PackStyle {
   accentR: number;
   accentG: number;
   accentB: number;
-  packWrapperUrl: string;
   glowDark: string;
   glowLight: string;
   logoFilter: string;
@@ -35,8 +34,6 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     accentR: 52,
     accentG: 211,
     accentB: 153,
-    packWrapperUrl:
-      "/assets/generated/pack-wrapper-cycle1-mint-transparent.dim_400x560.png",
     glowDark: "rgba(52,211,153,",
     glowLight: "rgba(52,180,130,",
     logoFilter: "none",
@@ -51,8 +48,6 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     accentR: 240,
     accentG: 171,
     accentB: 185,
-    packWrapperUrl:
-      "/assets/generated/pack-wrapper-cycle2-pink-transparent.dim_400x560.png",
     glowDark: "rgba(240,171,185,",
     glowLight: "rgba(210,140,160,",
     logoFilter: "hue-rotate(-160deg) saturate(0.9)",
@@ -67,8 +62,6 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     accentR: 192,
     accentG: 160,
     accentB: 230,
-    packWrapperUrl:
-      "/assets/generated/pack-wrapper-cycle5-purple-transparent.dim_400x560.png",
     glowDark: "rgba(192,160,230,",
     glowLight: "rgba(160,120,200,",
     logoFilter: "hue-rotate(140deg) saturate(0.85)",
@@ -83,8 +76,6 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     accentR: 75,
     accentG: 130,
     accentB: 220,
-    packWrapperUrl:
-      "/assets/generated/pack-wrapper-cycle3-blue-v2-transparent.dim_400x560.png",
     glowDark: "rgba(75,130,220,",
     glowLight: "rgba(75,130,220,",
     logoFilter: "hue-rotate(75deg) saturate(0.85) brightness(1.05)",

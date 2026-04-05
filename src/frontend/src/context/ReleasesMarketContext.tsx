@@ -42,6 +42,7 @@ export interface MarketRelease {
   status: "active" | "burned" | "sold_out";
   collectibleType: "photo" | "video";
   explicit: boolean; // content labeling flag
+  hashtags: string[]; // structured hashtags, e.g. ["nightdrive", "citylights"]
   lastPurchaseAt?: number; // timestamp of last purchase
 }
 
@@ -79,6 +80,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    hashtags: ["coastaldrift", "sunsetride", "goldenhour"],
     lastPurchaseAt: NOW - 4 * 60 * 1000,
   },
   {
@@ -99,6 +101,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    hashtags: ["nightdrive", "citylights", "latevibes"],
     lastPurchaseAt: NOW - 22 * 60 * 1000,
   },
   {
@@ -119,6 +122,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    hashtags: ["goldenhour", "fogseason", "earlylight"],
     lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
   },
 ];
@@ -134,6 +138,7 @@ function loadReleasesFromStorage(): MarketRelease[] {
       explicit: r.explicit ?? false,
       creatorId: r.creatorId ?? r.creatorName,
       packCount: r.packCount ?? r.packsAvailable,
+      hashtags: r.hashtags ?? [],
     }));
   } catch {
     return [];

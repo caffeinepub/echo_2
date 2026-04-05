@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 import { usePackStyle } from "../context/PackStyleContext";
@@ -35,32 +35,6 @@ const RARITY_COLOR: Record<string, string> = {
   "Ultra Rare": "#C9A84C",
 };
 
-// Barcode bar data: [x position, bar width]
-const BARCODE_BARS: [number, number][] = [
-  [0, 1.5],
-  [2, 1],
-  [4, 2],
-  [7, 1],
-  [9, 1.5],
-  [11, 1],
-  [13, 2],
-  [16, 1],
-  [18, 1.5],
-  [20, 1],
-  [22, 2],
-  [25, 1],
-  [27, 1.5],
-  [29, 1],
-  [31, 2],
-  [34, 1],
-  [36, 1.5],
-  [38, 1],
-  [40, 2],
-  [43, 1],
-  [45, 1.5],
-  [47, 1],
-];
-
 const CARD_OUTER_STYLE = {
   width: "280px",
   border: "1px solid rgba(0,0,0,0.06)",
@@ -86,18 +60,16 @@ const BUTTON_BASE = {
   transition: "background 0.15s ease, transform 0.1s ease",
 } as const;
 
+const WRAPPER_IMG =
+  "/assets/generated/pack-wrapper-cycle4-offwhite-transparent.dim_400x560.png";
+
 function PackCard({
-  previewImage,
-  packWrapperUrl,
-  accentRgb,
+  accentRgb: _accentRgb,
   accentText,
 }: {
-  previewImage?: string;
-  packWrapperUrl?: string;
   accentRgb: string;
   accentText: string;
 }) {
-  const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -105,23 +77,13 @@ function PackCard({
     return () => clearTimeout(t);
   }, []);
 
-  // The image shown inside the display window:
-  // — if a first captured photo exists, use it
-  // — otherwise fall back to the cycle-specific pack wrapper
-  const displaySrc = previewImage
-    ? previewImage
-    : (packWrapperUrl ??
-      "/assets/generated/pack-wrapper-cycle1-mint-transparent.dim_400x560.png");
-
   return (
     <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
-      {/* Background image layer — muted/desaturated */}
+      {/* Background layer */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          backgroundImage:
-            "url('/assets/2b94ee04-514b-458f-9635-3478ba602ea8-019d510a-36c0-7224-ac66-ae3f81d2f030.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           filter: "saturate(0.65) contrast(0.88)",
@@ -140,7 +102,7 @@ function PackCard({
         }}
       />
 
-      {/* Slow card bg shimmer — rare sweep */}
+      {/* Slow card bg shimmer */}
       <div
         className="card-bg-shimmer"
         style={{
@@ -153,54 +115,17 @@ function PackCard({
         }}
       />
 
-      {/* Flip hint — top right corner */}
-      <div
-        style={{
-          position: "absolute",
-          top: "14px",
-          right: "14px",
-          zIndex: 10,
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          opacity: 0.45,
-          pointerEvents: "none",
-        }}
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M2 8c0-3.31 2.69-6 6-6s6 2.69 6 6"
-            stroke={accentText}
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M14 5.5L14 8M14 8L11.5 8"
-            stroke={accentText}
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
-
       {/* Content layer */}
       <div
         style={{
           position: "relative",
           zIndex: 3,
-          padding: "44px 32px",
+          padding: "36px 32px 32px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: "0",
+          height: "100%",
         }}
       >
         {/* Small top label */}
@@ -223,116 +148,33 @@ function PackCard({
             width: "32px",
             height: "1px",
             background: "rgba(0,0,0,0.10)",
-            margin: "16px 0",
+            margin: "12px 0",
           }}
         />
 
-        {/* Glass pedestal container */}
+        {/* Off-white wrapper image — main visual */}
         <div
           style={{
-            position: "relative",
-            width: "120px",
-            height: "120px",
-            borderRadius: "20px",
-            background: "rgba(255,255,255,0.72)",
-            backdropFilter: "blur(12px) saturate(1.2)",
-            WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-            border: `1px solid rgba(${accentRgb},0.35)`,
-            boxShadow:
-              "inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05)",
-            outline: `1px solid rgba(${accentRgb},0.18)`,
-            filter: `drop-shadow(0 0 18px rgba(${accentRgb},0.22))`,
+            flex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: "24px",
-            overflow: "hidden",
+            opacity: mounted ? 1 : 0,
+            transform: mounted ? "translateY(0)" : "translateY(16px)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+            width: "100%",
           }}
         >
-          {/* Display image — either first captured photo or fallback pack art */}
-          <div
+          <img
+            src={WRAPPER_IMG}
+            alt="Minty Pack"
             style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(16px)",
-              transition: "opacity 0.6s ease, transform 0.6s ease",
-            }}
-          >
-            {previewImage ? (
-              // Captured photo: fill the window in 4:5 portrait crop
-              // Animated: float + glow pulse + breathing scale
-              <div
-                className="pack-preview-animate"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  borderRadius: "inherit",
-                  overflow: "hidden",
-                }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                onTouchStart={() => setIsHovered(true)}
-                onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
-              >
-                <img
-                  src={displaySrc}
-                  alt="Mint Moment preview"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    objectPosition: "center top",
-                    display: "block",
-                    borderRadius: "inherit",
-                  }}
-                />
-              </div>
-            ) : (
-              // Fallback: cycle pack wrapper artwork
-              <img
-                src={displaySrc}
-                alt="Minty Pack"
-                className={`pack-hero-animate${isHovered ? " pack-hero-hover" : ""}`}
-                style={{
-                  width: "75%",
-                  height: "75%",
-                  objectFit: "contain",
-                  display: "block",
-                  filter: `drop-shadow(0 0 12px rgba(${accentRgb},0.35)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))`,
-                }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                onTouchStart={() => setIsHovered(true)}
-                onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
-              />
-            )}
-          </div>
-
-          {/* Ambient cycle-accent glow behind pack */}
-          <div
-            className="pack-glow-pulse"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: `radial-gradient(ellipse 60% 60% at 50% 50%, rgba(${accentRgb},0.20) 0%, transparent 70%)`,
-              pointerEvents: "none",
-              borderRadius: "20px",
-            }}
-          />
-
-          {/* Light sweep overlay */}
-          <div
-            className="pack-light-sweep"
-            style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "20px",
-              overflow: "hidden",
-              pointerEvents: "none",
+              maxHeight: "190px",
+              maxWidth: "100%",
+              objectFit: "contain",
+              display: "block",
+              filter:
+                "drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.10))",
             }}
           />
         </div>
@@ -344,7 +186,7 @@ function PackCard({
             fontWeight: 600,
             color: "#111111",
             letterSpacing: "0.02em",
-            margin: 0,
+            margin: "16px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
           }}
@@ -484,350 +326,6 @@ function RevealedCard({
         >
           {collectible.rarity}
         </p>
-      </div>
-    </div>
-  );
-}
-
-// ── Pack Backside — Premium TCG Booster Pack Information Back ─────────────────
-function PackBackside({
-  onFlipBack,
-  accentRgb,
-  accentColor,
-  accentText,
-}: {
-  onFlipBack: () => void;
-  accentRgb: string;
-  accentColor: string;
-  accentText: string;
-}) {
-  const dividerStyle = {
-    height: "1px",
-    background: `rgba(${accentRgb},0.18)`,
-    margin: "0 0 14px",
-  };
-
-  const sectionTitleStyle: React.CSSProperties = {
-    fontSize: "9px",
-    letterSpacing: "0.18em",
-    color: accentText,
-    fontWeight: 700,
-    textTransform: "uppercase",
-    margin: "0 0 8px",
-    display: "block",
-  };
-
-  const bulletStyle: React.CSSProperties = {
-    margin: "2px 0",
-    fontSize: "10px",
-    color: "#3d4a42",
-    lineHeight: 1.5,
-  };
-
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        borderRadius: "20px",
-        boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
-        border: "1px solid rgba(0,0,0,0.06)",
-        overflow: "hidden",
-        background: "#F7F9F8",
-        position: "relative",
-      }}
-    >
-      {/* Noise/grain texture overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
-          opacity: 0.035,
-          mixBlendMode: "multiply",
-          pointerEvents: "none",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Gloss sheen at top */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "38%",
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.0) 100%)",
-          pointerEvents: "none",
-          zIndex: 2,
-        }}
-      />
-
-      {/* Flip back button — top-right corner */}
-      <button
-        type="button"
-        data-ocid="library.secondary_button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onFlipBack();
-        }}
-        style={{
-          position: "absolute",
-          top: "12px",
-          right: "12px",
-          zIndex: 10,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "4px",
-          opacity: 0.4,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: "50%",
-        }}
-        aria-label="Flip back to pack front"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M14 8c0 3.31-2.69 6-6 6s-6-2.69-6-6"
-            stroke={accentColor}
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            fill="none"
-          />
-          <path
-            d="M2 10.5L2 8M2 8L4.5 8"
-            stroke={accentColor}
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-
-      {/* Scrollable content area */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 3,
-          padding: "22px 20px",
-          fontSize: "11px",
-          overflowY: "auto",
-          maxHeight: "350px",
-        }}
-      >
-        {/* 1. Top label */}
-        <p
-          style={{
-            fontSize: "10px",
-            letterSpacing: "0.2em",
-            color: accentText,
-            fontWeight: 600,
-            textTransform: "uppercase",
-            textAlign: "center",
-            marginBottom: "12px",
-            marginTop: 0,
-          }}
-        >
-          MINTY PACK
-        </p>
-
-        {/* 2. Description */}
-        <p
-          style={{
-            fontSize: "10px",
-            color: "#5a7a6a",
-            lineHeight: 1.55,
-            textAlign: "center",
-            margin: "0 0 14px",
-          }}
-        >
-          This pack contains 1 collectible from a Mint Moment set. Each Mint
-          Moment is created from real photos and video captured by the creator.
-        </p>
-
-        {/* 3. Divider */}
-        <div style={dividerStyle} />
-
-        {/* 4. Contents section */}
-        <div style={{ margin: "0 0 14px" }}>
-          <span style={sectionTitleStyle}>CONTENTS</span>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-            }}
-          >
-            {[
-              "1 collectible card",
-              "photo or video moment",
-              "web3 verified ownership",
-              "limited supply",
-              "part of a creator set",
-            ].map((item) => (
-              <li key={item} style={bulletStyle}>
-                • {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* 5. Divider */}
-        <div style={dividerStyle} />
-
-        {/* 6. Collectible Structure section */}
-        <div style={{ margin: "0 0 14px" }}>
-          <span style={sectionTitleStyle}>COLLECTIBLE STRUCTURE</span>
-          <p
-            style={{
-              fontSize: "10px",
-              color: "#3d4a42",
-              lineHeight: 1.55,
-              margin: "0 0 8px",
-            }}
-          >
-            Each Mint Moment produces a limited number of collectibles.
-          </p>
-          <p
-            style={{
-              fontSize: "9px",
-              color: "#5a7a6a",
-              fontWeight: 600,
-              margin: "8px 0 4px",
-            }}
-          >
-            Possible content types:
-          </p>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-            }}
-          >
-            {["Photo Moments", "Video Moments"].map((item) => (
-              <li key={item} style={bulletStyle}>
-                • {item}
-              </li>
-            ))}
-          </ul>
-          <p
-            style={{
-              fontSize: "9.5px",
-              color: "#6a8a7a",
-              fontStyle: "italic",
-              margin: "8px 0 0",
-            }}
-          >
-            Some collectibles may be more limited than others.
-          </p>
-        </div>
-
-        {/* 7. Divider */}
-        <div style={dividerStyle} />
-
-        {/* 8. Footer */}
-        <div>
-          <p
-            style={{
-              fontSize: "9px",
-              color: "#6a8a7a",
-              textAlign: "center",
-              lineHeight: 1.55,
-              margin: "0 0 6px",
-            }}
-          >
-            Minty Moments are creator-generated collectibles stored with
-            verifiable ownership.
-          </p>
-          <p
-            style={{
-              fontSize: "9px",
-              fontWeight: 600,
-              color: accentColor,
-              textAlign: "center",
-              margin: 0,
-            }}
-          >
-            minty.xyz
-          </p>
-        </div>
-
-        {/* 9. Micro details row */}
-        <div
-          style={{
-            marginTop: "12px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            opacity: 0.5,
-          }}
-        >
-          {/* Barcode SVG — using x position as stable key */}
-          <svg
-            width="48"
-            height="14"
-            viewBox="0 0 48 14"
-            fill="none"
-            aria-hidden="true"
-          >
-            {BARCODE_BARS.map(([x, w]) => (
-              <rect
-                key={`bar-${x}`}
-                x={x}
-                y="0"
-                width={w}
-                height="12"
-                fill={`rgba(${accentRgb},0.7)`}
-              />
-            ))}
-          </svg>
-
-          {/* Recycling icon SVG */}
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M6 1.5L8 4H7v2.5H5V4H4L6 1.5Z"
-              fill={`rgba(${accentRgb},0.8)`}
-            />
-            <path
-              d="M9.5 7.5L7 9.5v-1.2H5v-1.8h2V5.2L9.5 7.5Z"
-              fill={`rgba(${accentRgb},0.8)`}
-            />
-            <path
-              d="M2.5 7.5L4 5l.7 1.2L6 5.5l.9 1.5L5.5 9H4.3L2.5 7.5Z"
-              fill={`rgba(${accentRgb},0.8)`}
-            />
-          </svg>
-
-          {/* web3 collectible text */}
-          <span
-            style={{
-              fontSize: "8px",
-              color: "#5a7a6a",
-              letterSpacing: "0.08em",
-            }}
-          >
-            web3 collectible
-          </span>
-        </div>
       </div>
     </div>
   );
@@ -990,22 +488,15 @@ export function LibraryPage({
   const [isButtonActive, setIsButtonActive] = useState(false);
   const [isAltButtonHovered, setIsAltButtonHovered] = useState(false);
   const [showMintModal, setShowMintModal] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
 
   const { activeStyle: activeCycle } = usePackStyle();
-  const { hasDraft, startDraft, activeDraft } = useMomentDraft();
+  const { hasDraft, startDraft } = useMomentDraft();
 
   // Derive accent values from active cycle
   const accentColor = `oklch(${activeCycle.accentOklchDark})`;
   const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
   const accentText = `rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.85)`;
   const accentGlow = `rgba(${accentRgb},0.28)`;
-
-  // First captured photo from any active or completed draft
-  const firstPhoto: string | undefined = activeDraft?.photos[0] ?? undefined;
-
-  // Track touch start position for swipe detection
-  const touchStartX = useRef<number | null>(null);
 
   // Inject keyframes once — uses CSS custom property var(--cycle-accent-rgb) for the glow
   useEffect(() => {
@@ -1057,7 +548,6 @@ export function LibraryPage({
   function handleOpenAnother() {
     setPackState("idle");
     setCurrentCollectible(null);
-    setIsFlipped(false);
   }
 
   function handleViewLibrary() {
@@ -1066,7 +556,6 @@ export function LibraryPage({
     } else {
       setPackState("idle");
       setCurrentCollectible(null);
-      setIsFlipped(false);
     }
   }
 
@@ -1078,31 +567,6 @@ export function LibraryPage({
       setPackState("revealed");
     }, 300);
   }, [pickRandomCollectible]);
-
-  // Handle swipe to flip
-  function handleTouchStart(e: React.TouchEvent) {
-    touchStartX.current = e.touches[0].clientX;
-  }
-
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (touchStartX.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(deltaX) > 40) {
-      setIsFlipped((f) => !f);
-    }
-    touchStartX.current = null;
-  }
-
-  function handleCardAreaClick(e: React.MouseEvent) {
-    // Only flip if the click target is NOT a button or anchor
-    if (
-      (e.target as HTMLElement).closest("button") ||
-      (e.target as HTMLElement).closest("a")
-    ) {
-      return;
-    }
-    setIsFlipped((f) => !f);
-  }
 
   // Primary button — cycle-accent filled gradient
   const primaryButtonStyle = {
@@ -1196,12 +660,7 @@ export function LibraryPage({
               }}
             >
               {/* Show pack card with first captured photo as preview */}
-              <PackCard
-                previewImage={firstPhoto}
-                packWrapperUrl={activeCycle.packWrapperUrl}
-                accentRgb={accentRgb}
-                accentText={accentText}
-              />
+              <PackCard accentRgb={accentRgb} accentText={accentText} />
               <div style={{ height: "20px" }} />
               <DraftLockedState
                 onFinish={() => onCaptureMoment?.()}
@@ -1213,7 +672,7 @@ export function LibraryPage({
             </motion.div>
           )}
 
-          {/* IDLE with FLIP — normal flippable pack card */}
+          {/* IDLE — pack card display */}
           {showFlippable && (
             <motion.div
               key="pack"
@@ -1227,171 +686,37 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              {/*
-               * 3D FLIP — correct two-layer structure:
-               *
-               * Layer 1 (perspective wrapper): sets the perspective depth.
-               *   — NO overflow:hidden here; that would flatten the 3D context.
-               *
-               * Layer 2 (overflow clip): clips visual bleed at card edges.
-               *   — border-radius + overflow:hidden, but NOT a transform context.
-               *
-               * Layer 3 (inner rotating card): transform-style:preserve-3d,
-               *   rotates on Y axis, carries both faces.
-               *
-               * Layer 4a/4b (faces): absolute, backface-visibility:hidden,
-               *   explicit rotateY(0deg) / rotateY(180deg).
-               */}
+              <PackCard accentRgb={accentRgb} accentText={accentText} />
 
-              {/* Layer 1 — perspective only, no overflow */}
-              <div
+              <p
                 style={{
-                  perspective: "1200px",
-                  width: "280px",
-                  height: "350px",
+                  fontSize: "12px",
+                  color: `rgba(${accentRgb},0.55)`,
+                  marginTop: "16px",
+                  letterSpacing: "0.02em",
                 }}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
               >
-                {/* Layer 2 — click/keyboard handler (no overflow, no transform context) */}
-                <button
-                  type="button"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    margin: 0,
-                    display: "block",
-                    cursor: "pointer",
-                  }}
-                  onClick={handleCardAreaClick}
-                  aria-label={
-                    isFlipped
-                      ? "Flip to pack front"
-                      : "Flip to pack information"
-                  }
-                  aria-pressed={isFlipped}
-                >
-                  {/* Layer 2.5 — overflow clip (child of button, separate from perspective) */}
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: "20px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Layer 3 — rotating inner card */}
-                    <div
-                      style={{
-                        position: "relative",
-                        width: "100%",
-                        height: "100%",
-                        transformStyle: "preserve-3d",
-                        transition: "transform 0.6s ease",
-                        transform: isFlipped
-                          ? "rotateY(180deg)"
-                          : "rotateY(0deg)",
-                      }}
-                    >
-                      {/* Layer 4a — FRONT FACE */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          height: "100%",
-                          backfaceVisibility: "hidden",
-                          WebkitBackfaceVisibility: "hidden",
-                          transform: "rotateY(0deg)",
-                        }}
-                      >
-                        {/* Pass first captured photo (if any) as the preview */}
-                        <PackCard
-                          previewImage={firstPhoto}
-                          packWrapperUrl={activeCycle.packWrapperUrl}
-                          accentRgb={accentRgb}
-                          accentText={accentText}
-                        />
-                      </div>
+                Supply remaining: 50,000
+              </p>
 
-                      {/* Layer 4b — BACK FACE */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          width: "100%",
-                          height: "100%",
-                          backfaceVisibility: "hidden",
-                          WebkitBackfaceVisibility: "hidden",
-                          transform: "rotateY(180deg)",
-                        }}
-                      >
-                        <PackBackside
-                          onFlipBack={() => setIsFlipped(false)}
-                          accentRgb={accentRgb}
-                          accentColor={accentColor}
-                          accentText={accentText}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Supply + Mint Moment button — only when NOT flipped */}
-              <AnimatePresence>
-                {!isFlipped && (
-                  <motion.div
-                    key="actions"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                    }}
-                  >
-                    {/* Supply text — subtle on-theme muted accent */}
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: `rgba(${accentRgb},0.55)`,
-                        marginTop: "16px",
-                        letterSpacing: "0.02em",
-                      }}
-                    >
-                      Supply remaining: 50,000
-                    </p>
-
-                    {/* Mint Moment button */}
-                    <button
-                      type="button"
-                      data-ocid="library.primary_button"
-                      style={{ ...primaryButtonStyle, marginTop: "32px" }}
-                      onMouseEnter={() => setIsButtonHovered(true)}
-                      onMouseLeave={() => {
-                        setIsButtonHovered(false);
-                        setIsButtonActive(false);
-                      }}
-                      onMouseDown={() => setIsButtonActive(true)}
-                      onMouseUp={() => setIsButtonActive(false)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMintModal(true);
-                      }}
-                    >
-                      Mint Moment
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <button
+                type="button"
+                data-ocid="library.primary_button"
+                style={{ ...primaryButtonStyle, marginTop: "32px" }}
+                onMouseEnter={() => setIsButtonHovered(true)}
+                onMouseLeave={() => {
+                  setIsButtonHovered(false);
+                  setIsButtonActive(false);
+                }}
+                onMouseDown={() => setIsButtonActive(true)}
+                onMouseUp={() => setIsButtonActive(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMintModal(true);
+                }}
+              >
+                Mint Moment
+              </button>
             </motion.div>
           )}
 
