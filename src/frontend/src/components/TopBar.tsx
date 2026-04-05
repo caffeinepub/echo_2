@@ -1261,8 +1261,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [walletOpen, setWalletOpen] = useState(false);
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
-  const MINTY_LOGO =
-    "/assets/generated/minty-logo-extracted-transparent.dim_600x180.png";
+  const MINTY_LOGO = "/assets/generated/minty-logo-header.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1311,7 +1310,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
           <img
             src={MINTY_LOGO}
             alt="Minty"
-            className="echo-logo-neon select-none"
+            className="select-none"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
@@ -1323,10 +1322,6 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               imageRendering: "auto",
               display: "block",
               background: "transparent",
-              filter:
-                activeCycle.logoFilter !== "none"
-                  ? activeCycle.logoFilter
-                  : undefined,
             }}
             draggable={false}
           />

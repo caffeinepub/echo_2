@@ -1,60 +1,43 @@
-# Minty — Mint a Moment Refactor (Single Video)
+# Minty — Backend Media Storage for Mint a Moment
 
 ## Current State
 
-The Mint a Moment flow currently supports:
-- 9 photo capture steps (steps 0–8) via `CaptureMomentPage.tsx`
-- 1 video recording step (step 9, max 30s) via `CaptureMomentPage.tsx`
-- A `FinalSetupScreen` step 10 with title/caption/hashtags/explicit fields showing "11/11" step counter
-- `MomentDraft` interface holds: `photos: string[]` (up to 9), `video: string | null`, `captureMetadata`, `packSupply`
-- `MomentDraftContext` exposes `addPhoto`, `removePhoto`, `addVideo`, `removeVideo` methods
-- `MintMomentModal` explains: "Capture 9 photos", "Record 1 video", "Mint packs" with $10 mint cost and bonding curve
-- `MintSetConfirmModal` shows: "9 photos → Common collectibles", "1 video → Rare collectible", $100 fee, bonding curve
-- `FinalSetupScreen` summary shows "9 photos captured", "1 video captured", "100 packs will be minted"
-- Backend `main.mo` has `Pack` and `Collectible` types but no `videoUrl`, `title`, `caption`, `hashtags`, or `explicit` fields on mint data
-- No backend function for minting a moment — pack/collectible logic is separate
+The backend (`main.mo`) has legacy music/TCG types and pack/collectible types, but **no MintySet type** and no media storage. The frontend stores draft media as ephemeral blob URLs in localStorage, which do not survive page refresh or redeploy. The Mint a Moment capture flow has 9-photo + 1-video steps. The confirm modal and info modal both reference bonding curve pricing. `MomentDraftContext` has a `photos[]` array and defaults `packSupply` to 100.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New single-step video recording experience in `CaptureMomentPage.tsx`:
-  - Camera viewfinder with 4:5 portrait ratio
-  - Record button: press to start, press to stop early
-  - 7-second max countdown timer (visible, counting down from 7)
-  - Auto-stop at 7 seconds
-  - Preview the recorded video before continuing
-  - Retake option on preview screen
-  - Step counter shows "1/2" (record) → "2/2" (details)
-- `MintMoment` Motoko type with fields: `id`, `creatorId`, `timestamp`, `title`, `caption`, `hashtags`, `explicit`, `videoChunks` (blob storage reference), `packSupply=300`
-- Backend function `mintMoment` accepting `MintMomentInput`
-- Backend function `getMintMoments` for retrieval
+- `MintySet` Motoko type: `set_id`, `creator_principal_id`, `timestamp`, `title`, `caption`, `hashtags`, `explicit_flag`, `supply` (300), `price_per_pack_usd`
+- `MediaAsset` Motoko type: `asset_id`, `set_id`, `media_type` (#image | #video | #preview_clip | #cover_image), `media_index`, `blob_storage_key`, `content_type`, `created_at`
+- `NFTAsset` Motoko type: `nft_id`, `set_id`, `creator_principal_id`, `owner_principal_id`, `media_reference` (asset_id), `media_type`, `media_index`, `rarity` (#common | #rare), `edition_number`, `total_editions`, `auction_state`
+- Backend functions: `createMintySet(input)`, `getMintySet(set_id)`, `getCreatorMintySets(creator_principal_id)`, `getPreviewMedia(set_id)`, `getFullMedia(asset_id)`
+- Blob-storage component integration for persistent media (images + video files)
+- Frontend: upload 9 images + 1 video (max 30s) to blob storage during mint flow
+- Frontend: store blob storage keys in `MintySet` record on backend
+- Frontend: wire `getSet`/`getCreatorSets`/`getPreviewMedia`/`getFullMedia` calls in Collection, Releases, and Library views
+- Frontend: after video upload, generate a 2-second muted looping preview clip client-side using MediaRecorder/canvas trimming
 
 ### Modify
-- `MomentDraft` interface: remove `photos: string[]`, remove `captureMetadata`, keep `video`, `title`, `caption`, `hashtags`, `explicit`, `id`, `createdAt`, `completed`, `packSupply` (hardcode to 300)
-- `MomentDraftContext`: remove `addPhoto`, `removePhoto` methods; keep all other methods
-- `CaptureMomentPage.tsx`: replace 9-photo + 30s video flow with single 7s video flow
-  - Step 0: camera viewfinder + record button + countdown timer
-  - Step 1: video preview + retake or continue
-  - Step 2: `FinalSetupScreen` for title/caption/hashtags/explicit
-- `FinalSetupScreen.tsx`: remove "9 photos captured" / "1 video captured" from summary; show "1 video recorded" and "300 packs will be minted"; update step counter label
-- `MintMomentModal.tsx`: update "How It Works" to: 1. Record a 7-second video, 2. Add title and details, 3. Mint into 300 packs; remove all bonding curve sections; keep $1 mint cost and fixed pricing explanation; update pack structure to reflect video-only collectible distribution
-- `MintSetConfirmModal.tsx`: remove "9 photos → Common" / "1 video → Rare" checklist; replace with "1 video → 300 collectible packs"; update fee to $1; remove bonding curve references
+- `MomentDraftContext`: remove `photos[]`, keep `video`, add `images: File[]` (9 image files), add `coverImageIndex: number`, change `packSupply` default to 300
+- `CaptureMomentPage`: update steps to 9-image upload/capture + 1-video, recording max 30s
+- `FinalSetupScreen`: update summary text (9 images, 1 video, 300 packs), fix step counter, change submit button to "Confirm Mint"
+- `MintSetConfirmModal`: remove bonding curve copy, change cost to $1, update pack content list to reflect new structure
+- `MintMomentModal`: remove bonding curve section/function, update How It Works to 9 images + 1 video flow, update pack structure copy
+- Mint flow: on slider confirm, upload all media to blob storage, call `createMintySet`, then navigate to Releases
 
 ### Remove
-- All photo capture UI from `CaptureMomentPage.tsx` (steps 0–8, photo shutter, photo preview, pendingPhotoUrl logic, photo progress dots)
-- `photos: string[]` field from `MomentDraft`
-- `captureMetadata` array and `CaptureMetadataItem` type from `MomentDraft`
-- `addPhoto`, `removePhoto` from `MomentDraftContext`
-- `packSupply` setter from context (hardcode to 300)
-- All references to "9 photos", "photo collectibles", "Common collectibles" in modal copy
-- Any cover image logic remaining in flow
-- Bonding curve copy/sections from `MintMomentModal` and `MintSetConfirmModal`
+- All bonding curve pricing logic from `MintMomentModal` (`bondingCurvePrice`, `estimateRevenue` with quadratic formula)
+- Bonding curve copy from `MintSetConfirmModal`
+- `photos[]` array from `MomentDraftContext` and all capture steps that depend on it
+- Stale pack economics grid from `MintSetConfirmModal` (Starting Price=$10, Max Price=$60, Bonding Curve label)
 
 ## Implementation Plan
 
-1. **Backend (`main.mo`)**: Add `MintMoment` type and `mintMoment` / `getMintMoments` functions. Store: id, creatorId, timestamp, title, caption, hashtags, explicit, videoRef (text URL/blob ref), packSupply=300.
-2. **`MomentDraftContext.tsx`**: Simplify draft interface — remove `photos`, `captureMetadata`. Keep `video`, `title`, `caption`, `hashtags`, `explicit`. Hardcode `packSupply=300`.
-3. **`CaptureMomentPage.tsx`**: Full rewrite to 2-step flow: (a) video recording with 7s countdown + stop-early, (b) video preview with retake option. Then pass to `FinalSetupScreen`.
-4. **`FinalSetupScreen.tsx`**: Update summary bullets to reflect single video. Update step label from "11/11" to "2/2".
-5. **`MintMomentModal.tsx`**: Update How It Works steps to 3 items (record video, add details, mint). Remove bonding curve section. Update pack structure copy.
-6. **`MintSetConfirmModal.tsx`**: Remove old photo/video breakdown checklist. Update to single video description. Update fee to $1. Remove bonding curve.
+1. Select `blob-storage` Caffeine component
+2. Generate Motoko backend with `MintySet`, `MediaAsset`, `NFTAsset` types and all five data access functions; integrate with blob-storage for asset key storage
+3. Frontend — update `MomentDraftContext` to hold 9 `File` objects (images) + 1 video blob + cover image index, remove `photos[]`
+4. Frontend — update `CaptureMomentPage` to 9-image upload steps + 1-video record step (max 30s)
+5. Frontend — on mint confirm, upload each media file to blob-storage, collect asset keys, call `createMintySet` with metadata + asset keys
+6. Frontend — wire `getPreviewMedia` and `getFullMedia` to Collection grid, Releases cards, pack opening, and leaderboard
+7. Frontend — remove all bonding curve copy from both modals; update `MintSetConfirmModal` cost to $1, pack content to 9 images + 1 video
+8. Frontend — generate 2s preview clip client-side from video blob before upload

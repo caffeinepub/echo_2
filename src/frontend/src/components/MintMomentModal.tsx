@@ -12,30 +12,16 @@ interface MintMomentModalProps {
 const THUMB_DIAMETER = 48;
 const THUMB_RADIUS = THUMB_DIAMETER / 2;
 
-// Quadratic bonding curve: same formula used in Releases
-function bondingCurvePrice(
-  packsSold: number,
-  totalPacks = 300,
-  basePrice = 10,
-  maxPrice = 60,
-): number {
-  return basePrice + (packsSold / totalPacks) ** 2 * (maxPrice - basePrice);
-}
-
-function estimateRevenue(packsSold: number): number {
-  let total = 0;
-  for (let i = 0; i < packsSold; i++) {
-    total += bondingCurvePrice(i);
-  }
-  // Creator keeps 95%
-  return total * 0.95;
-}
-
 const EARNINGS_SCENARIOS = [
   { packs: 25, label: "25 packs sold" },
   { packs: 100, label: "100 packs sold" },
   { packs: 300, label: "300 packs sold" },
 ];
+
+/** Fixed-price earnings estimate (pricePerPack × packs × 0.95) */
+function estimateRevenue(packs: number, pricePerPack = 10): number {
+  return packs * pricePerPack * 0.95;
+}
 
 function SlideToMint({
   onComplete,
@@ -114,7 +100,6 @@ function SlideToMint({
         touchAction: "none",
       }}
     >
-      {/* Fill */}
       <div
         style={{
           position: "absolute",
@@ -127,7 +112,6 @@ function SlideToMint({
           pointerEvents: "none",
         }}
       />
-      {/* Label */}
       {!completed && (
         <div
           style={{
@@ -154,7 +138,6 @@ function SlideToMint({
           </span>
         </div>
       )}
-      {/* Completed label */}
       {completed && (
         <div
           style={{
@@ -179,7 +162,6 @@ function SlideToMint({
           </span>
         </div>
       )}
-      {/* Thumb */}
       {!completed && (
         <div
           style={{
@@ -239,7 +221,6 @@ export function MintMomentModal({
   const dividerColor = `rgba(${accentRgb},0.15)`;
   const sectionLabelColor = `oklch(${activeStyle.accentOklchDark})`;
 
-  // Fetch BTC price from Coinbase
   useEffect(() => {
     if (!open) return;
     async function fetchBtcPrice() {
@@ -256,7 +237,6 @@ export function MintMomentModal({
     fetchBtcPrice();
   }, [open]);
 
-  // Inject keyframes once
   useEffect(() => {
     const id = "mint-modal-keyframes";
     if (document.getElementById(id)) return;
@@ -308,7 +288,6 @@ export function MintMomentModal({
     border: "none",
   };
 
-  // Ambient particles — tinted to accent color
   const PARTICLES = [
     {
       id: "p1",
@@ -368,17 +347,9 @@ export function MintMomentModal({
   ];
 
   const STEPS = [
-    "Capture 9 photos",
-    "Record 1 video",
-    "Mint the moment into sealed packs",
-  ];
-
-  // Bonding curve milestones
-  const milestones = [
-    { pack: 1, price: bondingCurvePrice(0) },
-    { pack: 100, price: bondingCurvePrice(100) },
-    { pack: 200, price: bondingCurvePrice(200) },
-    { pack: 300, price: bondingCurvePrice(299) },
+    "Upload 9 photos",
+    "Record 1 video (max 30s)",
+    "Mint the moment into 300 sealed packs",
   ];
 
   return (
@@ -449,7 +420,6 @@ export function MintMomentModal({
               ))}
             </div>
 
-            {/* Scrollable content */}
             <div
               style={{
                 position: "relative",
@@ -459,7 +429,7 @@ export function MintMomentModal({
                 flex: 1,
               }}
             >
-              {/* Handle bar */}
+              {/* Handle */}
               <div
                 style={{
                   width: 36,
@@ -470,7 +440,7 @@ export function MintMomentModal({
                 }}
               />
 
-              {/* ── Title ─────────────────────────────────────────────────── */}
+              {/* Title */}
               <div style={{ marginBottom: 6 }}>
                 <h2
                   style={{
@@ -500,7 +470,7 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── How It Works ──────────────────────────────────────────── */}
+              {/* How It Works */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>How It Works</span>
                 <div
@@ -562,7 +532,7 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Pack Structure ────────────────────────────────────────── */}
+              {/* Pack Structure */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Pack Structure</span>
                 <p
@@ -585,7 +555,7 @@ export function MintMomentModal({
                 >
                   {[
                     { label: "300 total packs", accent: false },
-                    { label: "299 photo collectibles", accent: false },
+                    { label: "9 image collectibles (Common)", accent: false },
                     { label: "1 rare video collectible", accent: true },
                   ].map(({ label, accent }) => (
                     <div
@@ -638,7 +608,7 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Mint Cost ─────────────────────────────────────────────── */}
+              {/* Mint Cost */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Mint Cost</span>
                 <div
@@ -652,7 +622,6 @@ export function MintMomentModal({
                     border: `1px solid rgba(${accentRgb},0.18)`,
                   }}
                 >
-                  {/* BTC icon */}
                   <div
                     style={{
                       width: 36,
@@ -693,7 +662,7 @@ export function MintMomentModal({
                           fontFamily: "var(--font-ui)",
                         }}
                       >
-                        $10
+                        $1
                       </span>
                       <span
                         style={{
@@ -712,7 +681,7 @@ export function MintMomentModal({
                         fontFamily: "var(--font-ui)",
                       }}
                     >
-                      ≈ {usdToBtc(10)} BTC
+                      ≈ {usdToBtc(1)} BTC
                     </span>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
@@ -742,80 +711,50 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Bonding Curve ─────────────────────────────────────────── */}
+              {/* Pack Pricing */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Pack Pricing</span>
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "rgba(255,255,255,0.65)",
-                    margin: "0 0 4px",
-                    lineHeight: 1.55,
-                    fontFamily: "var(--font-ui)",
-                  }}
-                >
-                  Pack pricing uses a bonding curve — early packs cost less,
-                  later packs cost more as demand increases.
-                </p>
-                <p
-                  style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.38)",
-                    margin: "0 0 14px",
-                    lineHeight: 1.5,
-                    fontFamily: "var(--font-ui)",
-                  }}
-                >
-                  Starting at $10, price increases gradually toward $60 as all
-                  300 packs are purchased.
-                </p>
-                {/* Milestones */}
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                    gap: "6px",
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  {milestones.map(({ pack, price }) => (
-                    <div
-                      key={pack}
-                      style={{
-                        padding: "10px 8px",
-                        borderRadius: "10px",
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "rgba(255,255,255,0.35)",
-                          marginBottom: "4px",
-                          fontFamily: "var(--font-ui)",
-                        }}
-                      >
-                        Pack {pack}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          fontWeight: 700,
-                          color: `rgba(${accentRgb},0.90)`,
-                          fontFamily: "var(--font-ui)",
-                        }}
-                      >
-                        ${price.toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: "rgba(255,255,255,0.75)",
+                      margin: "0 0 4px",
+                      lineHeight: 1.5,
+                      fontFamily: "var(--font-ui)",
+                    }}
+                  >
+                    You set a{" "}
+                    <span style={{ color: accentColorDark, fontWeight: 600 }}>
+                      fixed price per pack
+                    </span>{" "}
+                    at mint time.
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "rgba(255,255,255,0.38)",
+                      margin: 0,
+                      lineHeight: 1.5,
+                      fontFamily: "var(--font-ui)",
+                    }}
+                  >
+                    Maximum $100 per pack. All 300 packs sell at the same price.
+                    After the listing period, unsold packs are burned.
+                  </p>
                 </div>
               </div>
 
               <hr style={DIVIDER} />
 
-              {/* ── Creator Earnings ──────────────────────────────────────── */}
+              {/* Creator Earnings */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Creator Earnings</span>
                 <div
@@ -825,7 +764,6 @@ export function MintMomentModal({
                     gap: "10px",
                   }}
                 >
-                  {/* Pack sales */}
                   <div
                     style={{
                       padding: "12px 14px",
@@ -861,7 +799,6 @@ export function MintMomentModal({
                       your Minty wallet in BTC.
                     </p>
                   </div>
-                  {/* Video resale */}
                   <div
                     style={{
                       padding: "12px 14px",
@@ -874,7 +811,7 @@ export function MintMomentModal({
                       style={{
                         fontSize: "13px",
                         color: "rgba(255,255,255,0.75)",
-                        margin: "0 0 4px",
+                        margin: "0 0 8px",
                         lineHeight: 1.5,
                         fontFamily: "var(--font-ui)",
                       }}
@@ -949,7 +886,7 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Earnings Estimator ────────────────────────────────────── */}
+              {/* Earnings Estimator */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Earnings Estimator</span>
                 <p
@@ -961,7 +898,7 @@ export function MintMomentModal({
                     lineHeight: 1.5,
                   }}
                 >
-                  Estimated creator proceeds deposited to your Minty wallet
+                  Estimated creator proceeds at $10/pack (default price):
                 </p>
                 <div
                   style={{
@@ -971,7 +908,7 @@ export function MintMomentModal({
                   }}
                 >
                   {EARNINGS_SCENARIOS.map(({ packs, label }) => {
-                    const usd = estimateRevenue(packs);
+                    const usd = estimateRevenue(packs, 10);
                     const btc = btcPrice ? (usd / btcPrice).toFixed(6) : "...";
                     return (
                       <div
@@ -1077,7 +1014,6 @@ export function MintMomentModal({
                 </div>
               )}
 
-              {/* Slide to mint */}
               <SlideToMint
                 onComplete={handleSlideComplete}
                 accentRgb={accentRgb}

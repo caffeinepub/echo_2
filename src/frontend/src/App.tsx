@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { ThemeProvider } from "./ThemeContext";
+import { ExternalBlob } from "./backend";
 import { BottomNav, type Tab } from "./components/BottomNav";
-import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MintSetConfirmModal } from "./components/MintSetConfirmModal";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
@@ -9,10 +10,10 @@ import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { AuctionProvider } from "./context/AuctionContext";
 import { CollectionProvider } from "./context/CollectionContext";
 import {
+  type MomentDraft,
   MomentDraftProvider,
   useMomentDraft,
 } from "./context/MomentDraftContext";
-import type { MomentDraft } from "./context/MomentDraftContext";
 import { PackStyleProvider } from "./context/PackStyleContext";
 import {
   ReleasesMarketProvider,
@@ -21,7 +22,9 @@ import {
 import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
+import { useActor } from "./hooks/useActor";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
@@ -36,6 +39,78 @@ type View =
   | { type: "capture-moment" }
   | { type: "profile" };
 
+// ─── Preview clip generation ─────────────────────────────────────────────────
+async function generatePreviewClip(videoBlobUrl: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.src = videoBlobUrl;
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = "anonymous";
+
+    const canvas = document.createElement("canvas");
+    let stream: MediaStream | null = null;
+    let recorder: MediaRecorder | null = null;
+    const chunks: BlobPart[] = [];
+
+    const cleanup = () => {
+      video.pause();
+      for (const t of stream?.getTracks() ?? []) {
+        t.stop();
+      }
+    };
+
+    video.onloadedmetadata = () => {
+      canvas.width = video.videoWidth || 1080;
+      canvas.height = video.videoHeight || 1350;
+
+      try {
+        stream = canvas.captureStream(30);
+        recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      } catch {
+        try {
+          stream = canvas.captureStream(30);
+          recorder = new MediaRecorder(stream);
+        } catch (e) {
+          reject(e);
+          return;
+        }
+      }
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+      recorder.onstop = () => {
+        cleanup();
+        resolve(new Blob(chunks, { type: "video/webm" }));
+      };
+
+      recorder.start();
+      video.play().catch(() => {});
+
+      const ctx = canvas.getContext("2d");
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        elapsed += 1 / 30;
+        if (elapsed >= 2) {
+          clearInterval(interval);
+          if (recorder && recorder.state !== "inactive") recorder.stop();
+        }
+      }, 1000 / 30);
+
+      // Safety timeout
+      setTimeout(() => {
+        clearInterval(interval);
+        if (recorder && recorder.state !== "inactive") recorder.stop();
+      }, 3000);
+    };
+
+    video.onerror = () => reject(new Error("Video load failed"));
+    video.load();
+  });
+}
+
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
@@ -43,13 +118,16 @@ function AppContent() {
     null,
   );
   const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
-  const { startDraft } = useMomentDraft();
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { startDraft, media, clearDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
+  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
 
   useEffect(() => {
     seedMockData();
   }, []);
-
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(timer);
@@ -60,6 +138,7 @@ function AppContent() {
   function handleTabChange(tab: Tab) {
     setView({ type: "tab", tab });
   }
+
   function handleCaptureMoment() {
     startDraft();
     setView({ type: "capture-moment" });
@@ -71,81 +150,189 @@ function AppContent() {
     setView({ type: "tab", tab: "library" });
   }
 
-  function handleMintSetConfirm() {
+  async function handleMintSetConfirm() {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
-    const now = Date.now();
-    const totalPacks = 300;
-    const priceUsd = 10; // bonding curve starting price
 
-    // Simulate $100 minting fee payment
-    console.log("[Minty] Minting fee: $100 deducted");
+    // ── If we have an actor, upload to backend ────────────────────────────
+    if (actor) {
+      setIsUploading(true);
+      try {
+        // Upload images in parallel
+        const imageUrls = await Promise.all(
+          media.images.map(async (file) => {
+            const ab = await file.arrayBuffer();
+            const blob = ExternalBlob.fromBytes(new Uint8Array(ab));
+            return blob.getDirectURL();
+          }),
+        );
 
-    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
-    const photoCount = totalPacks - videoCount;
+        // Upload video
+        let videoUrl = "";
+        if (media.videoFile) {
+          const ab = await media.videoFile.arrayBuffer();
+          const blob = ExternalBlob.fromBytes(new Uint8Array(ab));
+          videoUrl = blob.getDirectURL();
+        }
 
-    type SlotPhoto = { type: "photo"; num: number };
-    type SlotVideo = { type: "video"; num: number };
-    type Slot = SlotPhoto | SlotVideo;
+        // Generate & upload preview clip
+        let previewClipUrl = videoUrl;
+        if (media.videoPreviewUrl) {
+          try {
+            const previewBlob = await generatePreviewClip(
+              media.videoPreviewUrl,
+            );
+            const ab = await previewBlob.arrayBuffer();
+            const extBlob = ExternalBlob.fromBytes(new Uint8Array(ab));
+            previewClipUrl = extBlob.getDirectURL();
+          } catch {
+            // Fall back to full video URL
+            previewClipUrl = videoUrl;
+          }
+        }
 
-    const pool: Slot[] = [
-      ...Array.from({ length: photoCount }, (_, i) => ({
-        type: "photo" as const,
-        num: i + 1,
-      })),
-      ...Array.from({ length: videoCount }, (_, i) => ({
-        type: "video" as const,
-        num: i + 1,
-      })),
-    ];
+        // Cover image = first image (or empty string)
+        const coverImageUrl = imageUrls[0] ?? "";
 
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+        const principal = identity?.getPrincipal();
+        if (!principal) throw new Error("Not authenticated");
+
+        const setInput = {
+          id: draft.id,
+          title: draft.title,
+          creator: principal,
+          hashtags: draft.hashtags,
+          video: videoUrl,
+          explicit: draft.explicit,
+          coverImage: coverImageUrl,
+          pricePerPackUsd: BigInt(Math.round(draft.pricePerPackUsd * 100)),
+          caption: draft.caption,
+          previewClip: previewClipUrl,
+          images: imageUrls,
+        };
+
+        const setId = await actor.createMintySet(setInput);
+
+        // Wire new set as a release
+        const now = Date.now();
+        const release: MarketRelease = {
+          id: `release_mint_${setId}`,
+          creatorName: "You",
+          creatorId: principal.toString(),
+          coverImageUrl:
+            coverImageUrl || "/assets/generated/minty-pack-wrapper.png",
+          previewClipUrl: previewClipUrl || undefined,
+          title: draft.title || "Mint Moment",
+          caption: draft.caption || "300 packs",
+          setName: draft.title || "Mint Moment",
+          packsAvailable: 300,
+          packCount: 300,
+          packIds: Array.from({ length: 300 }, (_, i) => `pack_${setId}_${i}`),
+          priceUsd: draft.pricePerPackUsd,
+          listedAt: now,
+          expiresAt: now + 365 * 24 * 3600000,
+          status: "active",
+          collectibleType: "photo",
+          explicit: draft.explicit,
+          hashtags: draft.hashtags,
+        };
+        addRelease(release);
+        clearDraft();
+        toast.success("Moment minted and listed in Releases!");
+      } catch (err) {
+        console.error("[Minty] Mint failed:", err);
+        toast.error("Mint failed. Please try again.");
+      } finally {
+        setIsUploading(false);
+        setPendingMintDraft(null);
+        setShowMintSetConfirmModal(false);
+      }
+      return;
     }
 
-    const coverImageUrl =
-      draft.photos.length > 0
-        ? draft.photos[0]
-        : "https://images.pokemontcg.io/sv1/025_hires.png";
-
-    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
-
-    const releaseTitle = draft.title?.trim() || "Mint Moment";
-    const releaseCaption =
-      draft.caption?.trim() ||
-      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
-
+    // ── Fallback: no actor — local only ──────────────────────────────────
+    const now = Date.now();
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
       creatorName: "You",
       creatorId: "you",
-      coverImageUrl,
-      previewClipUrl: draft.video ?? undefined,
-      title: releaseTitle,
-      caption: releaseCaption,
-      setName: releaseTitle,
-      packsAvailable: totalPacks,
-      packCount: totalPacks,
-      packIds,
-      priceUsd,
+      coverImageUrl:
+        media.imagePreviewUrls[0] || "/assets/generated/minty-pack-wrapper.png",
+      previewClipUrl: media.videoPreviewUrl ?? undefined,
+      title: draft.title || "Mint Moment",
+      caption: draft.caption || "300 packs",
+      setName: draft.title || "Mint Moment",
+      packsAvailable: 300,
+      packCount: 300,
+      packIds: Array.from({ length: 300 }, (_, i) => `pack_${draft.id}_${i}`),
+      priceUsd: draft.pricePerPackUsd,
       listedAt: now,
-      // Standardized releases: 1 year expiry (no burn for normal releases)
       expiresAt: now + 365 * 24 * 3600000,
       status: "active",
       collectibleType: "photo",
-      explicit: draft.explicit ?? false,
-      hashtags: draft.hashtags ?? [],
+      explicit: draft.explicit,
+      hashtags: draft.hashtags,
     };
 
     addRelease(release);
+    clearDraft();
     setPendingMintDraft(null);
     setShowMintSetConfirmModal(false);
+    toast.success("Moment minted!");
   }
 
   return (
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
+
+      {/* Uploading overlay */}
+      {isUploading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9998,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "16px",
+          }}
+          data-ocid="mint.loading_state"
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "3px solid rgba(126,214,177,0.3)",
+              borderTopColor: "#7ED6B1",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <p
+            style={{
+              color: "#fff",
+              fontSize: "15px",
+              fontWeight: 600,
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            Uploading media…
+          </p>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.5)",
+              fontSize: "12px",
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            This may take a moment
+          </p>
+        </div>
+      )}
 
       <MintSetConfirmModal
         open={showMintSetConfirmModal && pendingMintDraft !== null}

@@ -10,6 +10,16 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AddPackInput {
+  'id' : string,
+  'coverImageUrl' : string,
+  'setName' : string,
+  'ownerPrincipal' : Principal,
+  'totalSupply' : bigint,
+  'releaseId' : string,
+  'serialNumber' : bigint,
+  'packCount' : bigint,
+}
 export interface Album {
   'id' : string,
   'coverImageUrl' : string,
@@ -18,6 +28,42 @@ export interface Album {
   'totalSupply' : bigint,
   'artist' : string,
   'collectionName' : string,
+}
+export interface Collectible {
+  'id' : string,
+  'setName' : string,
+  'title' : string,
+  'creator' : string,
+  'typeSupply' : bigint,
+  'editionNumber' : bigint,
+  'ownerPrincipal' : Principal,
+  'mintDate' : string,
+  'totalSupply' : bigint,
+  'imageUrl' : string,
+  'releaseId' : string,
+  'mediaType' : CollectibleMediaType,
+  'rarity' : string,
+  'packId' : string,
+  'openedAt' : bigint,
+}
+export type CollectibleMediaType = { 'video' : null } |
+  { 'photo' : null };
+export interface CreateTcgCardInput {
+  'cardName' : string,
+  'sortOrder' : bigint,
+  'isActive' : boolean,
+  'setId' : bigint,
+  'imageUrl' : string,
+  'rarity' : string,
+  'cardNumber' : string,
+  'isSupported' : boolean,
+}
+export interface CreateTcgCategoryInput {
+  'sortOrder' : bigint,
+  'name' : string,
+  'slug' : string,
+  'isActive' : boolean,
+  'imageUrl' : string,
 }
 export interface CreateTcgSetInput {
   'setCode' : string,
@@ -36,6 +82,61 @@ export interface MarketListing {
   'editionId' : bigint,
   'price' : bigint,
 }
+export interface MediaAsset {
+  'contentType' : string,
+  'assetId' : string,
+  'createdAt' : bigint,
+  'blobStorageKey' : string,
+  'setId' : string,
+  'mediaIndex' : bigint,
+  'mediaType' : CollectibleMediaType,
+}
+export interface MintySet {
+  'id' : string,
+  'title' : string,
+  'creator' : Principal,
+  'hashtags' : Array<string>,
+  'video' : string,
+  'createdAt' : bigint,
+  'explicit' : boolean,
+  'coverImage' : string,
+  'pricePerPackUsd' : bigint,
+  'supply' : bigint,
+  'caption' : string,
+  'previewClip' : string,
+  'images' : Array<string>,
+}
+export interface MintySetInput {
+  'id' : string,
+  'title' : string,
+  'creator' : Principal,
+  'hashtags' : Array<string>,
+  'video' : string,
+  'explicit' : boolean,
+  'coverImage' : string,
+  'pricePerPackUsd' : bigint,
+  'caption' : string,
+  'previewClip' : string,
+  'images' : Array<string>,
+}
+export interface Pack {
+  'id' : string,
+  'status' : PackStatus,
+  'coverImageUrl' : string,
+  'setName' : string,
+  'ownerPrincipal' : Principal,
+  'createdAt' : bigint,
+  'totalSupply' : bigint,
+  'releaseId' : string,
+  'serialNumber' : bigint,
+  'packCount' : bigint,
+  'collectibleId' : [] | [string],
+  'openedAt' : [] | [bigint],
+}
+export type PackOpenResult = { 'ok' : Collectible } |
+  { 'err' : string };
+export type PackStatus = { 'opened' : null } |
+  { 'sealed' : null };
 export interface Release {
   'album' : Album,
   'floorPrice' : bigint,
@@ -44,6 +145,25 @@ export interface Release {
   'mintedCount' : bigint,
   'ownersCount' : bigint,
   'mintOpenTime' : bigint,
+}
+export interface TcgCard {
+  'id' : bigint,
+  'cardName' : string,
+  'sortOrder' : bigint,
+  'isActive' : boolean,
+  'setId' : bigint,
+  'imageUrl' : string,
+  'rarity' : string,
+  'cardNumber' : string,
+  'isSupported' : boolean,
+}
+export interface TcgCategory {
+  'id' : bigint,
+  'sortOrder' : bigint,
+  'name' : string,
+  'slug' : string,
+  'isActive' : boolean,
+  'imageUrl' : string,
 }
 export interface TcgSet {
   'id' : bigint,
@@ -59,6 +179,25 @@ export interface TcgSet {
   'releaseYear' : bigint,
 }
 export interface Track { 'title' : string, 'duration' : bigint }
+export interface UpdateTcgCardInput {
+  'id' : bigint,
+  'cardName' : string,
+  'sortOrder' : bigint,
+  'isActive' : boolean,
+  'setId' : bigint,
+  'imageUrl' : string,
+  'rarity' : string,
+  'cardNumber' : string,
+  'isSupported' : boolean,
+}
+export interface UpdateTcgCategoryInput {
+  'id' : bigint,
+  'sortOrder' : bigint,
+  'name' : string,
+  'slug' : string,
+  'isActive' : boolean,
+  'imageUrl' : string,
+}
 export interface UpdateTcgSetInput {
   'id' : bigint,
   'setCode' : string,
@@ -76,31 +215,83 @@ export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
 export interface _SERVICE {
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
+    undefined
+  >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
+  >,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addAlbum' : ActorMethod<[Album], undefined>,
+  'addPack' : ActorMethod<[AddPackInput], undefined>,
   'addRelease' : ActorMethod<[Release], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createCard' : ActorMethod<[CreateTcgCardInput], TcgCard>,
+  'createCategory' : ActorMethod<[CreateTcgCategoryInput], TcgCategory>,
+  'createMintySet' : ActorMethod<[MintySetInput], string>,
   'createSet' : ActorMethod<[CreateTcgSetInput], TcgSet>,
+  'deleteCard' : ActorMethod<[bigint], undefined>,
+  'deleteCategory' : ActorMethod<[bigint], undefined>,
   'deleteSet' : ActorMethod<[bigint], undefined>,
   'getAlbumById' : ActorMethod<[string], [] | [Album]>,
   'getAlbums' : ActorMethod<[], Array<Album>>,
+  'getAllCardsAdmin' : ActorMethod<[], Array<TcgCard>>,
+  'getAllCategoriesAdmin' : ActorMethod<[], Array<TcgCategory>>,
   'getAllSetsAdmin' : ActorMethod<[], Array<TcgSet>>,
+  'getCallerCollectibles' : ActorMethod<[], Array<Collectible>>,
+  'getCallerPacks' : ActorMethod<[], Array<Pack>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCardsBySet' : ActorMethod<[bigint], Array<TcgCard>>,
+  'getCardsBySetAdmin' : ActorMethod<[bigint], Array<TcgCard>>,
+  'getCategories' : ActorMethod<[], Array<TcgCategory>>,
   'getFeaturedSets' : ActorMethod<[], Array<TcgSet>>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
+  'getMintySet' : ActorMethod<[string], [] | [MintySet]>,
+  'getMintySets' : ActorMethod<[], Array<MintySet>>,
   'getPokemonSets' : ActorMethod<[], Array<TcgSet>>,
   'getReleases' : ActorMethod<[], Array<Release>>,
   'getSetById' : ActorMethod<[bigint], [] | [TcgSet]>,
   'getSetBySlug' : ActorMethod<[string], [] | [TcgSet]>,
   'getSets' : ActorMethod<[], Array<TcgSet>>,
+  'getSetsByCategory' : ActorMethod<[string], Array<TcgSet>>,
+  'getUserCollectibles' : ActorMethod<[Principal], Array<Collectible>>,
+  'getUserPacks' : ActorMethod<[Principal], Array<Pack>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'listMintySetsByCreator' : ActorMethod<[Principal], Array<MintySet>>,
+  'openPack' : ActorMethod<[string], PackOpenResult>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,
+  'toggleCardActive' : ActorMethod<[bigint], undefined>,
+  'toggleCardSupported' : ActorMethod<[bigint], undefined>,
+  'toggleCategoryActive' : ActorMethod<[bigint], undefined>,
   'toggleSetActive' : ActorMethod<[bigint], undefined>,
+  'updateCard' : ActorMethod<[UpdateTcgCardInput], TcgCard>,
+  'updateCategory' : ActorMethod<[UpdateTcgCategoryInput], TcgCategory>,
   'updateSet' : ActorMethod<[UpdateTcgSetInput], TcgSet>,
+  'uploadMediaAsset' : ActorMethod<[MediaAsset], string>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

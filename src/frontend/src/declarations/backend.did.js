@@ -8,6 +8,17 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const _CaffeineStorageCreateCertificateResult = IDL.Record({
+  'method' : IDL.Text,
+  'blob_hash' : IDL.Text,
+});
+export const _CaffeineStorageRefillInformation = IDL.Record({
+  'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const _CaffeineStorageRefillResult = IDL.Record({
+  'success' : IDL.Opt(IDL.Bool),
+  'topped_up_amount' : IDL.Opt(IDL.Nat),
+});
 export const Track = IDL.Record({ 'title' : IDL.Text, 'duration' : IDL.Nat });
 export const Album = IDL.Record({
   'id' : IDL.Text,
@@ -17,6 +28,16 @@ export const Album = IDL.Record({
   'totalSupply' : IDL.Nat,
   'artist' : IDL.Text,
   'collectionName' : IDL.Text,
+});
+export const AddPackInput = IDL.Record({
+  'id' : IDL.Text,
+  'coverImageUrl' : IDL.Text,
+  'setName' : IDL.Text,
+  'ownerPrincipal' : IDL.Principal,
+  'totalSupply' : IDL.Nat,
+  'releaseId' : IDL.Text,
+  'serialNumber' : IDL.Nat,
+  'packCount' : IDL.Nat,
 });
 export const Release = IDL.Record({
   'album' : Album,
@@ -31,6 +52,55 @@ export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const CreateTcgCardInput = IDL.Record({
+  'cardName' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'isActive' : IDL.Bool,
+  'setId' : IDL.Nat,
+  'imageUrl' : IDL.Text,
+  'rarity' : IDL.Text,
+  'cardNumber' : IDL.Text,
+  'isSupported' : IDL.Bool,
+});
+export const TcgCard = IDL.Record({
+  'id' : IDL.Nat,
+  'cardName' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'isActive' : IDL.Bool,
+  'setId' : IDL.Nat,
+  'imageUrl' : IDL.Text,
+  'rarity' : IDL.Text,
+  'cardNumber' : IDL.Text,
+  'isSupported' : IDL.Bool,
+});
+export const CreateTcgCategoryInput = IDL.Record({
+  'sortOrder' : IDL.Nat,
+  'name' : IDL.Text,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'imageUrl' : IDL.Text,
+});
+export const TcgCategory = IDL.Record({
+  'id' : IDL.Nat,
+  'sortOrder' : IDL.Nat,
+  'name' : IDL.Text,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'imageUrl' : IDL.Text,
+});
+export const MintySetInput = IDL.Record({
+  'id' : IDL.Text,
+  'title' : IDL.Text,
+  'creator' : IDL.Principal,
+  'hashtags' : IDL.Vec(IDL.Text),
+  'video' : IDL.Text,
+  'explicit' : IDL.Bool,
+  'coverImage' : IDL.Text,
+  'pricePerPackUsd' : IDL.Int,
+  'caption' : IDL.Text,
+  'previewClip' : IDL.Text,
+  'images' : IDL.Vec(IDL.Text),
 });
 export const CreateTcgSetInput = IDL.Record({
   'setCode' : IDL.Text,
@@ -57,11 +127,88 @@ export const TcgSet = IDL.Record({
   'cardCount' : IDL.Opt(IDL.Nat),
   'releaseYear' : IDL.Nat,
 });
+export const CollectibleMediaType = IDL.Variant({
+  'video' : IDL.Null,
+  'photo' : IDL.Null,
+});
+export const Collectible = IDL.Record({
+  'id' : IDL.Text,
+  'setName' : IDL.Text,
+  'title' : IDL.Text,
+  'creator' : IDL.Text,
+  'typeSupply' : IDL.Nat,
+  'editionNumber' : IDL.Nat,
+  'ownerPrincipal' : IDL.Principal,
+  'mintDate' : IDL.Text,
+  'totalSupply' : IDL.Nat,
+  'imageUrl' : IDL.Text,
+  'releaseId' : IDL.Text,
+  'mediaType' : CollectibleMediaType,
+  'rarity' : IDL.Text,
+  'packId' : IDL.Text,
+  'openedAt' : IDL.Int,
+});
+export const PackStatus = IDL.Variant({
+  'opened' : IDL.Null,
+  'sealed' : IDL.Null,
+});
+export const Pack = IDL.Record({
+  'id' : IDL.Text,
+  'status' : PackStatus,
+  'coverImageUrl' : IDL.Text,
+  'setName' : IDL.Text,
+  'ownerPrincipal' : IDL.Principal,
+  'createdAt' : IDL.Int,
+  'totalSupply' : IDL.Nat,
+  'releaseId' : IDL.Text,
+  'serialNumber' : IDL.Nat,
+  'packCount' : IDL.Nat,
+  'collectibleId' : IDL.Opt(IDL.Text),
+  'openedAt' : IDL.Opt(IDL.Int),
+});
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 export const MarketListing = IDL.Record({
   'seller' : IDL.Principal,
   'editionId' : IDL.Nat,
   'price' : IDL.Nat,
+});
+export const MintySet = IDL.Record({
+  'id' : IDL.Text,
+  'title' : IDL.Text,
+  'creator' : IDL.Principal,
+  'hashtags' : IDL.Vec(IDL.Text),
+  'video' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'explicit' : IDL.Bool,
+  'coverImage' : IDL.Text,
+  'pricePerPackUsd' : IDL.Int,
+  'supply' : IDL.Nat,
+  'caption' : IDL.Text,
+  'previewClip' : IDL.Text,
+  'images' : IDL.Vec(IDL.Text),
+});
+export const PackOpenResult = IDL.Variant({
+  'ok' : Collectible,
+  'err' : IDL.Text,
+});
+export const UpdateTcgCardInput = IDL.Record({
+  'id' : IDL.Nat,
+  'cardName' : IDL.Text,
+  'sortOrder' : IDL.Nat,
+  'isActive' : IDL.Bool,
+  'setId' : IDL.Nat,
+  'imageUrl' : IDL.Text,
+  'rarity' : IDL.Text,
+  'cardNumber' : IDL.Text,
+  'isSupported' : IDL.Bool,
+});
+export const UpdateTcgCategoryInput = IDL.Record({
+  'id' : IDL.Nat,
+  'sortOrder' : IDL.Nat,
+  'name' : IDL.Text,
+  'slug' : IDL.Text,
+  'isActive' : IDL.Bool,
+  'imageUrl' : IDL.Text,
 });
 export const UpdateTcgSetInput = IDL.Record({
   'id' : IDL.Nat,
@@ -76,41 +223,121 @@ export const UpdateTcgSetInput = IDL.Record({
   'cardCount' : IDL.Opt(IDL.Nat),
   'releaseYear' : IDL.Nat,
 });
+export const MediaAsset = IDL.Record({
+  'contentType' : IDL.Text,
+  'assetId' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'blobStorageKey' : IDL.Text,
+  'setId' : IDL.Text,
+  'mediaIndex' : IDL.Nat,
+  'mediaType' : CollectibleMediaType,
+});
 
 export const idlService = IDL.Service({
+  '_caffeineStorageBlobIsLive' : IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
+      ['query'],
+    ),
+  '_caffeineStorageBlobsToDelete' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
+  '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      [],
+      [],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [_CaffeineStorageCreateCertificateResult],
+      [],
+    ),
+  '_caffeineStorageRefillCashier' : IDL.Func(
+      [IDL.Opt(_CaffeineStorageRefillInformation)],
+      [_CaffeineStorageRefillResult],
+      [],
+    ),
+  '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addAlbum' : IDL.Func([Album], [], []),
+  'addPack' : IDL.Func([AddPackInput], [], []),
   'addRelease' : IDL.Func([Release], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
+  'createCategory' : IDL.Func([CreateTcgCategoryInput], [TcgCategory], []),
+  'createMintySet' : IDL.Func([MintySetInput], [IDL.Text], []),
   'createSet' : IDL.Func([CreateTcgSetInput], [TcgSet], []),
+  'deleteCard' : IDL.Func([IDL.Nat], [], []),
+  'deleteCategory' : IDL.Func([IDL.Nat], [], []),
   'deleteSet' : IDL.Func([IDL.Nat], [], []),
   'getAlbumById' : IDL.Func([IDL.Text], [IDL.Opt(Album)], ['query']),
   'getAlbums' : IDL.Func([], [IDL.Vec(Album)], ['query']),
+  'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
+  'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
   'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
+  'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCardsBySet' : IDL.Func([IDL.Nat], [IDL.Vec(TcgCard)], ['query']),
+  'getCardsBySetAdmin' : IDL.Func([IDL.Nat], [IDL.Vec(TcgCard)], ['query']),
+  'getCategories' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
   'getFeaturedSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+  'getMintySet' : IDL.Func([IDL.Text], [IDL.Opt(MintySet)], ['query']),
+  'getMintySets' : IDL.Func([], [IDL.Vec(MintySet)], ['query']),
   'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
   'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
   'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
   'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getSetsByCategory' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+  'getUserCollectibles' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(Collectible)],
+      ['query'],
+    ),
+  'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'listMintySetsByCreator' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(MintySet)],
+      ['query'],
+    ),
+  'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+  'toggleCardActive' : IDL.Func([IDL.Nat], [], []),
+  'toggleCardSupported' : IDL.Func([IDL.Nat], [], []),
+  'toggleCategoryActive' : IDL.Func([IDL.Nat], [], []),
   'toggleSetActive' : IDL.Func([IDL.Nat], [], []),
+  'updateCard' : IDL.Func([UpdateTcgCardInput], [TcgCard], []),
+  'updateCategory' : IDL.Func([UpdateTcgCategoryInput], [TcgCategory], []),
   'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
+  'uploadMediaAsset' : IDL.Func([MediaAsset], [IDL.Text], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const _CaffeineStorageCreateCertificateResult = IDL.Record({
+    'method' : IDL.Text,
+    'blob_hash' : IDL.Text,
+  });
+  const _CaffeineStorageRefillInformation = IDL.Record({
+    'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const _CaffeineStorageRefillResult = IDL.Record({
+    'success' : IDL.Opt(IDL.Bool),
+    'topped_up_amount' : IDL.Opt(IDL.Nat),
+  });
   const Track = IDL.Record({ 'title' : IDL.Text, 'duration' : IDL.Nat });
   const Album = IDL.Record({
     'id' : IDL.Text,
@@ -120,6 +347,16 @@ export const idlFactory = ({ IDL }) => {
     'totalSupply' : IDL.Nat,
     'artist' : IDL.Text,
     'collectionName' : IDL.Text,
+  });
+  const AddPackInput = IDL.Record({
+    'id' : IDL.Text,
+    'coverImageUrl' : IDL.Text,
+    'setName' : IDL.Text,
+    'ownerPrincipal' : IDL.Principal,
+    'totalSupply' : IDL.Nat,
+    'releaseId' : IDL.Text,
+    'serialNumber' : IDL.Nat,
+    'packCount' : IDL.Nat,
   });
   const Release = IDL.Record({
     'album' : Album,
@@ -134,6 +371,55 @@ export const idlFactory = ({ IDL }) => {
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const CreateTcgCardInput = IDL.Record({
+    'cardName' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'isActive' : IDL.Bool,
+    'setId' : IDL.Nat,
+    'imageUrl' : IDL.Text,
+    'rarity' : IDL.Text,
+    'cardNumber' : IDL.Text,
+    'isSupported' : IDL.Bool,
+  });
+  const TcgCard = IDL.Record({
+    'id' : IDL.Nat,
+    'cardName' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'isActive' : IDL.Bool,
+    'setId' : IDL.Nat,
+    'imageUrl' : IDL.Text,
+    'rarity' : IDL.Text,
+    'cardNumber' : IDL.Text,
+    'isSupported' : IDL.Bool,
+  });
+  const CreateTcgCategoryInput = IDL.Record({
+    'sortOrder' : IDL.Nat,
+    'name' : IDL.Text,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'imageUrl' : IDL.Text,
+  });
+  const TcgCategory = IDL.Record({
+    'id' : IDL.Nat,
+    'sortOrder' : IDL.Nat,
+    'name' : IDL.Text,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'imageUrl' : IDL.Text,
+  });
+  const MintySetInput = IDL.Record({
+    'id' : IDL.Text,
+    'title' : IDL.Text,
+    'creator' : IDL.Principal,
+    'hashtags' : IDL.Vec(IDL.Text),
+    'video' : IDL.Text,
+    'explicit' : IDL.Bool,
+    'coverImage' : IDL.Text,
+    'pricePerPackUsd' : IDL.Int,
+    'caption' : IDL.Text,
+    'previewClip' : IDL.Text,
+    'images' : IDL.Vec(IDL.Text),
   });
   const CreateTcgSetInput = IDL.Record({
     'setCode' : IDL.Text,
@@ -160,11 +446,82 @@ export const idlFactory = ({ IDL }) => {
     'cardCount' : IDL.Opt(IDL.Nat),
     'releaseYear' : IDL.Nat,
   });
+  const CollectibleMediaType = IDL.Variant({
+    'video' : IDL.Null,
+    'photo' : IDL.Null,
+  });
+  const Collectible = IDL.Record({
+    'id' : IDL.Text,
+    'setName' : IDL.Text,
+    'title' : IDL.Text,
+    'creator' : IDL.Text,
+    'typeSupply' : IDL.Nat,
+    'editionNumber' : IDL.Nat,
+    'ownerPrincipal' : IDL.Principal,
+    'mintDate' : IDL.Text,
+    'totalSupply' : IDL.Nat,
+    'imageUrl' : IDL.Text,
+    'releaseId' : IDL.Text,
+    'mediaType' : CollectibleMediaType,
+    'rarity' : IDL.Text,
+    'packId' : IDL.Text,
+    'openedAt' : IDL.Int,
+  });
+  const PackStatus = IDL.Variant({ 'opened' : IDL.Null, 'sealed' : IDL.Null });
+  const Pack = IDL.Record({
+    'id' : IDL.Text,
+    'status' : PackStatus,
+    'coverImageUrl' : IDL.Text,
+    'setName' : IDL.Text,
+    'ownerPrincipal' : IDL.Principal,
+    'createdAt' : IDL.Int,
+    'totalSupply' : IDL.Nat,
+    'releaseId' : IDL.Text,
+    'serialNumber' : IDL.Nat,
+    'packCount' : IDL.Nat,
+    'collectibleId' : IDL.Opt(IDL.Text),
+    'openedAt' : IDL.Opt(IDL.Int),
+  });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   const MarketListing = IDL.Record({
     'seller' : IDL.Principal,
     'editionId' : IDL.Nat,
     'price' : IDL.Nat,
+  });
+  const MintySet = IDL.Record({
+    'id' : IDL.Text,
+    'title' : IDL.Text,
+    'creator' : IDL.Principal,
+    'hashtags' : IDL.Vec(IDL.Text),
+    'video' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'explicit' : IDL.Bool,
+    'coverImage' : IDL.Text,
+    'pricePerPackUsd' : IDL.Int,
+    'supply' : IDL.Nat,
+    'caption' : IDL.Text,
+    'previewClip' : IDL.Text,
+    'images' : IDL.Vec(IDL.Text),
+  });
+  const PackOpenResult = IDL.Variant({ 'ok' : Collectible, 'err' : IDL.Text });
+  const UpdateTcgCardInput = IDL.Record({
+    'id' : IDL.Nat,
+    'cardName' : IDL.Text,
+    'sortOrder' : IDL.Nat,
+    'isActive' : IDL.Bool,
+    'setId' : IDL.Nat,
+    'imageUrl' : IDL.Text,
+    'rarity' : IDL.Text,
+    'cardNumber' : IDL.Text,
+    'isSupported' : IDL.Bool,
+  });
+  const UpdateTcgCategoryInput = IDL.Record({
+    'id' : IDL.Nat,
+    'sortOrder' : IDL.Nat,
+    'name' : IDL.Text,
+    'slug' : IDL.Text,
+    'isActive' : IDL.Bool,
+    'imageUrl' : IDL.Text,
   });
   const UpdateTcgSetInput = IDL.Record({
     'id' : IDL.Nat,
@@ -179,36 +536,105 @@ export const idlFactory = ({ IDL }) => {
     'cardCount' : IDL.Opt(IDL.Nat),
     'releaseYear' : IDL.Nat,
   });
+  const MediaAsset = IDL.Record({
+    'contentType' : IDL.Text,
+    'assetId' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'blobStorageKey' : IDL.Text,
+    'setId' : IDL.Text,
+    'mediaIndex' : IDL.Nat,
+    'mediaType' : CollectibleMediaType,
+  });
   
   return IDL.Service({
+    '_caffeineStorageBlobIsLive' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Bool],
+        ['query'],
+      ),
+    '_caffeineStorageBlobsToDelete' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
+    '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        [],
+        [],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [_CaffeineStorageCreateCertificateResult],
+        [],
+      ),
+    '_caffeineStorageRefillCashier' : IDL.Func(
+        [IDL.Opt(_CaffeineStorageRefillInformation)],
+        [_CaffeineStorageRefillResult],
+        [],
+      ),
+    '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addAlbum' : IDL.Func([Album], [], []),
+    'addPack' : IDL.Func([AddPackInput], [], []),
     'addRelease' : IDL.Func([Release], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
+    'createCategory' : IDL.Func([CreateTcgCategoryInput], [TcgCategory], []),
+    'createMintySet' : IDL.Func([MintySetInput], [IDL.Text], []),
     'createSet' : IDL.Func([CreateTcgSetInput], [TcgSet], []),
+    'deleteCard' : IDL.Func([IDL.Nat], [], []),
+    'deleteCategory' : IDL.Func([IDL.Nat], [], []),
     'deleteSet' : IDL.Func([IDL.Nat], [], []),
     'getAlbumById' : IDL.Func([IDL.Text], [IDL.Opt(Album)], ['query']),
     'getAlbums' : IDL.Func([], [IDL.Vec(Album)], ['query']),
+    'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
+    'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
     'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
+    'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCardsBySet' : IDL.Func([IDL.Nat], [IDL.Vec(TcgCard)], ['query']),
+    'getCardsBySetAdmin' : IDL.Func([IDL.Nat], [IDL.Vec(TcgCard)], ['query']),
+    'getCategories' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
     'getFeaturedSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+    'getMintySet' : IDL.Func([IDL.Text], [IDL.Opt(MintySet)], ['query']),
+    'getMintySets' : IDL.Func([], [IDL.Vec(MintySet)], ['query']),
     'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
     'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
     'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
     'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getSetsByCategory' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+    'getUserCollectibles' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(Collectible)],
+        ['query'],
+      ),
+    'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'listMintySetsByCreator' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(MintySet)],
+        ['query'],
+      ),
+    'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+    'toggleCardActive' : IDL.Func([IDL.Nat], [], []),
+    'toggleCardSupported' : IDL.Func([IDL.Nat], [], []),
+    'toggleCategoryActive' : IDL.Func([IDL.Nat], [], []),
     'toggleSetActive' : IDL.Func([IDL.Nat], [], []),
+    'updateCard' : IDL.Func([UpdateTcgCardInput], [TcgCard], []),
+    'updateCategory' : IDL.Func([UpdateTcgCategoryInput], [TcgCategory], []),
     'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
+    'uploadMediaAsset' : IDL.Func([MediaAsset], [IDL.Text], []),
   });
 };
 
