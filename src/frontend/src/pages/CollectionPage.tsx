@@ -2747,12 +2747,14 @@ export function CollectionPage({
       <div style={{ marginBottom: "20px" }}>
         <h1
           style={{
-            fontSize: "28px",
-            fontWeight: 700,
-            color: "#111",
+            fontSize: "24px",
+            fontWeight: 500,
+            color: "#333",
             margin: 0,
-            fontFamily: "var(--font-brand)",
+            fontFamily: "var(--font-ui)",
             lineHeight: 1.1,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase" as const,
           }}
         >
           Collection

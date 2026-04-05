@@ -78,6 +78,10 @@ const OVERLAY_KEYFRAMES = `
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
+  @keyframes panelIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
   /* Reset native <dialog> styling */
   dialog.pack-opening-dialog {
     border: none;
@@ -139,7 +143,6 @@ export function PackOpeningOverlay({
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [shineActive, setShineActive] = useState(false);
-  const [uiVisible, setUiVisible] = useState(true);
   const completedRef = useRef(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -259,11 +262,21 @@ export function PackOpeningOverlay({
   const labelOpacity = Math.max(0, 1 - sliderProgress * 2.5);
   const inIdleOrSliding = phase === "idle";
 
-  const editionText = nft
-    ? isVideo
-      ? `Video #${nft.editionNumber} of ${nft.totalSupply}`
-      : `Photo #${nft.editionNumber} of ${nft.totalSupply}`
-    : "";
+  // Format mint date/time
+  const mintDate = nft?.mintDate ? new Date(nft.mintDate) : new Date();
+  const mintDateStr = mintDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const mintTimeStr = mintDate.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const handlePanelKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+  };
 
   const overlay = (
     <dialog
@@ -273,43 +286,63 @@ export function PackOpeningOverlay({
       aria-label="Pack Opening"
       style={{
         zIndex: 9999,
-        padding: "24px 20px 48px",
-        background: "rgba(4,12,8,0.97)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        padding: 0,
+        background: "rgba(10,15,12,0.55)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         animation: "overlayFadeIn 0.32s ease",
       }}
     >
-      {/* Close button */}
-      <button
-        type="button"
-        data-ocid="collection.close_button"
-        onClick={onClose}
-        aria-label="Close"
-        style={{
-          position: "absolute",
-          top: "16px",
-          right: "16px",
-          zIndex: 10,
-          width: "32px",
-          height: "32px",
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.12)",
-          border: "1px solid rgba(255,255,255,0.18)",
-          color: "rgba(255,255,255,0.80)",
-          fontSize: "18px",
-          lineHeight: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          padding: 0,
-          touchAction: "manipulation",
-          flexShrink: 0,
-        }}
-      >
-        \u00d7
-      </button>
+      {/* Scrim button — closes overlay when tapping outside panel (reveal only) */}
+      {phase === "reveal" && (
+        <button
+          type="button"
+          aria-label="Close overlay"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,
+            cursor: "pointer",
+            background: "transparent",
+            border: "none",
+            padding: 0,
+          }}
+        />
+      )}
+
+      {/* Close button — shown during non-reveal phases */}
+      {phase !== "reveal" && (
+        <button
+          type="button"
+          data-ocid="collection.close_button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+            zIndex: 10,
+            width: "32px",
+            height: "32px",
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.12)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            color: "rgba(255,255,255,0.80)",
+            fontSize: "18px",
+            lineHeight: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            touchAction: "manipulation",
+            flexShrink: 0,
+          }}
+        >
+          &#215;
+        </button>
+      )}
 
       {/* IDLE: Pack wrapper + Slide to Open */}
       {inIdleOrSliding && (
@@ -653,216 +686,186 @@ export function PackOpeningOverlay({
         />
       )}
 
-      {/* REVEAL: Fullscreen immersive NFT reveal */}
+      {/* REVEAL: Floating glass panel */}
       {phase === "reveal" && nft && (
         <div
-          role={isVideo ? "button" : undefined}
-          tabIndex={isVideo ? 0 : undefined}
-          aria-label={isVideo ? "Toggle controls" : undefined}
-          onClick={isVideo ? () => setUiVisible((v) => !v) : undefined}
-          onKeyDown={
-            isVideo
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ")
-                    setUiVisible((v) => !v);
-                }
-              : undefined
-          }
+          data-ocid="collection.panel"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={handlePanelKeyDown}
           style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            cursor: isVideo ? "pointer" : "default",
+            position: "relative",
+            zIndex: 1,
+            maxWidth: "360px",
+            width: "calc(100% - 32px)",
+            borderRadius: "24px",
+            background: "rgba(18,24,20,0.72)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            border: `1px solid rgba(${r},${g},${b},0.18)`,
+            boxShadow: `0 32px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(${r},${g},${b},0.08)`,
+            overflow: "hidden",
+            animation: "panelIn 320ms cubic-bezier(0.22,1,0.36,1) both",
           }}
         >
-          {isVideo ? (
-            <>
-              <div
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: `radial-gradient(ellipse at 50% 50%, rgba(${r},${g},${b},0.10) 0%, transparent 65%)`,
-                  pointerEvents: "none",
-                  zIndex: 0,
-                }}
-              />
+          {/* Close × button top-right */}
+          <button
+            type="button"
+            data-ocid="collection.close_button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: "absolute",
+              top: "12px",
+              right: "12px",
+              zIndex: 10,
+              width: "28px",
+              height: "28px",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,0.10)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              color: "rgba(255,255,255,0.65)",
+              fontSize: "16px",
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              padding: 0,
+              touchAction: "manipulation",
+              flexShrink: 0,
+            }}
+          >
+            &#215;
+          </button>
+
+          {/* Media area — fills panel width, no side padding */}
+          <div
+            style={{
+              borderRadius: "24px 24px 0 0",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            {isVideo ? (
               <video
                 src={nft.imageUrl}
                 autoPlay
                 loop
                 muted
                 playsInline
-                controls={false}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  maxHeight: "260px",
+                  objectFit: "cover",
+                  animation: "nftRevealFadeVideo 900ms ease forwards",
+                }}
+              />
+            ) : (
+              <img
+                src={nft.imageUrl}
+                alt={nft.title}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  maxHeight: "260px",
+                  objectFit: "cover",
+                  animation: "nftRevealFade 600ms ease forwards",
+                }}
+              />
+            )}
+
+            {/* Rare shine sweep */}
+            {isRare && shineActive && (
+              <div
+                aria-hidden="true"
                 style={{
                   position: "absolute",
                   inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  animation: "nftRevealFadeVideo 900ms ease forwards",
-                  zIndex: 1,
-                  boxShadow: `0 0 120px rgba(${r},${g},${b},0.25)`,
+                  overflow: "hidden",
+                  pointerEvents: "none",
                 }}
-              />
-            </>
-          ) : (
-            <img
-              src={nft.imageUrl}
-              alt={nft.title}
-              style={{
-                position: "absolute",
-                inset: 0,
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-                animation: "nftRevealFade 600ms ease forwards",
-                zIndex: 1,
-              }}
-            />
-          )}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "50%",
+                    height: "100%",
+                    background:
+                      "linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent)",
+                    animation:
+                      "shineSweep 0.80s cubic-bezier(0.4,0,0.6,1) forwards",
+                  }}
+                />
+              </div>
+            )}
+          </div>
 
-          {isRare && shineActive && (
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                overflow: "hidden",
-                pointerEvents: "none",
-                zIndex: 2,
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "50%",
-                  height: "100%",
-                  background:
-                    "linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent)",
-                  animation:
-                    "shineSweep 0.80s cubic-bezier(0.4,0,0.6,1) forwards",
-                }}
-              />
-            </div>
-          )}
-
+          {/* Info section */}
           <div
             style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
-              zIndex: 3,
-              opacity: uiVisible ? 1 : 0,
-              transition: "opacity 0.3s ease",
-              pointerEvents: uiVisible ? "auto" : "none",
-              background:
-                "linear-gradient(to top, rgba(4,12,8,0.92) 0%, rgba(4,12,8,0.60) 60%, transparent 100%)",
-              padding: "40px 20px 48px",
-              animation: "uiOverlayIn 500ms ease 400ms both",
+              padding: "20px 20px 24px",
+              animation: "metaFadeIn 380ms ease 200ms both",
             }}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
           >
-            <div style={{ marginBottom: "20px" }}>
-              <div
-                style={{
-                  fontSize: "16px",
-                  color: "rgba(255,255,255,0.92)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.01em",
-                  marginBottom: "8px",
-                  animation: "metaFadeIn 350ms ease 450ms both",
-                }}
-              >
-                {nft.title}
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  flexWrap: "wrap",
-                  marginBottom: "6px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "3px 12px",
-                    borderRadius: "20px",
-                    background: isRare
-                      ? `rgba(${r},${g},${b},0.22)`
-                      : "rgba(255,255,255,0.10)",
-                    border: isRare
-                      ? `1px solid rgba(${r},${g},${b},0.45)`
-                      : "1px solid rgba(255,255,255,0.18)",
-                    fontSize: "11px",
-                    color: isRare
-                      ? `rgba(${r},${g},${b},1)`
-                      : "rgba(255,255,255,0.65)",
-                    fontWeight: 700,
-                    letterSpacing: "0.09em",
-                    textTransform: "uppercase" as const,
-                    animation: "metaFadeIn 350ms ease 510ms both",
-                  }}
-                >
-                  {isRare ? "\u2726 Rare" : "Common"}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: `rgba(${r},${g},${b},0.85)`,
-                    fontWeight: 600,
-                    animation: "metaFadeIn 350ms ease 570ms both",
-                  }}
-                >
-                  {editionText}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "rgba(255,255,255,0.40)",
-                  fontWeight: 500,
-                  animation: "metaFadeIn 350ms ease 630ms both",
-                }}
-              >
-                by {nft.creator}
-              </div>
-
-              {isVideo && (
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontSize: "10px",
-                    color: "rgba(255,255,255,0.30)",
-                    fontWeight: 500,
-                    letterSpacing: "0.04em",
-                    animation: "metaFadeIn 350ms ease 700ms both",
-                  }}
-                >
-                  Tap to toggle controls
-                </div>
-              )}
-            </div>
-
+            {/* Rarity badge */}
             <div
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "3px 10px",
+                borderRadius: "20px",
+                background: isRare
+                  ? `rgba(${r},${g},${b},0.18)`
+                  : "rgba(255,255,255,0.07)",
+                border: isRare
+                  ? `1px solid rgba(${r},${g},${b},0.35)`
+                  : "1px solid rgba(255,255,255,0.14)",
+                fontSize: "10px",
+                color: isRare
+                  ? `rgba(${r},${g},${b},1)`
+                  : "rgba(255,255,255,0.55)",
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase" as const,
+              }}
+            >
+              {isRare ? "RARE" : "COMMON"}
+            </div>
+
+            {/* Mint date */}
+            <div style={{ marginTop: "12px" }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.75)",
+                  lineHeight: 1.4,
+                }}
+              >
+                Minted {mintDateStr}
+              </div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 400,
+                  color: "rgba(255,255,255,0.40)",
+                  marginTop: "2px",
+                }}
+              >
+                {mintTimeStr}
+              </div>
+            </div>
+
+            {/* Primary action */}
+            <div
+              style={{
+                marginTop: "20px",
                 display: "flex",
                 flexDirection: "column",
                 gap: "10px",
-                animation: "uiOverlayIn 380ms ease 600ms both",
               }}
             >
               <button
@@ -871,45 +874,19 @@ export function PackOpeningOverlay({
                 onClick={handleComplete}
                 style={{
                   width: "100%",
-                  height: "52px",
+                  height: "50px",
                   borderRadius: "14px",
                   border: "none",
                   background: `linear-gradient(160deg, oklch(${activeCycle.accentOklchDark}), oklch(${activeCycle.accentOklchLight}))`,
                   color: "#fff",
                   fontSize: "15px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  letterSpacing: "0.01em",
-                  boxShadow: `0 0 28px rgba(${r},${g},${b},0.32), 0 4px 16px rgba(0,0,0,0.30)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  touchAction: "manipulation",
-                }}
-              >
-                View NFT
-              </button>
-
-              <button
-                type="button"
-                data-ocid="collection.secondary_button"
-                onClick={onClose}
-                style={{
-                  width: "100%",
-                  height: "48px",
-                  borderRadius: "14px",
-                  border: `1px solid rgba(${r},${g},${b},0.28)`,
-                  background: "transparent",
-                  color: "rgba(255,255,255,0.60)",
-                  fontSize: "14px",
                   fontWeight: 600,
                   cursor: "pointer",
                   letterSpacing: "0.01em",
                   touchAction: "manipulation",
                 }}
               >
-                Back to Collection
+                View NFT
               </button>
             </div>
           </div>

@@ -64,7 +64,7 @@ const WRAPPER_IMG = "/assets/generated/minty-pack-wrapper.png";
 
 function PackCard({
   accentRgb: _accentRgb,
-  accentText,
+  accentText: _accentText,
 }: {
   accentRgb: string;
   accentText: string;
@@ -119,7 +119,7 @@ function PackCard({
         style={{
           position: "relative",
           zIndex: 3,
-          padding: "36px 32px 32px",
+          padding: "36px 32px 40px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -186,6 +186,7 @@ function PackCard({
             fontWeight: 600,
             color: "#111111",
             margin: "16px 0 0",
+            marginBottom: "20px",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontFamily: "var(--font-ui)",
@@ -193,41 +194,8 @@ function PackCard({
             lineHeight: 1.1,
           }}
         >
-          Minty Pack
+          Mint a Moment
         </h2>
-
-        {/* Sub text */}
-        <p
-          style={{
-            fontSize: "13px",
-            color: accentText,
-            margin: "8px 0 0",
-            textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-            fontWeight: 300,
-            opacity: 0.65,
-            letterSpacing: "0.01em",
-            fontFamily: "var(--font-ui)",
-          }}
-        >
-          Contains 1 collectible
-        </p>
-
-        {/* Price */}
-        <p
-          style={{
-            fontSize: "15px",
-            fontWeight: 500,
-            color: "#111111",
-            margin: "8px 0 0",
-            textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
-            fontFamily: "var(--font-ui)",
-            letterSpacing: "0.02em",
-          }}
-        >
-          $1 per pack
-        </p>
       </div>
     </div>
   );
@@ -607,6 +575,7 @@ export function LibraryPage({
 
   // Suppress unused variable warning — accentGlow is available for future use
   void accentGlow;
+  void accentText;
 
   return (
     <div
@@ -669,7 +638,7 @@ export function LibraryPage({
               }}
             >
               {/* Show pack card with first captured photo as preview */}
-              <PackCard accentRgb={accentRgb} accentText={accentText} />
+              <PackCard accentRgb={accentRgb} accentText="" />
               <div style={{ height: "20px" }} />
               <DraftLockedState
                 onFinish={() => onCaptureMoment?.()}
@@ -695,7 +664,7 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              <PackCard accentRgb={accentRgb} accentText={accentText} />
+              <PackCard accentRgb={accentRgb} accentText="" />
 
               <p
                 style={{
