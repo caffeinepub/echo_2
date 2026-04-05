@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useCycleTheme } from "../context/CycleThemeContext";
 import { useUserSettings } from "../context/UserSettingsContext";
 import {
   type MintMomentSetRank,
@@ -20,28 +21,20 @@ function SignalCard({
   label,
   plainValue,
   index,
-  isDark,
+  accentColor,
+  accentRgb,
 }: {
   label: string;
   plainValue: string;
   index: number;
-  isDark: boolean;
+  accentColor: string;
+  accentRgb: string;
 }) {
-  const cardStyle = isDark
-    ? {
-        background: "rgba(10, 28, 20, 0.72)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        border: "1px solid rgba(110, 230, 185, 0.15)",
-        boxShadow:
-          "0 0 20px rgba(80, 200, 150, 0.08), inset 0 1px 0 rgba(110, 230, 185, 0.07)",
-      }
-    : {
-        background:
-          "linear-gradient(135deg, rgba(200,245,230,0.5), rgba(159,232,208,0.3))",
-        border: "1px solid rgba(16,185,129,0.2)",
-        boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-      };
+  const cardStyle = {
+    background: `rgba(${accentRgb}, 0.07)`,
+    border: `1px solid rgba(${accentRgb}, 0.18)`,
+    boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
+  };
 
   return (
     <motion.div
@@ -53,17 +46,13 @@ function SignalCard({
     >
       <p
         className="text-[9px] uppercase tracking-[0.16em] font-medium"
-        style={
-          isDark
-            ? { color: "rgba(150, 210, 185, 0.65)" }
-            : { color: "var(--echo-text-secondary)" }
-        }
+        style={{ color: "var(--echo-text-secondary)" }}
       >
         {label}
       </p>
       <p
         className="text-base font-mono font-semibold tabular-nums leading-tight"
-        style={{ color: "#10b981" }}
+        style={{ color: accentColor }}
       >
         {plainValue}
       </p>
@@ -75,13 +64,11 @@ function SignalCard({
 
 function PreviewThumb({
   set,
-  isDark,
   isHighlight,
   highlightColor,
   size = "sm",
 }: {
   set: MintMomentSetRank;
-  isDark: boolean;
   isHighlight: boolean;
   highlightColor: string;
   size?: "sm" | "lg";
@@ -96,9 +83,7 @@ function PreviewThumb({
           overflow: "hidden",
           border: isHighlight
             ? `1.5px solid ${highlightColor}`
-            : isDark
-              ? "1px solid rgba(110,230,185,0.18)"
-              : "1px solid #e5e7eb",
+            : "1px solid #e5e7eb",
         }
       : {
           width: "100%",
@@ -140,47 +125,35 @@ const RANK_COLORS = ["#f59e0b", "#94a3b8", "#b45309"];
 function SetRankRow({
   set,
   rank,
-  isDark,
+  accentColor,
+  accentRgb,
   onClick,
   sectionRank,
   explicitModeOn = false,
 }: {
   set: MintMomentSetRank;
   rank: number;
-  isDark: boolean;
+  accentColor: string;
+  accentRgb: string;
   onClick: () => void;
   sectionRank: number;
   explicitModeOn?: boolean;
 }) {
   const isHighlight = sectionRank <= 3;
-  const rankColor = isHighlight
-    ? RANK_COLORS[sectionRank - 1]
-    : isDark
-      ? "rgba(150, 210, 185, 0.5)"
-      : "#10b981";
+  const rankColor = isHighlight ? RANK_COLORS[sectionRank - 1] : accentColor;
 
-  const rowStyle = isDark
-    ? {
-        background: "rgba(10, 28, 20, 0.72)",
-        border: isHighlight
-          ? "1px solid rgba(110, 230, 185, 0.25)"
-          : "1px solid rgba(110, 230, 185, 0.12)",
-        boxShadow: isHighlight
-          ? "0 2px 12px rgba(80,200,150,0.12), inset 0 1px 0 rgba(110,230,185,0.07)"
-          : "0 1px 4px rgba(0,0,0,0.15)",
-      }
-    : {
-        background: "white",
-        border: isHighlight
-          ? "1px solid rgba(16,185,129,0.25)"
-          : "1px solid oklch(0.92 0.004 185)",
-        boxShadow: isHighlight
-          ? "0 2px 12px rgba(16,185,129,0.08)"
-          : "0 1px 4px rgba(0,0,0,0.05)",
-      };
+  const rowStyle = {
+    background: "white",
+    border: isHighlight
+      ? `1px solid rgba(${accentRgb}, 0.22)`
+      : "1px solid oklch(0.92 0.004 185)",
+    boxShadow: isHighlight
+      ? `0 2px 12px rgba(${accentRgb}, 0.08)`
+      : "0 1px 4px rgba(0,0,0,0.05)",
+  };
 
-  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
-  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+  const textPrimary = "#1a1a1a";
+  const textSecondary = "#9ca3af";
 
   return (
     <motion.div
@@ -220,9 +193,7 @@ function SetRankRow({
               fontSize: "9px",
               fontWeight: 700,
               letterSpacing: "0.08em",
-              background: isDark
-                ? "rgba(245,158,11,0.85)"
-                : "rgba(245,158,11,0.90)",
+              background: "rgba(245,158,11,0.90)",
               color: "#fff",
               borderRadius: "10px",
               padding: "2px 8px",
@@ -250,7 +221,6 @@ function SetRankRow({
       {/* Thumbnail 4:5 portrait */}
       <PreviewThumb
         set={set}
-        isDark={isDark}
         isHighlight={isHighlight}
         highlightColor={rankColor}
         size="sm"
@@ -272,9 +242,7 @@ function SetRankRow({
                 fontWeight: 700,
                 padding: "1px 6px",
                 borderRadius: "8px",
-                background: isDark
-                  ? "rgba(245, 158, 11, 0.18)"
-                  : "rgba(245, 158, 11, 0.12)",
+                background: "rgba(245, 158, 11, 0.12)",
                 color: "#f59e0b",
                 border: "1px solid rgba(245, 158, 11, 0.25)",
                 whiteSpace: "nowrap",
@@ -297,7 +265,7 @@ function SetRankRow({
       <div className="shrink-0 text-right">
         <p
           className="font-semibold tabular-nums"
-          style={{ fontSize: "12px", color: "#10b981", lineHeight: 1.3 }}
+          style={{ fontSize: "12px", color: accentColor, lineHeight: 1.3 }}
         >
           {formatCount(set.packOpens)} opens
         </p>
@@ -317,20 +285,20 @@ function SetRankRow({
 function SectionHeader({
   icon,
   label,
-  isDark,
+  accentColor,
+  accentRgb,
 }: {
   icon: string;
   label: string;
-  isDark: boolean;
+  accentColor: string;
+  accentRgb: string;
 }) {
   return (
     <div className="flex items-center gap-2 mt-6 mb-2.5">
       <span style={{ fontSize: "16px" }}>{icon}</span>
       <p
         className="text-[11px] uppercase tracking-[0.14em] font-semibold"
-        style={{
-          color: isDark ? "rgba(150, 210, 185, 0.75)" : "#10b981",
-        }}
+        style={{ color: accentColor }}
       >
         {label}
       </p>
@@ -338,9 +306,7 @@ function SectionHeader({
         style={{
           flex: 1,
           height: "1px",
-          background: isDark
-            ? "rgba(110,230,185,0.1)"
-            : "rgba(16,185,129,0.12)",
+          background: `rgba(${accentRgb}, 0.15)`,
           marginLeft: "4px",
         }}
       />
@@ -361,11 +327,13 @@ const TIME_RANGES: { label: string; value: TimeRange }[] = [
 function TimeFilterPills({
   active,
   onChange,
-  isDark,
+  accentColor,
+  accentRgb,
 }: {
   active: TimeRange;
   onChange: (t: TimeRange) => void;
-  isDark: boolean;
+  accentColor: string;
+  accentRgb: string;
 }) {
   return (
     <div
@@ -393,22 +361,12 @@ function TimeFilterPills({
               cursor: "pointer",
               flexShrink: 0,
               transition: "all 0.15s",
-              background: isActive
-                ? "#10b981"
-                : isDark
-                  ? "rgba(20, 50, 35, 0.5)"
-                  : "#f3f4f6",
-              color: isActive
-                ? "white"
-                : isDark
-                  ? "rgba(150, 210, 185, 0.65)"
-                  : "#6b7280",
-              border: isActive
-                ? "1px solid transparent"
-                : isDark
-                  ? "1px solid rgba(110, 230, 185, 0.12)"
-                  : "1px solid #e5e7eb",
-              boxShadow: isActive ? "0 0 12px rgba(16,185,129,0.3)" : "none",
+              background: isActive ? accentColor : "#f3f4f6",
+              color: isActive ? "white" : "#6b7280",
+              border: isActive ? "1px solid transparent" : "1px solid #e5e7eb",
+              boxShadow: isActive
+                ? `0 0 12px rgba(${accentRgb}, 0.30)`
+                : "none",
             }}
           >
             {t.label}
@@ -423,11 +381,13 @@ function TimeFilterPills({
 
 function SetDetailSheet({
   set,
-  isDark,
+  accentColor,
+  accentRgb,
   onClose,
 }: {
   set: MintMomentSetRank;
-  isDark: boolean;
+  accentColor: string;
+  accentRgb: string;
   onClose: () => void;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -438,11 +398,10 @@ function SetDetailSheet({
     return () => cancelAnimationFrame(t);
   }, []);
 
-  const overlayBg = isDark ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.35)";
-  const sheetBg = isDark ? "#0d1f16" : "#ffffff";
-  const textPrimary = isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a";
-  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
-  const dividerColor = isDark ? "rgba(110,230,185,0.1)" : "#f0f0f0";
+  const sheetBg = "#ffffff";
+  const textPrimary = "#1a1a1a";
+  const textSecondary = "#9ca3af";
+  const dividerColor = "#f0f0f0";
 
   return (
     <div
@@ -463,7 +422,7 @@ function SetDetailSheet({
         style={{
           position: "absolute",
           inset: 0,
-          background: overlayBg,
+          background: "rgba(0,0,0,0.35)",
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
           transition: "opacity 0.3s",
@@ -486,9 +445,7 @@ function SetDetailSheet({
           overflowY: "auto",
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
           transform: visible ? "translateY(0)" : "translateY(100%)",
-          boxShadow: isDark
-            ? "0 -4px 40px rgba(0,0,0,0.5)"
-            : "0 -4px 40px rgba(0,0,0,0.12)",
+          boxShadow: "0 -4px 40px rgba(0,0,0,0.12)",
         }}
       >
         {/* Handle */}
@@ -505,7 +462,7 @@ function SetDetailSheet({
               width: "36px",
               height: "4px",
               borderRadius: "2px",
-              background: isDark ? "rgba(110,230,185,0.3)" : "rgba(0,0,0,0.15)",
+              background: "rgba(0,0,0,0.15)",
             }}
           />
         </div>
@@ -522,7 +479,7 @@ function SetDetailSheet({
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            background: isDark ? "rgba(110,230,185,0.1)" : "rgba(0,0,0,0.06)",
+            background: "rgba(0,0,0,0.06)",
             border: "none",
             cursor: "pointer",
             display: "flex",
@@ -546,7 +503,7 @@ function SetDetailSheet({
               borderRadius: "16px",
               overflow: "hidden",
               marginBottom: "16px",
-              background: isDark ? "rgba(20,50,35,0.6)" : "#f3f4f6",
+              background: "#f3f4f6",
             }}
           >
             {set.previewClipUrl ? (
@@ -586,9 +543,7 @@ function SetDetailSheet({
                   fontWeight: 700,
                   padding: "3px 8px",
                   borderRadius: "10px",
-                  background: isDark
-                    ? "rgba(245, 158, 11, 0.18)"
-                    : "rgba(245, 158, 11, 0.12)",
+                  background: "rgba(245, 158, 11, 0.12)",
                   color: "#f59e0b",
                   border: "1px solid rgba(245, 158, 11, 0.25)",
                   whiteSpace: "nowrap",
@@ -627,12 +582,8 @@ function SetDetailSheet({
               <div
                 key={stat.label}
                 style={{
-                  background: isDark
-                    ? "rgba(110,230,185,0.06)"
-                    : "rgba(16,185,129,0.06)",
-                  border: isDark
-                    ? "1px solid rgba(110,230,185,0.12)"
-                    : "1px solid rgba(16,185,129,0.15)",
+                  background: `rgba(${accentRgb}, 0.06)`,
+                  border: `1px solid rgba(${accentRgb}, 0.15)`,
                   borderRadius: "12px",
                   padding: "10px 8px",
                   textAlign: "center",
@@ -642,7 +593,7 @@ function SetDetailSheet({
                   style={{
                     fontSize: "15px",
                     fontWeight: 700,
-                    color: "#10b981",
+                    color: accentColor,
                     lineHeight: 1.2,
                   }}
                 >
@@ -676,10 +627,8 @@ function SetDetailSheet({
           {/* Pack info */}
           <div
             style={{
-              background: isDark ? "rgba(10, 28, 20, 0.6)" : "#f9fafb",
-              border: isDark
-                ? "1px solid rgba(110,230,185,0.12)"
-                : "1px solid #e5e7eb",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
               borderRadius: "14px",
               padding: "12px 14px",
               marginBottom: "14px",
@@ -765,13 +714,9 @@ function SetDetailSheet({
                       justifyContent: "space-between",
                       alignItems: "center",
                       padding: "8px 10px",
-                      background: isDark
-                        ? "rgba(110,230,185,0.04)"
-                        : "rgba(0,0,0,0.02)",
+                      background: "rgba(0,0,0,0.02)",
                       borderRadius: "10px",
-                      border: isDark
-                        ? "1px solid rgba(110,230,185,0.08)"
-                        : "1px solid #f0f0f0",
+                      border: "1px solid #f0f0f0",
                     }}
                     data-ocid={`discover.activity.item.${idx + 1}`}
                   >
@@ -801,13 +746,9 @@ function SetDetailSheet({
                 gap: "6px",
                 marginBottom: "14px",
                 padding: "8px 10px",
-                background: isDark
-                  ? "rgba(110,230,185,0.05)"
-                  : "rgba(16,185,129,0.05)",
+                background: `rgba(${accentRgb}, 0.05)`,
                 borderRadius: "10px",
-                border: isDark
-                  ? "1px solid rgba(110,230,185,0.1)"
-                  : "1px solid rgba(16,185,129,0.12)",
+                border: `1px solid rgba(${accentRgb}, 0.15)`,
               }}
             >
               <span
@@ -816,13 +757,17 @@ function SetDetailSheet({
                   width: "6px",
                   height: "6px",
                   borderRadius: "50%",
-                  background: "#10b981",
+                  background: accentColor,
                   display: "inline-block",
                   flexShrink: 0,
                 }}
               />
               <span
-                style={{ fontSize: "11px", color: "#10b981", fontWeight: 600 }}
+                style={{
+                  fontSize: "11px",
+                  color: accentColor,
+                  fontWeight: 600,
+                }}
               >
                 {set.recentActivityVelocity} events in the last 2 hours
               </span>
@@ -846,12 +791,7 @@ function SetDetailSheet({
               width: "100%",
               padding: "14px",
               borderRadius: "14px",
-              background:
-                set.remainingPacks === 0
-                  ? isDark
-                    ? "rgba(110,230,185,0.1)"
-                    : "#f3f4f6"
-                  : "linear-gradient(135deg, #10b981, #059669)",
+              background: set.remainingPacks === 0 ? "#f3f4f6" : accentColor,
               color: set.remainingPacks === 0 ? textSecondary : "white",
               border: "none",
               fontSize: "15px",
@@ -860,7 +800,7 @@ function SetDetailSheet({
               boxShadow:
                 set.remainingPacks === 0
                   ? "none"
-                  : "0 4px 16px rgba(16,185,129,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+                  : `0 4px 16px rgba(${accentRgb}, 0.32), inset 0 1px 0 rgba(255,255,255,0.15)`,
               letterSpacing: "0.01em",
             }}
             disabled={set.remainingPacks === 0}
@@ -886,7 +826,10 @@ export function MarketPage({
   onAlbumClick: _onAlbumClick,
   onSetClick: _onSetClick,
 }: MarketPageProps) {
-  const isDark = false; // always light mode
+  const { activeCycle } = useCycleTheme();
+  const accentColor = `oklch(${activeCycle.accentOklchLight})`;
+  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
+
   const { explicitModeOn } = useUserSettings();
   const [timeRange, setTimeRange] = useState<TimeRange>("ALL_TIME");
   const [selectedSet, setSelectedSet] = useState<MintMomentSetRank | null>(
@@ -894,7 +837,7 @@ export function MarketPage({
   );
 
   const top100Sets = getDiscoverSets(timeRange);
-  const textSecondary = isDark ? "rgba(150, 210, 185, 0.55)" : "#9ca3af";
+  const textSecondary = "#9ca3af";
 
   const hasAnySets = top100Sets.length > 0;
 
@@ -906,25 +849,29 @@ export function MarketPage({
           label="Total Opens"
           plainValue="842K opens"
           index={0}
-          isDark={isDark}
+          accentColor={accentColor}
+          accentRgb={accentRgb}
         />
         <SignalCard
           label="Active Collectors"
           plainValue="12.4K collectors"
           index={1}
-          isDark={isDark}
+          accentColor={accentColor}
+          accentRgb={accentRgb}
         />
         <SignalCard
           label="Moments Live"
           plainValue="100 moments"
           index={2}
-          isDark={isDark}
+          accentColor={accentColor}
+          accentRgb={accentRgb}
         />
         <SignalCard
           label="Active Now"
           plainValue="1,284 active"
           index={3}
-          isDark={isDark}
+          accentColor={accentColor}
+          accentRgb={accentRgb}
         />
       </div>
 
@@ -932,7 +879,8 @@ export function MarketPage({
       <TimeFilterPills
         active={timeRange}
         onChange={setTimeRange}
-        isDark={isDark}
+        accentColor={accentColor}
+        accentRgb={accentRgb}
       />
 
       {/* ── Subtle live note ── */}
@@ -943,7 +891,7 @@ export function MarketPage({
             alignItems: "center",
             gap: "5px",
             fontSize: "10px",
-            color: isDark ? "rgba(150, 210, 185, 0.45)" : "#9ca3af",
+            color: "#9ca3af",
           }}
         >
           <span
@@ -952,7 +900,7 @@ export function MarketPage({
               width: "5px",
               height: "5px",
               borderRadius: "50%",
-              background: "#10b981",
+              background: accentColor,
               display: "inline-block",
             }}
           />
@@ -976,7 +924,7 @@ export function MarketPage({
             >
               <p
                 style={{
-                  color: isDark ? "rgba(220, 248, 235, 0.9)" : "#1a1a1a",
+                  color: "#1a1a1a",
                   fontSize: "14px",
                   fontWeight: 600,
                   marginBottom: "4px",
@@ -992,7 +940,12 @@ export function MarketPage({
             <div>
               {/* ── Top 100 ── */}
               <div className="mt-4">
-                <SectionHeader icon="🏆" label="Top 100" isDark={isDark} />
+                <SectionHeader
+                  icon="🏆"
+                  label="Top 100"
+                  accentColor={accentColor}
+                  accentRgb={accentRgb}
+                />
                 <div className="flex flex-col gap-2">
                   {top100Sets.map((set, i) => (
                     <SetRankRow
@@ -1000,7 +953,8 @@ export function MarketPage({
                       set={set}
                       rank={i + 1}
                       sectionRank={i + 1}
-                      isDark={isDark}
+                      accentColor={accentColor}
+                      accentRgb={accentRgb}
                       onClick={() => setSelectedSet(set)}
                       explicitModeOn={explicitModeOn}
                     />
@@ -1017,7 +971,8 @@ export function MarketPage({
         {selectedSet && (
           <SetDetailSheet
             set={selectedSet}
-            isDark={isDark}
+            accentColor={accentColor}
+            accentRgb={accentRgb}
             onClose={() => setSelectedSet(null)}
           />
         )}
