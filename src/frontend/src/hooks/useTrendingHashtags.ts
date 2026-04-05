@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
-import type { TrendingHashtag } from "../store/mockDiscoverSets";
+
+export interface TrendingHashtag {
+  tag: string;
+  hot: boolean;
+}
 
 const RECENT_PURCHASE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 const HOT_THRESHOLD = 4; // score >= 4 gets fire emoji

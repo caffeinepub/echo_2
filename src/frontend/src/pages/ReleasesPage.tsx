@@ -26,7 +26,7 @@ import {
 import { useUserSettings } from "../context/UserSettingsContext";
 
 import { useTrendingHashtags } from "../hooks/useTrendingHashtags";
-import type { TrendingHashtag } from "../store/mockDiscoverSets";
+import type { TrendingHashtag } from "../hooks/useTrendingHashtags";
 // ─── Countdown helper ─────────────────────────────────────────────────────────
 
 function formatCountdown(msLeft: number): string {

@@ -23,22 +23,15 @@ import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
-import { CardDetailPage } from "./pages/CardDetailPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
-import { MarketDetailPage } from "./pages/MarketDetailPage";
-import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReleasesPage } from "./pages/ReleasesPage";
-import SetDetailPage from "./pages/SetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { seedMockData } from "./store/seedMockData";
 
 type View =
   | { type: "tab"; tab: Tab }
-  | { type: "set-detail"; slug: string }
-  | { type: "market-detail"; id: string }
-  | { type: "card-detail"; id: string }
   | { type: "upload" }
   | { type: "capture-moment" }
   | { type: "profile" };
@@ -62,16 +55,10 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, []);
 
-  const activeTab: Tab = view.type === "tab" ? view.tab : "market";
+  const activeTab: Tab = view.type === "tab" ? view.tab : "library";
 
   function handleTabChange(tab: Tab) {
     setView({ type: "tab", tab });
-  }
-  function handleSetClick(slug: string) {
-    setView({ type: "set-detail", slug });
-  }
-  function handleMarketItemClick(id: string) {
-    setView({ type: "market-detail", id });
   }
   function handleCaptureMoment() {
     startDraft();
@@ -179,53 +166,9 @@ function AppContent() {
           />
         )}
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
-        {view.type === "tab" && view.tab === "market" && (
-          <ErrorBoundary
-            fallback={
-              <div style={{ padding: "32px 16px", textAlign: "center" }}>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#111",
-                    marginBottom: "4px",
-                  }}
-                >
-                  Unable to load Discover items
-                </p>
-                <p style={{ fontSize: "12px", color: "#6b7280" }}>
-                  Please refresh and try again.
-                </p>
-              </div>
-            }
-          >
-            <MarketPage
-              onAlbumClick={handleMarketItemClick}
-              onSetClick={handleSetClick}
-            />
-          </ErrorBoundary>
-        )}
         {view.type === "tab" && view.tab === "collection" && (
           <CollectionPage
             onGoToLibrary={() => setView({ type: "tab", tab: "library" })}
-          />
-        )}
-        {view.type === "set-detail" && (
-          <SetDetailPage
-            slug={view.slug}
-            onBack={() => setView({ type: "tab", tab: "market" })}
-          />
-        )}
-        {view.type === "card-detail" && (
-          <CardDetailPage
-            id={view.id}
-            onBack={() => setView({ type: "tab", tab: "market" })}
-          />
-        )}
-        {view.type === "market-detail" && (
-          <MarketDetailPage
-            id={view.id}
-            onBack={() => setView({ type: "tab", tab: "market" })}
           />
         )}
         {view.type === "upload" && (
