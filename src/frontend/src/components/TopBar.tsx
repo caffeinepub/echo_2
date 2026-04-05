@@ -999,15 +999,12 @@ interface TopBarProps {
 
 export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
-  const { activeCycle, activeCycleId } = useCycleTheme();
+  const { activeCycle, activeCycleId: _activeCycleId } = useCycleTheme();
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
 
-  // Use blue logo for cycle 3 (Blue), original logo for all others
-  const MINTY_LOGO =
-    activeCycleId === 3
-      ? "/assets/generated/minty-logo-blue-transparent.dim_600x200.png"
-      : "/assets/minty-logo.png";
+  // Always use the original mint logo — CSS filter in logoFilter handles color per cycle
+  const MINTY_LOGO = "/assets/minty-logo.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {

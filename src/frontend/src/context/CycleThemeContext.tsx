@@ -71,7 +71,10 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
       "/assets/generated/pack-wrapper-cycle3-blue-v2-transparent.dim_400x560.png",
     glowDark: "rgba(75,130,220,",
     glowLight: "rgba(75,130,220,",
-    logoFilter: "none",
+    // Mint logo hue is ~160deg. Blue target ~220-230deg.
+    // Shift +75deg, slight desaturation to keep it pastel, slight brightness
+    // lift to match the soft glossy feel of the other colorways.
+    logoFilter: "hue-rotate(75deg) saturate(0.85) brightness(1.05)",
   },
   4: {
     id: 4,
