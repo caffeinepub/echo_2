@@ -2,6 +2,7 @@ import {
   Check,
   ChevronRight,
   Flame,
+  Gavel,
   Package2,
   ShoppingBag,
   Sparkles,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
+import { type AuctionListing, useAuctions } from "../context/AuctionContext";
 import { useCollection } from "../context/CollectionContext";
 import type { SealedPack } from "../context/CollectionContext";
 import { usePackStyle } from "../context/PackStyleContext";
@@ -159,6 +161,11 @@ function TickerBar({
         @keyframes packProgressIn {
           from { width: 0%; }
           to { width: var(--progress-target); }
+        }
+        @keyframes priceDeltaFade {
+          0%   { opacity: 1; transform: translateY(0px); }
+          60%  { opacity: 0.9; transform: translateY(-4px); }
+          100% { opacity: 0; transform: translateY(-8px); }
         }
       `}</style>
       <div
@@ -440,10 +447,48 @@ function ReleaseCard({
   const currentPrice = calcPackPrice(packsSold, release.packCount);
   const nextPackPrice = calcPackPrice(packsSold + 1, release.packCount);
   const percentSold = Math.round((packsSold / release.packCount) * 100);
-  const recentActivity =
-    packsSold > 0
-      ? Math.min(packsSold, Math.max(1, Math.round(packsSold * 0.08)))
-      : 0;
+
+  const [liveNow, setLiveNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setLiveNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isEarlyMint = packsSold / release.packCount < 0.2;
+  const isAlmostGone = release.packsAvailable / release.packCount < 0.1;
+  const isTrending =
+    !!release.lastPurchaseAt &&
+    (liveNow - release.lastPurchaseAt < 5 * 60 * 1000 ||
+      (packsSold > release.packCount * 0.3 &&
+        liveNow - release.lastPurchaseAt < 30 * 60 * 1000));
+
+  const prevPriceRef = useRef<number>(currentPrice);
+  const [priceFlash, setPriceFlash] = useState<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevPriceRef.current;
+    if (currentPrice > prev) {
+      const delta = currentPrice - prev;
+      setPriceFlash(delta);
+      const t = setTimeout(() => setPriceFlash(null), 2500);
+      prevPriceRef.current = currentPrice;
+      return () => clearTimeout(t);
+    }
+    prevPriceRef.current = currentPrice;
+  }, [currentPrice]);
+
+  function lastMintAgo(
+    ts: number | undefined,
+    now: number = Date.now(),
+  ): string | null {
+    if (!ts) return null;
+    const secs = Math.floor((now - ts) / 1000);
+    if (secs < 60) return `${secs}s ago`;
+    const mins = Math.floor(secs / 60);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    return `${hrs}h ago`;
+  }
 
   return (
     <>
@@ -663,91 +708,166 @@ function ReleaseCard({
             </p>
           )}
 
-          {/* Row 4 — packs + price */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 8,
-              flexWrap: "wrap",
-            }}
-          >
-            <span
+          {/* Trending signal */}
+          {isTrending && !isBurned && (
+            <div
               style={{
-                display: "inline-flex",
+                marginBottom: 6,
+                display: "flex",
                 alignItems: "center",
                 gap: 4,
-                fontSize: 12,
-                color: "#374151",
-                fontWeight: 500,
               }}
             >
-              <Package2 size={12} color="#9ca3af" />
-              {release.packsAvailable} pack
-              {release.packsAvailable !== 1 ? "s" : ""} available
-            </span>
-            <span style={{ fontSize: 11, color: "#d1d5db" }}>·</span>
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#111",
-                transition: "color 0.4s ease",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              ${currentPrice.toFixed(2)}
               <span
                 style={{
-                  fontSize: 10,
-                  color: "#9ca3af",
-                  fontWeight: 400,
-                  marginLeft: 2,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#d97706",
+                  letterSpacing: "0.01em",
                 }}
               >
-                / pack
+                🔥 trending
               </span>
-            </span>
-            <span
+            </div>
+          )}
+
+          {/* Row 4 — Price (most prominent) */}
+          <div style={{ marginBottom: 8 }}>
+            {/* Main price line */}
+            <div
               style={{
-                fontSize: 11,
-                color: "#9ca3af",
-                fontWeight: 400,
-                marginLeft: 6,
+                display: "flex",
+                alignItems: "baseline",
+                gap: 6,
+                position: "relative",
               }}
             >
-              Next: ${nextPackPrice.toFixed(2)}
-            </span>
+              <span
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: "#111",
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-0.5px",
+                  lineHeight: 1,
+                  transition: "color 0.3s ease",
+                }}
+              >
+                ${currentPrice.toFixed(2)}
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                  marginBottom: 1,
+                }}
+              >
+                per pack
+              </span>
+              {/* Early price label */}
+              {isEarlyMint && !isBurned && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: accentSolid,
+                    background: "rgba(0,0,0,0.06)",
+                    borderRadius: 6,
+                    padding: "2px 7px",
+                    marginLeft: 2,
+                    letterSpacing: "0.02em",
+                    alignSelf: "center",
+                  }}
+                >
+                  Early price
+                </span>
+              )}
+              {/* Price delta flash */}
+              {priceFlash !== null && (
+                <span
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: -2,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: accentSolid,
+                    fontVariantNumeric: "tabular-nums",
+                    animation: "priceDeltaFade 2.5s ease forwards",
+                    pointerEvents: "none",
+                  }}
+                >
+                  +{priceFlash.toFixed(2)}
+                </span>
+              )}
+            </div>
+            {/* Sub-line: remaining • next price */}
+            <div
+              style={{
+                marginTop: 3,
+                display: "flex",
+                alignItems: "center",
+                gap: 0,
+              }}
+            >
+              {isAlmostGone ? (
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "#d97706",
+                    fontWeight: 700,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  Almost gone · {release.packsAvailable} left
+                </span>
+              ) : (
+                <span
+                  style={{
+                    fontSize: 12,
+                    color:
+                      release.packsAvailable < 50
+                        ? accentSolid
+                        : release.packsAvailable < 100
+                          ? "#6b7280"
+                          : "#9ca3af",
+                    fontWeight: release.packsAvailable < 50 ? 600 : 400,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {release.packsAvailable} remaining
+                </span>
+              )}
+              <span style={{ fontSize: 12, color: "#d1d5db", margin: "0 5px" }}>
+                •
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                next ${nextPackPrice.toFixed(2)}
+              </span>
+            </div>
           </div>
 
           {/* Row 4b — market signals */}
           <div style={{ marginBottom: 8 }}>
-            {/* Supply + percent sold row */}
+            {/* Percent collected row */}
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                justifyContent: "flex-end",
                 marginBottom: 5,
               }}
             >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color:
-                    release.packsAvailable < 50
-                      ? accentSolid
-                      : release.packsAvailable < 100
-                        ? "#6b7280"
-                        : "#9ca3af",
-                }}
-              >
-                {release.packsAvailable} packs left
-              </span>
               <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}>
-                {percentSold}% sold
+                {percentSold}% collected
               </span>
             </div>
             {/* Thin progress bar */}
@@ -765,8 +885,8 @@ function ReleaseCard({
                   {
                     height: "100%",
                     width: `${percentSold}%`,
-                    background: accentSolid,
-                    opacity: 0.55,
+                    background: isAlmostGone ? "#d97706" : accentSolid,
+                    opacity: isAlmostGone ? 0.75 : 0.55,
                     borderRadius: 99,
                     transition: "width 0.8s ease",
                     animation: "packProgressIn 1s ease forwards",
@@ -775,8 +895,8 @@ function ReleaseCard({
                 }
               />
             </div>
-            {/* Recent activity */}
-            {packsSold > 0 && (
+            {/* Last mint activity */}
+            {release.lastPurchaseAt && (
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div
                   style={{
@@ -792,8 +912,7 @@ function ReleaseCard({
                 <span
                   style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400 }}
                 >
-                  {recentActivity} pack{recentActivity !== 1 ? "s" : ""} sold
-                  recently
+                  last mint {lastMintAgo(release.lastPurchaseAt, liveNow)}
                 </span>
               </div>
             )}
@@ -1887,6 +2006,778 @@ function TrendingHashtagsSection({
   );
 }
 
+// ─── Auction Countdown helper ────────────────────────────────────────────────
+
+function useAuctionCountdown(endsAt: number) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const msLeft = endsAt - now;
+  if (msLeft <= 0) return "Auction ended";
+  const totalSec = Math.floor(msLeft / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s left`;
+  if (m > 0) return `${m}m ${s}s left`;
+  return `${s}s left`;
+}
+
+// ─── Slide To Confirm (auction) ───────────────────────────────────────────────
+
+function SlideToConfirm({
+  onConfirm,
+  disabled,
+  accentRgb,
+  accentSolid,
+  accentGradient,
+  accentBorder,
+  accentText,
+}: {
+  onConfirm: () => void;
+  disabled: boolean;
+  accentRgb: string;
+  accentSolid: string;
+  accentGradient: string;
+  accentBorder: string;
+  accentText: string;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [knobX, setKnobX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const dragStart = useRef<{ pointerX: number; startKnob: number } | null>(
+    null,
+  );
+
+  const TRACK_HEIGHT = 56;
+  const KNOB_SIZE = 44;
+  const KNOB_PADDING = 6;
+
+  const getMaxX = useCallback(() => {
+    if (!trackRef.current) return 200;
+    return trackRef.current.offsetWidth - KNOB_SIZE - KNOB_PADDING * 2;
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (disabled || isComplete) return;
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      setIsDragging(true);
+      dragStart.current = { pointerX: e.clientX, startKnob: knobX };
+    },
+    [disabled, isComplete, knobX],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging || !dragStart.current) return;
+      const delta = e.clientX - dragStart.current.pointerX;
+      const newX = Math.max(
+        0,
+        Math.min(dragStart.current.startKnob + delta, getMaxX()),
+      );
+      setKnobX(newX);
+      const maxX = getMaxX();
+      if (newX >= maxX * 0.85) {
+        setKnobX(maxX);
+        setIsComplete(true);
+        setIsDragging(false);
+        dragStart.current = null;
+        setTimeout(onConfirm, 300);
+      }
+    },
+    [isDragging, getMaxX, onConfirm],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    dragStart.current = null;
+    if (!isComplete) setKnobX(0);
+  }, [isDragging, isComplete]);
+
+  const maxX = typeof window !== "undefined" ? getMaxX() : 200;
+  const progress = maxX > 0 ? knobX / maxX : 0;
+  const labelOpacity = Math.max(0, 1 - progress * 2.5);
+
+  return (
+    <div
+      ref={trackRef}
+      style={{
+        position: "relative",
+        height: TRACK_HEIGHT,
+        borderRadius: TRACK_HEIGHT / 2,
+        background: disabled
+          ? "#f3f4f6"
+          : `linear-gradient(135deg, rgba(${accentRgb},0.15) 0%, rgba(${accentRgb},0.22) 100%)`,
+        border: disabled
+          ? "1.5px solid #e5e7eb"
+          : `1.5px solid ${accentBorder}`,
+        overflow: "hidden",
+        userSelect: "none",
+        cursor: disabled ? "not-allowed" : "default",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          height: "100%",
+          width: `${KNOB_PADDING + KNOB_SIZE / 2 + knobX}px`,
+          background: accentGradient,
+          borderRadius: TRACK_HEIGHT / 2,
+          opacity: isComplete ? 1 : 0.6,
+          transition: isDragging
+            ? "none"
+            : "width 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
+          opacity: labelOpacity,
+          transition: "opacity 0.1s",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: disabled ? "#9ca3af" : accentText,
+            letterSpacing: "0.01em",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          {!isComplete && (
+            <ChevronRight size={14} color={disabled ? "#9ca3af" : accentText} />
+          )}
+          {disabled ? "Unavailable" : "Slide to confirm"}
+        </span>
+      </div>
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        style={{
+          position: "absolute",
+          top: KNOB_PADDING,
+          left: KNOB_PADDING + knobX,
+          width: KNOB_SIZE,
+          height: KNOB_SIZE,
+          borderRadius: "50%",
+          background: isComplete ? accentSolid : disabled ? "#d1d5db" : "#fff",
+          boxShadow: disabled
+            ? "none"
+            : isComplete
+              ? `0 0 0 3px rgba(${accentRgb},0.30), 0 4px 16px rgba(${accentRgb},0.45)`
+              : "0 2px 10px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: disabled ? "not-allowed" : isDragging ? "grabbing" : "grab",
+          transition: isDragging
+            ? "none"
+            : "left 0.35s cubic-bezier(0.34,1.56,0.64,1), background 0.2s, box-shadow 0.2s",
+          touchAction: "none",
+          zIndex: 2,
+        }}
+      >
+        {isComplete ? (
+          <Check size={20} color="#fff" strokeWidth={2.5} />
+        ) : (
+          <ChevronRight
+            size={20}
+            color={disabled ? "#9ca3af" : accentSolid}
+            strokeWidth={2.5}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Place Bid Modal ──────────────────────────────────────────────────────────
+
+function PlaceBidModal({
+  listing,
+  onClose,
+  accentRgb,
+  accentSolid,
+  accentBg,
+  accentBorder,
+  accentText,
+  accentGradient,
+}: {
+  listing: AuctionListing;
+  onClose: () => void;
+  accentRgb: string;
+  accentSolid: string;
+  accentBg: string;
+  accentBorder: string;
+  accentText: string;
+  accentGradient: string;
+}) {
+  const { placeBid } = useAuctions();
+  const minBid = listing.highestBid > 0 ? listing.highestBid + 1 : 1;
+  const [bidAmount, setBidAmount] = useState(String(minBid));
+  const [bidState, setBidState] = useState<"idle" | "success">("idle");
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  const amountVal = Number.parseFloat(bidAmount);
+  const isValidBid = !Number.isNaN(amountVal) && amountVal >= minBid;
+
+  function handleConfirm() {
+    if (!isValidBid) return;
+    placeBid(listing.id, amountVal);
+    setBidState("success");
+    setTimeout(() => onClose(), 2000);
+  }
+
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
+        onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter") onClose();
+        }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 450,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      />
+      <div
+        data-ocid="releases.bid_modal"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 451,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 16,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          style={{
+            background: "#FCFCFC",
+            borderRadius: 24,
+            width: "100%",
+            maxWidth: 400,
+            maxHeight: "88dvh",
+            overflowY: "auto",
+            boxShadow: `0 0 0 1px ${accentBorder}, 0 24px 60px rgba(0,0,0,0.22)`,
+            animation: "modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            pointerEvents: "auto",
+            position: "relative",
+          }}
+        >
+          <button
+            type="button"
+            data-ocid="releases.close_button"
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 14,
+              right: 14,
+              background: "rgba(255,255,255,0.92)",
+              border: "none",
+              borderRadius: "50%",
+              width: 32,
+              height: 32,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              zIndex: 10,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.14)",
+            }}
+          >
+            <X size={16} color="#374151" />
+          </button>
+
+          {/* NFT image header */}
+          <div
+            style={{
+              position: "relative",
+              aspectRatio: "4/5",
+              overflow: "hidden",
+              background: "#000",
+              borderRadius: "24px 24px 0 0",
+            }}
+          >
+            <img
+              src={listing.nftImageUrl}
+              alt={listing.nftTitle}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.62) 100%)",
+                pointerEvents: "none",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                padding: "18px 18px 16px",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.70)",
+                  margin: "0 0 4px",
+                  fontWeight: 500,
+                }}
+              >
+                {listing.nftSetName}
+              </p>
+              <h2
+                style={{
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: "#fff",
+                  margin: 0,
+                  lineHeight: 1.2,
+                }}
+              >
+                {listing.nftTitle}
+              </h2>
+            </div>
+          </div>
+
+          <div style={{ padding: "20px 20px 28px" }}>
+            {bidState === "success" ? (
+              <div
+                data-ocid="releases.success_state"
+                style={{
+                  textAlign: "center",
+                  padding: "24px 0",
+                  animation: "fadeInUp 0.35s ease",
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "50%",
+                    background: accentGradient,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 16px",
+                    boxShadow: `0 0 0 6px rgba(${accentRgb},0.22)`,
+                  }}
+                >
+                  <Check size={28} color="#fff" strokeWidth={2.5} />
+                </div>
+                <p
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 700,
+                    color: "#111",
+                    margin: "0 0 6px",
+                  }}
+                >
+                  Bid placed!
+                </p>
+                <p style={{ fontSize: 13, color: "#6b7280" }}>
+                  ${amountVal.toFixed(2)} bid on {listing.nftTitle}
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#111",
+                    margin: "0 0 4px",
+                  }}
+                >
+                  Place a Bid
+                </h3>
+                <p
+                  style={{ fontSize: 12, color: "#6b7280", margin: "0 0 18px" }}
+                >
+                  {listing.highestBid > 0
+                    ? `Current highest bid: $${listing.highestBid.toFixed(2)}`
+                    : "No bids yet — be the first!"}
+                </p>
+
+                <div
+                  style={{
+                    background: accentBg,
+                    border: `1px solid ${accentBorder}`,
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    marginBottom: 16,
+                    fontSize: 12,
+                    color: accentText,
+                    fontWeight: 600,
+                  }}
+                >
+                  Minimum bid: ${minBid.toFixed(2)}
+                </div>
+
+                <label
+                  htmlFor="bid-amount-input"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#374151",
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  Your Bid (USD)
+                </label>
+                <div style={{ position: "relative", marginBottom: 20 }}>
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: "#374151",
+                    }}
+                  >
+                    $
+                  </span>
+                  <input
+                    id="bid-amount-input"
+                    data-ocid="releases.input"
+                    type="number"
+                    min={minBid}
+                    step="0.01"
+                    value={bidAmount}
+                    onChange={(e) => setBidAmount(e.target.value)}
+                    style={{
+                      width: "100%",
+                      height: 52,
+                      borderRadius: 12,
+                      border: `1.5px solid ${isValidBid ? accentBorder : "rgba(0,0,0,0.12)"}`,
+                      paddingLeft: 28,
+                      paddingRight: 14,
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: "#111",
+                      background: "#fff",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  />
+                </div>
+
+                <SlideToConfirm
+                  onConfirm={handleConfirm}
+                  disabled={!isValidBid}
+                  accentRgb={accentRgb}
+                  accentSolid={accentSolid}
+                  accentGradient={accentGradient}
+                  accentBorder={accentBorder}
+                  accentText={accentText}
+                />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Auction Card ─────────────────────────────────────────────────────────────
+
+function AuctionCard({
+  listing,
+  accentGradient,
+  accentGlow,
+  accentSolid,
+  accentRgb,
+  accentBg,
+  accentBorder,
+  accentText,
+}: {
+  listing: AuctionListing;
+  accentGradient: string;
+  accentGlow: string;
+  accentSolid: string;
+  accentRgb: string;
+  accentBg: string;
+  accentBorder: string;
+  accentText: string;
+}) {
+  const [showBidModal, setShowBidModal] = useState(false);
+  const countdown = useAuctionCountdown(listing.endsAt);
+  const isEnded = countdown === "Auction ended";
+
+  return (
+    <>
+      <div
+        data-ocid="releases.item.1"
+        style={{
+          background: "#fff",
+          borderRadius: 20,
+          boxShadow: "0 2px 14px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+          border: "1.5px solid rgba(0,0,0,0.05)",
+          overflow: "hidden",
+          opacity: isEnded ? 0.55 : 1,
+        }}
+      >
+        {/* Cover image */}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "4/5",
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src={listing.nftImageUrl}
+            alt={listing.nftTitle}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          {listing.mediaType === "video" && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 8,
+                right: 8,
+                background: "rgba(0,0,0,0.50)",
+                backdropFilter: "blur(4px)",
+                borderRadius: 20,
+                padding: "3px 8px",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "rgba(255,255,255,0.85)",
+                  fontWeight: 600,
+                }}
+              >
+                ▷ Video
+              </span>
+            </div>
+          )}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.28) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "14px 16px 16px" }}>
+          {/* Row 1: creator + rarity */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 5,
+            }}
+          >
+            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>
+              @{listing.creatorName}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                color: listing.nftRarity === "Rare" ? accentSolid : "#9ca3af",
+                background:
+                  listing.nftRarity === "Rare" ? accentBg : "rgba(0,0,0,0.05)",
+                border:
+                  listing.nftRarity === "Rare"
+                    ? `1px solid ${accentBorder}`
+                    : "1px solid rgba(0,0,0,0.06)",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+              }}
+            >
+              {listing.nftRarity === "Rare" ? "RARE" : "COMMON"}
+            </span>
+          </div>
+
+          {/* Row 2: title */}
+          <p
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: "#111",
+              margin: "0 0 10px",
+              lineHeight: 1.25,
+            }}
+          >
+            {listing.nftTitle}
+          </p>
+
+          {/* Row 3: highest bid */}
+          <div style={{ marginBottom: 6 }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: "#9ca3af",
+                fontWeight: 500,
+                marginBottom: 2,
+              }}
+            >
+              Highest bid
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: listing.highestBid > 0 ? "#111" : "#9ca3af",
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-0.5px",
+                  lineHeight: 1,
+                }}
+              >
+                {listing.highestBid > 0
+                  ? `$${listing.highestBid.toFixed(2)}`
+                  : "No bids yet"}
+              </span>
+            </div>
+          </div>
+
+          {/* Row 4: bids count + time */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 14,
+            }}
+          >
+            <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 500 }}>
+              {listing.bids.length} bid{listing.bids.length !== 1 ? "s" : ""}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Timer size={12} color={isEnded ? "#9ca3af" : accentSolid} />
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: isEnded ? "#9ca3af" : accentText,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {countdown}
+              </span>
+            </div>
+          </div>
+
+          {/* Row 5: Place Bid button */}
+          <button
+            type="button"
+            data-ocid="releases.primary_button"
+            disabled={isEnded}
+            onClick={() => setShowBidModal(true)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: 12,
+              background: isEnded ? "#f3f4f6" : accentGradient,
+              color: isEnded ? "#9ca3af" : "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              border: "none",
+              cursor: isEnded ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              boxShadow: !isEnded ? `0 4px 14px ${accentGlow}` : "none",
+              transition: "opacity 0.15s",
+            }}
+          >
+            <Gavel size={14} />
+            {isEnded ? "Auction Ended" : "Place Bid"}
+          </button>
+        </div>
+      </div>
+
+      {showBidModal && (
+        <PlaceBidModal
+          listing={listing}
+          onClose={() => setShowBidModal(false)}
+          accentRgb={accentRgb}
+          accentSolid={accentSolid}
+          accentBg={accentBg}
+          accentBorder={accentBorder}
+          accentText={accentText}
+          accentGradient={accentGradient}
+        />
+      )}
+    </>
+  );
+}
+
 // ─── Filter pills ─────────────────────────────────────────────────────────────
 
 type FilterMode = "live" | "ending" | "new";
@@ -1908,7 +2799,9 @@ export function ReleasesPage() {
     null,
   );
   const [filterMode, setFilterMode] = useState<FilterMode>("live");
+  const [viewMode, setViewMode] = useState<"packs" | "market">("packs");
   const trendingHashtags = getTrendingHashtags("ALL_TIME");
+  const { listings: auctionListings } = useAuctions();
 
   const isLight = theme === "light";
   const isDark = !isLight;
@@ -1981,364 +2874,516 @@ export function ReleasesPage() {
         paddingBottom: 80,
       }}
     >
-      {/* Sticky header */}
+      {/* ── Packs | Market segmented toggle ────────────────────────────── */}
       <div
         style={{
           position: "sticky",
-          top: 72,
-          zIndex: 20,
-          background: isLight
-            ? "rgba(247,246,242,0.96)"
-            : "oklch(0.08 0.02 160 / 0.92)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${
-            isLight ? "rgba(0,0,0,0.06)" : "oklch(0.55 0.12 160 / 0.18)"
-          }`,
-          padding: "8px 16px 10px",
+          top: 64,
+          zIndex: 25,
+          background: bgColor,
+          paddingTop: 8,
+          paddingBottom: 0,
+          paddingLeft: 16,
+          paddingRight: 16,
         }}
       >
-        <TickerBar
-          isDark={isDark}
-          accentRgb={accentRgb}
-          accentSolid={accentSolid}
-        />
-
-        {/* Helper text row with safe viewing toggle */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            margin: "0 0 8px",
+            background: "rgba(0,0,0,0.05)",
+            borderRadius: 12,
+            padding: 3,
+            gap: 2,
           }}
         >
-          <p
-            style={{
-              fontSize: 11,
-              color: "#9ca3af",
-              margin: 0,
-            }}
-          >
-            Unsold released packs burn after 24 hours.
-          </p>
-          {/* Safe Viewing Toggle */}
-          <button
-            type="button"
-            onClick={() => setExplicitModeOn(!explicitModeOn)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              background: explicitModeOn ? "rgba(245,158,11,0.10)" : accentBg,
-              border: explicitModeOn
-                ? "1.5px solid rgba(245,158,11,0.30)"
-                : `1.5px solid ${accentBorder}`,
-              borderRadius: "20px",
-              padding: "4px 10px",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                width: "26px",
-                height: "14px",
-                borderRadius: "7px",
-                background: explicitModeOn
-                  ? "rgba(245,158,11,0.75)"
-                  : `rgba(${accentRgb},0.75)`,
-                position: "relative",
-                transition: "background 0.2s",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: "2px",
-                  left: explicitModeOn ? "14px" : "2px",
-                  width: "10px",
-                  height: "10px",
-                  borderRadius: "50%",
-                  background: "#fff",
-                  transition: "left 0.2s",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
-                }}
-              />
-            </div>
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.04em",
-                color: explicitModeOn ? "#92400e" : accentText,
-              }}
-            >
-              {explicitModeOn ? "EXPLICIT ON" : "SAFE VIEW"}
-            </span>
-          </button>
-        </div>
-
-        {/* Filter pills */}
-        <div
-          style={{
-            display: "flex",
-            gap: 7,
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            paddingBottom: 2,
-          }}
-        >
-          {FILTER_LABELS.map(({ key, label }) => {
-            const isActive = filterMode === key;
+          {(["packs", "market"] as const).map((seg) => {
+            const isActive = viewMode === seg;
             return (
               <button
-                key={key}
+                key={seg}
                 type="button"
-                data-ocid="releases.tab"
-                onClick={() => setFilterMode(key)}
+                data-ocid={`releases.${seg}_tab`}
+                onClick={() => setViewMode(seg)}
                 style={{
-                  flexShrink: 0,
-                  padding: "7px 14px",
-                  borderRadius: 20,
-                  border: isActive
-                    ? `1.5px solid ${accentBorder}`
-                    : `1.5px solid ${
-                        isLight ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.08)"
-                      }`,
-                  background: isActive
-                    ? accentBg
-                    : isLight
-                      ? "rgba(255,255,255,0.7)"
-                      : "rgba(255,255,255,0.05)",
-                  color: isActive
-                    ? accentSolid
-                    : isLight
-                      ? "#374151"
-                      : "rgba(255,255,255,0.7)",
-                  fontSize: 13,
+                  flex: 1,
+                  padding: "9px 0",
+                  borderRadius: 10,
+                  border: "none",
+                  background: isActive ? accentGradient : "transparent",
+                  color: isActive ? "#fff" : "#6b7280",
+                  fontSize: 14,
                   fontWeight: isActive ? 700 : 500,
                   cursor: "pointer",
-                  transition: "all 0.15s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  boxShadow: isActive ? `0 2px 10px ${accentGlow}` : "none",
+                  transition: "all 0.18s ease",
                 }}
               >
-                {label}
-                {key === "ending" && endingSoon.length > 0 && (
-                  <span
-                    style={{
-                      marginLeft: 5,
-                      background: "#f59e0b",
-                      color: "#fff",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      borderRadius: 20,
-                      padding: "1px 5px",
-                    }}
-                  >
-                    {endingSoon.length}
-                  </span>
+                {seg === "packs" ? (
+                  <ShoppingBag size={14} />
+                ) : (
+                  <Gavel size={14} />
                 )}
+                {seg === "packs" ? "Packs" : "Market"}
               </button>
             );
           })}
         </div>
-
-        {/* Trending Hashtags */}
-        <div style={{ paddingTop: 6 }}>
-          <TrendingHashtagsSection
-            hashtags={trendingHashtags}
-            accentRgb={accentRgb}
-          />
-        </div>
       </div>
 
-      {/* Main content */}
-      <div style={{ padding: "20px 16px" }}>
-        {!hasAnyActive ? (
-          /* Empty state */
-          <div
-            data-ocid="releases.empty_state"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: "40vh",
-              gap: 14,
-              textAlign: "center",
-            }}
-          >
+      {/* ── Market view ─────────────────────────────────────────────────── */}
+      {viewMode === "market" && (
+        <div style={{ padding: "12px 16px 24px" }}>
+          {auctionListings.filter((l) => l.status === "active").length === 0 ? (
             <div
+              data-ocid="releases.empty_state"
               style={{
-                width: 60,
-                height: 60,
-                borderRadius: 20,
-                background: accentBg,
-                border: `1.5px solid ${accentBorder}`,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
+                minHeight: "40vh",
+                gap: 14,
+                textAlign: "center",
               }}
             >
-              <Sparkles size={24} color={accentSolid} />
+              <div
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 20,
+                  background: accentBg,
+                  border: `1.5px solid ${accentBorder}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Gavel size={24} color={accentSolid} />
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "#111",
+                    margin: "0 0 6px",
+                  }}
+                >
+                  No active auctions
+                </p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "#9ca3af",
+                    maxWidth: 260,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Send NFTs to auction from your Collection tab to list them
+                  here.
+                </p>
+              </div>
             </div>
-            <div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                paddingTop: 12,
+              }}
+            >
+              {auctionListings
+                .filter((l) => l.status === "active")
+                .map((listing) => (
+                  <AuctionCard
+                    key={listing.id}
+                    listing={listing}
+                    accentGradient={accentGradient}
+                    accentGlow={accentGlow}
+                    accentSolid={accentSolid}
+                    accentRgb={accentRgb}
+                    accentBg={accentBg}
+                    accentBorder={accentBorder}
+                    accentText={accentText}
+                  />
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Packs view (existing content) ───────────────────────────────── */}
+      {viewMode === "packs" && (
+        <>
+          {/* Sticky header */}
+          <div
+            style={{
+              position: "sticky",
+              top: 72,
+              zIndex: 20,
+              background: isLight
+                ? "rgba(247,246,242,0.96)"
+                : "oklch(0.08 0.02 160 / 0.92)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              borderBottom: `1px solid ${
+                isLight ? "rgba(0,0,0,0.06)" : "oklch(0.55 0.12 160 / 0.18)"
+              }`,
+              padding: "8px 16px 10px",
+            }}
+          >
+            <TickerBar
+              isDark={isDark}
+              accentRgb={accentRgb}
+              accentSolid={accentSolid}
+            />
+
+            {/* Helper text row with safe viewing toggle */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                margin: "0 0 8px",
+              }}
+            >
               <p
                 style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: isLight ? "#111" : "#e8f5f0",
-                  margin: "0 0 6px",
-                }}
-              >
-                No active releases right now
-              </p>
-              <p
-                style={{
-                  fontSize: 13,
+                  fontSize: 11,
                   color: "#9ca3af",
-                  maxWidth: 260,
-                  lineHeight: 1.5,
+                  margin: 0,
                 }}
               >
-                Release your sealed packs from the Collection tab to list them
-                here.
+                Unsold released packs burn after 24 hours.
               </p>
+              {/* Safe Viewing Toggle */}
+              <button
+                type="button"
+                onClick={() => setExplicitModeOn(!explicitModeOn)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: explicitModeOn
+                    ? "rgba(245,158,11,0.10)"
+                    : accentBg,
+                  border: explicitModeOn
+                    ? "1.5px solid rgba(245,158,11,0.30)"
+                    : `1.5px solid ${accentBorder}`,
+                  borderRadius: "20px",
+                  padding: "4px 10px",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    width: "26px",
+                    height: "14px",
+                    borderRadius: "7px",
+                    background: explicitModeOn
+                      ? "rgba(245,158,11,0.75)"
+                      : `rgba(${accentRgb},0.75)`,
+                    position: "relative",
+                    transition: "background 0.2s",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "2px",
+                      left: explicitModeOn ? "14px" : "2px",
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      background: "#fff",
+                      transition: "left 0.2s",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                    }}
+                  />
+                </div>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    color: explicitModeOn ? "#92400e" : accentText,
+                  }}
+                >
+                  {explicitModeOn ? "EXPLICIT ON" : "SAFE VIEW"}
+                </span>
+              </button>
+            </div>
+
+            {/* Filter pills */}
+            <div
+              style={{
+                display: "flex",
+                gap: 7,
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                paddingBottom: 2,
+              }}
+            >
+              {FILTER_LABELS.map(({ key, label }) => {
+                const isActive = filterMode === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    data-ocid="releases.tab"
+                    onClick={() => setFilterMode(key)}
+                    style={{
+                      flexShrink: 0,
+                      padding: "7px 14px",
+                      borderRadius: 20,
+                      border: isActive
+                        ? `1.5px solid ${accentBorder}`
+                        : `1.5px solid ${
+                            isLight
+                              ? "rgba(0,0,0,0.09)"
+                              : "rgba(255,255,255,0.08)"
+                          }`,
+                      background: isActive
+                        ? accentBg
+                        : isLight
+                          ? "rgba(255,255,255,0.7)"
+                          : "rgba(255,255,255,0.05)",
+                      color: isActive
+                        ? accentSolid
+                        : isLight
+                          ? "#374151"
+                          : "rgba(255,255,255,0.7)",
+                      fontSize: 13,
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {label}
+                    {key === "ending" && endingSoon.length > 0 && (
+                      <span
+                        style={{
+                          marginLeft: 5,
+                          background: "#f59e0b",
+                          color: "#fff",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          borderRadius: 20,
+                          padding: "1px 5px",
+                        }}
+                      >
+                        {endingSoon.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Trending Hashtags */}
+            <div style={{ paddingTop: 6 }}>
+              <TrendingHashtagsSection
+                hashtags={trendingHashtags}
+                accentRgb={accentRgb}
+              />
             </div>
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            {/* Ending soon section */}
-            {filterMode === "live" && endingSoon.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionHeader
-                  icon={<Flame size={14} color="#f59e0b" />}
-                  label="Ending Soon"
-                  count={endingSoon.length}
-                />
+
+          {/* Main content */}
+          <div style={{ padding: "20px 16px" }}>
+            {!hasAnyActive ? (
+              /* Empty state */
+              <div
+                data-ocid="releases.empty_state"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "40vh",
+                  gap: 14,
+                  textAlign: "center",
+                }}
+              >
                 <div
                   style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 20,
+                    background: accentBg,
+                    border: `1.5px solid ${accentBorder}`,
                     display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  {endingSoon.map((r) => (
-                    <ReleaseCard
-                      key={r.id}
-                      release={r}
-                      now={now}
-                      onTap={setSelectedRelease}
-                      accentGradient={accentGradient}
-                      accentGlow={accentGlow}
-                      accentSolid={accentSolid}
-                    />
-                  ))}
+                  <Sparkles size={24} color={accentSolid} />
                 </div>
-              </div>
-            )}
-
-            {/* Newly released section */}
-            {filterMode === "live" && newlyReleased.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionHeader
-                  icon={<Sparkles size={14} color={accentSolid} />}
-                  label="Newly Released"
-                  count={newlyReleased.length}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
-                  }}
-                >
-                  {newlyReleased.map((r) => (
-                    <ReleaseCard
-                      key={r.id}
-                      release={r}
-                      now={now}
-                      onTap={setSelectedRelease}
-                      accentGradient={accentGradient}
-                      accentGlow={accentGlow}
-                      accentSolid={accentSolid}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Live releases section or filtered view */}
-            {filterMode === "live" && liveReleases.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <SectionHeader
-                  icon={<TrendingUp size={14} color="#6b7280" />}
-                  label="Live Releases"
-                  count={liveReleases.length}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
-                  }}
-                >
-                  {liveReleases.map((r) => (
-                    <ReleaseCard
-                      key={r.id}
-                      release={r}
-                      now={now}
-                      onTap={setSelectedRelease}
-                      accentGradient={accentGradient}
-                      accentGlow={accentGlow}
-                      accentSolid={accentSolid}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Filtered views (Ending Soon or Newly Released tab) */}
-            {filterMode !== "live" && (
-              <div style={{ marginBottom: 24 }}>
-                {filteredReleases.length === 0 ? (
-                  <div
-                    data-ocid="releases.empty_state"
+                <div>
+                  <p
                     style={{
-                      textAlign: "center",
-                      padding: "40px 16px",
-                      color: "#9ca3af",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: isLight ? "#111" : "#e8f5f0",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    No active releases right now
+                  </p>
+                  <p
+                    style={{
                       fontSize: 13,
+                      color: "#9ca3af",
+                      maxWidth: 260,
+                      lineHeight: 1.5,
                     }}
                   >
-                    No releases in this category right now.
+                    Release your sealed packs from the Collection tab to list
+                    them here.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {/* Ending soon section */}
+                {filterMode === "live" && endingSoon.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <SectionHeader
+                      icon={<Flame size={14} color="#f59e0b" />}
+                      label="Ending Soon"
+                      count={endingSoon.length}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                      }}
+                    >
+                      {endingSoon.map((r) => (
+                        <ReleaseCard
+                          key={r.id}
+                          release={r}
+                          now={now}
+                          onTap={setSelectedRelease}
+                          accentGradient={accentGradient}
+                          accentGlow={accentGlow}
+                          accentSolid={accentSolid}
+                        />
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 14,
-                    }}
-                  >
-                    {filteredReleases.map((r) => (
-                      <ReleaseCard
-                        key={r.id}
-                        release={r}
-                        now={now}
-                        onTap={setSelectedRelease}
-                        accentGradient={accentGradient}
-                        accentGlow={accentGlow}
-                        accentSolid={accentSolid}
-                      />
-                    ))}
+                )}
+
+                {/* Newly released section */}
+                {filterMode === "live" && newlyReleased.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <SectionHeader
+                      icon={<Sparkles size={14} color={accentSolid} />}
+                      label="Newly Released"
+                      count={newlyReleased.length}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                      }}
+                    >
+                      {newlyReleased.map((r) => (
+                        <ReleaseCard
+                          key={r.id}
+                          release={r}
+                          now={now}
+                          onTap={setSelectedRelease}
+                          accentGradient={accentGradient}
+                          accentGlow={accentGlow}
+                          accentSolid={accentSolid}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Live releases section or filtered view */}
+                {filterMode === "live" && liveReleases.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <SectionHeader
+                      icon={<TrendingUp size={14} color="#6b7280" />}
+                      label="Live Releases"
+                      count={liveReleases.length}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                      }}
+                    >
+                      {liveReleases.map((r) => (
+                        <ReleaseCard
+                          key={r.id}
+                          release={r}
+                          now={now}
+                          onTap={setSelectedRelease}
+                          accentGradient={accentGradient}
+                          accentGlow={accentGlow}
+                          accentSolid={accentSolid}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Filtered views (Ending Soon or Newly Released tab) */}
+                {filterMode !== "live" && (
+                  <div style={{ marginBottom: 24 }}>
+                    {filteredReleases.length === 0 ? (
+                      <div
+                        data-ocid="releases.empty_state"
+                        style={{
+                          textAlign: "center",
+                          padding: "40px 16px",
+                          color: "#9ca3af",
+                          fontSize: 13,
+                        }}
+                      >
+                        No releases in this category right now.
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 14,
+                        }}
+                      >
+                        {filteredReleases.map((r) => (
+                          <ReleaseCard
+                            key={r.id}
+                            release={r}
+                            now={now}
+                            onTap={setSelectedRelease}
+                            accentGradient={accentGradient}
+                            accentGlow={accentGlow}
+                            accentSolid={accentSolid}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Buy Packs Modal */}
       {selectedRelease && (

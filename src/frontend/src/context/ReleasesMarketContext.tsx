@@ -42,6 +42,7 @@ export interface MarketRelease {
   status: "active" | "burned" | "sold_out";
   collectibleType: "photo" | "video";
   explicit: boolean; // content labeling flag
+  lastPurchaseAt?: number; // timestamp of last purchase
 }
 
 interface ReleasesMarketCtx {
@@ -77,6 +78,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    lastPurchaseAt: NOW - 4 * 60 * 1000,
   },
   {
     id: "release_seed_2",
@@ -96,6 +98,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    lastPurchaseAt: NOW - 22 * 60 * 1000,
   },
   {
     id: "release_seed_3",
@@ -115,6 +118,7 @@ const SEED_RELEASES: MarketRelease[] = [
     status: "active",
     collectibleType: "photo",
     explicit: false,
+    lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
   },
 ];
 
@@ -177,6 +181,7 @@ export function ReleasesMarketProvider({
           ...r,
           packsAvailable: newCount,
           status: newCount <= 0 ? "sold_out" : r.status,
+          lastPurchaseAt: Date.now(),
         };
       }),
     );
@@ -191,6 +196,7 @@ export function ReleasesMarketProvider({
           ...r,
           packsAvailable: Math.max(0, newCount),
           status: newCount <= 0 ? "sold_out" : r.status,
+          lastPurchaseAt: Date.now(),
         };
       }),
     );

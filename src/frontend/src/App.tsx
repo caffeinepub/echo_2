@@ -6,6 +6,7 @@ import { SetPackPriceModal } from "./components/SetPackPriceModal";
 import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
+import { AuctionProvider } from "./context/AuctionContext";
 import { CollectionProvider } from "./context/CollectionContext";
 import {
   MomentDraftProvider,
@@ -262,7 +263,9 @@ export default function App() {
                 <MomentDraftProvider>
                   <CollectionProvider>
                     <ReleasesMarketProvider>
-                      <AppContent />
+                      <AuctionProvider>
+                        <AppContent />
+                      </AuctionProvider>
                     </ReleasesMarketProvider>
                   </CollectionProvider>
                 </MomentDraftProvider>
