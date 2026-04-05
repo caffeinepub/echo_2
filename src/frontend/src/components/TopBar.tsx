@@ -3,14 +3,12 @@ import {
   Copy,
   Info,
   Send,
-  Settings2,
   ShieldCheck,
   UserCircle,
   Wallet,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { isAdminPrincipal } from "../config/admin";
 import {
   CYCLE_THEMES,
   type CycleId,
@@ -1082,11 +1080,10 @@ function SignInModal({
 
 // ─── TopBar ────────────────────────────────────────────────────────────────────
 interface TopBarProps {
-  onAdminClick?: () => void;
   onProfileClick?: () => void;
 }
 
-export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
+export function TopBar({ onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { activeCycle, activeCycleId } = useCycleTheme();
   const [signInOpen, setSignInOpen] = useState(false);
@@ -1109,7 +1106,6 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
   }, [activeCycle, activeCycleId]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
-  const isAdmin = isAdminPrincipal(identity?.getPrincipal().toText());
 
   const uploadBg = isGoldCycle
     ? "#FFFFFF"
@@ -1211,41 +1207,6 @@ export function TopBar({ onAdminClick, onProfileClick }: TopBarProps) {
         </div>
 
         <div className="flex items-center self-center gap-2">
-          {/* Admin Manage button */}
-          {isAdmin && onAdminClick && (
-            <button
-              type="button"
-              onClick={onAdminClick}
-              data-ocid="topbar.admin.button"
-              aria-label="Manage Catalog"
-              title="Manage Catalog"
-              className="flex items-center gap-1.5 transition-all duration-150"
-              style={{
-                padding: "5px 12px",
-                fontSize: "12px",
-                fontWeight: 500,
-                letterSpacing: "0.01em",
-                color: uploadColor,
-                background: uploadBg,
-                border: uploadBorder,
-                borderRadius: "20px",
-                boxShadow: uploadShadow,
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  uploadBgHover;
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  uploadBg;
-              }}
-            >
-              <Settings2 size={13} />
-              Manage
-            </button>
-          )}
-
           {/* Profile button */}
           {onProfileClick && (
             <button

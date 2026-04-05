@@ -25,7 +25,6 @@ import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CardDetailPage } from "./pages/CardDetailPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
-import { ManageCatalogPage } from "./pages/ManageCatalogPage";
 import { MarketDetailPage } from "./pages/MarketDetailPage";
 import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -40,7 +39,6 @@ type View =
   | { type: "market-detail"; id: string }
   | { type: "card-detail"; id: string }
   | { type: "upload" }
-  | { type: "admin" }
   | { type: "capture-moment" }
   | { type: "profile" };
 
@@ -173,10 +171,7 @@ function AppContent() {
         />
       )}
 
-      <TopBar
-        onAdminClick={() => setView({ type: "admin" })}
-        onProfileClick={() => setView({ type: "profile" })}
-      />
+      <TopBar onProfileClick={() => setView({ type: "profile" })} />
       <main className="pt-16 pb-[68px] min-h-screen">
         {view.type === "tab" && view.tab === "library" && (
           <LibraryPage
@@ -237,11 +232,6 @@ function AppContent() {
         {view.type === "upload" && (
           <UploadPage
             onBack={() => setView({ type: "tab", tab: "releases" })}
-          />
-        )}
-        {view.type === "admin" && (
-          <ManageCatalogPage
-            onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}
         {view.type === "capture-moment" && (
