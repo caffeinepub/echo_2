@@ -8,7 +8,7 @@ const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
   photos: string[];
-  onBack: () => void; // go back to video capture step
+  onBack: () => void;
   onSubmit: (draft: MomentDraft) => void;
 }
 
@@ -52,7 +52,6 @@ export function FinalSetupScreen({
   }, [localHashtags, setHashtags]);
 
   function normalizeHashtag(raw: string): string {
-    // Strip leading # symbols (including multiple), trim, lowercase
     return raw.replace(/^#+/, "").trim().toLowerCase();
   }
 
@@ -75,9 +74,7 @@ export function FinalSetupScreen({
       return;
     }
     if (!activeDraft) return;
-    // completeDraft marks it done so LibraryPage resets to idle
     completeDraft();
-    // Snapshot the draft with updated fields before it's cleared
     const snapshot: MomentDraft = {
       ...activeDraft,
       title: localTitle.trim(),
@@ -168,7 +165,7 @@ export function FinalSetupScreen({
             color: "rgba(52,168,132,0.70)",
           }}
         >
-          11 / 11
+          2 / 2
         </span>
       </div>
 
@@ -446,7 +443,11 @@ export function FinalSetupScreen({
                 style={{
                   padding: "11px 16px",
                   borderRadius: "12px",
-                  border: `1.5px solid ${hashtagInput.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
+                  border: `1.5px solid ${
+                    hashtagInput.trim()
+                      ? MINT_BORDER_STRONG
+                      : "rgba(0,0,0,0.10)"
+                  }`,
                   background: hashtagInput.trim()
                     ? "rgba(52,168,132,0.10)"
                     : "rgba(0,0,0,0.04)",
@@ -631,9 +632,8 @@ export function FinalSetupScreen({
             }}
           >
             {[
-              "9 photos captured",
-              "1 video captured",
-              "100 packs will be minted",
+              "1 image captured",
+              "300 packs will be minted",
               localExplicit ? "Marked as explicit" : "Standard content",
             ].map((item) => (
               <div

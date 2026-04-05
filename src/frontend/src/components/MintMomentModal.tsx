@@ -368,8 +368,9 @@ export function MintMomentModal({
   ];
 
   const STEPS = [
-    "Capture 9 photos",
-    "Record 1 video",
+    "Capture 1 photo",
+    "Enter title & caption",
+    "Confirm mint",
     "Mint the moment into sealed packs",
   ];
 
@@ -585,8 +586,7 @@ export function MintMomentModal({
                 >
                   {[
                     { label: "300 total packs", accent: false },
-                    { label: "299 photo collectibles", accent: false },
-                    { label: "1 rare video collectible", accent: true },
+                    { label: "300 collectibles per set", accent: false },
                   ].map(({ label, accent }) => (
                     <div
                       key={label}
@@ -622,18 +622,6 @@ export function MintMomentModal({
                     </div>
                   ))}
                 </div>
-                <p
-                  style={{
-                    fontSize: "11px",
-                    color: "rgba(255,255,255,0.35)",
-                    margin: "12px 0 0",
-                    lineHeight: 1.55,
-                    fontStyle: "italic",
-                    fontFamily: "var(--font-ui)",
-                  }}
-                >
-                  The rare video appears only once across the 300 pack supply.
-                </p>
               </div>
 
               <hr style={DIVIDER} />

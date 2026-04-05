@@ -427,10 +427,8 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                "9 photos → Common collectibles",
-                "1 video → Rare collectible",
-                "Each pack contains 1 random collectible",
-                "90% photo packs · 10% video packs",
+                "1 image → 300 collectible packs",
+                "Each pack contains 1 collectible",
               ].map((item) => (
                 <div
                   key={item}

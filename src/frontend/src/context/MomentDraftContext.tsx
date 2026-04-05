@@ -9,15 +9,15 @@ import {
 const LS_KEY = "minty_active_draft";
 
 export interface CaptureMetadataItem {
-  sequenceIndex: number; // 0-8 for photos, 9 for video
+  sequenceIndex: number; // 0 for the single photo
   capturedAt: number; // Date.now() at capture time
   mediaType: "photo" | "video";
 }
 
 export interface MomentDraft {
   id: string;
-  photos: string[]; // data URLs or object URLs
-  video: string | null;
+  photos: string[]; // data URLs or object URLs — max 1
+  video: string | null; // kept for backwards-compat; always null in new flow
   completed: boolean;
   createdAt: number;
   captureMetadata: CaptureMetadataItem[];
@@ -35,7 +35,6 @@ interface MomentDraftCtx {
   startDraft: () => void;
   addPhoto: (dataUrl: string, capturedAt?: number) => void;
   removePhoto: (index: number) => void;
-  addVideo: (dataUrl: string, capturedAt?: number) => void;
   removeVideo: () => void;
   completeDraft: () => void;
   clearDraft: () => void;
@@ -59,7 +58,7 @@ function loadFromStorage(): MomentDraft | null {
     }
     // Backfill packSupply for drafts saved before this field existed
     if (!parsed.packSupply || parsed.packSupply < 10) {
-      parsed.packSupply = 100;
+      parsed.packSupply = 300;
     }
     // Backfill content labeling fields
     if (parsed.title === undefined) parsed.title = "";
@@ -110,7 +109,7 @@ export function MomentDraftProvider({
         completed: false,
         createdAt: Date.now(),
         captureMetadata: [],
-        packSupply: 100,
+        packSupply: 300,
         title: "",
         caption: "",
         explicit: false,
@@ -123,8 +122,9 @@ export function MomentDraftProvider({
   const addPhoto = useCallback((dataUrl: string, capturedAt?: number) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      if (prev.photos.length >= 9) return prev;
-      const sequenceIndex = prev.photos.length;
+      // Only allow 1 photo
+      if (prev.photos.length >= 1) return prev;
+      const sequenceIndex = 0;
       const meta: CaptureMetadataItem = {
         sequenceIndex,
         capturedAt: capturedAt ?? Date.now(),
@@ -143,39 +143,10 @@ export function MomentDraftProvider({
       if (!prev || prev.completed) return prev;
       const updatedPhotos = [...prev.photos];
       updatedPhotos.splice(index, 1);
-      // Remove matching metadata entry
       const updatedMeta = prev.captureMetadata.filter(
         (m) => !(m.mediaType === "photo" && m.sequenceIndex === index),
       );
-      // Re-index remaining photo metadata
-      let photoIdx = 0;
-      const reIndexedMeta = updatedMeta.map((m) => {
-        if (m.mediaType === "photo") {
-          return { ...m, sequenceIndex: photoIdx++ };
-        }
-        return m;
-      });
-      return { ...prev, photos: updatedPhotos, captureMetadata: reIndexedMeta };
-    });
-  }, []);
-
-  const addVideo = useCallback((dataUrl: string, capturedAt?: number) => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      const meta: CaptureMetadataItem = {
-        sequenceIndex: 9,
-        capturedAt: capturedAt ?? Date.now(),
-        mediaType: "video",
-      };
-      // Remove any existing video metadata entry first
-      const filteredMeta = prev.captureMetadata.filter(
-        (m) => m.mediaType !== "video",
-      );
-      return {
-        ...prev,
-        video: dataUrl,
-        captureMetadata: [...filteredMeta, meta],
-      };
+      return { ...prev, photos: updatedPhotos, captureMetadata: updatedMeta };
     });
   }, []);
 
@@ -246,7 +217,6 @@ export function MomentDraftProvider({
         startDraft,
         addPhoto,
         removePhoto,
-        addVideo,
         removeVideo,
         completeDraft,
         clearDraft,
