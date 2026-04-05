@@ -20,38 +20,38 @@
     --secondary-foreground: 0.12 0.025 240;
     --muted: 0.96 0.005 240;
     --muted-foreground: 0.55 0.04 240;
-    --accent: 0.58 0.18 240;
+    --accent: 0.72 0.1 228;
     --accent-foreground: 1 0 0;
     --destructive: 0.55 0.22 10;
     --destructive-foreground: 1 0 0;
     --border: 0.88 0.04 240;
     --input: 1 0 0;
-    --ring: 0.58 0.18 240;
+    --ring: 0.72 0.1 228;
     /* Brand tokens */
-    --mint: 0.58 0.18 240;
-    --cyan: 0.58 0.18 240;
+    --mint: 0.72 0.1 228;
+    --cyan: 0.72 0.1 228;
     --magenta: 0.65 0.22 10;
-    --echo-cyan: 0.58 0.18 240;
-    --chart-1: 0.58 0.18 240;
+    --echo-cyan: 0.72 0.1 228;
+    --chart-1: 0.72 0.1 228;
     --chart-2: 0.65 0.16 240;
     --chart-3: 0.769 0.188 70.08;
     --chart-4: 0.55 0.14 240;
     --chart-5: 0.5 0.12 240;
     --sidebar: 1 0 0;
     --sidebar-foreground: 0.12 0.025 240;
-    --sidebar-primary: 0.58 0.18 240;
+    --sidebar-primary: 0.72 0.1 228;
     --sidebar-primary-foreground: 1 0 0;
     --sidebar-accent: 0.97 0.005 240;
     --sidebar-accent-foreground: 0.12 0.025 240;
     --sidebar-border: 0.88 0.04 240;
-    --sidebar-ring: 0.58 0.18 240;
+    --sidebar-ring: 0.72 0.1 228;
     /* Cycle theme defaults — Blue (Cycle 3) */
-    --cycle-accent: oklch(0.58 0.18 240);
+    --cycle-accent: oklch(0.72 0.1 228);
     --cycle-accent-r: 75;
     --cycle-accent-g: 130;
     --cycle-accent-b: 220;
-    --cycle-accent-rgb: 75, 130, 220;
-    --cycle-glow-color: 75, 130, 220;
+    --cycle-accent-rgb: 148, 190, 230;
+    --cycle-glow-color: 148, 190, 230;
 
     /* ── Minty semantic surface tokens (blue light mode) ── */
     --echo-bg: #f7f9fc;
@@ -72,11 +72,11 @@
     --echo-header-bg: rgba(255, 255, 255, 0.98);
     --echo-header-border: #d0dfef;
     /* Glow tokens — blue */
-    --glow-violet-shadow: 0 0 10px rgba(75, 130, 220, 0.12), 0 0 24px
-      rgba(75, 130, 220, 0.05);
-    --glow-cyan-shadow: 0 0 10px rgba(75, 130, 220, 0.12);
-    --glow-blue-shadow: 0 0 16px 4px rgba(75, 130, 220, 0.1), 0 0 32px 8px
-      rgba(75, 130, 220, 0.05);
+    --glow-violet-shadow: 0 0 10px rgba(148, 190, 230, 0.12), 0 0 24px
+      rgba(148, 190, 230, 0.05);
+    --glow-cyan-shadow: 0 0 10px rgba(148, 190, 230, 0.12);
+    --glow-blue-shadow: 0 0 16px 4px rgba(148, 190, 230, 0.1), 0 0 32px 8px
+      rgba(148, 190, 230, 0.05);
     /* Audio reactive (unused but kept for keyframe references) */
     --era-amp: 0;
     --era-bass: 0;
@@ -98,13 +98,13 @@
     --secondary-foreground: 0.12 0.025 240;
     --muted: 0.96 0.005 240;
     --muted-foreground: 0.55 0.04 240;
-    --accent: 0.58 0.18 240;
+    --accent: 0.72 0.1 228;
     --accent-foreground: 1 0 0;
     --destructive: 0.55 0.22 10;
     --destructive-foreground: 1 0 0;
     --border: 0.88 0.04 240;
     --input: 1 0 0;
-    --ring: 0.58 0.18 240;
+    --ring: 0.72 0.1 228;
     --sidebar: 1 0 0;
     --sidebar-foreground: 0.12 0.025 240;
     --sidebar-border: 0.88 0.04 240;
@@ -337,9 +337,9 @@ header.fixed {
   color: #5b7fa6;
 }
 .category-tab.active {
-  background: rgba(75, 130, 220, 0.08);
-  border-color: rgba(75, 130, 220, 0.25);
-  color: oklch(0.58 0.18 240);
+  background: rgba(148, 190, 230, 0.08);
+  border-color: rgba(148, 190, 230, 0.25);
+  color: oklch(0.72 0.1 228);
 }
 
 [data-theme="light"] .category-tab {
@@ -348,9 +348,9 @@ header.fixed {
   color: #5b7fa6;
 }
 [data-theme="light"] .category-tab.active {
-  background: rgba(75, 130, 220, 0.08);
-  border-color: rgba(75, 130, 220, 0.25);
-  color: oklch(0.58 0.18 240);
+  background: rgba(148, 190, 230, 0.08);
+  border-color: rgba(148, 190, 230, 0.25);
+  color: oklch(0.72 0.1 228);
 }
 
 /* ── Neon logo (light only) ── */
