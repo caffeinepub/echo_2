@@ -29,7 +29,7 @@
     --mint: 0.58 0.18 240;
     --cyan: 0.58 0.18 240;
     --magenta: 0.65 0.22 10;
-    --gold: 0.8 0.15 80;
+    --gold: 0.72 0.12 75;
     --echo-cyan: 0.58 0.18 240;
     --chart-1: 0.58 0.18 240;
     --chart-2: 0.65 0.16 240;
@@ -74,7 +74,7 @@
     --glow-violet-shadow: 0 0 10px rgba(75, 130, 220, 0.12), 0 0 24px
       rgba(75, 130, 220, 0.05);
     --glow-cyan-shadow: 0 0 10px rgba(75, 130, 220, 0.12);
-    --glow-gold-shadow: 0 0 8px oklch(0.8 0.15 80 / 0.18);
+    --glow-gold-shadow: 0 0 8px oklch(0.72 0.12 75 / 0.15);
     --glow-blue-shadow: 0 0 16px 4px rgba(75, 130, 220, 0.1), 0 0 32px 8px
       rgba(75, 130, 220, 0.05);
     /* Audio reactive (unused but kept for keyframe references) */
@@ -131,7 +131,7 @@
     --glow-violet-shadow: 0 0 10px rgba(var(--cycle-accent-rgb), 0.12), 0 0 24px
       rgba(var(--cycle-accent-rgb), 0.05);
     --glow-cyan-shadow: 0 0 10px rgba(var(--cycle-accent-rgb), 0.12);
-    --glow-gold-shadow: 0 0 8px oklch(0.8 0.15 80 / 0.18);
+    --glow-gold-shadow: 0 0 8px oklch(0.72 0.12 75 / 0.15);
     --glow-blue-shadow: 0 0 16px 4px rgba(var(--cycle-accent-rgb), 0.1), 0 0
       32px 8px rgba(var(--cycle-accent-rgb), 0.05);
   }
@@ -770,35 +770,35 @@ header.fixed {
 @keyframes gold-btn-pulse {
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(212, 175, 55, 0.22), 0 0 3px
-      rgba(212, 175, 55, 0.12), 0 1px 3px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 0 10px rgba(201, 162, 55, 0.18), 0 0 3px
+      rgba(201, 162, 55, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
   }
   50% {
-    box-shadow: 0 0 16px rgba(212, 175, 55, 0.34), 0 0 6px
-      rgba(212, 175, 55, 0.18), 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 0 16px rgba(201, 162, 55, 0.26), 0 0 6px
+      rgba(201, 162, 55, 0.14), 0 1px 4px rgba(0, 0, 0, 0.06);
   }
 }
 
 /* ── All buttons in gold cycle ── */
 [data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt) {
   background: #ffffff !important;
-  color: #9a7b1c !important;
-  border-color: rgba(212, 175, 55, 0.65) !important;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.22), 0 0 3px rgba(212, 175, 55, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  color: #8b6914 !important;
+  border-color: rgba(201, 162, 55, 0.58) !important;
+  box-shadow: 0 0 10px rgba(201, 162, 55, 0.18), 0 0 3px
+    rgba(201, 162, 55, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05) !important;
   animation: gold-btn-pulse 3.5s ease-in-out infinite !important;
 }
 
 [data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt) svg {
-  color: #9a7b1c !important;
-  stroke: #9a7b1c !important;
+  color: #8b6914 !important;
+  stroke: #8b6914 !important;
 }
 
 [data-gold-cycle] button:not([disabled]):not(.no-gold):not(.gold-exempt):hover {
   background: #fffef8 !important;
-  border-color: rgba(212, 175, 55, 0.88) !important;
-  box-shadow: 0 0 18px rgba(212, 175, 55, 0.35), 0 0 6px
-    rgba(212, 175, 55, 0.18), 0 1px 4px rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(201, 162, 55, 0.78) !important;
+  box-shadow: 0 0 16px rgba(201, 162, 55, 0.26), 0 0 5px
+    rgba(201, 162, 55, 0.14), 0 1px 4px rgba(0, 0, 0, 0.07) !important;
 }
 
 /* ── Specific overrides to ensure white bg even on tinted buttons ── */
@@ -811,27 +811,158 @@ header.fixed {
 [data-gold-cycle] [class*="chip"],
 [data-gold-cycle] [class*="filter"] {
   background: #ffffff !important;
-  border-color: rgba(212, 175, 55, 0.6) !important;
-  color: #9a7b1c !important;
+  border-color: rgba(201, 162, 55, 0.52) !important;
+  color: #8b6914 !important;
 }
 
 /* ── Active tab indicators ── */
 [data-gold-cycle] [data-active="true"],
 [data-gold-cycle] [aria-selected="true"] {
-  color: #9a7b1c !important;
-  border-color: rgba(212, 175, 55, 0.7) !important;
+  color: #8b6914 !important;
+  border-color: rgba(201, 162, 55, 0.6) !important;
 }
 
 /* ── Cycle accent overrides for gold ── */
 [data-gold-cycle] {
-  --cycle-accent: oklch(0.62 0.14 80) !important;
-  --cycle-accent-r: 212 !important;
-  --cycle-accent-g: 175 !important;
+  --cycle-accent: oklch(0.58 0.12 75) !important;
+  --cycle-accent-r: 201 !important;
+  --cycle-accent-g: 162 !important;
   --cycle-accent-b: 55 !important;
-  --cycle-accent-rgb: 212, 175, 55 !important;
+  --cycle-accent-rgb: 201, 162, 55 !important;
 }
 
 /* ── Accent text in gold ── */
 [data-gold-cycle] [style*="var(--cycle-accent)"] {
-  color: #9a7b1c !important;
+  color: #8b6914 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WHITE CYCLE EDITORIAL — Cycle 7 global surface + button overrides
+   ══════════════════════════════════════════════════════════════ */
+
+[data-white-cycle] {
+  /* Surface tokens — White cycle */
+  --echo-bg: #f7f7f5;
+  --echo-bg-alpha: rgba(247, 247, 245, 0.97);
+  --echo-surface: #fafaf8;
+  --echo-surface-alt: #f5f5f3;
+  --echo-elevated: #efefed;
+  --echo-border: #e8e8e6;
+  --echo-border-subtle: #efefed;
+  --echo-border-faint: #f2f2f0;
+  --echo-text: #111111;
+  --echo-text-dim: #1a1a1a;
+  --echo-text-secondary: #444444;
+  --echo-text-muted: #777777;
+  --echo-text-dark: #777777;
+  --echo-nav-bg: rgba(247, 247, 245, 0.98);
+  --echo-nav-border: #e8e8e6;
+  --echo-header-bg: rgba(250, 250, 248, 0.98);
+  --echo-header-border: #e8e8e6;
+
+  /* Cycle accent — pure near-black */
+  --cycle-accent: #111111;
+  --cycle-accent-r: 17;
+  --cycle-accent-g: 17;
+  --cycle-accent-b: 17;
+  --cycle-accent-rgb: 17, 17, 17;
+
+  /* Background override */
+  background-color: #f7f7f5;
+}
+
+/* White cycle — primary buttons: black fill, white text */
+[data-white-cycle] button:not([disabled]):not(.no-white):not(.white-exempt) {
+  background: #111111 !important;
+  color: #ffffff !important;
+  border-color: rgba(17, 17, 17, 0.85) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+[data-white-cycle]
+  button:not([disabled]):not(.no-white):not(.white-exempt)
+  svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+[data-white-cycle]
+  button:not([disabled]):not(.no-white):not(.white-exempt):hover {
+  background: #1a1a1a !important;
+  border-color: rgba(17, 17, 17, 1) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── Filter pills / hashtag chips ── */
+[data-white-cycle] [class*="pill"],
+[data-white-cycle] [class*="chip"],
+[data-white-cycle] [class*="filter"] {
+  background: #f5f5f3 !important;
+  border-color: #e8e8e6 !important;
+  color: #111111 !important;
+}
+
+/* ── Active tab indicators ── */
+[data-white-cycle] [data-active="true"],
+[data-white-cycle] [aria-selected="true"] {
+  color: #111111 !important;
+  border-color: rgba(17, 17, 17, 0.35) !important;
+}
+
+/* ── Cycle accent overrides for white ── */
+[data-white-cycle] {
+  --cycle-accent: #111111 !important;
+  --cycle-accent-r: 17 !important;
+  --cycle-accent-g: 17 !important;
+  --cycle-accent-b: 17 !important;
+  --cycle-accent-rgb: 17, 17, 17 !important;
+}
+
+/* ── Sparkle animation for White cycle logo badge ── */
+@keyframes white-sparkle-flicker {
+  0%,
+  85% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  90% {
+    opacity: 0.55;
+    transform: scale(1.1);
+  }
+  95% {
+    opacity: 0.25;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.white-cycle-sparkle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 3px 1px rgba(255, 255, 255, 0.6), 0 0 6px 2px
+    rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.white-cycle-sparkle-1 {
+  top: 20%;
+  left: 8%;
+  animation: white-sparkle-flicker 12s ease-in-out 0s infinite;
+}
+.white-cycle-sparkle-2 {
+  top: 40%;
+  left: 72%;
+  animation: white-sparkle-flicker 12s ease-in-out 5s infinite;
+}
+.white-cycle-sparkle-3 {
+  top: 70%;
+  left: 38%;
+  animation: white-sparkle-flicker 12s ease-in-out 9s infinite;
 }

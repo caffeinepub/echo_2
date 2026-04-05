@@ -18,15 +18,22 @@ const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { activeCycle, activeCycleId } = useCycleTheme();
   const isGold = activeCycleId === 6;
+  const isWhite = activeCycleId === 7;
   const accentColor = isGold
     ? "#9A7B1C"
-    : `oklch(${activeCycle.accentOklchDark})`;
+    : isWhite
+      ? "#111111"
+      : `oklch(${activeCycle.accentOklchDark})`;
   const accentGlow = isGold
     ? "0 0 12px rgba(212,175,55,0.38)"
-    : `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
+    : isWhite
+      ? "none"
+      : `0 0 12px rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.40)`;
   const activeIndicatorBg = isGold
     ? "linear-gradient(90deg, #C9A227, #E8C84A, #C9A227)"
-    : accentColor;
+    : isWhite
+      ? "#111111"
+      : accentColor;
 
   return (
     <nav
@@ -46,7 +53,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             onClick={() => onTabChange(id)}
             className="flex flex-col items-center justify-center gap-1 flex-1 text-xs font-medium tracking-wide uppercase transition-all relative"
             style={{
-              color: isActive ? accentColor : "var(--echo-text-dark)",
+              color: isActive
+                ? accentColor
+                : isWhite
+                  ? "#777777"
+                  : "var(--echo-text-dark)",
             }}
           >
             {isActive && (
@@ -62,7 +73,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             <span
               className="text-[10px]"
               style={{
-                color: isActive ? accentColor : "var(--echo-text-dark)",
+                color: isActive
+                  ? accentColor
+                  : isWhite
+                    ? "#777777"
+                    : "var(--echo-text-dark)",
               }}
             >
               {label}

@@ -34,34 +34,45 @@ function injectNeonStyles(
   }
 
   const isGold = cycleId === 6;
+  const isWhite = cycleId === 7;
 
-  // Base breathe animation — overridden for gold
-  const baseBreathe = isGold
-    ? `
+  // Base breathe animation — overridden for gold and white
+  let baseBreathe: string;
+  if (isGold) {
+    baseBreathe = `
 @keyframes echo-neon-breathe-light {
-  0%,100% { filter: hue-rotate(-75deg) saturate(1.6) brightness(1.10) contrast(1.08) sepia(0.15) drop-shadow(0 0 3px rgba(212,175,55,0.40)) drop-shadow(0 0 8px rgba(212,175,55,0.20)); }
-  50%     { filter: hue-rotate(-75deg) saturate(1.6) brightness(1.18) contrast(1.08) sepia(0.15) drop-shadow(0 0 6px rgba(212,175,55,0.58)) drop-shadow(0 0 16px rgba(212,175,55,0.28)); }
+  0%,100% { filter: hue-rotate(-65deg) saturate(1.1) brightness(1.12) contrast(1.05) sepia(0.20) drop-shadow(0 0 3px rgba(201,162,55,0.22)) drop-shadow(0 0 8px rgba(201,162,55,0.10)); }
+  50%     { filter: hue-rotate(-65deg) saturate(1.1) brightness(1.18) contrast(1.05) sepia(0.20) drop-shadow(0 0 6px rgba(201,162,55,0.32)) drop-shadow(0 0 16px rgba(201,162,55,0.16)); }
 }
-`
-    : `
+`;
+  } else if (isWhite) {
+    baseBreathe = `
+@keyframes echo-neon-breathe-light {
+  0%,100% { opacity: 0.92; }
+  50%     { opacity: 1.0; }
+}
+`;
+  } else {
+    baseBreathe = `
 @keyframes echo-neon-breathe-light {
   0%,100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.92) drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
   50%     { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.96) drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
 }
 `;
+  }
 
   const goldExtras = isGold
     ? `
-/* ── Gold shimmer sweep ─────────────────────────────────────────── */
+/* ── Gold shimmer sweep ────────────────────────────────────────────────────── */
 .gold-shimmer-sweep {
   background: linear-gradient(
     118deg,
     transparent 20%,
-    rgba(255, 252, 210, 0.00) 30%,
-    rgba(255, 248, 190, 0.38) 46%,
-    rgba(255, 255, 235, 0.55) 50%,
-    rgba(255, 248, 190, 0.38) 54%,
-    rgba(255, 252, 210, 0.00) 70%,
+    rgba(245, 225, 165, 0.00) 30%,
+    rgba(245, 225, 165, 0.22) 46%,
+    rgba(240, 220, 155, 0.32) 50%,
+    rgba(245, 225, 165, 0.22) 54%,
+    rgba(245, 225, 165, 0.00) 70%,
     transparent 80%
   );
   background-size: 300% 100%;
@@ -77,17 +88,17 @@ function injectNeonStyles(
   100% { background-position: -60% center; opacity: 0; }
 }
 
-/* ── Star gleams ─────────────────────────────────────────────────── */
+/* ── Star gleams ──────────────────────────────────────────────────── */
 .gold-gleam {
   position: absolute;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: rgba(255, 255, 228, 0.96);
+  background: rgba(240, 220, 160, 0.90);
   box-shadow:
-    0 0 3px 1px rgba(255, 248, 150, 0.9),
-    0 0 7px 3px rgba(255, 220, 60, 0.45),
-    0 0 12px 5px rgba(212, 175, 55, 0.20);
+    0 0 3px 1px rgba(230, 199, 106, 0.75),
+    0 0 7px 3px rgba(212, 175, 55, 0.30),
+    0 0 12px 5px rgba(185, 148, 45, 0.15);
   pointer-events: none;
   opacity: 0;
 }
@@ -128,7 +139,7 @@ ${baseBreathe}
 ${goldExtras}`;
 }
 
-// ─── Asset Data ────────────────────────────────────────────────────────────────
+// ─── Asset Data ────────────────────────────────────────────────────────────────────
 const ASSETS = [
   {
     id: "usdc",
@@ -183,7 +194,7 @@ const ASSETS = [
 type AssetType = (typeof ASSETS)[number];
 type WalletView = "list" | "receive" | "send" | "info";
 
-// ─── Cycle Selector ────────────────────────────────────────────────────────────
+// ─── Cycle Selector ────────────────────────────────────────────────────────────────────
 function CycleSelector() {
   const { activeCycleId, activeCycle, setCycleId } = useCycleTheme();
   const [open, setOpen] = useState(false);
@@ -340,7 +351,7 @@ function CycleSelector() {
   );
 }
 
-// ─── Action pill button ────────────────────────────────────────────────────────
+// ─── Action pill button ────────────────────────────────────────────────────────────────────────────
 function ActionPill({
   label,
   icon,
@@ -381,7 +392,7 @@ function ActionPill({
   );
 }
 
-// ─── Asset Row ─────────────────────────────────────────────────────────────────
+// ─── Asset Row ────────────────────────────────────────────────────────────────────────────────
 function AssetRow({
   asset,
   onReceive,
@@ -455,7 +466,7 @@ function AssetRow({
   );
 }
 
-// ─── Wallet Modal ──────────────────────────────────────────────────────────────
+// ─── Wallet Modal ────────────────────────────────────────────────────────────────────────────
 function WalletModal({
   open,
   onClose,
@@ -964,7 +975,7 @@ function WalletModal({
   );
 }
 
-// ─── Sign In Modal ─────────────────────────────────────────────────────────────
+// ─── Sign In Modal ───────────────────────────────────────────────────────────────────────────
 function SignInModal({
   open,
   onClose,
@@ -1078,7 +1089,7 @@ function SignInModal({
   );
 }
 
-// ─── TopBar ────────────────────────────────────────────────────────────────────
+// ─── TopBar ──────────────────────────────────────────────────────────────────────────────────────
 interface TopBarProps {
   onProfileClick?: () => void;
 }
@@ -1090,9 +1101,9 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [walletOpen, setWalletOpen] = useState(false);
 
   const isGoldCycle = activeCycleId === 6;
+  const isWhiteCycle = activeCycleId === 7;
 
-  // Gold cycle uses dedicated champagne-gold logo; other cycles use original with CSS filter
-  const MINTY_LOGO = "/assets/minty-logo.png"; // Always use the original logo — gold tint applied via CSS filter
+  const MINTY_LOGO = "/assets/minty-logo.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1100,26 +1111,39 @@ export function TopBar({ onProfileClick }: TopBarProps) {
       activeCycle.accentR,
       activeCycle.accentG,
       activeCycle.accentB,
-      activeCycle.logoFilter, // Always pass the cycle filter (gold filter applied here too)
+      activeCycle.logoFilter,
       activeCycleId,
     );
   }, [activeCycle, activeCycleId]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
 
+  // Button styles — white cycle: black fill, white text
   const uploadBg = isGoldCycle
     ? "#FFFFFF"
-    : "rgba(var(--cycle-accent-rgb),0.07)";
+    : isWhiteCycle
+      ? "#111111"
+      : "rgba(var(--cycle-accent-rgb),0.07)";
   const uploadBgHover = isGoldCycle
     ? "#FFFEF8"
-    : "rgba(var(--cycle-accent-rgb),0.12)";
+    : isWhiteCycle
+      ? "#1A1A1A"
+      : "rgba(var(--cycle-accent-rgb),0.12)";
   const uploadBorder = isGoldCycle
-    ? "1px solid rgba(212,175,55,0.65)"
-    : "1px solid rgba(var(--cycle-accent-rgb),0.20)";
-  const uploadColor = isGoldCycle ? "#9A7B1C" : "var(--cycle-accent)";
+    ? "1px solid rgba(201,162,55,0.58)"
+    : isWhiteCycle
+      ? "1px solid rgba(17,17,17,0.85)"
+      : "1px solid rgba(var(--cycle-accent-rgb),0.20)";
+  const uploadColor = isGoldCycle
+    ? "#8B6914"
+    : isWhiteCycle
+      ? "#FFFFFF"
+      : "var(--cycle-accent)";
   const uploadShadow = isGoldCycle
-    ? "0 0 10px rgba(212,175,55,0.22), 0 0 3px rgba(212,175,55,0.10), 0 1px 3px rgba(0,0,0,0.05)"
-    : "0 1px 3px rgba(0,0,0,0.06)";
+    ? "0 0 10px rgba(201,162,55,0.18), 0 0 3px rgba(201,162,55,0.08), 0 1px 3px rgba(0,0,0,0.05)"
+    : isWhiteCycle
+      ? "0 1px 4px rgba(0,0,0,0.15)"
+      : "0 1px 3px rgba(0,0,0,0.06)";
 
   function handleAuthButtonClick() {
     if (isSignedIn) {
@@ -1146,62 +1170,99 @@ export function TopBar({ onProfileClick }: TopBarProps) {
           paddingRight: "20px",
         }}
       >
-        {/* Minty Logo — gold cycle gets shimmer overlay treatment */}
+        {/* Minty Logo — White cycle gets black badge with white lettering */}
         <div
           className={`relative flex items-center${isGoldCycle ? " gold-cycle-active" : ""}`}
           style={{
             paddingTop: "6px",
-            // Clip the shimmer sweep to the logo bounds when gold cycle is active
             overflow: isGoldCycle ? "hidden" : "visible",
             borderRadius: isGoldCycle ? "4px" : undefined,
           }}
         >
-          <img
-            src={MINTY_LOGO}
-            alt="Minty"
-            className="echo-logo-neon select-none"
-            style={{
-              width: "180px",
-              height: "auto",
-              maxWidth: "min(180px, 30vw)",
-              objectFit: "contain",
-              imageRendering: "auto",
-              display: "block",
-              background: "transparent",
-              filter:
-                activeCycle.logoFilter !== "none"
-                  ? activeCycle.logoFilter
-                  : undefined,
-            }}
-            draggable={false}
-          />
-
-          {/* Gold prestige shimmer — only rendered for Cycle 6 */}
-          {isGoldCycle && (
-            <>
-              {/* Light sweep across the logo surface */}
-              <div
-                className="gold-shimmer-sweep"
+          {isWhiteCycle ? (
+            /* White cycle: black badge wrapping the logo in white */
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                background: "#111111",
+                borderRadius: "10px",
+                padding: "5px 12px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <img
+                src={MINTY_LOGO}
+                alt="Minty"
+                className="echo-logo-neon select-none"
                 style={{
-                  position: "absolute",
-                  inset: 0,
-                  pointerEvents: "none",
-                  zIndex: 1,
+                  width: "150px",
+                  height: "auto",
+                  maxWidth: "min(150px, 28vw)",
+                  objectFit: "contain",
+                  imageRendering: "auto",
+                  display: "block",
+                  background: "transparent",
+                  // Turn logo white
+                  filter: "brightness(0) invert(1)",
                 }}
+                draggable={false}
               />
-              {/* Star gleams at strategic positions on the logo */}
-              <span
-                className="gold-gleam gold-gleam-1"
-                style={{ position: "absolute", zIndex: 2 }}
+              {/* Sparkle accents on the badge */}
+              <span className="white-cycle-sparkle white-cycle-sparkle-1" />
+              <span className="white-cycle-sparkle white-cycle-sparkle-2" />
+              <span className="white-cycle-sparkle white-cycle-sparkle-3" />
+            </div>
+          ) : (
+            <>
+              <img
+                src={MINTY_LOGO}
+                alt="Minty"
+                className="echo-logo-neon select-none"
+                style={{
+                  width: "180px",
+                  height: "auto",
+                  maxWidth: "min(180px, 30vw)",
+                  objectFit: "contain",
+                  imageRendering: "auto",
+                  display: "block",
+                  background: "transparent",
+                  filter:
+                    activeCycle.logoFilter !== "none" &&
+                    activeCycle.logoFilter !== "white-cycle-badge"
+                      ? activeCycle.logoFilter
+                      : undefined,
+                }}
+                draggable={false}
               />
-              <span
-                className="gold-gleam gold-gleam-2"
-                style={{ position: "absolute", zIndex: 2 }}
-              />
-              <span
-                className="gold-gleam gold-gleam-3"
-                style={{ position: "absolute", zIndex: 2 }}
-              />
+
+              {/* Gold prestige shimmer — only rendered for Cycle 6 */}
+              {isGoldCycle && (
+                <>
+                  <div
+                    className="gold-shimmer-sweep"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      pointerEvents: "none",
+                      zIndex: 1,
+                    }}
+                  />
+                  <span
+                    className="gold-gleam gold-gleam-1"
+                    style={{ position: "absolute", zIndex: 2 }}
+                  />
+                  <span
+                    className="gold-gleam gold-gleam-2"
+                    style={{ position: "absolute", zIndex: 2 }}
+                  />
+                  <span
+                    className="gold-gleam gold-gleam-3"
+                    style={{ position: "absolute", zIndex: 2 }}
+                  />
+                </>
+              )}
             </>
           )}
         </div>
@@ -1260,23 +1321,36 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               paddingBottom: "7px",
               backgroundColor: isGoldCycle
                 ? "#FFFFFF"
-                : "rgba(247, 249, 252, 1)",
-              color: isGoldCycle ? "#9A7B1C" : "#1A2840",
+                : isWhiteCycle
+                  ? "#111111"
+                  : "rgba(247, 249, 252, 1)",
+              color: isGoldCycle
+                ? "#8B6914"
+                : isWhiteCycle
+                  ? "#FFFFFF"
+                  : "#1A2840",
               border: isGoldCycle
-                ? "1px solid rgba(212,175,55,0.65)"
-                : "1px solid #D0DFEF",
+                ? "1px solid rgba(201,162,55,0.58)"
+                : isWhiteCycle
+                  ? "1px solid #111111"
+                  : "1px solid #D0DFEF",
               boxShadow: isGoldCycle
-                ? "0 0 12px rgba(212,175,55,0.24), 0 1px 3px rgba(0,0,0,0.05)"
-                : "0 1px 3px rgba(0,0,0,0.06)",
+                ? "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)"
+                : isWhiteCycle
+                  ? "0 1px 4px rgba(0,0,0,0.15)"
+                  : "0 1px 3px rgba(0,0,0,0.06)",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
               const el = e.currentTarget as HTMLButtonElement;
               if (isGoldCycle) {
                 el.style.backgroundColor = "#FFFEF8";
-                el.style.borderColor = "rgba(212,175,55,0.88)";
+                el.style.borderColor = "rgba(201,162,55,0.78)";
                 el.style.boxShadow =
-                  "0 0 18px rgba(212,175,55,0.35), 0 0 6px rgba(212,175,55,0.18), 0 1px 4px rgba(0,0,0,0.07)";
+                  "0 0 16px rgba(201,162,55,0.26), 0 0 5px rgba(201,162,55,0.14), 0 1px 4px rgba(0,0,0,0.07)";
+              } else if (isWhiteCycle) {
+                el.style.backgroundColor = "#222222";
+                el.style.borderColor = "#222222";
               } else {
                 el.style.backgroundColor = "rgba(240, 244, 250, 1)";
                 el.style.borderColor = "#C0D4EC";
@@ -1286,9 +1360,12 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               const el = e.currentTarget as HTMLButtonElement;
               if (isGoldCycle) {
                 el.style.backgroundColor = "#FFFFFF";
-                el.style.borderColor = "rgba(212,175,55,0.65)";
+                el.style.borderColor = "rgba(201,162,55,0.58)";
                 el.style.boxShadow =
-                  "0 0 12px rgba(212,175,55,0.24), 0 1px 3px rgba(0,0,0,0.05)";
+                  "0 0 10px rgba(201,162,55,0.18), 0 1px 3px rgba(0,0,0,0.05)";
+              } else if (isWhiteCycle) {
+                el.style.backgroundColor = "#111111";
+                el.style.borderColor = "#111111";
               } else {
                 el.style.backgroundColor = "rgba(247, 249, 252, 1)";
                 el.style.borderColor = "#D0DFEF";
@@ -1299,13 +1376,17 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               <Wallet
                 size={17}
                 strokeWidth={1.6}
-                style={{ color: "var(--cycle-accent)" }}
+                style={{
+                  color: isWhiteCycle ? "#FFFFFF" : "var(--cycle-accent)",
+                }}
               />
             ) : (
               <ShieldCheck
                 size={17}
                 strokeWidth={1.6}
-                style={{ color: "var(--cycle-accent)" }}
+                style={{
+                  color: isWhiteCycle ? "#FFFFFF" : "var(--cycle-accent)",
+                }}
               />
             )}
             <span className="leading-none text-[13px]">

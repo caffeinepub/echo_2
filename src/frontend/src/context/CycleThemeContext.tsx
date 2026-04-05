@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-export type CycleId = 1 | 2 | 3 | 4 | 5 | 6;
+export type CycleId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export interface CycleTheme {
   id: CycleId;
@@ -109,20 +109,36 @@ export const CYCLE_THEMES: Record<CycleId, CycleTheme> = {
     id: 6,
     name: "gold",
     label: "Cycle 6 — Gold",
-    accentOklch: "0.80 0.14 80",
-    accentOklchDark: "0.83 0.15 80",
-    accentOklchLight: "0.62 0.14 80",
-    accentR: 212,
-    accentG: 175,
+    accentOklch: "0.72 0.12 75",
+    accentOklchDark: "0.76 0.13 75",
+    accentOklchLight: "0.58 0.12 75",
+    accentR: 201,
+    accentG: 162,
     accentB: 55,
     packWrapperUrl:
       "/assets/generated/pack-wrapper-cycle6-gold-transparent.dim_400x560.png",
-    glowDark: "rgba(212,175,55,",
-    glowLight: "rgba(180,145,30,",
+    glowDark: "rgba(201,162,55,",
+    glowLight: "rgba(185,148,45,",
     // Champagne-gold treatment: shift hue from mint-green toward warm amber-gold,
     // boost saturation for richness, slight brightness lift for glossy sheen.
     logoFilter:
-      "hue-rotate(-75deg) saturate(1.6) brightness(1.15) contrast(1.08) sepia(0.15)",
+      "hue-rotate(-65deg) saturate(1.1) brightness(1.12) contrast(1.05) sepia(0.20)",
+  },
+  7: {
+    id: 7,
+    name: "white",
+    label: "Cycle 7 — White",
+    accentOklch: "0.14 0 0",
+    accentOklchDark: "0.10 0 0",
+    accentOklchLight: "0.14 0 0",
+    accentR: 17,
+    accentG: 17,
+    accentB: 17,
+    packWrapperUrl:
+      "/assets/generated/pack-wrapper-cycle7-white-transparent.dim_400x560.png",
+    glowDark: "rgba(17,17,17,",
+    glowLight: "rgba(17,17,17,",
+    logoFilter: "white-cycle-badge", // special marker — handled in TopBar
   },
 };
 
@@ -159,16 +175,16 @@ function applyThemeVars(cycle: CycleTheme) {
   if (cycle.id === 6) {
     root.setAttribute("data-gold-cycle", "true");
     root.classList.add("gold-cycle");
-    root.style.setProperty("--gold-text", "#9A7B1C");
-    root.style.setProperty("--gold-border", "rgba(212,175,55,0.72)");
+    root.style.setProperty("--gold-text", "#8B6914");
+    root.style.setProperty("--gold-border", "rgba(201,162,55,0.60)");
     root.style.setProperty("--gold-bg", "#FFFFFF");
     root.style.setProperty(
       "--gold-glow",
-      "0 0 12px rgba(212,175,55,0.28), 0 0 4px rgba(212,175,55,0.15), 0 1px 3px rgba(0,0,0,0.06)",
+      "0 0 10px rgba(201,162,55,0.22), 0 0 3px rgba(201,162,55,0.12), 0 1px 3px rgba(0,0,0,0.06)",
     );
     root.style.setProperty(
       "--gold-glow-strong",
-      "0 0 18px rgba(212,175,55,0.38), 0 0 6px rgba(212,175,55,0.20), 0 1px 4px rgba(0,0,0,0.08)",
+      "0 0 16px rgba(201,162,55,0.30), 0 0 5px rgba(201,162,55,0.16), 0 1px 4px rgba(0,0,0,0.08)",
     );
   } else {
     root.removeAttribute("data-gold-cycle");
@@ -179,6 +195,55 @@ function applyThemeVars(cycle: CycleTheme) {
     root.style.removeProperty("--gold-glow");
     root.style.removeProperty("--gold-glow-strong");
   }
+
+  // White cycle editorial — set surface overrides and attribute
+  if (cycle.id === 7) {
+    root.setAttribute("data-white-cycle", "true");
+    root.classList.add("white-cycle");
+    root.style.setProperty("--echo-bg", "#F7F7F5");
+    root.style.setProperty("--echo-bg-alpha", "rgba(247,247,245,0.97)");
+    root.style.setProperty("--echo-surface", "#FAFAF8");
+    root.style.setProperty("--echo-surface-alt", "#F5F5F3");
+    root.style.setProperty("--echo-elevated", "#EFEFED");
+    root.style.setProperty("--echo-border", "#E8E8E6");
+    root.style.setProperty("--echo-border-subtle", "#EFEFED");
+    root.style.setProperty("--echo-border-faint", "#F2F2F0");
+    root.style.setProperty("--echo-text", "#111111");
+    root.style.setProperty("--echo-text-dim", "#1A1A1A");
+    root.style.setProperty("--echo-text-secondary", "#444444");
+    root.style.setProperty("--echo-text-muted", "#777777");
+    root.style.setProperty("--echo-text-dark", "#777777");
+    root.style.setProperty("--echo-nav-bg", "rgba(247,247,245,0.98)");
+    root.style.setProperty("--echo-nav-border", "#E8E8E6");
+    root.style.setProperty("--echo-header-bg", "rgba(250,250,248,0.98)");
+    root.style.setProperty("--echo-header-border", "#E8E8E6");
+    root.style.setProperty("--white-text", "#111111");
+    root.style.setProperty("--white-border", "rgba(17,17,17,0.25)");
+    root.style.setProperty("--white-bg", "#F7F7F5");
+  } else {
+    root.removeAttribute("data-white-cycle");
+    root.classList.remove("white-cycle");
+    root.style.removeProperty("--echo-bg");
+    root.style.removeProperty("--echo-bg-alpha");
+    root.style.removeProperty("--echo-surface");
+    root.style.removeProperty("--echo-surface-alt");
+    root.style.removeProperty("--echo-elevated");
+    root.style.removeProperty("--echo-border");
+    root.style.removeProperty("--echo-border-subtle");
+    root.style.removeProperty("--echo-border-faint");
+    root.style.removeProperty("--echo-text");
+    root.style.removeProperty("--echo-text-dim");
+    root.style.removeProperty("--echo-text-secondary");
+    root.style.removeProperty("--echo-text-muted");
+    root.style.removeProperty("--echo-text-dark");
+    root.style.removeProperty("--echo-nav-bg");
+    root.style.removeProperty("--echo-nav-border");
+    root.style.removeProperty("--echo-header-bg");
+    root.style.removeProperty("--echo-header-border");
+    root.style.removeProperty("--white-text");
+    root.style.removeProperty("--white-border");
+    root.style.removeProperty("--white-bg");
+  }
 }
 
 export function CycleThemeProvider({
@@ -187,7 +252,7 @@ export function CycleThemeProvider({
   const [activeCycleId, setActiveCycleId] = useState<CycleId>(() => {
     const saved = localStorage.getItem("minty_active_cycle");
     const parsed = saved ? Number.parseInt(saved, 10) : 3;
-    if (parsed >= 1 && parsed <= 6) return parsed as CycleId;
+    if (parsed >= 1 && parsed <= 7) return parsed as CycleId;
     return 3; // default blue
   });
 
