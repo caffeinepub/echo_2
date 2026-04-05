@@ -89,7 +89,14 @@ const BUTTON_BASE = {
 function PackCard({
   previewImage,
   packWrapperUrl,
-}: { previewImage?: string; packWrapperUrl?: string }) {
+  accentRgb,
+  accentText,
+}: {
+  previewImage?: string;
+  packWrapperUrl?: string;
+  accentRgb: string;
+  accentText: string;
+}) {
   const [isHovered, setIsHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -100,7 +107,7 @@ function PackCard({
 
   // The image shown inside the display window:
   // — if a first captured photo exists, use it
-  // — otherwise fall back to the green pack artwork
+  // — otherwise fall back to the cycle-specific pack wrapper
   const displaySrc = previewImage
     ? previewImage
     : (packWrapperUrl ??
@@ -169,14 +176,14 @@ function PackCard({
         >
           <path
             d="M2 8c0-3.31 2.69-6 6-6s6 2.69 6 6"
-            stroke="#4a5a52"
+            stroke={accentText}
             strokeWidth="1.4"
             strokeLinecap="round"
             fill="none"
           />
           <path
             d="M14 5.5L14 8M14 8L11.5 8"
-            stroke="#4a5a52"
+            stroke={accentText}
             strokeWidth="1.4"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -201,7 +208,7 @@ function PackCard({
           style={{
             fontSize: "11px",
             letterSpacing: "0.14em",
-            color: "#4a5a52",
+            color: accentText,
             fontWeight: 500,
             textTransform: "uppercase",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
@@ -230,11 +237,11 @@ function PackCard({
             background: "rgba(255,255,255,0.72)",
             backdropFilter: "blur(12px) saturate(1.2)",
             WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-            border: "1px solid rgba(200,245,230,0.6)",
+            border: `1px solid rgba(${accentRgb},0.35)`,
             boxShadow:
               "inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.05)",
-            outline: "1px solid rgba(200,245,230,0.3)",
-            filter: "drop-shadow(0 0 18px rgba(120,230,190,0.25))",
+            outline: `1px solid rgba(${accentRgb},0.18)`,
+            filter: `drop-shadow(0 0 18px rgba(${accentRgb},0.22))`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -265,7 +272,6 @@ function PackCard({
                   inset: 0,
                   borderRadius: "inherit",
                   overflow: "hidden",
-                  animation: isHovered ? undefined : undefined, // animation controlled via CSS class
                 }}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
@@ -286,7 +292,7 @@ function PackCard({
                 />
               </div>
             ) : (
-              // Fallback: green pack artwork (existing behavior)
+              // Fallback: cycle pack wrapper artwork
               <img
                 src={displaySrc}
                 alt="Minty Pack"
@@ -296,8 +302,7 @@ function PackCard({
                   height: "75%",
                   objectFit: "contain",
                   display: "block",
-                  filter:
-                    "drop-shadow(0 0 12px rgba(150,240,200,0.4)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))",
+                  filter: `drop-shadow(0 0 12px rgba(${accentRgb},0.35)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))`,
                 }}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
@@ -307,14 +312,13 @@ function PackCard({
             )}
           </div>
 
-          {/* Ambient mint glow behind pack */}
+          {/* Ambient cycle-accent glow behind pack */}
           <div
             className="pack-glow-pulse"
             style={{
               position: "absolute",
               inset: 0,
-              background:
-                "radial-gradient(ellipse 60% 60% at 50% 50%, rgba(140,240,200,0.22) 0%, transparent 70%)",
+              background: `radial-gradient(ellipse 60% 60% at 50% 50%, rgba(${accentRgb},0.20) 0%, transparent 70%)`,
               pointerEvents: "none",
               borderRadius: "20px",
             }}
@@ -352,7 +356,7 @@ function PackCard({
         <p
           style={{
             fontSize: "13px",
-            color: "#4a5a52",
+            color: accentText,
             margin: "8px 0 0",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
@@ -379,7 +383,13 @@ function PackCard({
   );
 }
 
-function RevealedCard({ collectible }: { collectible: Collectible }) {
+function RevealedCard({
+  collectible,
+  accentRgb,
+}: {
+  collectible: Collectible;
+  accentRgb: string;
+}) {
   const rarityColor = RARITY_COLOR[collectible.rarity] ?? "#9B9B9B";
 
   return (
@@ -406,7 +416,7 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
           style={{
             width: "40px",
             height: "2px",
-            background: "rgba(52, 168, 132, 0.4)",
+            background: `rgba(${accentRgb},0.4)`,
             borderRadius: "1px",
             marginBottom: "28px",
           }}
@@ -439,10 +449,10 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
               r="16"
               stroke="rgba(0,0,0,0.12)"
               strokeWidth="1.5"
-              fill="rgba(52,168,132,0.08)"
+              fill={`rgba(${accentRgb},0.08)`}
             />
-            <circle cx="24" cy="24" r="8" fill="rgba(52,168,132,0.18)" />
-            <circle cx="24" cy="24" r="3" fill="rgba(52,168,132,0.5)" />
+            <circle cx="24" cy="24" r="8" fill={`rgba(${accentRgb},0.18)`} />
+            <circle cx="24" cy="24" r="3" fill={`rgba(${accentRgb},0.5)`} />
           </svg>
         </div>
 
@@ -480,17 +490,27 @@ function RevealedCard({ collectible }: { collectible: Collectible }) {
 }
 
 // ── Pack Backside — Premium TCG Booster Pack Information Back ─────────────────
-function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
+function PackBackside({
+  onFlipBack,
+  accentRgb,
+  accentColor,
+  accentText,
+}: {
+  onFlipBack: () => void;
+  accentRgb: string;
+  accentColor: string;
+  accentText: string;
+}) {
   const dividerStyle = {
     height: "1px",
-    background: "rgba(52,168,132,0.18)",
+    background: `rgba(${accentRgb},0.18)`,
     margin: "0 0 14px",
   };
 
   const sectionTitleStyle: React.CSSProperties = {
     fontSize: "9px",
     letterSpacing: "0.18em",
-    color: "#3d6b58",
+    color: accentText,
     fontWeight: 700,
     textTransform: "uppercase",
     margin: "0 0 8px",
@@ -513,7 +533,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
         boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
         border: "1px solid rgba(0,0,0,0.06)",
         overflow: "hidden",
-        background: "#EFF8F3",
+        background: "#F7F9F8",
         position: "relative",
       }}
     >
@@ -580,14 +600,14 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
         >
           <path
             d="M14 8c0 3.31-2.69 6-6 6s-6-2.69-6-6"
-            stroke="#3d6b58"
+            stroke={accentColor}
             strokeWidth="1.4"
             strokeLinecap="round"
             fill="none"
           />
           <path
             d="M2 10.5L2 8M2 8L4.5 8"
-            stroke="#3d6b58"
+            stroke={accentColor}
             strokeWidth="1.4"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -611,7 +631,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
           style={{
             fontSize: "10px",
             letterSpacing: "0.2em",
-            color: "#3d6b58",
+            color: accentText,
             fontWeight: 600,
             textTransform: "uppercase",
             textAlign: "center",
@@ -735,7 +755,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
             style={{
               fontSize: "9px",
               fontWeight: 600,
-              color: "#34a884",
+              color: accentColor,
               textAlign: "center",
               margin: 0,
             }}
@@ -770,7 +790,7 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
                 y="0"
                 width={w}
                 height="12"
-                fill="#3d6b58"
+                fill={`rgba(${accentRgb},0.7)`}
               />
             ))}
           </svg>
@@ -785,18 +805,15 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
           >
             <path
               d="M6 1.5L8 4H7v2.5H5V4H4L6 1.5Z"
-              fill="#3d6b58"
-              opacity="0.8"
+              fill={`rgba(${accentRgb},0.8)`}
             />
             <path
               d="M9.5 7.5L7 9.5v-1.2H5v-1.8h2V5.2L9.5 7.5Z"
-              fill="#3d6b58"
-              opacity="0.8"
+              fill={`rgba(${accentRgb},0.8)`}
             />
             <path
               d="M2.5 7.5L4 5l.7 1.2L6 5.5l.9 1.5L5.5 9H4.3L2.5 7.5Z"
-              fill="#3d6b58"
-              opacity="0.8"
+              fill={`rgba(${accentRgb},0.8)`}
             />
           </svg>
 
@@ -817,7 +834,19 @@ function PackBackside({ onFlipBack }: { onFlipBack: () => void }) {
 }
 
 // ── Locked state shown when a draft is in progress ───────────────────────────
-function DraftLockedState({ onFinish }: { onFinish: () => void }) {
+function DraftLockedState({
+  onFinish,
+  accentRgb,
+  accentColor,
+  accentOklch,
+  accentOklchLight,
+}: {
+  onFinish: () => void;
+  accentRgb: string;
+  accentColor: string;
+  accentOklch: string;
+  accentOklchLight: string;
+}) {
   const [isHovered, setIsHovered] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const { activeDraft } = useMomentDraft();
@@ -828,14 +857,14 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
   const mintButtonStyle = {
     ...BUTTON_BASE,
     background: isActive
-      ? "linear-gradient(160deg, #28a07c, #1e8a68)"
+      ? `linear-gradient(160deg, oklch(${accentOklchLight}), oklch(${accentOklch}))`
       : isHovered
-        ? "linear-gradient(160deg, #2eaa88, #259474)"
-        : "linear-gradient(160deg, #34A884, #2a9070)",
+        ? `linear-gradient(160deg, oklch(${accentOklch}), oklch(${accentOklchLight}))`
+        : `linear-gradient(160deg, oklch(${accentOklch}), oklch(${accentOklchLight}))`,
     color: "#ffffff",
     boxShadow: isHovered
-      ? "0 4px 20px rgba(52,168,132,0.38), 0 1px 6px rgba(52,168,132,0.25), inset 0 1px 0 rgba(255,255,255,0.20)"
-      : "0 2px 12px rgba(52,168,132,0.28), inset 0 1px 0 rgba(255,255,255,0.18)",
+      ? `0 4px 20px rgba(${accentRgb},0.38), 0 1px 6px rgba(${accentRgb},0.25), inset 0 1px 0 rgba(255,255,255,0.20)`
+      : `0 2px 12px rgba(${accentRgb},0.28), inset 0 1px 0 rgba(255,255,255,0.18)`,
     transform: isActive ? "scale(0.97)" : "scale(1)",
   };
 
@@ -855,8 +884,8 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
       <div
         data-ocid="library.loading_state"
         style={{
-          background: "rgba(52,168,132,0.06)",
-          border: "1px solid rgba(52,168,132,0.18)",
+          background: `rgba(${accentRgb},0.06)`,
+          border: `1px solid rgba(${accentRgb},0.18)`,
           borderRadius: "14px",
           padding: "16px 20px",
           width: "100%",
@@ -870,7 +899,7 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
             width: "8px",
             height: "8px",
             borderRadius: "50%",
-            background: "rgba(52,168,132,0.75)",
+            background: `rgba(${accentRgb},0.75)`,
             margin: "0 auto 12px",
             animation: "draftDotPulse 2s ease-in-out infinite",
           }}
@@ -903,7 +932,7 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
           style={{
             marginTop: "12px",
             paddingTop: "12px",
-            borderTop: "1px solid rgba(52,168,132,0.12)",
+            borderTop: `1px solid rgba(${accentRgb},0.12)`,
             display: "flex",
             justifyContent: "center",
             gap: "16px",
@@ -912,7 +941,7 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
           <span
             style={{
               fontSize: "12px",
-              color: photoCount === 9 ? "rgba(52,168,132,1)" : "#7a9a8a",
+              color: photoCount === 9 ? accentColor : "#7a9a8a",
               fontWeight: photoCount === 9 ? 600 : 400,
             }}
           >
@@ -921,7 +950,7 @@ function DraftLockedState({ onFinish }: { onFinish: () => void }) {
           <span
             style={{
               fontSize: "12px",
-              color: hasVideo ? "rgba(52,168,132,1)" : "#7a9a8a",
+              color: hasVideo ? accentColor : "#7a9a8a",
               fontWeight: hasVideo ? 600 : 400,
             }}
           >
@@ -966,13 +995,19 @@ export function LibraryPage({
   const { activeCycle } = useCycleTheme();
   const { hasDraft, startDraft, activeDraft } = useMomentDraft();
 
+  // Derive accent values from active cycle
+  const accentColor = `oklch(${activeCycle.accentOklchDark})`;
+  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
+  const accentText = `rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.85)`;
+  const accentGlow = `rgba(${accentRgb},0.28)`;
+
   // First captured photo from any active or completed draft
   const firstPhoto: string | undefined = activeDraft?.photos[0] ?? undefined;
 
   // Track touch start position for swipe detection
   const touchStartX = useRef<number | null>(null);
 
-  // Inject keyframes once
+  // Inject keyframes once — uses CSS custom property var(--cycle-accent-rgb) for the glow
   useEffect(() => {
     const id = "library-keyframes-style";
     if (document.getElementById(id)) return;
@@ -989,16 +1024,16 @@ export function LibraryPage({
         0%, 100% { transform: translateY(0px) scale(1); }
         50%       { transform: translateY(-5px) scale(1.012); }
       }
-      /* Soft glow pulse on the wrapper */
+      /* Soft glow pulse on the wrapper — uses CSS custom property set by CycleThemeContext */
       @keyframes packPreviewGlow {
         0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),
                                0 2px 8px rgba(0,0,0,0.05),
-                               0 0 0px rgba(120,230,190,0); }
+                               0 0 0px rgba(var(--cycle-accent-rgb),0); }
         50%       { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),
                                0 2px 8px rgba(0,0,0,0.05),
-                               0 0 18px rgba(120,230,190,0.32); }
+                               0 0 18px rgba(var(--cycle-accent-rgb),0.28); }
       }
       .pack-preview-animate {
         animation:
@@ -1069,25 +1104,36 @@ export function LibraryPage({
     setIsFlipped((f) => !f);
   }
 
+  // Primary button — cycle-accent filled gradient
   const primaryButtonStyle = {
     ...BUTTON_BASE,
     background: isButtonActive
-      ? "#CCCAC8"
+      ? `linear-gradient(160deg, oklch(${activeCycle.accentOklchLight}), oklch(${activeCycle.accentOklch}))`
       : isButtonHovered
-        ? "#DDDBD9"
-        : "#E8E8E6",
-    color: "#111111",
+        ? `linear-gradient(160deg, oklch(${activeCycle.accentOklch}), oklch(${activeCycle.accentOklchLight}))`
+        : `linear-gradient(160deg, oklch(${activeCycle.accentOklch}), oklch(${activeCycle.accentOklchLight}))`,
+    color: "#ffffff",
+    boxShadow: isButtonHovered
+      ? `0 4px 20px rgba(${accentRgb},0.35), 0 1px 6px rgba(${accentRgb},0.20), inset 0 1px 0 rgba(255,255,255,0.18)`
+      : `0 2px 12px rgba(${accentRgb},0.22), inset 0 1px 0 rgba(255,255,255,0.15)`,
     transform: isButtonActive ? "scale(0.98)" : "scale(1)",
   };
 
+  // Secondary button — subtle accent border + tinted background
   const secondaryButtonStyle = {
     ...BUTTON_BASE,
-    background: isAltButtonHovered ? "#E6E4E2" : "#F0EEEC",
-    color: "#6B6B6B",
+    background: isAltButtonHovered
+      ? `rgba(${accentRgb},0.08)`
+      : `rgba(${accentRgb},0.04)`,
+    color: accentColor,
+    border: `1px solid rgba(${accentRgb},0.22)`,
   };
 
   // Determine if we show the flippable pack or the revealed card / draft locked
   const showFlippable = !hasDraft && packState === "idle";
+
+  // Suppress unused variable warning — accentGlow is available for future use
+  void accentGlow;
 
   return (
     <div
@@ -1153,9 +1199,17 @@ export function LibraryPage({
               <PackCard
                 previewImage={firstPhoto}
                 packWrapperUrl={activeCycle.packWrapperUrl}
+                accentRgb={accentRgb}
+                accentText={accentText}
               />
               <div style={{ height: "20px" }} />
-              <DraftLockedState onFinish={() => onCaptureMoment?.()} />
+              <DraftLockedState
+                onFinish={() => onCaptureMoment?.()}
+                accentRgb={accentRgb}
+                accentColor={accentColor}
+                accentOklch={activeCycle.accentOklch}
+                accentOklchLight={activeCycle.accentOklchLight}
+              />
             </motion.div>
           )}
 
@@ -1259,6 +1313,8 @@ export function LibraryPage({
                         <PackCard
                           previewImage={firstPhoto}
                           packWrapperUrl={activeCycle.packWrapperUrl}
+                          accentRgb={accentRgb}
+                          accentText={accentText}
                         />
                       </div>
 
@@ -1275,7 +1331,12 @@ export function LibraryPage({
                           transform: "rotateY(180deg)",
                         }}
                       >
-                        <PackBackside onFlipBack={() => setIsFlipped(false)} />
+                        <PackBackside
+                          onFlipBack={() => setIsFlipped(false)}
+                          accentRgb={accentRgb}
+                          accentColor={accentColor}
+                          accentText={accentText}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1297,11 +1358,11 @@ export function LibraryPage({
                       alignItems: "center",
                     }}
                   >
-                    {/* Supply text */}
+                    {/* Supply text — subtle on-theme muted accent */}
                     <p
                       style={{
                         fontSize: "12px",
-                        color: "#9B9B9B",
+                        color: `rgba(${accentRgb},0.55)`,
                         marginTop: "16px",
                         letterSpacing: "0.02em",
                       }}
@@ -1364,7 +1425,10 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              <RevealedCard collectible={currentCollectible} />
+              <RevealedCard
+                collectible={currentCollectible}
+                accentRgb={accentRgb}
+              />
 
               {/* Action buttons */}
               <div
