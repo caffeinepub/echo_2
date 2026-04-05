@@ -1262,7 +1262,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
   const MINTY_LOGO =
-    "/assets/generated/minty-wordmark-logo-transparent.dim_600x180.png";
+    "/assets/generated/minty-logo-extracted-transparent.dim_600x180.png";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
