@@ -26,7 +26,7 @@ import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { ProfilePage } from "./pages/ProfilePage";
-import { ReleasesPage } from "./pages/ReleasesPage";
+import ReleasesPage from "./pages/ReleasesPage";
 import { UploadPage } from "./pages/UploadPage";
 import { seedMockData } from "./store/seedMockData";
 
@@ -136,6 +136,7 @@ function AppContent() {
       collectibleType: "photo",
       explicit: draft.explicit ?? false,
       hashtags: draft.hashtags ?? [],
+      likes: 0,
     };
 
     addRelease(release);

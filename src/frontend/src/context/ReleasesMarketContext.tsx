@@ -8,21 +8,7 @@ import {
 
 const LS_KEY = "minty_releases";
 const LS_SEEDED_KEY = "minty_releases_seeded";
-export const BONDING_CURVE_CONFIG = {
-  totalPacks: 300,
-  basePrice: 10,
-  maxPrice: 60,
-} as const;
-
-export function calcPackPrice(
-  packsSold: number,
-  totalPacks: number = BONDING_CURVE_CONFIG.totalPacks,
-  basePrice: number = BONDING_CURVE_CONFIG.basePrice,
-  maxPrice: number = BONDING_CURVE_CONFIG.maxPrice,
-): number {
-  const ratio = Math.min(packsSold / totalPacks, 1);
-  return basePrice + ratio * ratio * (maxPrice - basePrice);
-}
+const LS_LIKED_KEY = "minty_releases_liked";
 
 export interface MarketRelease {
   id: string;
@@ -34,47 +20,50 @@ export interface MarketRelease {
   caption: string;
   setName: string;
   packsAvailable: number;
-  packCount: number; // total packs minted (immutable)
+  packCount: number;
   packIds: string[];
   priceUsd: number;
-  listedAt: number; // = createdAt
+  listedAt: number;
   expiresAt: number;
   status: "active" | "burned" | "sold_out";
   collectibleType: "photo" | "video";
-  explicit: boolean; // content labeling flag
-  hashtags: string[]; // structured hashtags, e.g. ["nightdrive", "citylights"]
-  lastPurchaseAt?: number; // timestamp of last purchase
+  explicit: boolean;
+  hashtags: string[];
+  lastPurchaseAt?: number;
+  likes: number; // like count, default 0
 }
 
 interface ReleasesMarketCtx {
   releases: MarketRelease[];
+  likedIds: Set<string>;
   addRelease: (r: MarketRelease) => void;
   buyPack: (releaseId: string) => void;
   buyPacks: (releaseId: string, qty: number) => void;
   burnExpired: () => void;
+  likeRelease: (id: string) => void;
 }
 
 const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
 
 const NOW = Date.now();
-const H = 3600000; // 1 hour in ms
-const YEAR_MS = 365 * 24 * H; // 1 year
+const H = 3600000;
+const YEAR_MS = 365 * 24 * H;
 
 const SEED_RELEASES: MarketRelease[] = [
   {
     id: "release_seed_1",
-    creatorName: "mintcreator.icp",
+    creatorName: "mintcreator",
     creatorId: "mintcreator.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Sunset Ride",
-    caption: "9 photos and 1 video from a late summer drive along the coast",
+    caption: "Late summer drive along the coast",
     setName: "Coastal Drift Vol. 1",
     packsAvailable: 247,
     packCount: 300,
     packIds: [],
-    priceUsd: 10,
+    priceUsd: 1,
     listedAt: NOW - 2 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
@@ -82,20 +71,22 @@ const SEED_RELEASES: MarketRelease[] = [
     explicit: false,
     hashtags: ["coastaldrift", "sunsetride", "goldenhour"],
     lastPurchaseAt: NOW - 4 * 60 * 1000,
+    likes: 241,
   },
   {
     id: "release_seed_2",
-    creatorName: "neon_rider.icp",
+    creatorName: "neon_rider",
     creatorId: "neon_rider.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "First Mint Moment",
-    caption: "9 photos + 1 video from a late night drive",
+    caption: "Late night drive",
     setName: "Night Drive Series",
     packsAvailable: 171,
     packCount: 300,
     packIds: [],
-    priceUsd: 10,
+    priceUsd: 1,
     listedAt: NOW - 18 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
@@ -103,6 +94,7 @@ const SEED_RELEASES: MarketRelease[] = [
     explicit: false,
     hashtags: ["nightdrive", "citylights", "latevibes"],
     lastPurchaseAt: NOW - 22 * 60 * 1000,
+    likes: 87,
   },
   {
     id: "release_seed_3",
@@ -110,13 +102,14 @@ const SEED_RELEASES: MarketRelease[] = [
     creatorId: "light.icp",
     coverImageUrl:
       "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Golden Hour",
-    caption: "Limited Mint Moment \u2014 golden hour at the lake",
+    caption: "Golden hour at the lake",
     setName: "Golden Hour Set",
     packsAvailable: 89,
     packCount: 300,
     packIds: [],
-    priceUsd: 10,
+    priceUsd: 1,
     listedAt: NOW - 0.5 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
@@ -124,6 +117,7 @@ const SEED_RELEASES: MarketRelease[] = [
     explicit: false,
     hashtags: ["goldenhour", "fogseason", "earlylight"],
     lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
+    likes: 512,
   },
 ];
 
@@ -132,13 +126,13 @@ function loadReleasesFromStorage(): MarketRelease[] {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
     const releases = JSON.parse(raw) as MarketRelease[];
-    // Backfill fields for releases stored before feature additions
     return releases.map((r) => ({
       ...r,
       explicit: r.explicit ?? false,
       creatorId: r.creatorId ?? r.creatorName,
       packCount: r.packCount ?? r.packsAvailable,
       hashtags: r.hashtags ?? [],
+      likes: r.likes ?? 0,
     }));
   } catch {
     return [];
@@ -153,12 +147,31 @@ function saveReleasesToStorage(releases: MarketRelease[]) {
   }
 }
 
+function loadLikedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(LS_LIKED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveLikedIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(LS_LIKED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // ignore
+  }
+}
+
 export function ReleasesMarketProvider({
   children,
 }: { children: React.ReactNode }) {
   const [releases, setReleases] = useState<MarketRelease[]>(() =>
     loadReleasesFromStorage(),
   );
+  const [likedIds, setLikedIds] = useState<Set<string>>(() => loadLikedIds());
 
   // Seed on first mount
   useEffect(() => {
@@ -169,10 +182,15 @@ export function ReleasesMarketProvider({
     }
   }, []);
 
-  // Persist
+  // Persist releases
   useEffect(() => {
     saveReleasesToStorage(releases);
   }, [releases]);
+
+  // Persist liked ids
+  useEffect(() => {
+    saveLikedIds(likedIds);
+  }, [likedIds]);
 
   const addRelease = useCallback((r: MarketRelease) => {
     setReleases((prev) => [r, ...prev]);
@@ -220,9 +238,39 @@ export function ReleasesMarketProvider({
     );
   }, []);
 
+  const likeRelease = useCallback((id: string) => {
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // Unlike
+        next.delete(id);
+        setReleases((rs) =>
+          rs.map((r) =>
+            r.id === id ? { ...r, likes: Math.max(0, r.likes - 1) } : r,
+          ),
+        );
+      } else {
+        // Like
+        next.add(id);
+        setReleases((rs) =>
+          rs.map((r) => (r.id === id ? { ...r, likes: r.likes + 1 } : r)),
+        );
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <ReleasesMarketContext.Provider
-      value={{ releases, addRelease, buyPack, buyPacks, burnExpired }}
+      value={{
+        releases,
+        likedIds,
+        addRelease,
+        buyPack,
+        buyPacks,
+        burnExpired,
+        likeRelease,
+      }}
     >
       {children}
     </ReleasesMarketContext.Provider>
@@ -238,3 +286,19 @@ export function useReleasesMarket(): ReleasesMarketCtx {
   }
   return ctx;
 }
+
+// Keep calcPackPrice exported for compatibility
+export function calcPackPrice(
+  _packsSold: number,
+  _totalPacks = 300,
+  basePrice = 1,
+  _maxPrice = 1,
+): number {
+  return basePrice;
+}
+
+export const BONDING_CURVE_CONFIG = {
+  totalPacks: 300,
+  basePrice: 1,
+  maxPrice: 1,
+} as const;

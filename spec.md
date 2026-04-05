@@ -1,43 +1,68 @@
-# Minty — Backend Media Storage for Mint a Moment
+# Minty — Vine-style Releases Feed
 
 ## Current State
 
-The backend (`main.mo`) has legacy music/TCG types and pack/collectible types, but **no MintySet type** and no media storage. The frontend stores draft media as ephemeral blob URLs in localStorage, which do not survive page refresh or redeploy. The Mint a Moment capture flow has 9-photo + 1-video steps. The confirm modal and info modal both reference bonding curve pricing. `MomentDraftContext` has a `photos[]` array and defaults `packSupply` to 100.
+The Releases tab (`ReleasesPage.tsx`) currently shows a vertical scrollable grid of pack cards (`ReleaseCard`). Each card displays:
+- Cover media (video clip or image) with 4/5 aspect ratio
+- Creator name, title, caption
+- Pack price, supply remaining, bonding curve price, progress bar
+- Countdown timer, trending signals, activity pulses
+- Buy Pack button (opens `BuyPacksModal`)
+- Packs/Market toggle (for auction tab)
+- Trending hashtags section, Hot Packs section, ticker bar, safe view toggle
+
+`ReleasesMarketContext` provides `MarketRelease[]` which includes all pack market fields. The `likes` field does not currently exist on `MarketRelease`.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `MintySet` Motoko type: `set_id`, `creator_principal_id`, `timestamp`, `title`, `caption`, `hashtags`, `explicit_flag`, `supply` (300), `price_per_pack_usd`
-- `MediaAsset` Motoko type: `asset_id`, `set_id`, `media_type` (#image | #video | #preview_clip | #cover_image), `media_index`, `blob_storage_key`, `content_type`, `created_at`
-- `NFTAsset` Motoko type: `nft_id`, `set_id`, `creator_principal_id`, `owner_principal_id`, `media_reference` (asset_id), `media_type`, `media_index`, `rarity` (#common | #rare), `edition_number`, `total_editions`, `auction_state`
-- Backend functions: `createMintySet(input)`, `getMintySet(set_id)`, `getCreatorMintySets(creator_principal_id)`, `getPreviewMedia(set_id)`, `getFullMedia(asset_id)`
-- Blob-storage component integration for persistent media (images + video files)
-- Frontend: upload 9 images + 1 video (max 30s) to blob storage during mint flow
-- Frontend: store blob storage keys in `MintySet` record on backend
-- Frontend: wire `getSet`/`getCreatorSets`/`getPreviewMedia`/`getFullMedia` calls in Collection, Releases, and Library views
-- Frontend: after video upload, generate a 2-second muted looping preview clip client-side using MediaRecorder/canvas trimming
+- `likes` field (integer, default 0) to `MarketRelease` type in `ReleasesMarketContext.tsx`
+- `likedIds` Set in context for tracking which videos the user has liked (localStorage backed)
+- `likeRelease(id)` function in context
+- New `ReleasesPage.tsx` implementing a Vine/early-TikTok-style vertical snap scroll feed
+- `VideoFeedItem` component: full-screen video, muted by default, tap to toggle sound, autoplay on intersect
+- Heart button overlay with animation on tap
+- Creator username overlay (bottom-left)
+- Like count overlay (bottom-right)
+- IntersectionObserver-based autoplay: only the visible video plays, others pause
+- Preload the next video for smooth scrolling
+- `scroll-snap-type: y mandatory` CSS on feed container
+- Each video fills the viewport (minus top nav ~64px and bottom nav ~68px) with small horizontal padding (16px each side) and rounded corners (16px)
 
 ### Modify
-- `MomentDraftContext`: remove `photos[]`, keep `video`, add `images: File[]` (9 image files), add `coverImageIndex: number`, change `packSupply` default to 300
-- `CaptureMomentPage`: update steps to 9-image upload/capture + 1-video, recording max 30s
-- `FinalSetupScreen`: update summary text (9 images, 1 video, 300 packs), fix step counter, change submit button to "Confirm Mint"
-- `MintSetConfirmModal`: remove bonding curve copy, change cost to $1, update pack content list to reflect new structure
-- `MintMomentModal`: remove bonding curve section/function, update How It Works to 9 images + 1 video flow, update pack structure copy
-- Mint flow: on slider confirm, upload all media to blob storage, call `createMintySet`, then navigate to Releases
+- `ReleasesMarketContext.tsx`: add `likes: number` field to `MarketRelease` interface; backfill to 0 in `loadReleasesFromStorage`; add seed data likes values; add `likeRelease` to context
+- `ReleasesPage.tsx`: complete rewrite — remove all pack grid UI, filters, market toggle, ticker, hashtags, hot packs, safe view toggle, price/supply display, buy button; implement vertical snap scroll feed
 
 ### Remove
-- All bonding curve pricing logic from `MintMomentModal` (`bondingCurvePrice`, `estimateRevenue` with quadratic formula)
-- Bonding curve copy from `MintSetConfirmModal`
-- `photos[]` array from `MomentDraftContext` and all capture steps that depend on it
-- Stale pack economics grid from `MintSetConfirmModal` (Starting Price=$10, Max Price=$60, Bonding Curve label)
+- Pack price display
+- Pack supply / remaining count
+- Preview clip button / expand modal
+- Market toggle (auction tab)
+- Pack filters
+- Hashtags section
+- Hot Packs section
+- Newest moments toggle
+- Safe view toggle (keep explicit filtering logic silently — filter out explicit content without UI)
+- Buy Pack button and BuyPacksModal references from Releases tab
+- Ticker bar
+- Countdown timers
+- Progress bars
+- Trending signals
 
 ## Implementation Plan
 
-1. Select `blob-storage` Caffeine component
-2. Generate Motoko backend with `MintySet`, `MediaAsset`, `NFTAsset` types and all five data access functions; integrate with blob-storage for asset key storage
-3. Frontend — update `MomentDraftContext` to hold 9 `File` objects (images) + 1 video blob + cover image index, remove `photos[]`
-4. Frontend — update `CaptureMomentPage` to 9-image upload steps + 1-video record step (max 30s)
-5. Frontend — on mint confirm, upload each media file to blob-storage, collect asset keys, call `createMintySet` with metadata + asset keys
-6. Frontend — wire `getPreviewMedia` and `getFullMedia` to Collection grid, Releases cards, pack opening, and leaderboard
-7. Frontend — remove all bonding curve copy from both modals; update `MintSetConfirmModal` cost to $1, pack content to 9 images + 1 video
-8. Frontend — generate 2s preview clip client-side from video blob before upload
+1. **ReleasesMarketContext**: Add `likes: number` to `MarketRelease` interface. Add `likeRelease(id: string) => void` to context. Add liked tracking via localStorage. Backfill `likes` in `loadReleasesFromStorage`. Add seed likes values to seed data.
+
+2. **ReleasesPage rewrite**:
+   - Remove all existing UI components and imports no longer needed
+   - Outer container: `height: 100%`, `overflow-y: scroll`, `scroll-snap-type: y mandatory`, padding 0
+   - Each `VideoFeedItem`: height = `calc(100dvh - 64px - 68px)`, `scroll-snap-align: start`, horizontal padding 16px
+   - Video element: width 100%, height 100%, `object-fit: cover`, `border-radius: 16px`, autoplay, loop, muted
+   - IntersectionObserver: play video when ≥60% visible, pause otherwise
+   - Tap on video body: toggle muted
+   - Overlay (bottom-left): `@creatorName` in white, DM Sans, semibold
+   - Overlay (bottom-right): heart icon + like count; tap animates heart (scale pulse) and increments like
+   - Preload: `<link rel=preload>` or set `preload="auto"` on next video
+   - Filter explicit content silently (no toggle shown)
+   - No progress bar, no sound icon visible by default
+   - Sound state indicator: small muted icon fades in/out on toggle tap only
