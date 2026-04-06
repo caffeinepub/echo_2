@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type CatState = "walking" | "idle" | "sitting" | "tapped";
+type PetState = "walking" | "idle" | "sitting" | "tapped";
 type Direction = -1 | 1;
 
 interface Sparkle {
@@ -9,7 +9,7 @@ interface Sparkle {
   y: number;
 }
 
-function playMeow() {
+function playSound() {
   try {
     const ctx = new (
       window.AudioContext ||
@@ -21,60 +21,242 @@ function playMeow() {
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = "sine";
-    osc.frequency.setValueAtTime(900, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.12);
-    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.22);
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    // Old man "hmm" or gentle exclamation
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(320, ctx.currentTime + 0.18);
+    osc.frequency.exponentialRampToValueAtTime(280, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.14, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.35);
+    osc.stop(ctx.currentTime + 0.4);
   } catch {
     // Audio not available
   }
+}
+
+// Status bar configuration
+const STATUS_BARS = [
+  {
+    key: "water" as const,
+    label: "Water",
+    icon: "💧",
+    color: "#7fb8e8",
+    colorLow: "#4a9fd4",
+    drainMs: 30_000,
+  },
+  {
+    key: "food" as const,
+    label: "Food",
+    icon: "🍖",
+    color: "#f0a875",
+    colorLow: "#e07d3e",
+    drainMs: 45_000,
+  },
+  {
+    key: "mood" as const,
+    label: "Mood",
+    icon: "🩷",
+    color: "#f08ca8",
+    colorLow: "#d95a78",
+    drainMs: 60_000,
+  },
+] as const;
+
+type StatusKey = (typeof STATUS_BARS)[number]["key"];
+
+function StatusBarPanel({
+  values,
+  onRefill,
+}: {
+  values: Record<StatusKey, number>;
+  onRefill: (key: StatusKey) => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 28,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "calc(100% - 40px)",
+        maxWidth: 380,
+        background: "var(--echo-surface, #ffffff)",
+        border: "1px solid var(--echo-border, #d0dfef)",
+        borderRadius: 20,
+        boxShadow: "0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04)",
+        padding: "14px 18px",
+        zIndex: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+      data-ocid="pet.panel"
+    >
+      {STATUS_BARS.map((bar) => {
+        const value = values[bar.key];
+        const isLow = value < 20;
+        return (
+          <button
+            key={bar.key}
+            type="button"
+            aria-label={`Refill ${bar.label} (currently ${Math.round(value)}%)`}
+            onClick={() => onRefill(bar.key)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              width: "100%",
+            }}
+            data-ocid={`pet.${bar.key}.button`}
+          >
+            {/* Icon */}
+            <span
+              style={{
+                fontSize: 17,
+                width: 22,
+                textAlign: "center",
+                flexShrink: 0,
+                animation: isLow
+                  ? "petBarPulse 1.4s ease-in-out infinite"
+                  : "none",
+                display: "inline-block",
+              }}
+            >
+              {bar.icon}
+            </span>
+
+            {/* Label */}
+            <span
+              style={{
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: isLow
+                  ? bar.colorLow
+                  : "var(--echo-text-secondary, #5b7fa6)",
+                width: 38,
+                flexShrink: 0,
+                textAlign: "left",
+                transition: "color 0.3s ease",
+              }}
+            >
+              {bar.label}
+            </span>
+
+            {/* Track */}
+            <div
+              style={{
+                flex: 1,
+                height: 7,
+                background: "var(--echo-elevated, #f0f4fa)",
+                borderRadius: 99,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${Math.max(0, Math.min(100, value))}%`,
+                  background: isLow ? bar.colorLow : bar.color,
+                  borderRadius: 99,
+                  transition:
+                    "width 0.6s cubic-bezier(0.4,0,0.2,1), background 0.4s ease",
+                  boxShadow: isLow
+                    ? `0 0 6px ${bar.colorLow}80`
+                    : `0 0 4px ${bar.color}60`,
+                }}
+              />
+            </div>
+
+            {/* Percentage */}
+            <span
+              style={{
+                fontFamily: "'DM Sans', system-ui, sans-serif",
+                fontSize: 10,
+                fontWeight: 600,
+                color: isLow ? bar.colorLow : "var(--echo-text-muted, #8baec8)",
+                width: 28,
+                textAlign: "right",
+                flexShrink: 0,
+                transition: "color 0.3s ease",
+                letterSpacing: "0.02em",
+              }}
+            >
+              {Math.round(value)}%
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 export function PetPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 140, y: 200 });
   const [dir, setDir] = useState<Direction>(1);
-  const [catState, setCatState] = useState<CatState>("walking");
+  const [petState, setPetState] = useState<PetState>("walking");
   const [walkFrame, setWalkFrame] = useState(0);
-  const [tailAngle, setTailAngle] = useState(0);
   const [sparkles, setSparkles] = useState<Sparkle[]>([]);
   const sparkleIdRef = useRef(0);
 
-  const stateRef = useRef({ pos, dir, catState });
-  stateRef.current = { pos, dir, catState };
+  // Status bars state
+  const [statusValues, setStatusValues] = useState<Record<StatusKey, number>>({
+    water: 88,
+    food: 95,
+    mood: 80,
+  });
+
+  const stateRef = useRef({ pos, dir, petState });
+  stateRef.current = { pos, dir, petState };
+
+  // Drain status bars over time
+  useEffect(() => {
+    const TICK_MS = 500;
+    const id = setInterval(() => {
+      setStatusValues((prev) => {
+        const next = { ...prev };
+        for (const bar of STATUS_BARS) {
+          const drainPerTick = (100 / bar.drainMs) * TICK_MS;
+          next[bar.key] = Math.max(0, prev[bar.key] - drainPerTick);
+        }
+        return next;
+      });
+    }, TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleRefill = useCallback((key: StatusKey) => {
+    setStatusValues((prev) => ({ ...prev, [key]: 100 }));
+  }, []);
 
   // Walk cycle animation
   useEffect(() => {
-    if (catState !== "walking") return;
+    if (petState !== "walking") return;
     const id = setInterval(() => {
       setWalkFrame((f) => (f + 1) % 4);
     }, 140);
     return () => clearInterval(id);
-  }, [catState]);
-
-  // Tail sway
-  useEffect(() => {
-    let t = 0;
-    const id = setInterval(() => {
-      t += 0.08;
-      setTailAngle(Math.sin(t) * 18);
-    }, 40);
-    return () => clearInterval(id);
-  }, []);
+  }, [petState]);
 
   // Movement logic
   const getBounds = useCallback(() => {
     const el = containerRef.current;
     if (!el) return { maxX: 280, maxY: 400 };
-    return { maxX: el.clientWidth - 72, maxY: el.clientHeight - 100 };
+    return { maxX: el.clientWidth - 72, maxY: el.clientHeight - 200 };
   }, []);
 
   useEffect(() => {
     const step = () => {
-      const { catState: cs, pos: p, dir: d } = stateRef.current;
+      const { petState: cs, pos: p, dir: d } = stateRef.current;
       if (cs !== "walking") return;
       const { maxX, maxY } = getBounds();
       const speed = 1.4;
@@ -104,15 +286,15 @@ export function PetPage() {
   // State machine: randomly pause/sit/walk
   useEffect(() => {
     const schedule = () => {
-      const current = stateRef.current.catState;
+      const current = stateRef.current.petState;
       let nextDelay: number;
       if (current === "walking") {
         const roll = Math.random();
         if (roll < 0.45) {
-          setCatState("idle");
+          setPetState("idle");
           nextDelay = 1200 + Math.random() * 1800;
         } else if (roll < 0.65) {
-          setCatState("sitting");
+          setPetState("sitting");
           nextDelay = 2000 + Math.random() * 3000;
           if (Math.random() < 0.5) setDir((d) => (d === 1 ? -1 : 1));
         } else {
@@ -121,9 +303,9 @@ export function PetPage() {
         }
       } else if (current === "tapped") {
         nextDelay = 800;
-        setCatState("walking");
+        setPetState("walking");
       } else {
-        setCatState("walking");
+        setPetState("walking");
         nextDelay = 2500 + Math.random() * 3500;
       }
       return nextDelay;
@@ -138,9 +320,14 @@ export function PetPage() {
     return () => clearTimeout(timeout);
   }, []);
 
-  const handleCatClick = useCallback(() => {
-    playMeow();
-    setCatState("tapped");
+  const handlePetClick = useCallback(() => {
+    playSound();
+    setPetState("tapped");
+    // Boost mood by +15%, capped at 100
+    setStatusValues((prev) => ({
+      ...prev,
+      mood: Math.min(100, prev.mood + 15),
+    }));
     const id = ++sparkleIdRef.current;
     setSparkles((s) => [
       ...s,
@@ -150,11 +337,11 @@ export function PetPage() {
       setSparkles((s) => s.filter((sp) => sp.id !== id));
     }, 900);
     setTimeout(() => {
-      setCatState("walking");
+      setPetState("walking");
     }, 700);
   }, []);
 
-  // Walk leg angles
+  // Walk leg/arm angles
   const legAngles = [
     [12, -18, -12, 18], // frame 0
     [18, -12, -18, 12], // frame 1
@@ -162,11 +349,11 @@ export function PetPage() {
     [-8, 8, 8, -8], // frame 3
   ];
   const currentLegs =
-    catState === "walking" ? legAngles[walkFrame] : [0, 0, 0, 0];
+    petState === "walking" ? legAngles[walkFrame] : [0, 0, 0, 0];
 
   const isFlipped = dir === -1;
-  const isSitting = catState === "sitting";
-  const isTapped = catState === "tapped";
+  const isSitting = petState === "sitting";
+  const isTapped = petState === "tapped";
 
   return (
     <div
@@ -188,13 +375,13 @@ export function PetPage() {
           textAlign: "center",
           fontFamily: "'DM Sans', Inter, sans-serif",
           fontSize: 13,
-          color: "var(--echo-muted, #aaa)",
+          color: "var(--echo-text-muted, #aaa)",
           letterSpacing: "0.04em",
           pointerEvents: "none",
           userSelect: "none",
         }}
       >
-        tap the cat ✦
+        tap the old man ✦
       </p>
 
       {/* Sparkles */}
@@ -210,21 +397,21 @@ export function PetPage() {
             animation: "petSparkleFloat 0.9s ease-out forwards",
           }}
         >
-          🤍
+          ✨
         </div>
       ))}
 
-      {/* Cat */}
+      {/* Old Man */}
       <button
         type="button"
-        aria-label="Cat — tap to hear a meow"
-        onClick={handleCatClick}
+        aria-label="Old man — tap to say hello"
+        onClick={handlePetClick}
         style={{
           position: "absolute",
           left: pos.x,
           top: pos.y,
           width: 72,
-          height: 80,
+          height: 100,
           padding: 0,
           border: "none",
           background: "transparent",
@@ -243,8 +430,11 @@ export function PetPage() {
         }}
         data-ocid="pet.canvas_target"
       >
-        <CatSVG legs={currentLegs} tailAngle={tailAngle} sitting={isSitting} />
+        <OldManSVG legs={currentLegs} sitting={isSitting} />
       </button>
+
+      {/* Status bars */}
+      <StatusBarPanel values={statusValues} onRefill={handleRefill} />
 
       <style>{`
         @keyframes petSparkleFloat {
@@ -252,219 +442,390 @@ export function PetPage() {
           60% { opacity: 0.9; transform: translateY(-22px) scale(1.2); }
           100% { opacity: 0; transform: translateY(-40px) scale(0.8); }
         }
+        @keyframes petBarPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.12); }
+        }
       `}</style>
     </div>
   );
 }
 
-function CatSVG({
+function OldManSVG({
   legs,
-  tailAngle,
   sitting,
 }: {
   legs: number[];
-  tailAngle: number;
   sitting: boolean;
 }) {
-  const bodyY = sitting ? 44 : 38;
-  const bodyHeight = sitting ? 32 : 28;
+  // legs: [frontRightArm, frontLeftArm, frontRightLeg, frontLeftLeg]
+  const skinTone = "#d4956a";
+  const robeFill = "#6b7fa6"; // muted traditional blue robe
+  const robeAccent = "#4e6080";
+  const hairColor = "#e8e2d8"; // white/gray hair
+  const caneColor = "#8b5e3c";
+  const trouserColor = "#4a5568";
+
+  // Body positioning
+  const headCX = 36;
+  const headCY = sitting ? 24 : 22;
+  const headRX = 11;
+  const headRY = 12;
+
+  const bodyTopY = headCY + headRY - 2;
+  const bodyHeight = sitting ? 26 : 24;
+  const bodyCX = 36;
+  const bodyCY = bodyTopY + bodyHeight / 2;
+
+  const legTopY = bodyTopY + bodyHeight - 2;
+  const legLength = sitting ? 12 : 18;
+
+  // Cane: held in left hand (visually on the right of the character since we don't flip SVG, just the button)
+  // The cane is on the character's right side (x > center)
+  const caneHandX = 52;
+  const caneHandY = bodyCY + 2;
+  const caneBottomX = 54;
+  const caneBottomY = legTopY + legLength + 4;
 
   return (
     <svg
       role="img"
-      aria-label="Black cat mascot"
-      viewBox="0 0 72 90"
+      aria-label="Old Asian man mascot with a cane"
+      viewBox="0 0 72 100"
       width="72"
-      height="90"
+      height="100"
       style={{ overflow: "visible", display: "block" }}
     >
-      {/* Tail */}
-      <g
-        transform={`translate(18, ${
-          bodyY + bodyHeight - 6
-        }) rotate(${tailAngle}, 0, 0)`}
-      >
-        <path
-          d="M0 0 Q-14 -16 -8 -30"
-          stroke="#1a1a1a"
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
+      {/* === BACK LAYERS === */}
+
+      {/* Back leg (left leg of character) */}
+      {!sitting ? (
+        <g transform={`translate(30, ${legTopY}) rotate(${legs[3]}, 0, 0)`}>
+          <rect
+            x="-4"
+            y="0"
+            width="8"
+            height={legLength}
+            rx="4"
+            fill={trouserColor}
+            opacity="0.7"
+          />
+          {/* Shoe */}
+          <ellipse
+            cx="0"
+            cy={legLength + 3}
+            rx="5"
+            ry="3"
+            fill="#2d2d2d"
+            opacity="0.7"
+          />
+        </g>
+      ) : (
+        // Sitting: left leg extended slightly forward
+        <ellipse
+          cx="27"
+          cy={legTopY + 10}
+          rx="7"
+          ry="5"
+          fill={trouserColor}
+          opacity="0.7"
         />
-        <circle cx="-8" cy="-30" r="3.5" fill="#1a1a1a" />
+      )}
+
+      {/* === BODY (ROBE) === */}
+      {/* Robe / tunic — trapezoid shape */}
+      <path
+        d={`
+          M ${bodyCX - 16} ${bodyTopY + 4}
+          Q ${bodyCX - 18} ${bodyTopY} ${bodyCX - 10} ${bodyTopY}
+          L ${bodyCX + 10} ${bodyTopY}
+          Q ${bodyCX + 18} ${bodyTopY} ${bodyCX + 16} ${bodyTopY + 4}
+          L ${bodyCX + 18} ${bodyTopY + bodyHeight}
+          Q ${bodyCX + 14} ${bodyTopY + bodyHeight + 4} ${bodyCX} ${bodyTopY + bodyHeight + 2}
+          Q ${bodyCX - 14} ${bodyTopY + bodyHeight + 4} ${bodyCX - 18} ${bodyTopY + bodyHeight}
+          Z
+        `}
+        fill={robeFill}
+      />
+      {/* Robe center collar/sash line */}
+      <line
+        x1={bodyCX}
+        y1={bodyTopY}
+        x2={bodyCX}
+        y2={bodyTopY + bodyHeight + 2}
+        stroke={robeAccent}
+        strokeWidth="1.5"
+        opacity="0.5"
+      />
+      {/* Collar V-neck */}
+      <path
+        d={`M ${bodyCX - 6} ${bodyTopY + 2} L ${bodyCX} ${bodyTopY + 8} L ${bodyCX + 6} ${bodyTopY + 2}`}
+        stroke={robeAccent}
+        strokeWidth="1.5"
+        fill="none"
+      />
+
+      {/* === FRONT LEG (right leg of character) === */}
+      {!sitting ? (
+        <g transform={`translate(42, ${legTopY}) rotate(${legs[2]}, 0, 0)`}>
+          <rect
+            x="-4"
+            y="0"
+            width="8"
+            height={legLength}
+            rx="4"
+            fill={trouserColor}
+          />
+          {/* Shoe */}
+          <ellipse cx="0" cy={legLength + 3} rx="5" ry="3" fill="#2d2d2d" />
+        </g>
+      ) : (
+        // Sitting: right leg tucked
+        <ellipse cx="43" cy={legTopY + 8} rx="8" ry="5" fill={trouserColor} />
+      )}
+
+      {/* === LEFT ARM (character's left, swings freely) === */}
+      <g
+        transform={`translate(${bodyCX - 14}, ${bodyTopY + 6}) rotate(${legs[1]}, 0, 0)`}
+      >
+        <rect
+          x="-3"
+          y="0"
+          width="6"
+          height={sitting ? 12 : 16}
+          rx="3"
+          fill={robeFill}
+        />
+        {/* Hand */}
+        <circle cx="0" cy={sitting ? 14 : 18} r="3.5" fill={skinTone} />
       </g>
 
-      {/* Back legs */}
-      {!sitting ? (
-        <>
-          <g
-            transform={`translate(20, ${
-              bodyY + bodyHeight - 6
-            }) rotate(${legs[2]}, 0, 0)`}
-          >
-            <rect x="-3" y="0" width="6" height="16" rx="3" fill="#1a1a1a" />
-            <rect x="-4" y="13" width="9" height="5" rx="2.5" fill="#1a1a1a" />
-          </g>
-          <g
-            transform={`translate(30, ${
-              bodyY + bodyHeight - 6
-            }) rotate(${legs[3]}, 0, 0)`}
-          >
-            <rect x="-3" y="0" width="6" height="16" rx="3" fill="#1a1a1a" />
-            <rect x="-4" y="13" width="9" height="5" rx="2.5" fill="#1a1a1a" />
-          </g>
-        </>
-      ) : (
-        <>
-          <ellipse
-            cx="20"
-            cy={bodyY + bodyHeight + 8}
-            rx="8"
-            ry="6"
-            fill="#1a1a1a"
-          />
-          <ellipse
-            cx="36"
-            cy={bodyY + bodyHeight + 8}
-            rx="8"
-            ry="6"
-            fill="#1a1a1a"
-          />
-        </>
-      )}
+      {/* === RIGHT ARM (character's right, holds cane) === */}
+      <g
+        transform={`translate(${bodyCX + 14}, ${bodyTopY + 6}) rotate(${sitting ? 30 : legs[0] * 0.5 + 15}, 0, 0)`}
+      >
+        <rect
+          x="-3"
+          y="0"
+          width="6"
+          height={sitting ? 14 : 18}
+          rx="3"
+          fill={robeFill}
+        />
+        {/* Hand */}
+        <circle cx="0" cy={sitting ? 16 : 20} r="3.5" fill={skinTone} />
+      </g>
 
-      {/* Body */}
-      <ellipse
-        cx="32"
-        cy={bodyY + bodyHeight / 2}
-        rx="20"
-        ry={bodyHeight / 2}
-        fill="#1a1a1a"
-      />
-
-      {/* Front legs */}
-      {!sitting ? (
-        <>
-          <g
-            transform={`translate(38, ${
-              bodyY + bodyHeight - 6
-            }) rotate(${legs[0]}, 0, 0)`}
-          >
-            <rect x="-3" y="0" width="6" height="16" rx="3" fill="#222" />
-            <rect x="-4" y="13" width="9" height="5" rx="2.5" fill="#222" />
-          </g>
-          <g
-            transform={`translate(48, ${
-              bodyY + bodyHeight - 6
-            }) rotate(${legs[1]}, 0, 0)`}
-          >
-            <rect x="-3" y="0" width="6" height="16" rx="3" fill="#222" />
-            <rect x="-4" y="13" width="9" height="5" rx="2.5" fill="#222" />
-          </g>
-        </>
-      ) : (
-        <>
-          <ellipse
-            cx="36"
-            cy={bodyY + bodyHeight + 6}
-            rx="9"
-            ry="5"
-            fill="#222"
-          />
-          <ellipse
-            cx="48"
-            cy={bodyY + bodyHeight + 6}
-            rx="7"
-            ry="4"
-            fill="#222"
-          />
-        </>
-      )}
-
-      {/* Neck */}
-      <ellipse cx="38" cy={bodyY - 4} rx="9" ry="7" fill="#1a1a1a" />
-
-      {/* Head */}
-      <ellipse cx="44" cy={bodyY - 18} rx="14" ry="13" fill="#1a1a1a" />
-
-      {/* Ears */}
-      <polygon
-        points={`34,${bodyY - 27} 30,${bodyY - 42} 38,${bodyY - 30}`}
-        fill="#1a1a1a"
-      />
-      <polygon
-        points={`52,${bodyY - 27} 56,${bodyY - 42} 48,${bodyY - 30}`}
-        fill="#1a1a1a"
-      />
-      {/* Inner ear */}
-      <polygon
-        points={`34,${bodyY - 28} 31,${bodyY - 39} 38,${bodyY - 31}`}
-        fill="#3d1a1a"
-        opacity="0.4"
-      />
-      <polygon
-        points={`52,${bodyY - 28} 55,${bodyY - 39} 48,${bodyY - 31}`}
-        fill="#3d1a1a"
-        opacity="0.4"
-      />
-
-      {/* Eyes */}
-      <ellipse cx="39" cy={bodyY - 20} rx="3" ry="3.2" fill="white" />
-      <ellipse cx="49" cy={bodyY - 20} rx="3" ry="3.2" fill="white" />
-      <circle cx="40" cy={bodyY - 20} r="1.8" fill="#111" />
-      <circle cx="50" cy={bodyY - 20} r="1.8" fill="#111" />
-      {/* Eye shine */}
-      <circle cx="41" cy={bodyY - 21} r="0.7" fill="white" />
-      <circle cx="51" cy={bodyY - 21} r="0.7" fill="white" />
-
-      {/* Nose */}
-      <ellipse cx="44" cy={bodyY - 13} rx="2" ry="1.4" fill="#e88fa0" />
-
-      {/* Whiskers */}
+      {/* === CANE === */}
+      {/* Cane stick */}
       <line
-        x1="44"
-        y1={bodyY - 12}
-        x2="30"
-        y2={bodyY - 10}
-        stroke="white"
-        strokeWidth="0.8"
-        opacity="0.7"
+        x1={caneHandX}
+        y1={caneHandY + (sitting ? 18 : 22)}
+        x2={caneBottomX}
+        y2={caneBottomY}
+        stroke={caneColor}
+        strokeWidth="2.5"
+        strokeLinecap="round"
       />
-      <line
-        x1="44"
-        y1={bodyY - 12}
-        x2="30"
-        y2={bodyY - 13}
-        stroke="white"
-        strokeWidth="0.8"
-        opacity="0.7"
-      />
-      <line
-        x1="44"
-        y1={bodyY - 12}
-        x2="58"
-        y2={bodyY - 10}
-        stroke="white"
-        strokeWidth="0.8"
-        opacity="0.7"
-      />
-      <line
-        x1="44"
-        y1={bodyY - 12}
-        x2="58"
-        y2={bodyY - 13}
-        stroke="white"
-        strokeWidth="0.8"
-        opacity="0.7"
-      />
-
-      {/* Mouth */}
+      {/* Cane curved handle */}
       <path
-        d={`M 42 ${bodyY - 11} Q 44 ${bodyY - 9} 46 ${bodyY - 11}`}
-        stroke="white"
+        d={`M ${caneHandX - 5} ${caneHandY + (sitting ? 14 : 18)} Q ${caneHandX - 2} ${caneHandY + (sitting ? 10 : 14)} ${caneHandX + 1} ${caneHandY + (sitting ? 15 : 19)}`}
+        stroke={caneColor}
+        strokeWidth="2.5"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* Cane rubber tip */}
+      <circle cx={caneBottomX} cy={caneBottomY} r="2" fill="#2d2d2d" />
+
+      {/* === NECK === */}
+      <rect
+        x={headCX - 5}
+        y={headCY + headRY - 4}
+        width="10"
+        height="8"
+        rx="4"
+        fill={skinTone}
+      />
+
+      {/* === HEAD === */}
+      <ellipse
+        cx={headCX}
+        cy={headCY}
+        rx={headRX}
+        ry={headRY}
+        fill={skinTone}
+      />
+
+      {/* === EARS === */}
+      <ellipse
+        cx={headCX - headRX + 1}
+        cy={headCY + 1}
+        rx="3"
+        ry="4"
+        fill={skinTone}
+      />
+      <ellipse
+        cx={headCX + headRX - 1}
+        cy={headCY + 1}
+        rx="3"
+        ry="4"
+        fill={skinTone}
+      />
+      {/* Ear inner */}
+      <ellipse
+        cx={headCX - headRX + 1}
+        cy={headCY + 1}
+        rx="1.5"
+        ry="2.5"
+        fill="#c07c52"
+        opacity="0.4"
+      />
+      <ellipse
+        cx={headCX + headRX - 1}
+        cy={headCY + 1}
+        rx="1.5"
+        ry="2.5"
+        fill="#c07c52"
+        opacity="0.4"
+      />
+
+      {/* === HAIR — tufts on top and sideburns === */}
+      {/* Main top hair wisp */}
+      <ellipse
+        cx={headCX}
+        cy={headCY - headRY + 1}
+        rx="7"
+        ry="4"
+        fill={hairColor}
+      />
+      {/* Left sideburn */}
+      <ellipse
+        cx={headCX - headRX + 2}
+        cy={headCY - 3}
+        rx="3"
+        ry="4"
+        fill={hairColor}
+        opacity="0.85"
+      />
+      {/* Right sideburn */}
+      <ellipse
+        cx={headCX + headRX - 2}
+        cy={headCY - 3}
+        rx="3"
+        ry="4"
+        fill={hairColor}
+        opacity="0.85"
+      />
+      {/* Small beard/chin wisps */}
+      <ellipse
+        cx={headCX - 2}
+        cy={headCY + headRY - 2}
+        rx="4"
+        ry="2.5"
+        fill={hairColor}
+        opacity="0.6"
+      />
+      <ellipse
+        cx={headCX + 3}
+        cy={headCY + headRY - 2}
+        rx="3"
+        ry="2"
+        fill={hairColor}
+        opacity="0.5"
+      />
+
+      {/* === EYES — squinting happy elder eyes === */}
+      {/* Left eye squint arc */}
+      <path
+        d={`M ${headCX - 5} ${headCY - 1} Q ${headCX - 3} ${headCY - 4} ${headCX - 1} ${headCY - 1}`}
+        stroke="#3d2810"
+        strokeWidth="1.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* Right eye squint arc */}
+      <path
+        d={`M ${headCX + 1} ${headCY - 1} Q ${headCX + 3} ${headCY - 4} ${headCX + 5} ${headCY - 1}`}
+        stroke="#3d2810"
+        strokeWidth="1.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* Eye bags / wrinkle lines */}
+      <path
+        d={`M ${headCX - 5} ${headCY} Q ${headCX - 3} ${headCY + 2} ${headCX - 1} ${headCY}`}
+        stroke="#c07c52"
+        strokeWidth="0.7"
+        fill="none"
+        opacity="0.5"
+      />
+      <path
+        d={`M ${headCX + 1} ${headCY} Q ${headCX + 3} ${headCY + 2} ${headCX + 5} ${headCY}`}
+        stroke="#c07c52"
+        strokeWidth="0.7"
+        fill="none"
+        opacity="0.5"
+      />
+
+      {/* === EYEBROWS — bushy white === */}
+      <path
+        d={`M ${headCX - 6} ${headCY - 4} Q ${headCX - 3} ${headCY - 6.5} ${headCX - 0.5} ${headCY - 4}`}
+        stroke={hairColor}
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d={`M ${headCX + 0.5} ${headCY - 4} Q ${headCX + 3} ${headCY - 6.5} ${headCX + 6} ${headCY - 4}`}
+        stroke={hairColor}
+        strokeWidth="2"
+        fill="none"
+        strokeLinecap="round"
+      />
+
+      {/* === NOSE — round, prominent === */}
+      <ellipse cx={headCX} cy={headCY + 3} rx="2.5" ry="2" fill="#c07c52" />
+      <ellipse
+        cx={headCX}
+        cy={headCY + 3}
+        rx="1.2"
+        ry="1"
+        fill="#b06040"
+        opacity="0.5"
+      />
+
+      {/* === SMILE / MOUTH — warm wrinkled smile === */}
+      <path
+        d={`M ${headCX - 4} ${headCY + 6} Q ${headCX} ${headCY + 9.5} ${headCX + 4} ${headCY + 6}`}
+        stroke="#8b5035"
+        strokeWidth="1.2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* Smile creases / nasolabial folds */}
+      <path
+        d={`M ${headCX - 4.5} ${headCY + 4} Q ${headCX - 5.5} ${headCY + 7} ${headCX - 4} ${headCY + 8}`}
+        stroke="#c07c52"
         strokeWidth="0.8"
         fill="none"
-        opacity="0.6"
+        opacity="0.45"
+      />
+      <path
+        d={`M ${headCX + 4.5} ${headCY + 4} Q ${headCX + 5.5} ${headCY + 7} ${headCX + 4} ${headCY + 8}`}
+        stroke="#c07c52"
+        strokeWidth="0.8"
+        fill="none"
+        opacity="0.45"
+      />
+
+      {/* === FOREHEAD WRINKLES === */}
+      <path
+        d={`M ${headCX - 5} ${headCY - 7} Q ${headCX} ${headCY - 8.5} ${headCX + 5} ${headCY - 7}`}
+        stroke="#c07c52"
+        strokeWidth="0.7"
+        fill="none"
+        opacity="0.35"
       />
     </svg>
   );
