@@ -22,10 +22,16 @@ import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
 import {
+  WeeklyAuctionProvider,
+  useWeeklyAuction,
+} from "./context/WeeklyAuctionContext";
+import type { WeeklyAuctionItem } from "./context/WeeklyAuctionContext";
+import {
   WeeklyRoundProvider,
   useWeeklyRound,
 } from "./context/WeeklyRoundContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
+import { AuctionPage } from "./pages/AuctionPage";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
@@ -149,6 +155,7 @@ function AppContent() {
             onGoToLibrary={() => setView({ type: "tab", tab: "library" })}
           />
         )}
+        {view.type === "tab" && view.tab === "auction" && <AuctionPage />}
         {view.type === "upload" && (
           <UploadPage
             onBack={() => setView({ type: "tab", tab: "releases" })}
@@ -176,9 +183,40 @@ function AppContent() {
  * finalizeRound from that context and pass it as onRoundEnd to WeeklyRoundProvider.
  */
 function WeeklyRoundBridge({ children }: { children: React.ReactNode }) {
-  const { finalizeRound } = useReleasesMarket();
+  const { finalizeRound, releases } = useReleasesMarket();
+  const { addRoundWinners } = useWeeklyAuction();
+
+  function handleRoundEnd(endingRoundId: number) {
+    finalizeRound(endingRoundId);
+
+    // Get top 10 from that round and send to weekly auction queue
+    const roundReleases = releases.filter(
+      (r) => r.roundId === endingRoundId && !r.isDeletedAfterRound,
+    );
+    const sorted = [...roundReleases].sort((a, b) => b.likes - a.likes);
+    const top10 = sorted.slice(0, 10);
+
+    const auctionItems: WeeklyAuctionItem[] = top10.map((r, idx) => ({
+      id: `wa_round${endingRoundId}_rank${idx + 1}`,
+      rank: idx + 1,
+      roundId: endingRoundId,
+      title: r.title,
+      creatorName: r.creatorName,
+      imageUrl: r.coverImageUrl,
+      likes: r.likes,
+      startedAt: null,
+      endsAt: null,
+      bids: [],
+      highestBid: 0,
+      winner: null,
+      status: "queued",
+    }));
+
+    addRoundWinners(auctionItems);
+  }
+
   return (
-    <WeeklyRoundProvider onRoundEnd={finalizeRound}>
+    <WeeklyRoundProvider onRoundEnd={handleRoundEnd}>
       {children}
     </WeeklyRoundProvider>
   );
@@ -195,13 +233,15 @@ export default function App() {
                 <MomentDraftProvider>
                   <CollectionProvider>
                     <ReleasesMarketProvider>
-                      <WeeklyRoundBridge>
-                        <AuctionProvider>
-                          <ErrorBoundary>
-                            <AppContent />
-                          </ErrorBoundary>
-                        </AuctionProvider>
-                      </WeeklyRoundBridge>
+                      <WeeklyAuctionProvider>
+                        <WeeklyRoundBridge>
+                          <AuctionProvider>
+                            <ErrorBoundary>
+                              <AppContent />
+                            </ErrorBoundary>
+                          </AuctionProvider>
+                        </WeeklyRoundBridge>
+                      </WeeklyAuctionProvider>
                     </ReleasesMarketProvider>
                   </CollectionProvider>
                 </MomentDraftProvider>
