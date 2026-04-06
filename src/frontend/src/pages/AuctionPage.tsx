@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
 import { useWeeklyAuction } from "../context/WeeklyAuctionContext";
@@ -9,6 +10,46 @@ import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 const BTC_USD = 83000;
 const FALLBACK_IMG = "/assets/generated/minty-pack-wrapper.png";
+
+function AuctionVideoThumb({
+  item,
+  style,
+}: { item: WeeklyAuctionItem; style?: CSSProperties }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  if (item.videoUrl) {
+    return (
+      <video
+        ref={videoRef}
+        src={item.videoUrl}
+        poster={item.imageUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+          ...style,
+        }}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
+      />
+    );
+  }
+  return (
+    <img
+      src={item.imageUrl}
+      alt={item.title}
+      style={{ width: "100%", height: "100%", objectFit: "cover", ...style }}
+      onError={(e) => {
+        (e.target as HTMLImageElement).src = FALLBACK_IMG;
+      }}
+    />
+  );
+}
 
 function formatBtc(btc: number): string {
   return btc.toFixed(5);
@@ -467,14 +508,7 @@ function LiveAuctionHero({
           boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 0 2px ${accentColor}, 0 0 24px ${glowColorMid}, 0 0 40px ${glowColorMid}`,
         }}
       >
-        <img
-          src={auction.imageUrl}
-          alt={auction.title}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = FALLBACK_IMG;
-          }}
-        />
+        <AuctionVideoThumb item={auction} />
         <div
           style={{
             position: "absolute",
@@ -840,19 +874,7 @@ function QueueCard({
       <div
         style={{ position: "relative", aspectRatio: "4/5", overflow: "hidden" }}
       >
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            filter: "grayscale(15%)",
-          }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = FALLBACK_IMG;
-          }}
-        />
+        <AuctionVideoThumb item={item} style={{ filter: "grayscale(15%)" }} />
         <div
           style={{
             position: "absolute",
@@ -937,14 +959,7 @@ function CompletedRow({
           flexShrink: 0,
         }}
       >
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = FALLBACK_IMG;
-          }}
-        />
+        <AuctionVideoThumb item={item} />
         <div
           style={{
             position: "absolute",

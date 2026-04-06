@@ -78,7 +78,7 @@ function PackCard({
   }, []);
 
   return (
-    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
+    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "440px" }}>
       {/* Background layer */}
       <div
         style={{
@@ -120,7 +120,7 @@ function PackCard({
         style={{
           position: "relative",
           zIndex: 3,
-          padding: "36px 32px 40px",
+          padding: "28px 24px 32px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -149,7 +149,7 @@ function PackCard({
             width: "32px",
             height: "1px",
             background: "rgba(0,0,0,0.10)",
-            margin: "12px 0",
+            margin: "10px 0",
           }}
         />
 
@@ -164,18 +164,19 @@ function PackCard({
             transform: mounted ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.6s ease, transform 0.6s ease",
             width: "100%",
+            paddingBottom: "8px",
           }}
         >
           <img
             src={WRAPPER_IMG}
             alt="Minty Pack"
             style={{
-              maxHeight: "190px",
+              maxHeight: "300px",
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
               filter:
-                "drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.10))",
+                "drop-shadow(0 12px 32px rgba(0,0,0,0.20)) drop-shadow(0 3px 8px rgba(0,0,0,0.12))",
             }}
           />
         </div>
@@ -186,8 +187,8 @@ function PackCard({
             fontSize: "28px",
             fontWeight: 600,
             color: "#111111",
-            margin: "16px 0 0",
-            marginBottom: "20px",
+            margin: "12px 0 0",
+            marginBottom: "16px",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontFamily: "var(--font-ui)",
@@ -313,7 +314,7 @@ function RevealedCard({
 function DraftLockedState({
   onFinish,
   accentRgb,
-  accentColor,
+  accentColor: _accentColor,
   accentOklch,
   accentOklchLight,
 }: {
@@ -327,8 +328,8 @@ function DraftLockedState({
   const [isActive, setIsActive] = useState(false);
   const { activeDraft } = useMomentDraft();
 
-  const photoCount = activeDraft?.photos.length ?? 0;
-  const hasVideo = activeDraft?.video !== null;
+  const hasVideo =
+    activeDraft?.videoUrl !== null && activeDraft?.videoUrl !== undefined;
 
   const mintButtonStyle = {
     ...BUTTON_BASE,
@@ -417,20 +418,11 @@ function DraftLockedState({
           <span
             style={{
               fontSize: "12px",
-              color: photoCount === 9 ? accentColor : "#7a9a8a",
-              fontWeight: photoCount === 9 ? 600 : 400,
+              color: "#7a9a8a",
+              fontWeight: 400,
             }}
           >
-            {photoCount}/9 photos
-          </span>
-          <span
-            style={{
-              fontSize: "12px",
-              color: hasVideo ? accentColor : "#7a9a8a",
-              fontWeight: hasVideo ? 600 : 400,
-            }}
-          >
-            {hasVideo ? "1" : "0"}/1 video
+            {hasVideo ? "1 video recorded" : "No video yet"}
           </span>
         </div>
       </div>
@@ -781,7 +773,7 @@ export function LibraryPage({
               transition={{ duration: 0.25 }}
               style={{
                 width: "280px",
-                height: "373px",
+                height: "440px",
                 background: "var(--echo-surface, #FCFCFC)",
                 borderRadius: "20px",
               }}

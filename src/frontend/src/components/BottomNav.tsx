@@ -1,7 +1,7 @@
-import { BookOpen, Gavel, LayoutGrid, PawPrint, Sparkles } from "lucide-react";
+import { BookOpen, Gavel, PawPrint, Sparkles } from "lucide-react";
 import { usePackStyle } from "../context/PackStyleContext";
 
-export type Tab = "library" | "releases" | "collection" | "auction";
+export type Tab = "library" | "releases" | "auction" | "pet";
 
 interface BottomNavProps {
   activeTab: Tab;
@@ -11,8 +11,8 @@ interface BottomNavProps {
 const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
   { id: "library", label: "Library", Icon: BookOpen },
   { id: "releases", label: "Releases", Icon: Sparkles },
-  { id: "collection", label: "Collection", Icon: LayoutGrid },
   { id: "auction", label: "Auction", Icon: Gavel },
+  { id: "pet", label: "Pet", Icon: PawPrint },
 ];
 
 const INACTIVE_COLOR = "#8E8E93";

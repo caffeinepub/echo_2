@@ -6,36 +6,29 @@ import {
   useState,
 } from "react";
 
-const LS_KEY = "minty_active_draft";
-
-export interface CaptureMetadataItem {
-  sequenceIndex: number; // 0 for the single photo
-  capturedAt: number; // Date.now() at capture time
-  mediaType: "photo" | "video";
-}
+const LS_KEY = "minty_active_draft_v2";
 
 export interface MomentDraft {
   id: string;
-  photos: string[]; // data URLs or object URLs — max 1
-  video: string | null; // kept for backwards-compat; always null in new flow
+  // Video-only flow
+  videoUrl: string | null; // object URL (session-only)
+  previewClipUrl: string | null; // same as videoUrl for now
   completed: boolean;
   createdAt: number;
-  captureMetadata: CaptureMetadataItem[];
-  packSupply: number; // how many packs the creator wants to mint
+  packSupply: number;
   // Content labeling fields (filled in FinalSetupScreen)
   title: string;
   caption: string;
   explicit: boolean;
-  hashtags: string[]; // structured array, e.g. ["nightdrive", "citylights"]
+  hashtags: string[];
 }
 
 interface MomentDraftCtx {
   activeDraft: MomentDraft | null;
-  hasDraft: boolean; // exists and !completed
+  hasDraft: boolean;
   startDraft: () => void;
-  addPhoto: (dataUrl: string, capturedAt?: number) => void;
-  removePhoto: (index: number) => void;
-  removeVideo: () => void;
+  setVideo: (url: string, previewUrl: string) => void;
+  clearVideo: () => void;
   completeDraft: () => void;
   clearDraft: () => void;
   setPackSupply: (n: number) => void;
@@ -47,24 +40,35 @@ interface MomentDraftCtx {
 
 const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
 
+function makeFreshDraft(): MomentDraft {
+  return {
+    id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    videoUrl: null,
+    previewClipUrl: null,
+    completed: false,
+    createdAt: Date.now(),
+    packSupply: 300,
+    title: "",
+    caption: "",
+    explicit: false,
+    hashtags: [],
+  };
+}
+
+// Only persist non-blob metadata (object URLs are session-only)
 function loadFromStorage(): MomentDraft | null {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as MomentDraft;
-    // Backfill captureMetadata for drafts saved before this field existed
-    if (!parsed.captureMetadata) {
-      parsed.captureMetadata = [];
-    }
-    // Backfill packSupply for drafts saved before this field existed
-    if (!parsed.packSupply || parsed.packSupply < 10) {
-      parsed.packSupply = 300;
-    }
-    // Backfill content labeling fields
+    // Object URLs don't survive a page refresh — clear them
+    parsed.videoUrl = null;
+    parsed.previewClipUrl = null;
+    // Backfill
+    if (!parsed.packSupply || parsed.packSupply < 10) parsed.packSupply = 300;
     if (parsed.title === undefined) parsed.title = "";
     if (parsed.caption === undefined) parsed.caption = "";
     if (parsed.explicit === undefined) parsed.explicit = false;
-    // Backfill hashtags
     if (!parsed.hashtags) parsed.hashtags = [];
     return parsed;
   } catch {
@@ -77,7 +81,9 @@ function saveToStorage(draft: MomentDraft | null) {
     if (draft === null) {
       localStorage.removeItem(LS_KEY);
     } else {
-      localStorage.setItem(LS_KEY, JSON.stringify(draft));
+      // Don't persist blob URLs
+      const toSave = { ...draft, videoUrl: null, previewClipUrl: null };
+      localStorage.setItem(LS_KEY, JSON.stringify(toSave));
     }
   } catch {
     // ignore storage errors
@@ -93,73 +99,28 @@ export function MomentDraftProvider({
 
   const hasDraft = activeDraft !== null && !activeDraft.completed;
 
-  // Persist whenever draft changes
   useEffect(() => {
     saveToStorage(activeDraft);
   }, [activeDraft]);
 
   const startDraft = useCallback(() => {
     setActiveDraft((prev) => {
-      // Idempotent — if an active incomplete draft already exists, keep it
       if (prev !== null && !prev.completed) return prev;
-      const draft: MomentDraft = {
-        id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        photos: [],
-        video: null,
-        completed: false,
-        createdAt: Date.now(),
-        captureMetadata: [],
-        packSupply: 300,
-        title: "",
-        caption: "",
-        explicit: false,
-        hashtags: [],
-      };
-      return draft;
+      return makeFreshDraft();
     });
   }, []);
 
-  const addPhoto = useCallback((dataUrl: string, capturedAt?: number) => {
+  const setVideo = useCallback((url: string, previewUrl: string) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      // Only allow 1 photo
-      if (prev.photos.length >= 1) return prev;
-      const sequenceIndex = 0;
-      const meta: CaptureMetadataItem = {
-        sequenceIndex,
-        capturedAt: capturedAt ?? Date.now(),
-        mediaType: "photo",
-      };
-      return {
-        ...prev,
-        photos: [...prev.photos, dataUrl],
-        captureMetadata: [...prev.captureMetadata, meta],
-      };
+      return { ...prev, videoUrl: url, previewClipUrl: previewUrl };
     });
   }, []);
 
-  const removePhoto = useCallback((index: number) => {
+  const clearVideo = useCallback(() => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      const updatedPhotos = [...prev.photos];
-      updatedPhotos.splice(index, 1);
-      const updatedMeta = prev.captureMetadata.filter(
-        (m) => !(m.mediaType === "photo" && m.sequenceIndex === index),
-      );
-      return { ...prev, photos: updatedPhotos, captureMetadata: updatedMeta };
-    });
-  }, []);
-
-  const removeVideo = useCallback(() => {
-    setActiveDraft((prev) => {
-      if (!prev || prev.completed) return prev;
-      return {
-        ...prev,
-        video: null,
-        captureMetadata: prev.captureMetadata.filter(
-          (m) => m.mediaType !== "video",
-        ),
-      };
+      return { ...prev, videoUrl: null, previewClipUrl: null };
     });
   }, []);
 
@@ -215,9 +176,8 @@ export function MomentDraftProvider({
         activeDraft,
         hasDraft,
         startDraft,
-        addPhoto,
-        removePhoto,
-        removeVideo,
+        setVideo,
+        clearVideo,
         completeDraft,
         clearDraft,
         setPackSupply,

@@ -47,7 +47,87 @@ function getRankStyle(rank: number): {
   };
 }
 
-// ── Large Card (Top 3) ────────────────────────────────────────────────────────
+// ── Video preview thumbnail (muted loop, IntersectionObserver autoplay)
+function VideoPreview({
+  release,
+  style,
+}: {
+  release: MarketRelease;
+  style?: React.CSSProperties;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoSrc = release.videoUrl || release.previewClipUrl;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container || !videoSrc) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        }
+      },
+      { threshold: 0.3 },
+    );
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [videoSrc]);
+
+  if (videoSrc) {
+    return (
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: "100%", ...style }}
+      >
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          loop
+          muted
+          playsInline
+          poster={release.coverImageUrl || undefined}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Fallback to image if no video
+  return (
+    <img
+      src={release.coverImageUrl || "/assets/generated/minty-pack-wrapper.png"}
+      alt={release.title}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        ...style,
+      }}
+      onError={(e) => {
+        (e.currentTarget as HTMLImageElement).src =
+          "/assets/generated/minty-pack-wrapper.png";
+      }}
+    />
+  );
+}
+
+// ── Large Card (Top 3) ─────────────────────────────────────────────────────────────────────────────
 function TopThreeCard({
   release,
   rank,
@@ -59,7 +139,6 @@ function TopThreeCard({
   accentColor: string;
   score: number;
 }) {
-  const [imgError, setImgError] = useState(false);
   const { color, glow, bg, border } = getRankStyle(rank);
   const rankSize = rank === 1 ? 36 : 28;
 
@@ -77,31 +156,17 @@ function TopThreeCard({
         transition: "box-shadow 0.2s ease",
       }}
     >
-      {/* Image */}
+      {/* Video/Image */}
       <div
         style={{
           width: "100%",
-          aspectRatio: "4/3",
+          aspectRatio: "9/16",
           background: "#0a0a0a",
           overflow: "hidden",
           position: "relative",
         }}
       >
-        <img
-          src={
-            imgError
-              ? "/assets/generated/minty-pack-wrapper.png"
-              : release.coverImageUrl
-          }
-          alt={release.title}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-          onError={() => setImgError(true)}
-        />
+        <VideoPreview release={release} />
 
         {/* Rank badge on image */}
         <div
@@ -117,6 +182,7 @@ function TopThreeCard({
             display: "flex",
             alignItems: "center",
             gap: 4,
+            zIndex: 2,
           }}
         >
           <span
@@ -144,6 +210,7 @@ function TopThreeCard({
             background:
               "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)",
             pointerEvents: "none",
+            zIndex: 1,
           }}
         />
       </div>
@@ -259,7 +326,7 @@ function TopThreeCard({
   );
 }
 
-// ── Compact Row (Ranks 4–25) ───────────────────────────────────────────────
+// ── Compact Row (Ranks 4–25) ────────────────────────────────────────────────────────────────────────────
 function LeaderboardRow({
   release,
   rank,
@@ -271,8 +338,6 @@ function LeaderboardRow({
   accentColor: string;
   score: number;
 }) {
-  const [imgError, setImgError] = useState(false);
-
   return (
     <div
       data-ocid={`leaderboard.item.${rank}`}
@@ -308,32 +373,19 @@ function LeaderboardRow({
         </span>
       </div>
 
-      {/* Thumbnail */}
+      {/* Video Thumbnail */}
       <div
         style={{
-          width: 72,
+          width: 120,
           flexShrink: 0,
-          aspectRatio: "4/3",
+          aspectRatio: "9/16",
+          maxHeight: 160,
           borderRadius: 10,
           overflow: "hidden",
           background: "#111",
         }}
       >
-        <img
-          src={
-            imgError
-              ? "/assets/generated/minty-pack-wrapper.png"
-              : release.coverImageUrl
-          }
-          alt={release.title}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-          onError={() => setImgError(true)}
-        />
+        <VideoPreview release={release} />
       </div>
 
       {/* Text info */}
@@ -421,7 +473,7 @@ function LeaderboardRow({
   );
 }
 
-// ── Live Indicator ────────────────────────────────────────────────────────────
+// ── Live Indicator ─────────────────────────────────────────────────────────────────────────────────────
 function LiveIndicator({ accentColor }: { accentColor: string }) {
   return (
     <div
@@ -462,7 +514,7 @@ function LiveIndicator({ accentColor }: { accentColor: string }) {
   );
 }
 
-// ── CollectionPage ────────────────────────────────────────────────────────────
+// ── CollectionPage ────────────────────────────────────────────────────────────────────────────────────
 export function CollectionPage({
   onGoToLibrary: _onGoToLibrary,
 }: { onGoToLibrary?: () => void }) {
@@ -623,7 +675,7 @@ export function CollectionPage({
             gap: 12,
           }}
         >
-          <span style={{ fontSize: 48 }}>&#x1F4F7;</span>
+          <span style={{ fontSize: 48 }}>&#x1F3A5;</span>
           <p
             style={{
               fontSize: 15,
@@ -635,7 +687,7 @@ export function CollectionPage({
           >
             No moments this week yet.
             <br />
-            Mint a photo to get on the leaderboard.
+            Record a video to get on the leaderboard.
           </p>
         </div>
       )}

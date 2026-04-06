@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { useCamera } from "../camera/useCamera";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FinalSetupScreen } from "../components/FinalSetupScreen";
 import {
   type MomentDraft,
@@ -15,61 +14,74 @@ interface CaptureMomentPageProps {
 
 const MINT_GREEN = "rgba(52,168,132,1)";
 const MINT_BORDER = "rgba(52,168,132,0.3)";
-const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
+const REC_RED = "rgba(239,68,68,1)";
 
-type CaptureStep = 0 | 1;
+const MAX_RECORD_SECONDS = 15;
 
-// Compute SHA-256 hash of a blob and return as hex string
+type CaptureStep = 0 | 1 | 2;
+// 0 = record, 1 = preview, 2 = details
+
+// Compute SHA-256 hash of first 64KB of a blob
 async function hashBlob(blob: Blob): Promise<string> {
-  const buf = await blob.arrayBuffer();
+  const slice = blob.slice(0, 65536);
+  const buf = await slice.arrayBuffer();
   const hashBuf = await crypto.subtle.digest("SHA-256", buf);
   const hashArr = Array.from(new Uint8Array(hashBuf));
   return hashArr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getBestMimeType(): string {
+  const candidates = [
+    "video/mp4",
+    "video/webm;codecs=h264",
+    "video/webm;codecs=vp9",
+    "video/webm",
+  ];
+  return (
+    candidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "video/webm"
+  );
 }
 
 export function CaptureMomentPage({
   onBack,
   onMintComplete,
 }: CaptureMomentPageProps) {
-  const { activeDraft, hasDraft, addPhoto } = useMomentDraft();
+  const { activeDraft, hasDraft, setVideo } = useMomentDraft();
   const { checkAndRecordMint, checkImageHash, recordImageHash } =
     useReleasesMarket();
   const { roundId } = useWeeklyRound();
 
-  const photos = activeDraft?.photos ?? [];
-
-  const [captureStep, setCaptureStep] = useState<CaptureStep>(() =>
-    photos.length > 0 ? 1 : 0,
+  const [captureStep, setCaptureStep] = useState<CaptureStep>(
+    activeDraft?.videoUrl ? 2 : 0,
   );
-  const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
-  const [mintError, setMintError] = useState<string | null>(null);
-  // Pending blob for hashing (stored separately from object URL)
-  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
 
-  const camera = useCamera({ facingMode: "environment" });
-  const {
-    videoRef,
-    canvasRef,
-    startCamera,
-    stopCamera,
-    capturePhoto,
-    switchCamera,
-    isActive,
-    isLoading,
-    isSupported,
-    error,
-  } = camera;
+  // Recording state
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const liveVideoRef = useRef<HTMLVideoElement>(null);
+
+  const [isLoadingCamera, setIsLoadingCamera] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(MAX_RECORD_SECONDS);
+  const [pendingVideoUrl, setPendingVideoUrl] = useState<string | null>(null);
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
 
   // Inject animation styles
   useEffect(() => {
-    const id = "capture-moment-styles";
+    const id = "capture-moment-styles-v2";
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
     style.textContent = `
-      @keyframes capturePrintPulse {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.65; }
+      @keyframes recPulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.55; transform: scale(0.88); }
       }
       @keyframes spin {
         from { transform: rotate(0deg); }
@@ -79,50 +91,141 @@ export function CaptureMomentPage({
         0%, 100% { opacity: 1; }
         50%       { opacity: 0.4; }
       }
+      @keyframes countdownPop {
+        0%   { transform: scale(1.4); opacity: 0.6; }
+        100% { transform: scale(1);   opacity: 1; }
+      }
     `;
     document.head.appendChild(style);
   }, []);
 
+  // Start camera stream
+  const startCamera = useCallback(async () => {
+    setIsLoadingCamera(true);
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
+          facingMode: "environment",
+        },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (liveVideoRef.current) {
+        liveVideoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error && err.name === "NotAllowedError"
+          ? "Camera/microphone permission denied. Please allow access and try again."
+          : "Could not access camera. Please check your device settings.";
+      setCameraError(message);
+    } finally {
+      setIsLoadingCamera(false);
+    }
+  }, []);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      for (const t of streamRef.current.getTracks()) t.stop();
+      streamRef.current = null;
+    }
+  }, []);
+
+  // Start/stop camera based on step
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   useEffect(() => {
-    if (captureStep === 0 && !pendingPhotoUrl) {
+    if (captureStep === 0) {
       startCamera();
+    } else {
+      stopCamera();
     }
     return () => {
       stopCamera();
     };
   }, [captureStep]);
 
+  // Wire stream to live video element
   useEffect(() => {
-    if (captureStep === 1) {
-      stopCamera();
+    if (liveVideoRef.current && streamRef.current) {
+      liveVideoRef.current.srcObject = streamRef.current;
     }
-  }, [captureStep, stopCamera]);
+  });
 
-  // ── Photo capture ───────────────────────────────────────────────────────────────────
-  const handleShutterPress = useCallback(async () => {
-    if (!isActive) return;
-    const file = await capturePhoto();
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPendingPhotoUrl(url);
-    setPendingBlob(file);
-    setMintError(null);
-  }, [isActive, capturePhoto]);
+  // Stop recording and assemble blob
+  const finishRecording = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    recorder.stop();
+  }, []);
 
-  const handleUsePhoto = useCallback(async () => {
-    if (!pendingPhotoUrl) return;
+  // Start recording
+  const handleStartRecording = useCallback(() => {
+    if (!streamRef.current) return;
+    const mimeType = getBestMimeType();
+    const recorder = new MediaRecorder(streamRef.current, { mimeType });
+    chunksRef.current = [];
 
-    // Compute SHA-256 hash for duplicate detection
-    let hash = "";
-    if (pendingBlob) {
-      try {
-        hash = await hashBlob(pendingBlob);
-      } catch {
-        // If hashing fails, skip duplicate check
-        hash = "";
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunksRef.current.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      setPendingVideoUrl(url);
+      setPendingBlob(blob);
+      setIsRecording(false);
+      setCaptureStep(1);
+    };
+
+    recorder.start(100); // collect data every 100ms
+    recorderRef.current = recorder;
+    setIsRecording(true);
+    setSecondsLeft(MAX_RECORD_SECONDS);
+
+    // Countdown timer
+    let elapsed = 0;
+    countdownTimerRef.current = setInterval(() => {
+      elapsed += 1;
+      setSecondsLeft(MAX_RECORD_SECONDS - elapsed);
+      if (elapsed >= MAX_RECORD_SECONDS) {
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+        finishRecording();
       }
+    }, 1000);
+  }, [finishRecording]);
+
+  // Stop recording early
+  const handleStopEarly = useCallback(() => {
+    finishRecording();
+  }, [finishRecording]);
+
+  // Retake video
+  const handleRetake = useCallback(() => {
+    if (pendingVideoUrl) {
+      URL.revokeObjectURL(pendingVideoUrl);
     }
+    setPendingVideoUrl(null);
+    setPendingBlob(null);
+    setMintError(null);
+    setSecondsLeft(MAX_RECORD_SECONDS);
+    setCaptureStep(0);
+  }, [pendingVideoUrl]);
+
+  // Use video — check anti-spam and advance to details
+  const handleUseVideo = useCallback(async () => {
+    if (!pendingVideoUrl || !pendingBlob) return;
 
     // Check mint rate limit
     const mintCheck = checkAndRecordMint();
@@ -131,39 +234,36 @@ export function CaptureMomentPage({
       return;
     }
 
-    // Check image hash for duplicates
-    if (hash) {
-      const hashCheck = checkImageHash(hash, roundId);
-      if (!hashCheck.allowed) {
-        setMintError("This image has already been minted this round.");
-        return;
+    // Hash check for duplicate detection
+    try {
+      const hash = await hashBlob(pendingBlob);
+      if (hash) {
+        const hashCheck = checkImageHash(hash, roundId);
+        if (!hashCheck.allowed) {
+          setMintError("This video has already been minted this round.");
+          return;
+        }
+        recordImageHash(hash, roundId);
       }
-      recordImageHash(hash, roundId);
+    } catch {
+      // If hashing fails, skip duplicate check
     }
 
-    addPhoto(pendingPhotoUrl, Date.now());
-    setPendingPhotoUrl(null);
-    setPendingBlob(null);
-    setCaptureStep(1);
+    // Store video URLs in draft context
+    setVideo(pendingVideoUrl, pendingVideoUrl);
+    setMintError(null);
+    setCaptureStep(2);
   }, [
-    pendingPhotoUrl,
+    pendingVideoUrl,
     pendingBlob,
-    addPhoto,
     checkAndRecordMint,
     checkImageHash,
     recordImageHash,
     roundId,
+    setVideo,
   ]);
 
-  const handleRetakePhoto = useCallback(() => {
-    if (pendingPhotoUrl) URL.revokeObjectURL(pendingPhotoUrl);
-    setPendingPhotoUrl(null);
-    setPendingBlob(null);
-    setMintError(null);
-    startCamera();
-  }, [pendingPhotoUrl, startCamera]);
-
-  // ── Setup Screen Submit ───────────────────────────────────────────────────────────────────
+  // Setup Screen Submit
   function handleSetupSubmit(draft: MomentDraft) {
     onMintComplete?.(draft);
     setTimeout(() => {
@@ -171,12 +271,7 @@ export function CaptureMomentPage({
     }, 100);
   }
 
-  const progressPct = Math.round((captureStep / 1) * 100);
-
-  function getStepLabel() {
-    if (captureStep === 0) return "Capture Your Moment";
-    return "Final Setup";
-  }
+  const progressPct = captureStep === 0 ? 0 : captureStep === 1 ? 50 : 100;
 
   return (
     <div
@@ -292,7 +387,7 @@ export function CaptureMomentPage({
         />
       </div>
 
-      {/* Step indicator */}
+      {/* Step label */}
       <div
         style={{
           display: "flex",
@@ -311,11 +406,13 @@ export function CaptureMomentPage({
             color: MINT_GREEN,
           }}
         >
-          {getStepLabel()}
+          {captureStep === 0 && "Record Your Moment"}
+          {captureStep === 1 && "Preview"}
+          {captureStep === 2 && "Final Setup"}
         </span>
       </div>
 
-      {/* ── CAMERA STEP 0 ── */}
+      {/* ── STEP 0: RECORD ── */}
       {captureStep === 0 && (
         <div
           style={{
@@ -324,11 +421,10 @@ export function CaptureMomentPage({
             flexDirection: "column",
             alignItems: "center",
             padding: "16px 20px 32px",
-            gap: "0",
           }}
         >
-          {/* Camera error states */}
-          {isSupported === false && (
+          {/* Camera error */}
+          {cameraError && (
             <div
               data-ocid="capture.error_state"
               style={{
@@ -338,97 +434,19 @@ export function CaptureMomentPage({
                 background: "rgba(0,0,0,0.04)",
                 borderRadius: "16px",
                 border: `1.5px solid ${MINT_BORDER}`,
+                width: "100%",
+                maxWidth: "360px",
               }}
             >
-              <svg
-                width="40"
-                height="40"
-                viewBox="0 0 40 40"
-                fill="none"
-                style={{ marginBottom: 12 }}
-                aria-hidden="true"
-              >
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="18"
-                  stroke={MINT_BORDER_STRONG}
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M20 13v8M20 24v2"
-                  stroke={MINT_GREEN}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
               <p
                 style={{
                   fontSize: "15px",
                   fontWeight: 600,
                   color: "#111",
-                  margin: "0 0 6px",
+                  margin: "0 0 8px",
                 }}
               >
                 Camera not available
-              </p>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: 0 }}>
-                Camera is not supported on this device.
-              </p>
-            </div>
-          )}
-
-          {isSupported !== false && error?.type === "permission" && (
-            <div
-              data-ocid="capture.error_state"
-              style={{
-                margin: "32px 0",
-                textAlign: "center",
-                padding: "24px",
-                background: "rgba(0,0,0,0.04)",
-                borderRadius: "16px",
-                border: `1.5px solid ${MINT_BORDER}`,
-              }}
-            >
-              <svg
-                width="40"
-                height="40"
-                viewBox="0 0 40 40"
-                fill="none"
-                style={{ marginBottom: 12 }}
-                aria-hidden="true"
-              >
-                <circle
-                  cx="20"
-                  cy="20"
-                  r="18"
-                  stroke={MINT_BORDER_STRONG}
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M20 12a5 5 0 0 1 5 5v3H15v-3a5 5 0 0 1 5-5z"
-                  stroke={MINT_GREEN}
-                  strokeWidth="1.5"
-                />
-                <rect
-                  x="13"
-                  y="20"
-                  width="14"
-                  height="10"
-                  rx="2"
-                  stroke={MINT_GREEN}
-                  strokeWidth="1.5"
-                />
-              </svg>
-              <p
-                style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: "#111",
-                  margin: "0 0 6px",
-                }}
-              >
-                Camera permission required
               </p>
               <p
                 style={{
@@ -437,12 +455,12 @@ export function CaptureMomentPage({
                   margin: "0 0 16px",
                 }}
               >
-                Please allow camera access and try again.
+                {cameraError}
               </p>
               <button
                 type="button"
                 data-ocid="capture.button"
-                onClick={() => camera.retry()}
+                onClick={startCamera}
                 style={{
                   padding: "10px 24px",
                   borderRadius: "10px",
@@ -460,7 +478,7 @@ export function CaptureMomentPage({
           )}
 
           {/* Camera viewfinder */}
-          {isSupported !== false && !error && !pendingPhotoUrl && (
+          {!cameraError && (
             <>
               <div
                 style={{
@@ -470,14 +488,19 @@ export function CaptureMomentPage({
                   borderRadius: "16px",
                   overflow: "hidden",
                   background: "#000",
-                  aspectRatio: "4/5",
-                  boxShadow: "0 4px 24px rgba(52,168,132,0.18)",
-                  border: `1.5px solid ${MINT_BORDER}`,
+                  aspectRatio: "9/16",
+                  boxShadow: isRecording
+                    ? "0 4px 24px rgba(239,68,68,0.35)"
+                    : "0 4px 24px rgba(52,168,132,0.18)",
+                  border: isRecording
+                    ? `2px solid ${REC_RED}`
+                    : `1.5px solid ${MINT_BORDER}`,
+                  transition: "border 0.2s ease, box-shadow 0.2s ease",
                   flexShrink: 0,
                 }}
               >
                 <video
-                  ref={videoRef}
+                  ref={liveVideoRef}
                   autoPlay
                   muted
                   playsInline
@@ -490,7 +513,7 @@ export function CaptureMomentPage({
                 />
 
                 {/* Loading overlay */}
-                {isLoading && (
+                {isLoadingCamera && (
                   <div
                     style={{
                       position: "absolute",
@@ -525,12 +548,82 @@ export function CaptureMomentPage({
                     </svg>
                   </div>
                 )}
+
+                {/* REC indicator + countdown */}
+                {isRecording && (
+                  <>
+                    {/* REC badge top-left */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 12,
+                        left: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "rgba(0,0,0,0.55)",
+                        backdropFilter: "blur(4px)",
+                        borderRadius: "20px",
+                        padding: "4px 10px",
+                        zIndex: 3,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: REC_RED,
+                          animation: "recPulse 1s ease-in-out infinite",
+                        }}
+                      />
+                      <span
+                        style={{
+                          color: "#fff",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: "0.10em",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        REC
+                      </span>
+                    </div>
+
+                    {/* Big countdown in center-bottom */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 80,
+                        left: 0,
+                        right: 0,
+                        display: "flex",
+                        justifyContent: "center",
+                        pointerEvents: "none",
+                        zIndex: 3,
+                      }}
+                    >
+                      <span
+                        key={secondsLeft}
+                        style={{
+                          fontSize: 72,
+                          fontWeight: 800,
+                          color: "#fff",
+                          fontFamily: "'DM Sans', sans-serif",
+                          lineHeight: 1,
+                          textShadow: "0 2px 20px rgba(0,0,0,0.7)",
+                          animation: "countdownPop 0.3s ease-out",
+                          letterSpacing: "-0.04em",
+                        }}
+                      >
+                        {secondsLeft}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Hidden canvas for photo capture */}
-              <canvas ref={canvasRef} style={{ display: "none" }} />
-
-              {/* Camera controls */}
+              {/* Controls below viewfinder */}
               <div
                 style={{
                   display: "flex",
@@ -542,238 +635,269 @@ export function CaptureMomentPage({
                   maxWidth: "360px",
                 }}
               >
-                {/* Flip camera */}
-                <button
-                  type="button"
-                  data-ocid="capture.toggle"
-                  onClick={() => switchCamera()}
-                  disabled={isLoading}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: "50%",
-                    background: "rgba(0,0,0,0.08)",
-                    border: `1.5px solid ${MINT_BORDER}`,
-                    cursor: isLoading ? "not-allowed" : "pointer",
-                    opacity: isLoading ? 0.5 : 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  aria-label="Switch camera"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M3 7a7 7 0 0 1 13.5-2M17 13a7 7 0 0 1-13.5 2"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M17 7l-1.5 2.5L13 7"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M3 13l1.5-2.5L7 13"
-                      stroke={MINT_GREEN}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-
-                {/* Shutter button */}
-                <button
-                  type="button"
-                  data-ocid="capture.primary_button"
-                  onClick={handleShutterPress}
-                  disabled={!isActive || isLoading}
-                  aria-label="Take photo"
-                  style={{
-                    width: 70,
-                    height: 70,
-                    borderRadius: "50%",
-                    background:
-                      isActive && !isLoading
-                        ? `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`
-                        : "rgba(0,0,0,0.10)",
-                    border: "3px solid rgba(255,255,255,0.9)",
-                    boxShadow:
-                      isActive && !isLoading
-                        ? "0 4px 18px rgba(52,168,132,0.38)"
-                        : "none",
-                    cursor: isActive && !isLoading ? "pointer" : "default",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "background 0.2s ease, box-shadow 0.2s ease",
-                  }}
-                >
-                  <div
+                {/* Record / Stop button */}
+                {!isRecording ? (
+                  <button
+                    type="button"
+                    data-ocid="capture.primary_button"
+                    onClick={handleStartRecording}
+                    disabled={isLoadingCamera}
+                    aria-label="Start recording"
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 72,
+                      height: 72,
                       borderRadius: "50%",
-                      background: "rgba(255,255,255,0.92)",
+                      background: !isLoadingCamera
+                        ? `linear-gradient(160deg, ${REC_RED}, rgba(200,30,30,1))`
+                        : "rgba(0,0,0,0.10)",
+                      border: "3px solid rgba(255,255,255,0.9)",
+                      boxShadow: !isLoadingCamera
+                        ? "0 4px 18px rgba(239,68,68,0.38)"
+                        : "none",
+                      cursor: !isLoadingCamera ? "pointer" : "default",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "background 0.2s ease, box-shadow 0.2s ease",
                     }}
-                  />
-                </button>
-
-                {/* Spacer to balance layout */}
-                <div style={{ width: 44, height: 44 }} />
+                  >
+                    {/* Filled circle = record */}
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.92)",
+                      }}
+                    />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    data-ocid="capture.secondary_button"
+                    onClick={handleStopEarly}
+                    aria-label="Stop recording"
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.85)",
+                      border: `3px solid ${REC_RED}`,
+                      boxShadow: "0 4px 18px rgba(239,68,68,0.30)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* Square = stop */}
+                    <div
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: "4px",
+                        background: REC_RED,
+                      }}
+                    />
+                  </button>
+                )}
               </div>
 
               {/* Helper text */}
               <p
                 style={{
                   fontSize: "12px",
-                  color: "rgba(52,168,132,0.65)",
+                  color: isRecording
+                    ? "rgba(239,68,68,0.75)"
+                    : "rgba(52,168,132,0.65)",
                   marginTop: "10px",
                   textAlign: "center",
                   letterSpacing: "0.03em",
                 }}
               >
-                Tap to capture
+                {isRecording
+                  ? "Recording with audio · Tap ■ to stop early"
+                  : "Tap ● to record up to 15 seconds"}
               </p>
             </>
-          )}
-
-          {/* ── PHOTO PREVIEW (after shutter, before "Use") ── */}
-          {pendingPhotoUrl && (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "16px",
-                width: "100%",
-              }}
-            >
-              <img
-                src={pendingPhotoUrl}
-                alt="Captured preview"
-                style={{
-                  width: "100%",
-                  maxWidth: "360px",
-                  aspectRatio: "4/5",
-                  objectFit: "cover",
-                  borderRadius: "16px",
-                  border: `1.5px solid ${MINT_BORDER}`,
-                  boxShadow: "0 4px 24px rgba(52,168,132,0.15)",
-                  display: "block",
-                }}
-              />
-
-              {/* Mint error banner */}
-              {mintError && (
-                <button
-                  type="button"
-                  data-ocid="capture.error_state"
-                  onClick={() => setMintError(null)}
-                  style={{
-                    width: "100%",
-                    maxWidth: "360px",
-                    background: "rgba(220,38,38,0.08)",
-                    border: "1.5px solid rgba(220,38,38,0.25)",
-                    borderRadius: "12px",
-                    padding: "10px 14px",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>&#x26A0;&#xFE0F;</span>
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: 500,
-                      color: "#dc2626",
-                      margin: 0,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {mintError}
-                  </p>
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: 16,
-                      color: "rgba(220,38,38,0.5)",
-                      lineHeight: 1,
-                    }}
-                  >
-                    &times;
-                  </span>
-                </button>
-              )}
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  width: "100%",
-                  maxWidth: "360px",
-                }}
-              >
-                <button
-                  type="button"
-                  data-ocid="capture.secondary_button"
-                  onClick={handleRetakePhoto}
-                  style={{
-                    flex: 1,
-                    padding: "13px",
-                    borderRadius: "14px",
-                    border: `1.5px solid ${MINT_BORDER}`,
-                    background: "#fff",
-                    color: "#374151",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Retake
-                </button>
-                <button
-                  type="button"
-                  data-ocid="capture.primary_button"
-                  onClick={handleUsePhoto}
-                  style={{
-                    flex: 2,
-                    padding: "13px",
-                    borderRadius: "14px",
-                    background: `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`,
-                    border: "none",
-                    color: "#fff",
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 2px 12px rgba(52,168,132,0.28)",
-                  }}
-                >
-                  Use Photo
-                </button>
-              </div>
-            </div>
           )}
         </div>
       )}
 
-      {/* ── FINAL SETUP STEP (step 1) ── */}
-      {captureStep === 1 && (
+      {/* ── STEP 1: PREVIEW ── */}
+      {captureStep === 1 && pendingVideoUrl && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: "16px 20px 32px",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              maxWidth: "360px",
+              borderRadius: "16px",
+              overflow: "hidden",
+              background: "#000",
+              aspectRatio: "9/16",
+              border: `1.5px solid ${MINT_BORDER}`,
+              boxShadow: "0 4px 24px rgba(52,168,132,0.15)",
+              flexShrink: 0,
+            }}
+          >
+            <video
+              ref={previewVideoRef}
+              src={pendingVideoUrl}
+              autoPlay
+              loop
+              playsInline
+              muted
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+
+            {/* Overlay label */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 12,
+                left: 0,
+                right: 0,
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  background: "rgba(0,0,0,0.50)",
+                  backdropFilter: "blur(6px)",
+                  borderRadius: "20px",
+                  padding: "4px 12px",
+                }}
+              >
+                <span
+                  style={{
+                    color: "rgba(255,255,255,0.85)",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Preview · looping
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mint error banner */}
+          {mintError && (
+            <button
+              type="button"
+              data-ocid="capture.error_state"
+              onClick={() => setMintError(null)}
+              style={{
+                width: "100%",
+                maxWidth: "360px",
+                background: "rgba(220,38,38,0.08)",
+                border: "1.5px solid rgba(220,38,38,0.25)",
+                borderRadius: "12px",
+                padding: "10px 14px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 16 }}>&#x26A0;&#xFE0F;</span>
+              <p
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#dc2626",
+                  margin: 0,
+                  lineHeight: 1.4,
+                }}
+              >
+                {mintError}
+              </p>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 16,
+                  color: "rgba(220,38,38,0.5)",
+                  lineHeight: 1,
+                }}
+              >
+                &times;
+              </span>
+            </button>
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              width: "100%",
+              maxWidth: "360px",
+            }}
+          >
+            <button
+              type="button"
+              data-ocid="capture.secondary_button"
+              onClick={handleRetake}
+              style={{
+                flex: 1,
+                padding: "13px",
+                borderRadius: "14px",
+                border: `1.5px solid ${MINT_BORDER}`,
+                background: "#fff",
+                color: "#374151",
+                fontSize: "14px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Retake
+            </button>
+            <button
+              type="button"
+              data-ocid="capture.primary_button"
+              onClick={handleUseVideo}
+              style={{
+                flex: 2,
+                padding: "13px",
+                borderRadius: "14px",
+                background: `linear-gradient(160deg, ${MINT_GREEN}, rgba(42,144,112,1))`,
+                border: "none",
+                color: "#fff",
+                fontSize: "15px",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 12px rgba(52,168,132,0.28)",
+              }}
+            >
+              Use Video
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 2: FINAL SETUP ── */}
+      {captureStep === 2 && (
         <FinalSetupScreen
-          photos={photos}
-          onBack={() => setCaptureStep(0)}
+          videoUrl={activeDraft?.videoUrl ?? pendingVideoUrl ?? undefined}
+          onBack={() => setCaptureStep(1)}
           onSubmit={handleSetupSubmit}
         />
       )}

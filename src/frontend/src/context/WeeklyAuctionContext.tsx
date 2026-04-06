@@ -27,6 +27,8 @@ export interface WeeklyAuctionItem {
   title: string;
   creatorName: string;
   imageUrl: string;
+  videoUrl?: string;
+  previewClipUrl?: string;
   likes: number;
   startedAt: number | null;
   endsAt: number | null;
@@ -68,6 +70,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "arctic.icp",
     imageUrl:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
     likes: 12482,
     startedAt: NOW - 20 * 60 * 1000,
     endsAt: NOW - 20 * 60 * 1000 + ONE_HOUR_MS,
@@ -106,6 +112,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "solstice",
     imageUrl:
       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
     likes: 8301,
     startedAt: null,
     endsAt: null,
@@ -122,6 +132,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "drifter.icp",
     imageUrl:
       "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
     likes: 6744,
     startedAt: null,
     endsAt: null,
@@ -138,6 +152,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "nova_clips",
     imageUrl:
       "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     likes: 3210,
     startedAt: null,
     endsAt: null,
@@ -154,6 +172,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "east.light",
     imageUrl:
       "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
     likes: 1987,
     startedAt: null,
     endsAt: null,
@@ -170,6 +192,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "pulse_rider",
     imageUrl:
       "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
     likes: 1203,
     startedAt: null,
     endsAt: null,
@@ -186,6 +212,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "velvet_fog",
     imageUrl:
       "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
     likes: 870,
     startedAt: null,
     endsAt: null,
@@ -202,6 +232,10 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "mintcreator",
     imageUrl:
       "https://images.unsplash.com/photo-1511300636408-a63a89df3482?w=600&q=80",
+    videoUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoing.mp4",
+    previewClipUrl:
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoing.mp4",
     likes: 512,
     startedAt: null,
     endsAt: null,
@@ -218,6 +252,8 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "neon_rider",
     imageUrl:
       "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&q=80",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     likes: 241,
     startedAt: null,
     endsAt: null,
@@ -234,6 +270,8 @@ const SEED_ITEMS: WeeklyAuctionItem[] = [
     creatorName: "light.icp",
     imageUrl:
       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&q=80",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
+    previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
     likes: 87,
     startedAt: null,
     endsAt: null,

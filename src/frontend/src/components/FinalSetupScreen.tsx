@@ -7,13 +7,13 @@ const MINT_BORDER = "rgba(52,168,132,0.3)";
 const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
-  photos: string[];
+  videoUrl?: string;
   onBack: () => void;
   onSubmit: (draft: MomentDraft) => void;
 }
 
 export function FinalSetupScreen({
-  photos: _photos,
+  videoUrl,
   onBack,
   onSubmit,
 }: FinalSetupScreenProps) {
@@ -155,7 +155,6 @@ export function FinalSetupScreen({
         >
           Final Setup
         </h2>
-        {/* Step indicator */}
         <span
           style={{
             fontSize: "11px",
@@ -182,6 +181,65 @@ export function FinalSetupScreen({
           alignSelf: "center",
         }}
       >
+        {/* ── Video Thumbnail Preview ── */}
+        {videoUrl && (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 200,
+              alignSelf: "center",
+              borderRadius: 12,
+              overflow: "hidden",
+              border: `1.5px solid ${MINT_BORDER}`,
+              background: "#000",
+              aspectRatio: "9/16",
+              position: "relative",
+              boxShadow: "0 2px 12px rgba(52,168,132,0.15)",
+            }}
+          >
+            <video
+              src={videoUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 6,
+                left: 0,
+                right: 0,
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+              }}
+            >
+              <span
+                style={{
+                  background: "rgba(0,0,0,0.55)",
+                  backdropFilter: "blur(4px)",
+                  borderRadius: 20,
+                  padding: "2px 10px",
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  fontFamily: "'DM Sans', sans-serif",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                15s max
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* ── Set Title ── */}
         <div>
           <label
@@ -196,12 +254,12 @@ export function FinalSetupScreen({
               marginBottom: "8px",
             }}
           >
-            Set Title <span style={{ color: "#ef4444" }}>*</span>
+            Title <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <input
             id="set-title"
             type="text"
-            placeholder="Name your Mint Moment…"
+            placeholder="Name your Moment…"
             value={localTitle}
             onChange={(e) => {
               setLocalTitle(e.target.value);
@@ -209,6 +267,7 @@ export function FinalSetupScreen({
             }}
             onBlur={() => setTitleTouched(true)}
             maxLength={60}
+            data-ocid="capture.input"
             style={{
               width: "100%",
               padding: "13px 14px",
@@ -236,6 +295,7 @@ export function FinalSetupScreen({
           >
             {showTitleError ? (
               <span
+                data-ocid="capture.error_state"
                 style={{ fontSize: "11px", color: "#ef4444", fontWeight: 500 }}
               >
                 Title is required to publish
@@ -283,6 +343,7 @@ export function FinalSetupScreen({
             onChange={(e) => setLocalCaption(e.target.value)}
             rows={3}
             maxLength={200}
+            data-ocid="capture.textarea"
             style={{
               width: "100%",
               padding: "13px 14px",
@@ -294,7 +355,6 @@ export function FinalSetupScreen({
               color: "#111",
               outline: "none",
               resize: "none",
-              fontFamily: "inherit",
               lineHeight: 1.5,
               boxSizing: "border-box",
               transition: "border-color 0.15s",
@@ -306,17 +366,17 @@ export function FinalSetupScreen({
               e.currentTarget.style.borderColor = "rgba(0,0,0,0.10)";
             }}
           />
-          <div
+          <span
             style={{
-              display: "flex",
-              justifyContent: "flex-end",
+              display: "block",
+              textAlign: "right",
+              fontSize: "11px",
+              color: "#9ca3af",
               marginTop: "4px",
             }}
           >
-            <span style={{ fontSize: "11px", color: "#9ca3af" }}>
-              {localCaption.length}/200
-            </span>
-          </div>
+            {localCaption.length}/200
+          </span>
         </div>
 
         {/* ── Hashtags ── */}
@@ -343,7 +403,7 @@ export function FinalSetupScreen({
                 letterSpacing: 0,
               }}
             >
-              (optional · max 3)
+              (up to 3)
             </span>
           </label>
 
@@ -502,7 +562,7 @@ export function FinalSetupScreen({
                   margin: "0 0 4px",
                 }}
               >
-                Mark this set as explicit
+                Mark as explicit
               </p>
               <p
                 style={{
@@ -512,16 +572,15 @@ export function FinalSetupScreen({
                   lineHeight: 1.5,
                 }}
               >
-                Explicit sets may be hidden for viewers with safe viewing
-                enabled.
+                Explicit moments may be hidden for some viewers.
               </p>
             </div>
 
-            {/* Toggle switch */}
             <button
               type="button"
               role="switch"
               aria-checked={localExplicit}
+              data-ocid="capture.switch"
               onClick={() => setLocalExplicit(!localExplicit)}
               style={{
                 flexShrink: 0,
@@ -554,55 +613,12 @@ export function FinalSetupScreen({
               />
             </button>
           </div>
-
-          {/* Warning chip when explicit is ON */}
-          {localExplicit && (
-            <div
-              style={{
-                marginTop: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "rgba(245,158,11,0.08)",
-                borderRadius: "8px",
-                padding: "8px 10px",
-                border: "1px solid rgba(245,158,11,0.20)",
-              }}
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 13 13"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6.5 1.5L11.5 10H1.5L6.5 1.5z"
-                  stroke="#f59e0b"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M6.5 5v3"
-                  stroke="#f59e0b"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
-                <circle cx="6.5" cy="9.5" r="0.6" fill="#f59e0b" />
-              </svg>
-              <span
-                style={{ fontSize: "11px", color: "#92400e", fontWeight: 500 }}
-              >
-                This set will be hidden from viewers with safe viewing enabled.
-              </span>
-            </div>
-          )}
         </div>
 
         {/* ── Summary ── */}
         <div
           style={{
-            background: "rgba(52,168,132,0.05)",
+            background: "rgba(52,168,132,0.04)",
             borderRadius: "14px",
             border: `1px solid ${MINT_BORDER}`,
             padding: "14px 16px",
@@ -632,8 +648,8 @@ export function FinalSetupScreen({
             }}
           >
             {[
-              "1 image captured",
-              "300 packs will be minted",
+              "1 video recorded (15s)",
+              "$1 mint fee in BTC",
               localExplicit ? "Marked as explicit" : "Standard content",
             ].map((item) => (
               <div
@@ -683,7 +699,7 @@ export function FinalSetupScreen({
           }}
           aria-disabled={titleEmpty}
         >
-          Continue to Set Price
+          Confirm Mint
         </button>
 
         {titleEmpty && titleTouched && (

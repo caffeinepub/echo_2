@@ -23,6 +23,7 @@ export interface MarketRelease {
   creatorId: string;
   coverImageUrl: string;
   previewClipUrl?: string;
+  videoUrl?: string;
   title: string;
   caption: string;
   setName: string;
@@ -100,6 +101,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Northern Lights",
     caption: "Aurora borealis over the tundra",
     setName: "Arctic Visions Vol. 1",
@@ -110,7 +112,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 2 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["aurora", "arctic", "northernlights"],
     lastPurchaseAt: NOW - 4 * 60 * 1000,
@@ -127,6 +129,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "Midsummer Drift",
     caption: "Endless golden hour",
     setName: "Solstice Series",
@@ -137,7 +140,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 18 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["solstice", "midsummer", "goldenhour"],
     lastPurchaseAt: NOW - 22 * 60 * 1000,
@@ -154,6 +157,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Coastal Fog",
     caption: "Morning fog rolling in off the Pacific",
     setName: "West Coast Mornings",
@@ -164,7 +168,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 0.5 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["coastalfog", "pacific", "morningvibes"],
     lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
@@ -181,6 +185,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "Supernova Pulse",
     caption: "Light bending through deep space",
     setName: "Nova Series",
@@ -191,7 +196,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 1 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["supernova", "space", "cosmos"],
     likes: 3210,
@@ -207,6 +212,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Ryokan Morning",
     caption: "First light over the mountain inn",
     setName: "East Series",
@@ -217,7 +223,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 3 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["ryokan", "japan", "morning"],
     likes: 1987,
@@ -233,6 +239,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "Night Circuit",
     caption: "Neon city lights at 2am",
     setName: "Pulse Nights",
@@ -243,7 +250,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 6 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["nightcircuit", "neon", "citylights"],
     likes: 1203,
@@ -259,6 +266,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "Velvet Hour",
     caption: "Fog settling over the valley",
     setName: "Velvet Fog Collection",
@@ -269,7 +277,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 12 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["velvet", "fog", "valley"],
     likes: 870,
@@ -285,6 +293,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1511300636408-a63a89df3482?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "Sunset Ride",
     caption: "Late summer drive along the coast",
     setName: "Coastal Drift Vol. 1",
@@ -295,7 +304,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 24 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["coastaldrift", "sunsetride", "goldenhour"],
     likes: 512,
@@ -311,6 +320,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
+    videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
     title: "First Mint Moment",
     caption: "Late night drive",
     setName: "Night Drive Series",
@@ -321,7 +331,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 36 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["nightdrive", "citylights", "latevibes"],
     likes: 241,
@@ -337,6 +347,7 @@ const SEED_RELEASES: MarketRelease[] = [
     coverImageUrl:
       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80",
     previewClipUrl: "https://www.w3schools.com/html/movie.mp4",
+    videoUrl: "https://www.w3schools.com/html/movie.mp4",
     title: "Golden Hour",
     caption: "Golden hour at the lake",
     setName: "Golden Hour Set",
@@ -347,7 +358,7 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 48 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "photo",
+    collectibleType: "video",
     explicit: false,
     hashtags: ["goldenhour", "fogseason", "earlylight"],
     likes: 87,

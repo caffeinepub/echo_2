@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Package, TrendingUp } from "lucide-react";
+import { Check, ChevronRight, Package } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
 
@@ -319,7 +319,7 @@ export function MintSetConfirmModal({
                 margin: "0 0 10px",
               }}
             >
-              Pack Economics
+              Video Details
             </p>
             <div
               style={{
@@ -330,10 +330,10 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                { icon: "📦", label: "Total Packs", value: "300" },
-                { icon: "💵", label: "Starting Price", value: "$10" },
-                { icon: "🎯", label: "Max Price", value: "$60" },
-                { icon: "📈", label: "Pricing Model", value: "Bonding Curve" },
+                { icon: "🎬", label: "Video Length", value: "15 sec" },
+                { icon: "🎙️", label: "Audio", value: "Included" },
+                { icon: "💵", label: "Mint Cost", value: "$1 BTC" },
+                { icon: "⚡", label: "Posted to", value: "Releases" },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -371,40 +371,6 @@ export function MintSetConfirmModal({
               ))}
             </div>
 
-            {/* Bonding curve note */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "8px",
-                marginBottom: "20px",
-                padding: "10px 12px",
-                background: "rgba(52,168,132,0.04)",
-                borderRadius: "10px",
-                border: "1px solid rgba(52,168,132,0.12)",
-              }}
-            >
-              <TrendingUp
-                size={14}
-                color={MINT_GREEN}
-                style={{ marginTop: "1px", flexShrink: 0 }}
-              />
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "#6b7280",
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                Price increases with each purchase — early collectors get the
-                best rate. Price formula:{" "}
-                <span style={{ fontFamily: "monospace", color: "#374151" }}>
-                  $10 + (sold/300)² × $50
-                </span>
-              </p>
-            </div>
-
             {/* What's included */}
             <p
               style={{
@@ -427,8 +393,8 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                "1 image → 300 collectible packs",
-                "Each pack contains 1 collectible",
+                "1 video (15 sec) → NFT minted",
+                "Posted to Releases after mint",
               ].map((item) => (
                 <div
                   key={item}
@@ -491,7 +457,7 @@ export function MintSetConfirmModal({
                   letterSpacing: "-0.02em",
                 }}
               >
-                $100
+                $1
               </span>
             </div>
 

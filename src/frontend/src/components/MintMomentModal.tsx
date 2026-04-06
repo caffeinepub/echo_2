@@ -343,10 +343,10 @@ export function MintMomentModal({
   ];
 
   const STEPS = [
-    "Capture 1 photo",
-    "Enter a title (optional)",
+    "Record a 15-second video (audio included)",
+    "Add a title and caption",
     "Slide to pay $1 in BTC",
-    "NFT is created and posted to Releases",
+    "Video NFT is minted and posted to Releases",
   ];
 
   return (
@@ -461,8 +461,8 @@ export function MintMomentModal({
                     fontFamily: "var(--font-ui)",
                   }}
                 >
-                  Mint a photo NFT and compete for likes during the weekly
-                  round.
+                  Record a 15-second video NFT and compete for likes during the
+                  weekly round.
                 </p>
               </div>
 
