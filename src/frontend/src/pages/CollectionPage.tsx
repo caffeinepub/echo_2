@@ -5,7 +5,7 @@ import { useReleasesMarket } from "../context/ReleasesMarketContext";
 type MarketRelease = {
   id: string;
   creatorName: string;
-  previewClipUrl?: string;
+  coverImageUrl: string;
   title: string;
   likes: number;
   listedAt: number;
@@ -14,67 +14,7 @@ type MarketRelease = {
 
 const SEVEN_DAYS_MS = 7 * 24 * 3600 * 1000;
 
-function SoundOffIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="white"
-      role="img"
-      aria-label="Sound off"
-    >
-      <title>Sound off</title>
-      <path d="M3.63 3.63a.996.996 0 000 1.41L7.29 8.7 7 9H4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71v-4.17l4.18 4.18c-.49.37-1.02.68-1.6.91-.36.15-.58.53-.58.92 0 .72.73 1.18 1.39.91.8-.33 1.55-.77 2.22-1.31l1.34 1.34a.996.996 0 101.41-1.41L5.05 3.63c-.39-.39-1.02-.39-1.42 0zM19 12c0 .82-.15 1.61-.41 2.34l1.53 1.53c.56-1.17.88-2.48.88-3.87 0-3.83-2.4-7.11-5.78-8.4-.59-.23-1.22.2-1.22.84v.08c0 .38.25.71.61.85C17.18 6.54 19 9.06 19 12zm-8.71-6.29l-.17.17L12 7.76V6.41c0-.89-1.08-1.34-1.71-.71zm4.49 11.29C13.86 17.99 12 16.5 12 14.58v-.18l3.78 3.78V17c0 .01-.01.01 0 .01z" />
-    </svg>
-  );
-}
-
-function SoundOnIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="white"
-      role="img"
-      aria-label="Sound on"
-    >
-      <title>Sound on</title>
-      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-    </svg>
-  );
-}
-
-function SoundBadge({
-  isMuted,
-  size = 28,
-}: { isMuted: boolean; size?: number }) {
-  const iconSize = Math.round(size * 0.5);
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        background: "rgba(0,0,0,0.45)",
-        backdropFilter: "blur(4px)",
-        pointerEvents: "none",
-      }}
-    >
-      {isMuted ? (
-        <SoundOffIcon size={iconSize} />
-      ) : (
-        <SoundOnIcon size={iconSize} />
-      )}
-    </span>
-  );
-}
-
-function VideoCard({
+function PhotoCard({
   release,
   isTop3,
   rank,
@@ -85,54 +25,11 @@ function VideoCard({
   rank: number;
   accentColor: string;
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMuted, setIsMuted] = useState(true);
-  const [showSoundIcon, setShowSoundIcon] = useState(false);
-  const iconTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // IntersectionObserver: play only when visible
-  useEffect(() => {
-    const video = videoRef.current;
-    const container = containerRef.current;
-    if (!video || !container) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting) {
-          video.play().catch(() => {});
-        } else {
-          video.pause();
-        }
-      },
-      { threshold: 0.3 },
-    );
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  const handleVideoTap = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    const next = !isMuted;
-    video.muted = next;
-    setIsMuted(next);
-    setShowSoundIcon(true);
-    if (iconTimeoutRef.current) clearTimeout(iconTimeoutRef.current);
-    iconTimeoutRef.current = setTimeout(() => setShowSoundIcon(false), 1200);
-  };
-
-  const _handleVideoKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleVideoTap();
-    }
-  };
+  const [imgError, setImgError] = useState(false);
 
   const rankFontSize = rank === 1 ? 28 : isTop3 ? 22 : 18;
   const rankColor = isTop3 ? accentColor : "#8E8E93";
-  const rankWeight = 700;
 
   if (isTop3) {
     // Large card for top 3 — stacked layout
@@ -156,95 +53,47 @@ function VideoCard({
             top: 12,
             left: 14,
             zIndex: 10,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
           }}
         >
           <span
             style={{
               fontSize: rankFontSize,
-              fontWeight: rankWeight,
+              fontWeight: 700,
               color: rankColor,
               fontFamily: "'DM Sans', Inter, -apple-system, sans-serif",
               lineHeight: 1,
-              textShadow: "0 1px 4px rgba(0,0,0,0.12)",
+              textShadow: "0 1px 8px rgba(0,0,0,0.18)",
             }}
           >
             #{rank}
           </span>
         </div>
 
-        {/* Video tap area */}
-        <button
-          type="button"
-          aria-label={isMuted ? "Tap to unmute video" : "Tap to mute video"}
+        {/* Photo */}
+        <div
           style={{
             width: "100%",
-            aspectRatio: "16/9",
+            aspectRatio: "4/3",
             background: "#1a1a1a",
-            position: "relative",
-            cursor: "pointer",
-            border: "none",
-            padding: 0,
-            display: "block",
+            overflow: "hidden",
           }}
-          onClick={handleVideoTap}
         >
-          {release.previewClipUrl ? (
-            <video
-              ref={videoRef}
-              src={release.previewClipUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#1a1a1a",
-              }}
-            >
-              <span
-                style={{
-                  color: "#888",
-                  fontFamily: "'DM Sans', Inter, -apple-system, sans-serif",
-                  fontSize: 14,
-                  textAlign: "center",
-                  padding: "0 16px",
-                }}
-              >
-                {release.title}
-              </span>
-            </div>
-          )}
-
-          {/* Sound icon overlay */}
-          {showSoundIcon && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: 10,
-                right: 10,
-                pointerEvents: "none",
-              }}
-            >
-              <SoundBadge isMuted={isMuted} size={28} />
-            </div>
-          )}
-        </button>
+          <img
+            src={
+              imgError
+                ? "/assets/generated/minty-pack-wrapper.png"
+                : release.coverImageUrl
+            }
+            alt={release.title}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+            onError={() => setImgError(true)}
+          />
+        </div>
 
         {/* Info */}
         <div style={{ padding: "12px 14px 14px" }}>
@@ -325,7 +174,7 @@ function VideoCard({
         <span
           style={{
             fontSize: rankFontSize,
-            fontWeight: rankWeight,
+            fontWeight: 700,
             color: rankColor,
             fontFamily: "'DM Sans', Inter, -apple-system, sans-serif",
             lineHeight: 1,
@@ -335,77 +184,35 @@ function VideoCard({
         </span>
       </div>
 
-      {/* Video tap area */}
-      <button
-        type="button"
-        aria-label={isMuted ? "Tap to unmute video" : "Tap to mute video"}
+      {/* Photo thumbnail */}
+      <div
         style={{
-          width: 100,
+          width: 72,
           flexShrink: 0,
-          aspectRatio: "16/9",
+          aspectRatio: "4/3",
           borderRadius: 10,
           overflow: "hidden",
           background: "#1a1a1a",
-          cursor: "pointer",
-          position: "relative",
-          border: "none",
-          padding: 0,
         }}
-        onClick={handleVideoTap}
       >
-        {release.previewClipUrl ? (
-          <video
-            ref={videoRef}
-            src={release.previewClipUrl}
-            autoPlay
-            muted
-            loop
-            playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#2a2a2a",
-            }}
-          >
-            <span
-              style={{
-                color: "#666",
-                fontSize: 10,
-                textAlign: "center",
-                padding: "0 4px",
-              }}
-            >
-              {release.title}
-            </span>
-          </div>
-        )}
-        {showSoundIcon && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 4,
-              right: 4,
-              pointerEvents: "none",
-            }}
-          >
-            <SoundBadge isMuted={isMuted} size={18} />
-          </div>
-        )}
-      </button>
+        <img
+          src={
+            imgError
+              ? "/assets/generated/minty-pack-wrapper.png"
+              : release.coverImageUrl
+          }
+          alt={release.title}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+          onError={() => setImgError(true)}
+        />
+      </div>
 
-      {/* Title + likes */}
+      {/* Title + creator + likes */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -426,7 +233,7 @@ function VideoCard({
             fontFamily: "'DM Sans', Inter, -apple-system, sans-serif",
             fontSize: 12,
             color: "#8E8E93",
-            marginBottom: 2,
+            marginBottom: 3,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -506,7 +313,7 @@ export function CollectionPage({
             fontWeight: 400,
           }}
         >
-          Most liked 7 sec clips in the last 7 days
+          Most liked photos in the last 7 days
         </p>
       </div>
 
@@ -524,7 +331,7 @@ export function CollectionPage({
             gap: 12,
           }}
         >
-          <span style={{ fontSize: 40 }}>🎬</span>
+          <span style={{ fontSize: 40 }}>📷</span>
           <p
             style={{
               fontSize: 15,
@@ -534,7 +341,7 @@ export function CollectionPage({
               lineHeight: 1.5,
             }}
           >
-            No clips this week yet.
+            No photos this week yet.
             <br />
             Post a moment on the Releases tab.
           </p>
@@ -542,7 +349,7 @@ export function CollectionPage({
       ) : (
         <div data-ocid="leaderboard.list">
           {rankedReleases.map((release, idx) => (
-            <VideoCard
+            <PhotoCard
               key={release.id}
               rank={idx + 1}
               release={release}
