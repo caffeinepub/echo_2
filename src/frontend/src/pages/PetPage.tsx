@@ -35,7 +35,7 @@ function playSound() {
   }
 }
 
-// Status bar configuration
+// Status bar configuration — drain 10% per hour = 3,600,000ms for full 100%
 const STATUS_BARS = [
   {
     key: "water" as const,
@@ -43,7 +43,7 @@ const STATUS_BARS = [
     icon: "💧",
     color: "#7fb8e8",
     colorLow: "#4a9fd4",
-    drainMs: 30_000,
+    drainMs: 3_600_000,
   },
   {
     key: "food" as const,
@@ -51,7 +51,7 @@ const STATUS_BARS = [
     icon: "🍖",
     color: "#f0a875",
     colorLow: "#e07d3e",
-    drainMs: 45_000,
+    drainMs: 3_600_000,
   },
   {
     key: "mood" as const,
@@ -59,7 +59,7 @@ const STATUS_BARS = [
     icon: "🩷",
     color: "#f08ca8",
     colorLow: "#d95a78",
-    drainMs: 60_000,
+    drainMs: 3_600_000,
   },
 ] as const;
 
@@ -76,7 +76,7 @@ function StatusBarPanel({
     <div
       style={{
         position: "fixed",
-        bottom: 88,
+        bottom: 148,
         left: "50%",
         transform: "translateX(-50%)",
         width: "calc(100% - 40px)",
@@ -199,6 +199,112 @@ function StatusBarPanel({
   );
 }
 
+function FeedButtons({
+  onFeed,
+}: {
+  onFeed: (key: "water" | "food") => void;
+}) {
+  const [waterActive, setWaterActive] = useState(false);
+  const [foodActive, setFoodActive] = useState(false);
+
+  const handleWater = () => {
+    setWaterActive(true);
+    onFeed("water");
+    setTimeout(() => setWaterActive(false), 150);
+  };
+
+  const handleFood = () => {
+    setFoodActive(true);
+    onFeed("food");
+    setTimeout(() => setFoodActive(false), 150);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 88,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "calc(100% - 40px)",
+        maxWidth: 380,
+        display: "flex",
+        gap: 12,
+        zIndex: 10,
+      }}
+      data-ocid="pet.feed_buttons.panel"
+    >
+      {/* Water Button */}
+      <button
+        type="button"
+        aria-label="Give water (+10%)"
+        onClick={handleWater}
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 7,
+          padding: "12px 0",
+          borderRadius: 50,
+          background: "rgba(127, 184, 232, 0.15)",
+          border: "1.5px solid #7fb8e8",
+          cursor: "pointer",
+          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#4a9fd4",
+          transform: waterActive ? "scale(0.94)" : "scale(1)",
+          transition: "transform 0.12s ease-out, box-shadow 0.15s ease",
+          boxShadow: waterActive
+            ? "0 1px 6px rgba(127,184,232,0.25)"
+            : "0 2px 10px rgba(127,184,232,0.18)",
+          outline: "none",
+          userSelect: "none",
+        }}
+        data-ocid="pet.water.button"
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>💧</span>
+        Water
+      </button>
+
+      {/* Food Button */}
+      <button
+        type="button"
+        aria-label="Give food (+10%)"
+        onClick={handleFood}
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 7,
+          padding: "12px 0",
+          borderRadius: 50,
+          background: "rgba(240, 168, 117, 0.15)",
+          border: "1.5px solid #f0a875",
+          cursor: "pointer",
+          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#e07d3e",
+          transform: foodActive ? "scale(0.94)" : "scale(1)",
+          transition: "transform 0.12s ease-out, box-shadow 0.15s ease",
+          boxShadow: foodActive
+            ? "0 1px 6px rgba(240,168,117,0.25)"
+            : "0 2px 10px rgba(240,168,117,0.18)",
+          outline: "none",
+          userSelect: "none",
+        }}
+        data-ocid="pet.food.button"
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>🍖</span>
+        Food
+      </button>
+    </div>
+  );
+}
+
 export function PetPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 140, y: 200 });
@@ -218,9 +324,10 @@ export function PetPage() {
   const stateRef = useRef({ pos, dir, petState });
   stateRef.current = { pos, dir, petState };
 
-  // Drain status bars over time
+  // Drain status bars over time — 10% per hour
+  // TICK_MS = 1000ms, drain per tick = (10 / 3_600_000) * 1000 per bar
   useEffect(() => {
-    const TICK_MS = 500;
+    const TICK_MS = 1_000;
     const id = setInterval(() => {
       setStatusValues((prev) => {
         const next = { ...prev };
@@ -234,8 +341,17 @@ export function PetPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Refill a bar to 100% (tap on bar in StatusBarPanel)
   const handleRefill = useCallback((key: StatusKey) => {
     setStatusValues((prev) => ({ ...prev, [key]: 100 }));
+  }, []);
+
+  // Feed buttons: +10% additive, capped at 100
+  const handleFeed = useCallback((key: "water" | "food") => {
+    setStatusValues((prev) => ({
+      ...prev,
+      [key]: Math.min(100, prev[key] + 10),
+    }));
   }, []);
 
   // Walk cycle animation
@@ -323,10 +439,10 @@ export function PetPage() {
   const handlePetClick = useCallback(() => {
     playSound();
     setPetState("tapped");
-    // Boost mood by +15%, capped at 100
+    // Boost mood by +10%, capped at 100
     setStatusValues((prev) => ({
       ...prev,
-      mood: Math.min(100, prev.mood + 15),
+      mood: Math.min(100, prev.mood + 10),
     }));
     const id = ++sparkleIdRef.current;
     setSparkles((s) => [
@@ -433,8 +549,11 @@ export function PetPage() {
         <OldManSVG legs={currentLegs} sitting={isSitting} />
       </button>
 
-      {/* Status bars */}
+      {/* Status bars — positioned above feed buttons */}
       <StatusBarPanel values={statusValues} onRefill={handleRefill} />
+
+      {/* Feed buttons — Water (+10%) and Food (+10%) */}
+      <FeedButtons onFeed={handleFeed} />
 
       <style>{`
         @keyframes petSparkleFloat {
