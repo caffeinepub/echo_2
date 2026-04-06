@@ -309,7 +309,7 @@ function RevealedCard({
   );
 }
 
-// ── Locked state shown when a draft is in progress ───────────────────────────
+// ── Locked state shown when a draft is in progress ───────────────────────────────
 function DraftLockedState({
   onFinish,
   accentRgb,
@@ -522,7 +522,7 @@ function WeeklyCountdownBanner() {
         {[
           "Mint unlimited photo NFTs this round",
           "Each mint costs $1 in BTC",
-          "Only the Top 10 most liked survive",
+          "Only the Top 25 most liked survive",
         ].map((line) => (
           <p
             key={line}
@@ -563,7 +563,7 @@ export function LibraryPage({
   const accentText = `rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.85)`;
   const accentGlow = `rgba(${accentRgb},0.28)`;
 
-  // Inject keyframes once — uses CSS custom property var(--cycle-accent-rgb) for the glow
+  // Inject keyframes once
   useEffect(() => {
     const id = "library-keyframes-style";
     if (document.getElementById(id)) return;
@@ -574,13 +574,10 @@ export function LibraryPage({
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50%       { opacity: 1;   transform: scale(1.25); }
       }
-      /* ── Pack preview image animations ─────────────────────────────── */
-      /* Gentle float: 6px vertical travel over 5s */
       @keyframes packPreviewFloat {
         0%, 100% { transform: translateY(0px) scale(1); }
         50%       { transform: translateY(-5px) scale(1.012); }
       }
-      /* Soft glow pulse on the wrapper — uses CSS custom property set by PackStyleContext */
       @keyframes packPreviewGlow {
         0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),
@@ -658,10 +655,8 @@ export function LibraryPage({
     border: `1px solid rgba(${accentRgb},0.22)`,
   };
 
-  // Determine if we show the flippable pack or the revealed card / draft locked
   const showFlippable = !hasDraft && packState === "idle";
 
-  // Suppress unused variable warning — accentGlow is available for future use
   void accentGlow;
   void accentText;
 
@@ -728,7 +723,6 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
-              {/* Show pack card with first captured photo as preview */}
               <PackCard accentRgb={accentRgb} accentText="" />
               <div style={{ height: "20px" }} />
               <DraftLockedState

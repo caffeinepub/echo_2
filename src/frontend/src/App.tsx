@@ -120,6 +120,7 @@ function AppContent() {
       likes: 0,
       roundId: currentRoundId,
       isTop10: false,
+      isTop25: false,
       isDeletedAfterRound: false,
     };
 
@@ -189,14 +190,14 @@ function WeeklyRoundBridge({ children }: { children: React.ReactNode }) {
   function handleRoundEnd(endingRoundId: number) {
     finalizeRound(endingRoundId);
 
-    // Get top 10 from that round and send to weekly auction queue
+    // Get top 25 from that round and send to weekly auction queue
     const roundReleases = releases.filter(
       (r) => r.roundId === endingRoundId && !r.isDeletedAfterRound,
     );
     const sorted = [...roundReleases].sort((a, b) => b.likes - a.likes);
-    const top10 = sorted.slice(0, 10);
+    const top25 = sorted.slice(0, 25);
 
-    const auctionItems: WeeklyAuctionItem[] = top10.map((r, idx) => ({
+    const auctionItems: WeeklyAuctionItem[] = top25.map((r, idx) => ({
       id: `wa_round${endingRoundId}_rank${idx + 1}`,
       rank: idx + 1,
       roundId: endingRoundId,

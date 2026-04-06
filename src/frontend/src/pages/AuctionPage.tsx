@@ -1129,7 +1129,7 @@ export function AuctionPage() {
                   fontFamily: "'DM Sans', sans-serif",
                 }}
               >
-                Top 10 weekly moments · 1 hr each
+                Top 25 weekly moments · 1 hr each
               </p>
             </div>
             {activeAuction && (
@@ -1210,7 +1210,7 @@ export function AuctionPage() {
                 marginBottom: 16,
               }}
             >
-              The Top 10 most liked photos from this round will be auctioned one
+              The Top 25 most liked photos from this round will be auctioned one
               by one.
             </div>
             <div

@@ -3,12 +3,19 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
 const LS_KEY = "minty_releases";
 const LS_SEEDED_KEY = "minty_releases_seeded_v3";
 const LS_LIKED_KEY = "minty_releases_liked";
+const LS_ACCOUNT_CREATED = "minty_account_created_at";
+const LS_LIKE_TIMESTAMPS_GLOBAL = "minty_like_timestamps_global";
+const LS_MINT_TIMESTAMPS = "minty_mint_timestamps";
+const LS_IMAGE_HASHES = "minty_image_hashes";
+const LS_LIKE_TIMESTAMPS_PER_NFT = "minty_like_timestamps_per_nft";
 
 export interface MarketRelease {
   id: string;
@@ -34,7 +41,13 @@ export interface MarketRelease {
   // Weekly Round fields
   roundId?: number;
   isTop10?: boolean;
+  isTop25?: boolean;
   isDeletedAfterRound?: boolean;
+  // Viral score fields
+  likesLastHour?: number;
+  likesLast6Hours?: number;
+  likesLast24Hours?: number;
+  hadNumberOne?: boolean;
 }
 
 interface ReleasesMarketCtx {
@@ -46,6 +59,16 @@ interface ReleasesMarketCtx {
   burnExpired: () => void;
   likeRelease: (id: string) => void;
   finalizeRound: (endingRoundId: number) => void;
+  // Anti-spam
+  checkAndRecordMint: () => { allowed: boolean; message: string };
+  checkImageHash: (hash: string, roundId: number) => { allowed: boolean };
+  recordImageHash: (hash: string, roundId: number) => void;
+  isLikeRateLimited: boolean;
+  likeRateLimitSecondsLeft: number;
+  isNewAccount: boolean;
+  canLike: (releaseId: string) => { allowed: boolean; reason?: string };
+  // Viral score
+  viralScore: (release: MarketRelease) => number;
 }
 
 const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
@@ -53,6 +76,21 @@ const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
 const NOW = Date.now();
 const H = 3600000;
 const YEAR_MS = 365 * 24 * H;
+
+// Helper: generate fake like timestamps with recency bias
+function generateFakeTimestamps(totalLikes: number, spanMs: number): number[] {
+  const now = Date.now();
+  const count = Math.min(totalLikes, 200); // cap to avoid bloat
+  const timestamps: number[] = [];
+  for (let i = 0; i < count; i++) {
+    // Recency bias: more recent timestamps are more probable
+    const u = Math.random();
+    const biased = u * u; // squash toward 0 = recent
+    const offset = biased * spanMs;
+    timestamps.push(now - offset);
+  }
+  return timestamps.sort((a, b) => a - b);
+}
 
 const SEED_RELEASES: MarketRelease[] = [
   {
@@ -79,6 +117,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 12482,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -105,6 +144,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 8301,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -131,6 +171,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 6744,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -156,6 +197,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 3210,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -181,6 +223,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 1987,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -206,6 +249,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 1203,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -231,6 +275,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 870,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -256,6 +301,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 512,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -281,6 +327,7 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 241,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
   {
@@ -306,9 +353,24 @@ const SEED_RELEASES: MarketRelease[] = [
     likes: 87,
     roundId: 1,
     isTop10: false,
+    isTop25: false,
     isDeletedAfterRound: false,
   },
 ];
+
+// Seed like timestamps for initial seed releases, with recency bias
+const SEED_LIKE_TIMESTAMPS: Record<string, number[]> = {
+  release_seed_1: generateFakeTimestamps(12482, 7 * 24 * H),
+  release_seed_2: generateFakeTimestamps(8301, 7 * 24 * H),
+  release_seed_3: generateFakeTimestamps(6744, 7 * 24 * H),
+  release_seed_4: generateFakeTimestamps(3210, 7 * 24 * H),
+  release_seed_5: generateFakeTimestamps(1987, 7 * 24 * H),
+  release_seed_6: generateFakeTimestamps(1203, 7 * 24 * H),
+  release_seed_7: generateFakeTimestamps(870, 7 * 24 * H),
+  release_seed_8: generateFakeTimestamps(512, 7 * 24 * H),
+  release_seed_9: generateFakeTimestamps(241, 7 * 24 * H),
+  release_seed_10: generateFakeTimestamps(87, 7 * 24 * H),
+};
 
 function loadReleasesFromStorage(): MarketRelease[] {
   try {
@@ -324,6 +386,7 @@ function loadReleasesFromStorage(): MarketRelease[] {
       likes: r.likes ?? 0,
       roundId: r.roundId ?? undefined,
       isTop10: r.isTop10 ?? false,
+      isTop25: r.isTop25 ?? false,
       isDeletedAfterRound: r.isDeletedAfterRound ?? false,
     }));
   } catch {
@@ -357,6 +420,82 @@ function saveLikedIds(ids: Set<string>) {
   }
 }
 
+function loadOrInitAccountCreated(): number {
+  try {
+    const raw = localStorage.getItem(LS_ACCOUNT_CREATED);
+    if (raw) return Number(raw);
+    const ts = Date.now();
+    localStorage.setItem(LS_ACCOUNT_CREATED, String(ts));
+    return ts;
+  } catch {
+    return Date.now();
+  }
+}
+
+function loadLikeTimestampsGlobal(): number[] {
+  try {
+    const raw = localStorage.getItem(LS_LIKE_TIMESTAMPS_GLOBAL);
+    if (!raw) return [];
+    return JSON.parse(raw) as number[];
+  } catch {
+    return [];
+  }
+}
+
+function saveLikeTimestampsGlobal(ts: number[]) {
+  try {
+    localStorage.setItem(LS_LIKE_TIMESTAMPS_GLOBAL, JSON.stringify(ts));
+  } catch {}
+}
+
+function loadMintTimestamps(): number[] {
+  try {
+    const raw = localStorage.getItem(LS_MINT_TIMESTAMPS);
+    if (!raw) return [];
+    return JSON.parse(raw) as number[];
+  } catch {
+    return [];
+  }
+}
+
+function saveMintTimestamps(ts: number[]) {
+  try {
+    localStorage.setItem(LS_MINT_TIMESTAMPS, JSON.stringify(ts));
+  } catch {}
+}
+
+function loadImageHashes(): Record<number, string[]> {
+  try {
+    const raw = localStorage.getItem(LS_IMAGE_HASHES);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<number, string[]>;
+  } catch {
+    return {};
+  }
+}
+
+function saveImageHashes(hashes: Record<number, string[]>) {
+  try {
+    localStorage.setItem(LS_IMAGE_HASHES, JSON.stringify(hashes));
+  } catch {}
+}
+
+function loadLikeTimestampsPerNft(): Record<string, number[]> {
+  try {
+    const raw = localStorage.getItem(LS_LIKE_TIMESTAMPS_PER_NFT);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, number[]>;
+  } catch {
+    return {};
+  }
+}
+
+function saveLikeTimestampsPerNft(ts: Record<string, number[]>) {
+  try {
+    localStorage.setItem(LS_LIKE_TIMESTAMPS_PER_NFT, JSON.stringify(ts));
+  } catch {}
+}
+
 export function ReleasesMarketProvider({
   children,
 }: { children: React.ReactNode }) {
@@ -365,11 +504,67 @@ export function ReleasesMarketProvider({
   );
   const [likedIds, setLikedIds] = useState<Set<string>>(() => loadLikedIds());
 
-  // Seed on first mount (v3 key forces re-seed for existing users)
+  // Anti-spam state
+  const accountCreatedAt = useRef<number>(loadOrInitAccountCreated());
+  const [likeTimestampsGlobal, setLikeTimestampsGlobal] = useState<number[]>(
+    () => loadLikeTimestampsGlobal(),
+  );
+  const [mintTimestamps, setMintTimestamps] = useState<number[]>(() =>
+    loadMintTimestamps(),
+  );
+  const [imageHashes, setImageHashes] = useState<Record<number, string[]>>(() =>
+    loadImageHashes(),
+  );
+  const [likeTimestampsPerNft, setLikeTimestampsPerNft] = useState<
+    Record<string, number[]>
+  >(() => {
+    const stored = loadLikeTimestampsPerNft();
+    // Merge with seed if empty
+    const merged: Record<string, number[]> = { ...SEED_LIKE_TIMESTAMPS };
+    for (const [k, v] of Object.entries(stored)) {
+      merged[k] = v;
+    }
+    return merged;
+  });
+
+  // Rate limit cooldown — timestamp when it lifts
+  const [likeRateLimitUntil, setLikeRateLimitUntil] = useState<number>(0);
+  // Live tick for seconds-left countdown
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  // Tick every second to update countdown displays
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Derived: is the account too new (< 60 seconds old)
+  const isNewAccount = useMemo(
+    () => now - accountCreatedAt.current < 60000,
+    [now],
+  );
+
+  // Derived: is like rate limited
+  const isLikeRateLimited = useMemo(() => {
+    if (now < likeRateLimitUntil) return true;
+    // Check if 30+ likes in last 60s
+    const cutoff = now - 60000;
+    const recent = likeTimestampsGlobal.filter((t) => t >= cutoff);
+    return recent.length >= 30;
+  }, [now, likeRateLimitUntil, likeTimestampsGlobal]);
+
+  const likeRateLimitSecondsLeft = useMemo(() => {
+    if (!isLikeRateLimited) return 0;
+    if (now < likeRateLimitUntil) {
+      return Math.ceil((likeRateLimitUntil - now) / 1000);
+    }
+    return 60; // Just hit the limit
+  }, [isLikeRateLimited, likeRateLimitUntil, now]);
+
+  // Seed on first mount
   useEffect(() => {
     const alreadySeeded = localStorage.getItem(LS_SEEDED_KEY);
     if (!alreadySeeded) {
-      // Clear old seed data first
       localStorage.removeItem("minty_releases_seeded");
       localStorage.removeItem("minty_releases_seeded_v2");
       setReleases(() => [...SEED_RELEASES]);
@@ -386,6 +581,11 @@ export function ReleasesMarketProvider({
   useEffect(() => {
     saveLikedIds(likedIds);
   }, [likedIds]);
+
+  // Persist like timestamps per NFT
+  useEffect(() => {
+    saveLikeTimestampsPerNft(likeTimestampsPerNft);
+  }, [likeTimestampsPerNft]);
 
   const addRelease = useCallback((r: MarketRelease) => {
     setReleases((prev) => [r, ...prev]);
@@ -422,10 +622,10 @@ export function ReleasesMarketProvider({
   }, []);
 
   const burnExpired = useCallback(() => {
-    const now = Date.now();
+    const nowTs = Date.now();
     setReleases((prev) =>
       prev.map((r) => {
-        if (r.status === "active" && r.expiresAt < now) {
+        if (r.status === "active" && r.expiresAt < nowTs) {
           return { ...r, status: "burned" };
         }
         return r;
@@ -433,45 +633,162 @@ export function ReleasesMarketProvider({
     );
   }, []);
 
-  const likeRelease = useCallback((id: string) => {
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        // Unlike
-        next.delete(id);
-        setReleases((rs) =>
-          rs.map((r) =>
-            r.id === id ? { ...r, likes: Math.max(0, r.likes - 1) } : r,
-          ),
-        );
-      } else {
-        // Like
-        next.add(id);
-        setReleases((rs) =>
-          rs.map((r) => (r.id === id ? { ...r, likes: r.likes + 1 } : r)),
-        );
-      }
-      return next;
+  // Compute viral score for a release using per-NFT like timestamps
+  const viralScore = useCallback(
+    (release: MarketRelease): number => {
+      const ts = likeTimestampsPerNft[release.id] ?? [];
+      const nowTs = Date.now();
+      const likesLastHour = ts.filter((t) => t >= nowTs - H).length;
+      const likesLast6Hours = ts.filter((t) => t >= nowTs - 6 * H).length;
+      const likesLast24Hours = ts.filter((t) => t >= nowTs - 24 * H).length;
+      return (
+        release.likes * 0.6 +
+        likesLast24Hours * 0.25 +
+        likesLast6Hours * 0.1 +
+        likesLastHour * 0.05
+      );
+    },
+    [likeTimestampsPerNft],
+  );
+
+  const likeRelease = useCallback(
+    (id: string) => {
+      const nowTs = Date.now();
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          // Unlike
+          next.delete(id);
+          setReleases((rs) =>
+            rs.map((r) =>
+              r.id === id ? { ...r, likes: Math.max(0, r.likes - 1) } : r,
+            ),
+          );
+        } else {
+          // Like — record timestamps
+          next.add(id);
+
+          // Update global like timestamps (trim > 24h old)
+          const cutoff24h = nowTs - 24 * H;
+          setLikeTimestampsGlobal((prev) => {
+            const trimmed = prev.filter((t) => t >= cutoff24h);
+            const updated = [...trimmed, nowTs];
+            // Check if we just crossed the rate limit threshold
+            const last60s = updated.filter((t) => t >= nowTs - 60000);
+            if (last60s.length >= 30) {
+              setLikeRateLimitUntil(nowTs + 60000);
+            }
+            saveLikeTimestampsGlobal(updated);
+            return updated;
+          });
+
+          // Update per-NFT like timestamps
+          setLikeTimestampsPerNft((prev) => {
+            const existing = prev[id] ?? [];
+            const updated = { ...prev, [id]: [...existing, nowTs] };
+            return updated;
+          });
+
+          // Update like count and check if this is now #1 by viral score
+          setReleases((rs) => {
+            const updated = rs.map((r) =>
+              r.id === id ? { ...r, likes: r.likes + 1 } : r,
+            );
+            // Compute viral scores to check for #1
+            const currentRound = updated.find((r) => r.id === id)?.roundId;
+            if (currentRound !== undefined) {
+              const roundReleases = updated.filter(
+                (r) => r.roundId === currentRound && !r.isDeletedAfterRound,
+              );
+              // Find the release with the highest likes in the round
+              const topByLikes = roundReleases.reduce(
+                (best, r) => (r.likes > (best?.likes ?? -1) ? r : best),
+                null as MarketRelease | null,
+              );
+              if (topByLikes?.id === id) {
+                return updated.map((r) =>
+                  r.id === id ? { ...r, hadNumberOne: true } : r,
+                );
+              }
+            }
+            return updated;
+          });
+        }
+        return next;
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  // Anti-spam: check and record a mint attempt
+  const checkAndRecordMint = useCallback((): {
+    allowed: boolean;
+    message: string;
+  } => {
+    const nowTs = Date.now();
+    const tenMinAgo = nowTs - 10 * 60 * 1000;
+    const recent = mintTimestamps.filter((t) => t >= tenMinAgo);
+    if (recent.length >= 10) {
+      return {
+        allowed: false,
+        message: "Mint limit reached. Try again shortly.",
+      };
+    }
+    const updated = [...recent, nowTs];
+    setMintTimestamps(updated);
+    saveMintTimestamps(updated);
+    return { allowed: true, message: "" };
+  }, [mintTimestamps]);
+
+  // Anti-spam: check if an image hash already exists for a round
+  const checkImageHash = useCallback(
+    (hash: string, roundId: number): { allowed: boolean } => {
+      const hashes = imageHashes[roundId] ?? [];
+      return { allowed: !hashes.includes(hash) };
+    },
+    [imageHashes],
+  );
+
+  // Anti-spam: record an image hash for a round
+  const recordImageHash = useCallback((hash: string, roundId: number): void => {
+    setImageHashes((prev) => {
+      const existing = prev[roundId] ?? [];
+      if (existing.includes(hash)) return prev;
+      const updated = { ...prev, [roundId]: [...existing, hash] };
+      saveImageHashes(updated);
+      return updated;
     });
   }, []);
 
+  // canLike: checks all conditions before a like
+  const canLike = useCallback(
+    (_releaseId: string): { allowed: boolean; reason?: string } => {
+      if (isNewAccount) {
+        return { allowed: false, reason: "Account too new" };
+      }
+      if (isLikeRateLimited) {
+        return { allowed: false, reason: "Rate limited" };
+      }
+      // One-like-per-NFT is handled by likedIds
+      return { allowed: true };
+    },
+    [isNewAccount, isLikeRateLimited],
+  );
+
   const finalizeRound = useCallback((endingRoundId: number) => {
     setReleases((prev) => {
-      // Get all releases in this round that aren't already deleted
       const roundReleases = prev.filter(
         (r) => r.roundId === endingRoundId && !r.isDeletedAfterRound,
       );
-
-      // Sort by likes descending
       const sorted = [...roundReleases].sort((a, b) => b.likes - a.likes);
-
-      // Top 10 IDs
-      const top10Ids = new Set(sorted.slice(0, 10).map((r) => r.id));
+      // Top 25 survive
+      const top25Ids = new Set(sorted.slice(0, 25).map((r) => r.id));
 
       return prev.map((r) => {
         if (r.roundId !== endingRoundId || r.isDeletedAfterRound) return r;
-        if (top10Ids.has(r.id)) {
-          return { ...r, isTop10: true };
+        if (top25Ids.has(r.id)) {
+          return { ...r, isTop10: true, isTop25: true };
         }
         return { ...r, isDeletedAfterRound: true };
       });
@@ -489,6 +806,14 @@ export function ReleasesMarketProvider({
         burnExpired,
         likeRelease,
         finalizeRound,
+        checkAndRecordMint,
+        checkImageHash,
+        recordImageHash,
+        isLikeRateLimited,
+        likeRateLimitSecondsLeft,
+        isNewAccount,
+        canLike,
+        viralScore,
       }}
     >
       {children}
@@ -506,7 +831,6 @@ export function useReleasesMarket(): ReleasesMarketCtx {
   return ctx;
 }
 
-// Keep calcPackPrice exported for compatibility
 export function calcPackPrice(
   _packsSold: number,
   _totalPacks = 300,

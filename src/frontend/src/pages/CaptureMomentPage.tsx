@@ -5,6 +5,8 @@ import {
   type MomentDraft,
   useMomentDraft,
 } from "../context/MomentDraftContext";
+import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 interface CaptureMomentPageProps {
   onBack: () => void;
@@ -15,22 +17,34 @@ const MINT_GREEN = "rgba(52,168,132,1)";
 const MINT_BORDER = "rgba(52,168,132,0.3)";
 const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
-// Step 0 = take 1 photo, Step 1 = review (FinalSetupScreen)
 type CaptureStep = 0 | 1;
+
+// Compute SHA-256 hash of a blob and return as hex string
+async function hashBlob(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+  const hashArr = Array.from(new Uint8Array(hashBuf));
+  return hashArr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 export function CaptureMomentPage({
   onBack,
   onMintComplete,
 }: CaptureMomentPageProps) {
   const { activeDraft, hasDraft, addPhoto } = useMomentDraft();
+  const { checkAndRecordMint, checkImageHash, recordImageHash } =
+    useReleasesMarket();
+  const { roundId } = useWeeklyRound();
 
   const photos = activeDraft?.photos ?? [];
 
   const [captureStep, setCaptureStep] = useState<CaptureStep>(() =>
     photos.length > 0 ? 1 : 0,
   );
-  // Preview state after capture (before "Use" or "Retake")
   const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null);
+  const [mintError, setMintError] = useState<string | null>(null);
+  // Pending blob for hashing (stored separately from object URL)
+  const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
 
   const camera = useCamera({ facingMode: "environment" });
   const {
@@ -69,8 +83,7 @@ export function CaptureMomentPage({
     document.head.appendChild(style);
   }, []);
 
-  // Start camera on step 0, stop on step 1 or unmount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — only re-run on step change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
   useEffect(() => {
     if (captureStep === 0 && !pendingPhotoUrl) {
       startCamera();
@@ -80,36 +93,77 @@ export function CaptureMomentPage({
     };
   }, [captureStep]);
 
-  // Stop camera when entering final setup step
   useEffect(() => {
     if (captureStep === 1) {
       stopCamera();
     }
   }, [captureStep, stopCamera]);
 
-  // ── Photo capture ──────────────────────────────────────────────────────────
+  // ── Photo capture ───────────────────────────────────────────────────────────────────
   const handleShutterPress = useCallback(async () => {
     if (!isActive) return;
     const file = await capturePhoto();
     if (!file) return;
     const url = URL.createObjectURL(file);
     setPendingPhotoUrl(url);
+    setPendingBlob(file);
+    setMintError(null);
   }, [isActive, capturePhoto]);
 
-  const handleUsePhoto = useCallback(() => {
+  const handleUsePhoto = useCallback(async () => {
     if (!pendingPhotoUrl) return;
+
+    // Compute SHA-256 hash for duplicate detection
+    let hash = "";
+    if (pendingBlob) {
+      try {
+        hash = await hashBlob(pendingBlob);
+      } catch {
+        // If hashing fails, skip duplicate check
+        hash = "";
+      }
+    }
+
+    // Check mint rate limit
+    const mintCheck = checkAndRecordMint();
+    if (!mintCheck.allowed) {
+      setMintError(mintCheck.message);
+      return;
+    }
+
+    // Check image hash for duplicates
+    if (hash) {
+      const hashCheck = checkImageHash(hash, roundId);
+      if (!hashCheck.allowed) {
+        setMintError("This image has already been minted this round.");
+        return;
+      }
+      recordImageHash(hash, roundId);
+    }
+
     addPhoto(pendingPhotoUrl, Date.now());
     setPendingPhotoUrl(null);
+    setPendingBlob(null);
     setCaptureStep(1);
-  }, [pendingPhotoUrl, addPhoto]);
+  }, [
+    pendingPhotoUrl,
+    pendingBlob,
+    addPhoto,
+    checkAndRecordMint,
+    checkImageHash,
+    recordImageHash,
+    roundId,
+  ]);
 
   const handleRetakePhoto = useCallback(() => {
     if (pendingPhotoUrl) URL.revokeObjectURL(pendingPhotoUrl);
     setPendingPhotoUrl(null);
+    setPendingBlob(null);
+    setMintError(null);
     startCamera();
   }, [pendingPhotoUrl, startCamera]);
 
-  // ── Setup Screen Submit ───────────────────────────────────────────────────
+  // ── Setup Screen Submit ───────────────────────────────────────────────────────────────────
   function handleSetupSubmit(draft: MomentDraft) {
     onMintComplete?.(draft);
     setTimeout(() => {
@@ -117,16 +171,13 @@ export function CaptureMomentPage({
     }, 100);
   }
 
-  // ── Progress bar ──────────────────────────────────────────────────────────
   const progressPct = Math.round((captureStep / 1) * 100);
 
-  // ── Step label ────────────────────────────────────────────────────────────
   function getStepLabel() {
     if (captureStep === 0) return "Capture Your Moment";
     return "Final Setup";
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       data-ocid="capture.page"
@@ -241,7 +292,7 @@ export function CaptureMomentPage({
         />
       </div>
 
-      {/* ── STEP INDICATOR ── */}
+      {/* Step indicator */}
       <div
         style={{
           display: "flex",
@@ -408,7 +459,7 @@ export function CaptureMomentPage({
             </div>
           )}
 
-          {/* Camera viewfinder — shown when no preview pending */}
+          {/* Camera viewfinder */}
           {isSupported !== false && !error && !pendingPhotoUrl && (
             <>
               <div
@@ -622,6 +673,51 @@ export function CaptureMomentPage({
                   display: "block",
                 }}
               />
+
+              {/* Mint error banner */}
+              {mintError && (
+                <button
+                  type="button"
+                  data-ocid="capture.error_state"
+                  onClick={() => setMintError(null)}
+                  style={{
+                    width: "100%",
+                    maxWidth: "360px",
+                    background: "rgba(220,38,38,0.08)",
+                    border: "1.5px solid rgba(220,38,38,0.25)",
+                    borderRadius: "12px",
+                    padding: "10px 14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>&#x26A0;&#xFE0F;</span>
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      color: "#dc2626",
+                      margin: 0,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {mintError}
+                  </p>
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 16,
+                      color: "rgba(220,38,38,0.5)",
+                      lineHeight: 1,
+                    }}
+                  >
+                    &times;
+                  </span>
+                </button>
+              )}
+
               <div
                 style={{
                   display: "flex",

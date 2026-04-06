@@ -646,7 +646,7 @@ export function MintMomentModal({
                 >
                   {[
                     "Unlimited mints per round",
-                    "Only the Top 10 most liked NFTs survive",
+                    "Only the Top 25 most liked NFTs survive",
                     "All other NFTs are deleted when the round ends",
                   ].map((rule) => (
                     <div
@@ -710,7 +710,7 @@ export function MintMomentModal({
                       fontWeight: 600,
                     }}
                   >
-                    At the end of each round, only the top 10 most liked NFTs
+                    At the end of each round, only the top 25 most liked NFTs
                     remain permanently.
                   </span>{" "}
                   All others are removed.

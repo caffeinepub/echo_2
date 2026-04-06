@@ -5,12 +5,10 @@ import { useReleasesMarket } from "../context/ReleasesMarketContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
 import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
+// ── Types ─────────────────────────────────────────────────────────────────────────
 type FeedFilter = "recent" | "trending" | "liked";
 
-// ─── FilterBar ────────────────────────────────────────────────────────────────
-
+// ── FilterBar ────────────────────────────────────────────────────────────────────────
 interface FilterBarProps {
   active: FeedFilter;
   onChange: (f: FeedFilter) => void;
@@ -76,13 +74,16 @@ function FilterBar({ active, onChange, accentColor }: FilterBarProps) {
   );
 }
 
-// ─── PhotoFeedItem ────────────────────────────────────────────────────────────
-
+// ── PhotoFeedItem ──────────────────────────────────────────────────────────────────
 interface PhotoFeedItemProps {
   release: MarketRelease;
   isLiked: boolean;
   onLike: (id: string) => void;
   accentColor: string;
+  isLikeRateLimited: boolean;
+  likeRateLimitSecondsLeft: number;
+  isNewAccount: boolean;
+  canLikeResult: { allowed: boolean; reason?: string };
   roundId?: number;
 }
 
@@ -101,11 +102,16 @@ function PhotoFeedItem({
   isLiked,
   onLike,
   accentColor,
+  isLikeRateLimited,
+  likeRateLimitSecondsLeft,
+  isNewAccount,
+  canLikeResult,
 }: PhotoFeedItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [heartAnim, setHeartAnim] = useState(false);
   const [likeCount, setLikeCount] = useState(release.likes);
   const [localLiked, setLocalLiked] = useState(isLiked);
+  const [spamBanner, setSpamBanner] = useState<string | null>(null);
 
   // Keep localLiked in sync with parent
   useEffect(() => {
@@ -117,9 +123,27 @@ function PhotoFeedItem({
     setLikeCount(release.likes);
   }, [release.likes]);
 
+  // Clear spam banner after 3s
+  useEffect(() => {
+    if (!spamBanner) return;
+    const t = setTimeout(() => setSpamBanner(null), 3000);
+    return () => clearTimeout(t);
+  }, [spamBanner]);
+
   const handleHeartTap = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
+
+      // Check anti-spam conditions
+      if (!canLikeResult.allowed) {
+        if (canLikeResult.reason === "Account too new") {
+          setSpamBanner("Your account is too new to like");
+        } else if (canLikeResult.reason === "Rate limited") {
+          setSpamBanner(`Too many likes. Wait ${likeRateLimitSecondsLeft}s`);
+        }
+        return;
+      }
+
       setHeartAnim(true);
       setTimeout(() => setHeartAnim(false), 300);
 
@@ -131,13 +155,15 @@ function PhotoFeedItem({
       setLocalLiked((prev) => !prev);
       onLike(release.id);
     },
-    [localLiked, onLike, release.id],
+    [localLiked, onLike, release.id, canLikeResult, likeRateLimitSecondsLeft],
   );
 
   const mintDateLabel = useMemo(
     () => formatMintDate(release.listedAt),
     [release.listedAt],
   );
+
+  const heartIsDisabled = isLikeRateLimited || isNewAccount;
 
   return (
     <div
@@ -224,6 +250,35 @@ function PhotoFeedItem({
           </div>
         )}
 
+        {/* Spam banner — above creator info */}
+        {spamBanner && (
+          <div
+            data-ocid="releases.toast"
+            style={{
+              position: "absolute",
+              bottom: 80,
+              left: 20,
+              right: 20,
+              background: "rgba(220,38,38,0.90)",
+              backdropFilter: "blur(8px)",
+              borderRadius: 12,
+              padding: "8px 14px",
+              zIndex: 10,
+            }}
+          >
+            <span
+              style={{
+                color: "#fff",
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              {spamBanner}
+            </span>
+          </div>
+        )}
+
         {/* Bottom-left: creator label + mint date */}
         <div
           style={{
@@ -294,12 +349,15 @@ function PhotoFeedItem({
             flexDirection: "column",
             alignItems: "center",
             gap: 4,
-            cursor: "pointer",
+            cursor: heartIsDisabled ? "default" : "pointer",
             WebkitTapHighlightColor: "transparent",
             background: "transparent",
             border: "none",
             padding: 6,
             outline: "none",
+            opacity: heartIsDisabled ? 0.4 : 1,
+            transition: "opacity 0.2s ease",
+            pointerEvents: heartIsDisabled && !isNewAccount ? "none" : "auto",
           }}
         >
           <Heart
@@ -326,19 +384,33 @@ function PhotoFeedItem({
           >
             {likeCount.toLocaleString()}
           </span>
+          {/* Rate limit countdown */}
+          {isLikeRateLimited && likeRateLimitSecondsLeft > 0 && (
+            <span
+              style={{
+                color: "rgba(255,100,100,0.9)",
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 10,
+                fontWeight: 600,
+                lineHeight: 1,
+                textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+              }}
+            >
+              {likeRateLimitSecondsLeft}s
+            </span>
+          )}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── ReleasesPage ─────────────────────────────────────────────────────────────
-
+// ── ReleasesPage ────────────────────────────────────────────────────────────────────
 function sortReleases(
   items: MarketRelease[],
   filter: FeedFilter,
 ): MarketRelease[] {
-  const now = Date.now();
+  const nowTs = Date.now();
   const ONE_HOUR = 3600000;
   const ONE_DAY = 86400000;
 
@@ -347,13 +419,10 @@ function sortReleases(
   }
 
   if (filter === "trending") {
-    // Try last 1 hr first
-    let candidates = items.filter((r) => r.listedAt >= now - ONE_HOUR);
-    // Fall back to last 24 hrs if fewer than 3
+    let candidates = items.filter((r) => r.listedAt >= nowTs - ONE_HOUR);
     if (candidates.length < 3) {
-      candidates = items.filter((r) => r.listedAt >= now - ONE_DAY);
+      candidates = items.filter((r) => r.listedAt >= nowTs - ONE_DAY);
     }
-    // If still < 3, use everything
     if (candidates.length < 3) {
       candidates = [...items];
     }
@@ -365,7 +434,15 @@ function sortReleases(
 }
 
 export default function ReleasesPage() {
-  const { releases, likedIds, likeRelease } = useReleasesMarket();
+  const {
+    releases,
+    likedIds,
+    likeRelease,
+    isLikeRateLimited,
+    likeRateLimitSecondsLeft,
+    isNewAccount,
+    canLike,
+  } = useReleasesMarket();
   const { activeStyle } = usePackStyle();
   const { accentR, accentG, accentB } = activeStyle;
   const accentColor = `rgb(${accentR},${accentG},${accentB})`;
@@ -373,13 +450,16 @@ export default function ReleasesPage() {
 
   const [activeFilter, setActiveFilter] = useState<FeedFilter>("recent");
 
-  // Filter: only non-explicit, non-deleted releases from current round (or isTop10 survivors)
+  // Filter: only non-explicit, non-deleted releases from current round (or Top 25 survivors)
   const feedItems = useMemo(() => {
     const visible = releases.filter(
       (r) =>
         !r.explicit &&
         !r.isDeletedAfterRound &&
-        (r.roundId === undefined || r.roundId === currentRoundId || r.isTop10),
+        (r.roundId === undefined ||
+          r.roundId === currentRoundId ||
+          r.isTop10 ||
+          r.isTop25),
     );
     return sortReleases(visible, activeFilter);
   }, [releases, activeFilter, currentRoundId]);
@@ -445,6 +525,10 @@ export default function ReleasesPage() {
               isLiked={likedIds.has(release.id)}
               onLike={likeRelease}
               accentColor={accentColor}
+              isLikeRateLimited={isLikeRateLimited}
+              likeRateLimitSecondsLeft={likeRateLimitSecondsLeft}
+              isNewAccount={isNewAccount}
+              canLikeResult={canLike(release.id)}
             />
           ))
         )}

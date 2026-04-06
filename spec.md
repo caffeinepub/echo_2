@@ -1,64 +1,72 @@
-# Minty — Auction Page
+# Minty — Anti-Spam, Viral Ranking, Top 25, Premium Leaderboard UI
 
 ## Current State
-- App has 4 bottom nav tabs: Library, Releases, Collection, Pet (cat)
-- Weekly round system: 7-day rounds, users mint photo NFTs for $1 BTC, at round end Top 10 most liked survive
-- `WeeklyRoundContext` tracks round state, fires `onRoundEnd` callback via `ReleasesMarketContext.finalizeRound`
-- `ReleasesMarketContext` holds `MarketRelease[]` with `isTop10`, `roundId`, `likes` fields
-- `AuctionContext` exists but tracks old 7-day auction listings unrelated to weekly round winners
-- `BottomNav` has type `Tab = 'library' | 'releases' | 'collection'` — no auction tab
-- `PackStyleContext` provides theme accent colors (Mint/Pink/Purple/Blue)
-- App.tsx renders pages based on `view` state
+
+- Weekly Round system is live: 7-day rounds, $1 mints, NFTs posted to Releases feed
+- CollectionPage shows a leaderboard sorted by `likes` only, shows top 10
+- ReleasesPage is a vertical snap-scroll photo feed with filter bar
+- ReleasesMarketContext manages releases and `likedIds` in localStorage
+- Like logic: toggle like/unlike on any release, no duplicate prevention beyond `likedIds` set
+- No anti-spam for minting or liking
+- No viral scoring — rank is purely by total `like_count`
+- LibraryPage countdown mentions "Top 10" rules
+- finalizeRound keeps top 10, deletes the rest
+- Backend (main.mo) has no weekly-round or anti-spam logic — all round state is frontend/localStorage
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `Auction` tab in bottom navigation (5th tab, gavel/hammer icon)
-- `AuctionPage` component — the main auction experience page
-- `WeeklyAuctionContext` — manages the sequential 1-hour auction queue for the top 10 winners from completed rounds
-- The auction queue: after round ends, the top 10 photos are added to a queue. Each photo gets exactly 1 hour. When one ends, next auto-starts. One active auction at a time.
-- Live countdown timer per auction (counts down from 1 hour)
-- Animated, alive bidding UI:
-  - Pulsing glow on the current auction photo
-  - Real-time countdown ring/bar animation
-  - Bid history that animates in new bids from bottom
-  - "LIVE" pulse badge when auction is active
-  - Confetti/sparkle burst when bid is placed
-  - Shake animation on the bid button when time is running low (<5 minutes)
-  - Winner announcement animation when auction ends
-- Bid placement: input BTC amount, confirm bid, minimum increment is current highest + 0.00001 BTC
-- Show queue of upcoming auctions (the remaining top-10 NFTs waiting for their turn)
-- Show past completed auctions with final price and winner
-- Seed mock auction data with 10 top-10 photos from a "completed" round
+- **Anti-spam for minting**: max 10 mints per 10 minutes per account, tracked in localStorage with timestamps. Show "Mint limit reached. Try again shortly." if exceeded.
+- **Duplicate image hash check**: hash the uploaded image bytes (SHA-256 via SubtleCrypto). Store image hashes for current round. Reject mint if hash already exists.
+- **Anti-spam for likes**: max 30 likes per minute per account, tracked in localStorage. If exceeded, disable like button for 60 seconds and show message.
+- **One like per NFT per account**: already exists via `likedIds` set — enforce (no unlike for spam prevention purposes, keep the toggle for UX).
+- **Account age check**: Store `account_created_timestamp` in localStorage on first app load. Prevent liking if account is less than 60 seconds old.
+- **Viral score**: each release gets a computed `viral_score`. Store `likesLastHour`, `likesLast6Hours`, `likesLast24Hours` on each release (derived from a `likeTimestamps` array per release). Compute score: `(likes * 0.6) + (likesLast24h * 0.25) + (likesLast6h * 0.1) + (likesLastHour * 0.05)`
+- **Leaderboard sorts by viral_score**: CollectionPage ranks by `viral_score` instead of raw `likes`
+- **Rate limit state in context**: `mint_count_last_10_min`, `likes_last_60_sec`, `account_created_timestamp` stored and tracked
 
 ### Modify
-- `BottomNav.tsx`: add `auction` to the Tab type and tabs array
-- `App.tsx`: add auction tab rendering, import `AuctionPage`, add `WeeklyAuctionProvider`
-- `AuctionContext.tsx`: repurpose or leave as-is; new `WeeklyAuctionContext` handles the new queue logic
-- `WeeklyRoundContext` / `ReleasesMarketContext`: when `finalizeRound` is called, pass top-10 winners into the weekly auction queue
+- **Top 25 instead of Top 10**: `finalizeRound` keeps top 25 instead of 10. All UI text "Top 10" → "Top 25". Badge "Top 10 Weekly" → "Top 25 Weekly". Leaderboard shows 25 entries.
+- **CollectionPage**: rebuild as premium leaderboard with 25 entries. Top 3 get larger cards with gold/silver/bronze glow. Others get compact cards. Rank badge has colored glow. Shows viral_score-based rank. Header: "Top 25 Weekly", sub: "Most liked moments this round".
+- **ReleasesPage**: add "Leaderboard" toggle alongside the existing filter bar that switches to leaderboard view
+- **ReleasesMarketContext**: add `likeTimestamps` map per release (array of timestamps), `likesLastHour`, `likesLast6Hours`, `likesLast24Hours` fields. Add `viral_score` computation. Add rate-limit state for likes.
+- **LibraryPage**: update countdown text from "Top 10" to "Top 25". Wire mint anti-spam check.
+- **WeeklyRoundContext / CaptureMomentPage**: wire duplicate hash check and mint rate limiting on confirm.
 
 ### Remove
-- Nothing removed from existing pages
+- "Top 10" text everywhere replaced by "Top 25"
+- Old leaderboard sort by raw `likes` replaced by `viral_score`
 
 ## Implementation Plan
-1. Create `src/frontend/src/context/WeeklyAuctionContext.tsx` with:
-   - Queue of NFTs waiting for auction (from top-10 finalized rounds)
-   - `activeAuction` — the currently live 1-hour auction item
-   - `upcomingAuctions` — ordered queue of next items
-   - `completedAuctions` — past ended items with winner/price
-   - `placeBid(amount: number)` — places bid on active auction
-   - Countdown logic (1 hour per NFT, auto-advances when time expires)
-   - Seed mock data: 1 active auction (countdown ticking), 9 in queue from "Round #1 Top 10"
-2. Create `src/frontend/src/pages/AuctionPage.tsx` with:
-   - Hero section: current auction photo (large, full-width card) with pulsing glow
-   - LIVE badge with pulse animation
-   - 1-hour countdown ring animation (SVG circle or CSS arc)
-   - Current highest bid (large, prominent)
-   - Bid history list (scrollable, newest at top, slide-in animation)
-   - Place Bid section: BTC amount input + Confirm Bid button with slide-to-confirm or tap flow
-   - Upcoming queue: horizontal scroll of next 9 NFTs with rank badge
-   - Completed section below: past winners
-   - Animations: pulsing glow border on photo, shake on bid button at <5min, winner burst
-3. Update `BottomNav.tsx`: add `auction` tab with `Gavel` icon from lucide-react
-4. Update `App.tsx`: add auction tab to view type, render `AuctionPage`, wrap with `WeeklyAuctionProvider`
-5. Wire `finalizeRound` in App.tsx / ReleasesMarketContext to also send top-10 NFTs into `WeeklyAuctionContext`
+
+1. **ReleasesMarketContext.tsx**
+   - Add `likeTimestamps: Record<string, number[]>` to track per-NFT like times
+   - Add computed helpers: `getLikesInWindow(id, ms)` → count likes in last N ms
+   - Add `viralScore(release)` = `(likes*0.6) + (last24h*0.25) + (last6h*0.1) + (lastHour*0.05)`
+   - Add rate-limit state: `accountCreatedAt`, `likeRateLimitUntil`, `mintTimestamps[]`
+   - Expose: `isLikeRateLimited`, `likesRateLimitSecondsLeft`, `canMint`, `mintRateLimitMessage`, `checkAndRecordMint`, `checkImageHash`, `recordImageHash`
+   - `finalizeRound`: keep top 25 (not top 10)
+
+2. **CollectionPage.tsx** — complete rewrite of leaderboard UI
+   - Header: "Top 25 Weekly", subtext: "Most liked moments this round"
+   - Sort by viralScore
+   - Top 3: large stacked cards with gold/silver/bronze glow border
+   - Ranks 4–25: compact horizontal rows
+   - Rank badge: gold (#C9A84C), silver (#A8A8A8), bronze (#CD7F32) glow
+   - isTop25 badge instead of isTop10
+   - White background, soft glow borders, Apple-like spacing
+
+3. **ReleasesPage.tsx**
+   - Add like rate-limit: if `isLikeRateLimited`, show like button disabled + countdown
+   - Wire `likeRelease` to rate-limit check
+
+4. **LibraryPage.tsx**
+   - Change "Top 10" → "Top 25" in countdown banner
+   - Wire mint anti-spam via `checkAndRecordMint()` before allowing capture
+
+5. **CaptureMomentPage.tsx / MintSetConfirmModal**
+   - On final confirm, compute SHA-256 hash of image bytes
+   - Call `checkImageHash(hash, roundId)` — if duplicate, show error and block
+   - Call `checkAndRecordMint()` — if rate limited, show message and block
+
+6. **Text changes everywhere**: "Top 10" → "Top 25", badge "Top 25 Weekly"
