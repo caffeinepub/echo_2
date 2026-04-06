@@ -26,13 +26,13 @@ function FilterBar({ active, onChange, accentColor }: FilterBarProps) {
   return (
     <div
       style={{
-        height: 44,
+        height: 56,
         background: "#f7f8f6",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 4,
-        padding: "0 16px",
+        gap: 8,
+        padding: "0 20px",
         borderBottom: "1px solid rgba(0,0,0,0.06)",
         flexShrink: 0,
         zIndex: 10,
@@ -48,13 +48,13 @@ function FilterBar({ active, onChange, accentColor }: FilterBarProps) {
             onClick={() => onChange(tab.id)}
             style={{
               flex: 1,
-              height: 30,
+              height: 36,
               border: "none",
               borderRadius: 30,
               background: isActive ? accentColor : "transparent",
               color: isActive ? "#fff" : "#8E8E93",
               fontFamily: "'DM Sans', sans-serif",
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: isActive ? 600 : 500,
               letterSpacing: "0.02em",
               cursor: "pointer",
@@ -141,7 +141,7 @@ function PhotoFeedItem({
     <div
       ref={containerRef}
       style={{
-        height: "calc(100dvh - 64px - 68px - 44px)",
+        height: "calc(100dvh - 64px - 68px - 56px)",
         scrollSnapAlign: "start",
         flexShrink: 0,
         padding: "0 16px",
