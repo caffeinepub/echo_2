@@ -76,7 +76,7 @@ function StatusBarPanel({
     <div
       style={{
         position: "fixed",
-        bottom: 28,
+        bottom: 88,
         left: "50%",
         transform: "translateX(-50%)",
         width: "calc(100% - 40px)",
@@ -251,7 +251,7 @@ export function PetPage() {
   const getBounds = useCallback(() => {
     const el = containerRef.current;
     if (!el) return { maxX: 280, maxY: 400 };
-    return { maxX: el.clientWidth - 72, maxY: el.clientHeight - 200 };
+    return { maxX: el.clientWidth - 72, maxY: el.clientHeight - 160 };
   }, []);
 
   useEffect(() => {
