@@ -21,6 +21,10 @@ import {
 import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
 import { WalletProvider } from "./context/WalletContext";
+import {
+  WeeklyRoundProvider,
+  useWeeklyRound,
+} from "./context/WeeklyRoundContext";
 import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
@@ -45,6 +49,7 @@ function AppContent() {
   const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
+  const { roundId: currentRoundId } = useWeeklyRound();
 
   useEffect(() => {
     seedMockData();
@@ -75,49 +80,20 @@ function AppContent() {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
     const now = Date.now();
-    const totalPacks = 300;
-    const priceUsd = 10; // bonding curve starting price
 
-    // Simulate $100 minting fee payment
-    console.log("[Minty] Minting fee: $100 deducted");
-
-    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
-    const photoCount = totalPacks - videoCount;
-
-    type SlotPhoto = { type: "photo"; num: number };
-    type SlotVideo = { type: "video"; num: number };
-    type Slot = SlotPhoto | SlotVideo;
-
-    const pool: Slot[] = [
-      ...Array.from({ length: photoCount }, (_, i) => ({
-        type: "photo" as const,
-        num: i + 1,
-      })),
-      ...Array.from({ length: videoCount }, (_, i) => ({
-        type: "video" as const,
-        num: i + 1,
-      })),
-    ];
-
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
+    // Simulate $1 minting fee payment
+    console.log("[Minty] Minting fee: $1 in BTC deducted");
 
     const coverImageUrl =
       draft.photos.length > 0
         ? draft.photos[0]
-        : "https://images.pokemontcg.io/sv1/025_hires.png";
+        : "/assets/generated/minty-pack-wrapper.png";
 
-    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
-
-    const releaseTitle = draft.title?.trim() || "Mint Moment";
-    const releaseCaption =
-      draft.caption?.trim() ||
-      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
+    const releaseTitle = draft.title?.trim() || "Untitled Moment";
+    const releaseCaption = draft.caption?.trim() || "";
 
     const release: MarketRelease = {
-      id: `release_mint_${draft.id}`,
+      id: `nft_${draft.id}_${now}`,
       creatorName: "You",
       creatorId: "you",
       coverImageUrl,
@@ -125,18 +101,20 @@ function AppContent() {
       title: releaseTitle,
       caption: releaseCaption,
       setName: releaseTitle,
-      packsAvailable: totalPacks,
-      packCount: totalPacks,
-      packIds,
-      priceUsd,
+      packsAvailable: 1,
+      packCount: 1,
+      packIds: [],
+      priceUsd: 1,
       listedAt: now,
-      // Standardized releases: 1 year expiry (no burn for normal releases)
-      expiresAt: now + 365 * 24 * 3600000,
+      expiresAt: now + 7 * 24 * 3600000,
       status: "active",
       collectibleType: "photo",
       explicit: draft.explicit ?? false,
       hashtags: draft.hashtags ?? [],
       likes: 0,
+      roundId: currentRoundId,
+      isTop10: false,
+      isDeletedAfterRound: false,
     };
 
     addRelease(release);
@@ -193,6 +171,19 @@ function AppContent() {
   );
 }
 
+/**
+ * WeeklyRoundBridge sits inside ReleasesMarketProvider so it can access
+ * finalizeRound from that context and pass it as onRoundEnd to WeeklyRoundProvider.
+ */
+function WeeklyRoundBridge({ children }: { children: React.ReactNode }) {
+  const { finalizeRound } = useReleasesMarket();
+  return (
+    <WeeklyRoundProvider onRoundEnd={finalizeRound}>
+      {children}
+    </WeeklyRoundProvider>
+  );
+}
+
 export default function App() {
   return (
     <UserSettingsProvider>
@@ -204,9 +195,13 @@ export default function App() {
                 <MomentDraftProvider>
                   <CollectionProvider>
                     <ReleasesMarketProvider>
-                      <AuctionProvider>
-                        <AppContent />
-                      </AuctionProvider>
+                      <WeeklyRoundBridge>
+                        <AuctionProvider>
+                          <ErrorBoundary>
+                            <AppContent />
+                          </ErrorBoundary>
+                        </AuctionProvider>
+                      </WeeklyRoundBridge>
                     </ReleasesMarketProvider>
                   </CollectionProvider>
                 </MomentDraftProvider>

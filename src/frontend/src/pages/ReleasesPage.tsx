@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
 import type { MarketRelease } from "../context/ReleasesMarketContext";
+import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ interface PhotoFeedItemProps {
   isLiked: boolean;
   onLike: (id: string) => void;
   accentColor: string;
+  roundId?: number;
 }
 
 function formatMintDate(ts: number): string {
@@ -192,6 +194,35 @@ function PhotoFeedItem({
             pointerEvents: "none",
           }}
         />
+
+        {/* Round badge — top right */}
+        {release.roundId !== undefined && (
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(4px)",
+              borderRadius: "20px",
+              padding: "3px 10px",
+              pointerEvents: "none",
+              zIndex: 2,
+            }}
+          >
+            <span
+              style={{
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "'DM Sans', sans-serif",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Round #{release.roundId}
+            </span>
+          </div>
+        )}
 
         {/* Bottom-left: creator label + mint date */}
         <div
@@ -338,14 +369,20 @@ export default function ReleasesPage() {
   const { activeStyle } = usePackStyle();
   const { accentR, accentG, accentB } = activeStyle;
   const accentColor = `rgb(${accentR},${accentG},${accentB})`;
+  const { roundId: currentRoundId } = useWeeklyRound();
 
   const [activeFilter, setActiveFilter] = useState<FeedFilter>("recent");
 
-  // Filter: only non-explicit releases, then apply sort
+  // Filter: only non-explicit, non-deleted releases from current round (or isTop10 survivors)
   const feedItems = useMemo(() => {
-    const nonExplicit = releases.filter((r) => !r.explicit);
-    return sortReleases(nonExplicit, activeFilter);
-  }, [releases, activeFilter]);
+    const visible = releases.filter(
+      (r) =>
+        !r.explicit &&
+        !r.isDeletedAfterRound &&
+        (r.roundId === undefined || r.roundId === currentRoundId || r.isTop10),
+    );
+    return sortReleases(visible, activeFilter);
+  }, [releases, activeFilter, currentRoundId]);
 
   return (
     <div

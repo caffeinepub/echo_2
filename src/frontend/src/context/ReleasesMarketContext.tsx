@@ -7,7 +7,7 @@ import {
 } from "react";
 
 const LS_KEY = "minty_releases";
-const LS_SEEDED_KEY = "minty_releases_seeded_v2";
+const LS_SEEDED_KEY = "minty_releases_seeded_v3";
 const LS_LIKED_KEY = "minty_releases_liked";
 
 export interface MarketRelease {
@@ -30,7 +30,11 @@ export interface MarketRelease {
   explicit: boolean;
   hashtags: string[];
   lastPurchaseAt?: number;
-  likes: number; // like count, default 0
+  likes: number;
+  // Weekly Round fields
+  roundId?: number;
+  isTop10?: boolean;
+  isDeletedAfterRound?: boolean;
 }
 
 interface ReleasesMarketCtx {
@@ -41,6 +45,7 @@ interface ReleasesMarketCtx {
   buyPacks: (releaseId: string, qty: number) => void;
   burnExpired: () => void;
   likeRelease: (id: string) => void;
+  finalizeRound: (endingRoundId: number) => void;
 }
 
 const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
@@ -67,11 +72,14 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 2 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["aurora", "arctic", "northernlights"],
     lastPurchaseAt: NOW - 4 * 60 * 1000,
     likes: 12482,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_2",
@@ -90,11 +98,14 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 18 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["solstice", "midsummer", "goldenhour"],
     lastPurchaseAt: NOW - 22 * 60 * 1000,
     likes: 8301,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_3",
@@ -113,11 +124,14 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 0.5 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["coastalfog", "pacific", "morningvibes"],
     lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
     likes: 6744,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_4",
@@ -136,10 +150,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 1 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["supernova", "space", "cosmos"],
     likes: 3210,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_5",
@@ -158,10 +175,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 3 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["ryokan", "japan", "morning"],
     likes: 1987,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_6",
@@ -180,10 +200,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 6 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["nightcircuit", "neon", "citylights"],
     likes: 1203,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_7",
@@ -202,10 +225,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 12 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["velvet", "fog", "valley"],
     likes: 870,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_8",
@@ -224,10 +250,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 24 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["coastaldrift", "sunsetride", "goldenhour"],
     likes: 512,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_9",
@@ -246,10 +275,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 36 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["nightdrive", "citylights", "latevibes"],
     likes: 241,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
   {
     id: "release_seed_10",
@@ -268,10 +300,13 @@ const SEED_RELEASES: MarketRelease[] = [
     listedAt: NOW - 48 * H,
     expiresAt: NOW + YEAR_MS,
     status: "active",
-    collectibleType: "video",
+    collectibleType: "photo",
     explicit: false,
     hashtags: ["goldenhour", "fogseason", "earlylight"],
     likes: 87,
+    roundId: 1,
+    isTop10: false,
+    isDeletedAfterRound: false,
   },
 ];
 
@@ -287,6 +322,9 @@ function loadReleasesFromStorage(): MarketRelease[] {
       packCount: r.packCount ?? r.packsAvailable,
       hashtags: r.hashtags ?? [],
       likes: r.likes ?? 0,
+      roundId: r.roundId ?? undefined,
+      isTop10: r.isTop10 ?? false,
+      isDeletedAfterRound: r.isDeletedAfterRound ?? false,
     }));
   } catch {
     return [];
@@ -327,12 +365,13 @@ export function ReleasesMarketProvider({
   );
   const [likedIds, setLikedIds] = useState<Set<string>>(() => loadLikedIds());
 
-  // Seed on first mount (v2 key forces re-seed for existing users)
+  // Seed on first mount (v3 key forces re-seed for existing users)
   useEffect(() => {
     const alreadySeeded = localStorage.getItem(LS_SEEDED_KEY);
     if (!alreadySeeded) {
       // Clear old seed data first
       localStorage.removeItem("minty_releases_seeded");
+      localStorage.removeItem("minty_releases_seeded_v2");
       setReleases(() => [...SEED_RELEASES]);
       localStorage.setItem(LS_SEEDED_KEY, "1");
     }
@@ -416,6 +455,29 @@ export function ReleasesMarketProvider({
     });
   }, []);
 
+  const finalizeRound = useCallback((endingRoundId: number) => {
+    setReleases((prev) => {
+      // Get all releases in this round that aren't already deleted
+      const roundReleases = prev.filter(
+        (r) => r.roundId === endingRoundId && !r.isDeletedAfterRound,
+      );
+
+      // Sort by likes descending
+      const sorted = [...roundReleases].sort((a, b) => b.likes - a.likes);
+
+      // Top 10 IDs
+      const top10Ids = new Set(sorted.slice(0, 10).map((r) => r.id));
+
+      return prev.map((r) => {
+        if (r.roundId !== endingRoundId || r.isDeletedAfterRound) return r;
+        if (top10Ids.has(r.id)) {
+          return { ...r, isTop10: true };
+        }
+        return { ...r, isDeletedAfterRound: true };
+      });
+    });
+  }, []);
+
   return (
     <ReleasesMarketContext.Provider
       value={{
@@ -426,6 +488,7 @@ export function ReleasesMarketProvider({
         buyPacks,
         burnExpired,
         likeRelease,
+        finalizeRound,
       }}
     >
       {children}

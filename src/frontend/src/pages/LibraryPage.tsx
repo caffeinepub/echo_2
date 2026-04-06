@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 import { usePackStyle } from "../context/PackStyleContext";
+import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -454,6 +455,93 @@ function DraftLockedState({
   );
 }
 
+function WeeklyCountdownBanner() {
+  const { timeRemaining, roundId } = useWeeklyRound();
+  const { activeStyle } = usePackStyle();
+  const accentRgb = `${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB}`;
+  const accentColor = `oklch(${activeStyle.accentOklch})`;
+
+  const { days, hours, minutes, seconds } = timeRemaining;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const countdownStr = `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+
+  return (
+    <div
+      data-ocid="library.countdown_panel"
+      style={{
+        width: "280px",
+        background: `rgba(${accentRgb}, 0.06)`,
+        border: `1px solid rgba(${accentRgb}, 0.18)`,
+        borderRadius: "16px",
+        padding: "16px 20px",
+        marginBottom: "24px",
+        textAlign: "center",
+      }}
+    >
+      {/* Round label */}
+      <div
+        style={{
+          fontSize: "10px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          fontWeight: 600,
+          color: `rgba(${accentRgb}, 0.65)`,
+          marginBottom: "4px",
+          fontFamily: "var(--font-ui)",
+        }}
+      >
+        Round #{roundId} · Weekly Round ends in
+      </div>
+
+      {/* Big countdown */}
+      <div
+        style={{
+          fontSize: "26px",
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+          color: accentColor,
+          fontFamily: "var(--font-ui)",
+          lineHeight: 1.1,
+          marginBottom: "12px",
+        }}
+      >
+        {countdownStr}
+      </div>
+
+      {/* Divider */}
+      <div
+        style={{
+          height: "1px",
+          background: `rgba(${accentRgb}, 0.12)`,
+          marginBottom: "12px",
+        }}
+      />
+
+      {/* Rules */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        {[
+          "Mint unlimited photo NFTs this round",
+          "Each mint costs $1 in BTC",
+          "Only the Top 10 most liked survive",
+        ].map((line) => (
+          <p
+            key={line}
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              color: `rgba(${accentRgb}, 0.70)`,
+              fontFamily: "var(--font-ui)",
+              lineHeight: 1.4,
+            }}
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LibraryPage({
   onBrowseReleases,
   onCaptureMoment,
@@ -622,6 +710,9 @@ export function LibraryPage({
           zIndex: 1,
         }}
       >
+        {/* Weekly Round countdown banner */}
+        <WeeklyCountdownBanner />
+
         <AnimatePresence mode="wait">
           {/* LOCKED STATE — draft in progress */}
           {hasDraft && packState === "idle" && (
@@ -665,17 +756,6 @@ export function LibraryPage({
               }}
             >
               <PackCard accentRgb={accentRgb} accentText="" />
-
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: `rgba(${accentRgb},0.55)`,
-                  marginTop: "16px",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Supply remaining: 50,000
-              </p>
 
               <button
                 type="button"

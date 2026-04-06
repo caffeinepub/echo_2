@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 type MarketRelease = {
   id: string;
@@ -10,9 +11,10 @@ type MarketRelease = {
   likes: number;
   listedAt: number;
   status: "active" | "burned" | "sold_out";
+  roundId?: number;
+  isTop10?: boolean;
+  isDeletedAfterRound?: boolean;
 };
-
-const SEVEN_DAYS_MS = 7 * 24 * 3600 * 1000;
 
 function PhotoCard({
   release,
@@ -142,6 +144,34 @@ function PhotoCard({
               {release.likes.toLocaleString()}
             </span>
           </div>
+          {/* Top 10 Weekly badge */}
+          {release.isTop10 && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                marginTop: 8,
+                padding: "3px 10px",
+                borderRadius: 20,
+                background: "rgba(201,168,76,0.12)",
+                border: "1px solid rgba(201,168,76,0.30)",
+              }}
+            >
+              <span style={{ fontSize: 11 }}>🏆</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#C9A84C",
+                  fontFamily: "'DM Sans', Inter, -apple-system, sans-serif",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Top 10 Weekly
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -264,14 +294,19 @@ export function CollectionPage({
 }: { onGoToLibrary?: () => void }) {
   const { releases } = useReleasesMarket();
   const { activeStyle } = usePackStyle();
+  const { roundId: currentRoundId } = useWeeklyRound();
 
   const accentColor = `rgb(${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB})`;
 
-  const now = Date.now();
   const rankedReleases = releases
-    .filter((r) => r.listedAt >= now - SEVEN_DAYS_MS && r.status !== "burned")
+    .filter(
+      (r) =>
+        !r.isDeletedAfterRound &&
+        r.status !== "burned" &&
+        (r.roundId === undefined || r.roundId === currentRoundId || r.isTop10),
+    )
     .sort((a, b) => b.likes - a.likes)
-    .slice(0, 25);
+    .slice(0, 10);
 
   return (
     <div
@@ -302,7 +337,7 @@ export function CollectionPage({
             letterSpacing: "-0.01em",
           }}
         >
-          Top 25 This Week
+          Weekly Leaderboard
         </h1>
         <p
           style={{
@@ -313,7 +348,7 @@ export function CollectionPage({
             fontWeight: 400,
           }}
         >
-          Most liked photos in the last 7 days
+          Top 10 most liked NFTs this round
         </p>
       </div>
 
