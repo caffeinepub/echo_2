@@ -1,752 +1,1067 @@
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ClipChartModal } from "../components/ClipChartModal";
+import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
+import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import type { VideoClip } from "../context/VideoFeedContext";
+import { useVideoFeed } from "../context/VideoFeedContext";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface SoldNFT {
+export interface MarketListing {
   id: string;
-  title: string;
-  setName: string;
-  creator: string;
+  clipId: string;
+  clipTitle: string;
+  creatorUsername: string;
   imageUrl: string;
-  mediaType: "photo" | "video";
-  rarity: "Common" | "Rare";
-  salePrice: number;
-  soldAt: number;
+  videoUrl?: string;
+  listPrice: number; // USD
+  editionNumber: number;
+  totalEditions: number;
+  listedAt: number;
+  sellerId: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const LS_LISTINGS_KEY = "minty_market_listings";
 
-function formatUSD(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`;
-  return `$${n.toFixed(2)}`;
+function loadListings(): MarketListing[] {
+  try {
+    const raw = localStorage.getItem(LS_LISTINGS_KEY);
+    return raw ? (JSON.parse(raw) as MarketListing[]) : [];
+  } catch {
+    return [];
+  }
 }
 
-// ─── Mock Sold NFT Data ───────────────────────────────────────────────────────
+function saveListings(listings: MarketListing[]) {
+  try {
+    localStorage.setItem(LS_LISTINGS_KEY, JSON.stringify(listings));
+  } catch {
+    // ignore
+  }
+}
 
 const NOW = Date.now();
-const D = 86400000;
-const H = 3600000;
-
-const SOLD_NFTS: SoldNFT[] = [
+const SEED_LISTINGS: MarketListing[] = [
   {
-    id: "sold_1",
-    title: "Golden Hour #1",
-    setName: "Golden Hour Set",
-    creator: "light.icp",
+    id: "listing_1",
+    clipId: "clip_3",
+    clipTitle: "Golden Hour",
+    creatorUsername: "light.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 520,
-    soldAt: NOW - 3 * H,
+      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80",
+    listPrice: 8.5,
+    editionNumber: 42,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 2,
+    sellerId: "user_light",
   },
   {
-    id: "sold_2",
-    title: "Night Drive #7",
-    setName: "Night Drive Series",
-    creator: "neon_rider.icp",
+    id: "listing_2",
+    clipId: "clip_1",
+    clipTitle: "Sunset Ride",
+    creatorUsername: "mintcreator.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 410,
-    soldAt: NOW - 18 * H,
+      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
+    listPrice: 14.99,
+    editionNumber: 7,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 5,
+    sellerId: "user_mint",
   },
   {
-    id: "sold_3",
-    title: "Sunset Ride #3",
-    setName: "Coastal Drift Vol. 1",
-    creator: "mintcreator.icp",
+    id: "listing_3",
+    clipId: "clip_2",
+    clipTitle: "Night Drive",
+    creatorUsername: "neon_rider.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 380,
-    soldAt: NOW - 6 * H,
+      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
+    listPrice: 6.0,
+    editionNumber: 113,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 10,
+    sellerId: "user_neon",
   },
   {
-    id: "sold_4",
-    title: "Alpine Glow #2",
-    setName: "Alpine Series",
-    creator: "peak.icp",
+    id: "listing_4",
+    clipId: "clip_5",
+    clipTitle: "Foggy Morning",
+    creatorUsername: "driftlens.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 245,
-    soldAt: NOW - 2 * D,
+      "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80",
+    listPrice: 22.0,
+    editionNumber: 3,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 1,
+    sellerId: "user_drift",
   },
   {
-    id: "sold_5",
-    title: "Forest Walk #12",
-    setName: "Forest Walks",
-    creator: "woodsy.icp",
+    id: "listing_5",
+    clipId: "clip_7",
+    clipTitle: "City Lights",
+    creatorUsername: "neonframes.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 190,
-    soldAt: NOW - 4 * D,
+      "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
+    listPrice: 3.5,
+    editionNumber: 200,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 8,
+    sellerId: "user_neo",
   },
   {
-    id: "sold_6",
-    title: "City Lights #5",
-    setName: "Urban Pulse",
-    creator: "citymuse.icp",
+    id: "listing_6",
+    clipId: "clip_4",
+    clipTitle: "Mountain Air",
+    creatorUsername: "alpineshot.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 175,
-    soldAt: NOW - 1 * D,
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80",
+    listPrice: 11.0,
+    editionNumber: 55,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 14,
+    sellerId: "user_alpine",
   },
   {
-    id: "sold_7",
-    title: "Desert Wind #4",
-    setName: "Desert Wind",
-    creator: "sandstorm.icp",
+    id: "listing_7",
+    clipId: "clip_8",
+    clipTitle: "Ocean Horizon",
+    creatorUsername: "wavecatcher.icp",
     imageUrl:
-      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 140,
-    soldAt: NOW - 3 * D,
-  },
-  {
-    id: "sold_8",
-    title: "Ocean Horizon #8",
-    setName: "Coastal Drift Vol. 1",
-    creator: "mintcreator.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1433360405326-e50f909805b3?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 120,
-    soldAt: NOW - 8 * H,
-  },
-  {
-    id: "sold_9",
-    title: "Golden Hour #3",
-    setName: "Golden Hour Set",
-    creator: "light.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 98,
-    soldAt: NOW - 5 * D,
-  },
-  {
-    id: "sold_10",
-    title: "Summit View #1",
-    setName: "Alpine Series",
-    creator: "peak.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 89,
-    soldAt: NOW - 10 * D,
-  },
-  {
-    id: "sold_11",
-    title: "Night Drive #3",
-    setName: "Night Drive Series",
-    creator: "neon_rider.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 75,
-    soldAt: NOW - 15 * D,
-  },
-  {
-    id: "sold_12",
-    title: "River Bend #6",
-    setName: "River Moments",
-    creator: "flowstate.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 62,
-    soldAt: NOW - 20 * D,
-  },
-  {
-    id: "sold_13",
-    title: "Coastal Sunset #9",
-    setName: "Coastal Drift Vol. 2",
-    creator: "mintcreator.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 55,
-    soldAt: NOW - 25 * D,
-  },
-  {
-    id: "sold_14",
-    title: "Mountain Mist #2",
-    setName: "Alpine Series",
-    creator: "peak.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 48,
-    soldAt: NOW - 40 * D,
-  },
-  {
-    id: "sold_15",
-    title: "Urban Nights #11",
-    setName: "Urban Pulse",
-    creator: "citymuse.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 42,
-    soldAt: NOW - 60 * D,
-  },
-  {
-    id: "sold_16",
-    title: "Forest Dawn #5",
-    setName: "Forest Walks",
-    creator: "woodsy.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 310,
-    soldAt: NOW - 80 * D,
-  },
-  {
-    id: "sold_17",
-    title: "Dusk Horizon #2",
-    setName: "Golden Hour Set",
-    creator: "light.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 33,
-    soldAt: NOW - 120 * D,
-  },
-  {
-    id: "sold_18",
-    title: "Canyon Echo #1",
-    setName: "Desert Wind",
-    creator: "sandstorm.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1433360405326-e50f909805b3?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 280,
-    soldAt: NOW - 200 * D,
-  },
-  {
-    id: "sold_19",
-    title: "River Rush #3",
-    setName: "River Moments",
-    creator: "flowstate.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=200&q=80",
-    mediaType: "photo",
-    rarity: "Common",
-    salePrice: 22,
-    soldAt: NOW - 280 * D,
-  },
-  {
-    id: "sold_20",
-    title: "City Grid #7",
-    setName: "Urban Pulse",
-    creator: "citymuse.icp",
-    imageUrl:
-      "https://images.unsplash.com/photo-1504274066651-8d31a536b11a?w=200&q=80",
-    mediaType: "video",
-    rarity: "Rare",
-    salePrice: 195,
-    soldAt: NOW - 350 * D,
+      "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&q=80",
+    listPrice: 18.75,
+    editionNumber: 18,
+    totalEditions: 1000,
+    listedAt: NOW - 3600000 * 3,
+    sellerId: "user_wave",
   },
 ];
 
-// ─── Time Filter ──────────────────────────────────────────────────────────────
-
-type TimeRange = "24H" | "7D" | "1M" | "1Y" | "ALL_TIME";
-
-const TIME_RANGES: { label: string; value: TimeRange }[] = [
-  { label: "24H", value: "24H" },
-  { label: "7D", value: "7D" },
-  { label: "1M", value: "1M" },
-  { label: "1Y", value: "1Y" },
-  { label: "All Time", value: "ALL_TIME" },
-];
-
-function getTimeThreshold(range: TimeRange): number {
-  switch (range) {
-    case "24H":
-      return NOW - D;
-    case "7D":
-      return NOW - 7 * D;
-    case "1M":
-      return NOW - 30 * D;
-    case "1Y":
-      return NOW - 365 * D;
-    default:
-      return 0;
+const LS_LISTINGS_SEEDED = "minty_market_listings_seeded";
+function ensureSeeded() {
+  if (localStorage.getItem(LS_LISTINGS_SEEDED)) return;
+  const existing = loadListings();
+  if (existing.length === 0) {
+    saveListings(SEED_LISTINGS);
   }
+  localStorage.setItem(LS_LISTINGS_SEEDED, "1");
 }
+ensureSeeded();
 
-function filterAndSortNFTs(range: TimeRange): SoldNFT[] {
-  const threshold = getTimeThreshold(range);
-  return SOLD_NFTS.filter((nft) => nft.soldAt >= threshold).sort(
-    (a, b) => b.salePrice - a.salePrice,
-  );
-}
+// ─── Buy Confirm Modal ─────────────────────────────────────────────────────────
 
-// ─── Signal Card ─────────────────────────────────────────────────────────────
-
-function SignalCard({
-  label,
-  plainValue,
-  index,
-  accentColor,
-  accentRgb,
+function BuyConfirmModal({
+  listing,
+  onClose,
+  onConfirm,
+  accentR,
+  accentG,
+  accentB,
 }: {
-  label: string;
-  plainValue: string;
-  index: number;
-  accentColor: string;
-  accentRgb: string;
+  listing: MarketListing;
+  onClose: () => void;
+  onConfirm: () => void;
+  accentR: number;
+  accentG: number;
+  accentB: number;
 }) {
-  const cardStyle = {
-    background: `rgba(${accentRgb}, 0.07)`,
-    border: `1px solid rgba(${accentRgb}, 0.18)`,
-    boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
-  };
+  const [confirmed, setConfirmed] = useState(false);
+  const accent = `rgb(${accentR},${accentG},${accentB})`;
+  const accentGlow = `rgba(${accentR},${accentG},${accentB},0.35)`;
+  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.3)`;
+  const accentBg = `rgba(${accentR},${accentG},${accentB},0.08)`;
+
+  function handleConfirm() {
+    setConfirmed(true);
+    setTimeout(() => {
+      onConfirm();
+      onClose();
+    }, 900);
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: 0.08 + index * 0.07 }}
-      className="rounded-2xl px-4 py-3.5 flex flex-col gap-1"
-      style={cardStyle}
-    >
-      <p
-        className="text-[9px] uppercase tracking-[0.16em] font-medium"
-        style={{ color: "var(--echo-text-secondary)" }}
-      >
-        {label}
-      </p>
-      <p
-        className="text-base font-mono font-semibold tabular-nums leading-tight"
-        style={{ color: accentColor }}
-      >
-        {plainValue}
-      </p>
-    </motion.div>
-  );
-}
-
-// ─── Time Filter Pills ────────────────────────────────────────────────────────
-
-function TimeFilterPills({
-  active,
-  onChange,
-  accentColor,
-  accentRgb,
-}: {
-  active: TimeRange;
-  onChange: (t: TimeRange) => void;
-  accentColor: string;
-  accentRgb: string;
-}) {
-  return (
+    // biome-ignore lint/a11y/useSemanticElements: custom modal overlay needs div for backdrop click
     <div
-      className="flex gap-2 mt-5 mb-1"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
       style={{
-        overflowX: "auto",
-        paddingBottom: "4px",
-        scrollbarWidth: "none",
+        position: "fixed",
+        inset: 0,
+        zIndex: 300,
+        background: "rgba(10,0,20,0.85)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        fontFamily: "DM Sans, sans-serif",
       }}
     >
-      {TIME_RANGES.map((t) => {
-        const isActive = active === t.value;
-        return (
-          <button
-            key={t.value}
-            type="button"
-            data-ocid={`discover.${t.value.toLowerCase()}.tab`}
-            onClick={() => onChange(t.value)}
-            style={{
-              padding: "6px 16px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              cursor: "pointer",
-              flexShrink: 0,
-              transition: "all 0.15s",
-              background: isActive ? accentColor : "#f3f4f6",
-              color: isActive ? "white" : "#6b7280",
-              border: isActive ? "1px solid transparent" : "1px solid #e5e7eb",
-              boxShadow: isActive
-                ? `0 0 12px rgba(${accentRgb}, 0.30)`
-                : "none",
-            }}
-          >
-            {t.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Rank Badge ───────────────────────────────────────────────────────────────
-
-const RANK_BADGE_COLORS: Record<number, { bg: string; color: string }> = {
-  1: { bg: "#FEF3C7", color: "#D97706" },
-  2: { bg: "#F1F5F9", color: "#64748B" },
-  3: { bg: "#FDF4E7", color: "#B45309" },
-};
-
-function RankBadge({ rank }: { rank: number }) {
-  const style = RANK_BADGE_COLORS[rank];
-  if (style) {
-    return (
       <div
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: "50%",
-          background: style.bg,
+          width: "100%",
+          maxWidth: 480,
+          borderRadius: "24px 24px 0 0",
+          background: "rgba(18,8,30,0.97)",
+          border: `1px solid ${accentBorder}`,
+          boxShadow: `0 -8px 40px ${accentGlow}`,
+          padding: "24px 20px 36px",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
+          flexDirection: "column",
+          gap: 18,
         }}
       >
-        <span
+        <div
           style={{
-            fontSize: "11px",
-            fontWeight: 800,
-            color: style.color,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          {rank}
-        </span>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "#f0eaff" }}>
+            Confirm Purchase
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: "50%",
+              border: `1px solid ${accentBorder}`,
+              background: accentBg,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#c0a8e6",
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 14,
+            alignItems: "center",
+            background: accentBg,
+            border: `1px solid ${accentBorder}`,
+            borderRadius: 14,
+            padding: "12px 14px",
+          }}
+        >
+          <img
+            src={listing.imageUrl}
+            alt={listing.clipTitle}
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 10,
+              objectFit: "cover",
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#f0eaff",
+                marginBottom: 2,
+              }}
+            >
+              {listing.clipTitle}
+            </div>
+            <div style={{ fontSize: 12, color: accent }}>
+              @{listing.creatorUsername}
+            </div>
+            <div style={{ fontSize: 11, color: "#9070b0", marginTop: 2 }}>
+              Copy #{listing.editionNumber} / {listing.totalEditions}
+            </div>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: accent }}>
+            ${listing.listPrice.toFixed(2)}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flex: 1,
+              height: 48,
+              borderRadius: 14,
+              border: `1px solid ${accentBorder}`,
+              background: "transparent",
+              color: "#9070b0",
+              fontSize: 14,
+              fontWeight: 600,
+              fontFamily: "DM Sans, sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-ocid="market.buy_confirm_button"
+            onClick={handleConfirm}
+            disabled={confirmed}
+            style={{
+              flex: 2,
+              height: 48,
+              borderRadius: 14,
+              border: "none",
+              background: confirmed
+                ? "rgba(100,80,140,0.5)"
+                : `linear-gradient(135deg, rgba(${accentR},${accentG},${accentB},0.9) 0%, rgba(160,100,220,0.9) 100%)`,
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 700,
+              fontFamily: "DM Sans, sans-serif",
+              cursor: confirmed ? "default" : "pointer",
+              boxShadow: confirmed ? "none" : `0 4px 16px ${accentGlow}`,
+              transition: "all 0.2s ease",
+            }}
+          >
+            {confirmed
+              ? "✓ Purchased!"
+              : `Buy for $${listing.listPrice.toFixed(2)}`}
+          </button>
+        </div>
       </div>
-    );
-  }
-  return (
-    <div
-      style={{
-        width: 26,
-        height: 26,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          fontSize: "11px",
-          fontWeight: 700,
-          color: "#9ca3af",
-        }}
-      >
-        {rank}
-      </span>
     </div>
   );
 }
 
-// ─── Sold NFT Row ─────────────────────────────────────────────────────────────
+// ─── ListingCard ───────────────────────────────────────────────────────────────
 
-function SoldNFTRow({
-  nft,
-  rank,
-  accentColor,
-  accentRgb,
+function ListingCard({
+  listing,
+  onBuy,
+  accentR,
+  accentG,
+  accentB,
 }: {
-  nft: SoldNFT;
-  rank: number;
-  accentColor: string;
-  accentRgb: string;
+  listing: MarketListing;
+  onBuy: () => void;
+  accentR: number;
+  accentG: number;
+  accentB: number;
 }) {
-  const isTop3 = rank <= 3;
-  const textPrimary = "#1a1a1a";
-  const textSecondary = "#9ca3af";
+  const accent = `rgb(${accentR},${accentG},${accentB})`;
+  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.15)`;
+  const accentBg = `rgba(${accentR},${accentG},${accentB},0.06)`;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -6 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.22, delay: Math.min(rank * 0.04, 0.5) }}
-      className="flex items-center gap-3 rounded-2xl px-3 py-2.5"
-      data-ocid={`discover.item.${rank}`}
+    <div
+      data-ocid="market.listing_card"
       style={{
-        background: "white",
-        border: isTop3
-          ? `1px solid rgba(${accentRgb}, 0.22)`
-          : "1px solid #f0f0f0",
-        boxShadow: isTop3
-          ? `0 2px 12px rgba(${accentRgb}, 0.08)`
-          : "0 1px 4px rgba(0,0,0,0.04)",
+        borderRadius: 16,
+        background: accentBg,
+        border: `1px solid ${accentBorder}`,
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <RankBadge rank={rank} />
-
-      {/* Thumbnail */}
       <div
         style={{
-          width: 36,
-          height: 45,
-          flexShrink: 0,
-          borderRadius: 8,
+          position: "relative",
+          aspectRatio: "16/9",
           overflow: "hidden",
-          border: isTop3
-            ? `1.5px solid rgba(${accentRgb}, 0.30)`
-            : "1px solid #e5e7eb",
         }}
       >
         <img
-          src={nft.imageUrl}
-          alt={nft.title}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          src={listing.imageUrl}
+          alt={listing.clipTitle}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
           onError={(e) => {
-            (e.target as HTMLImageElement).style.background = "#f3f4f6";
-            (e.target as HTMLImageElement).style.display = "block";
+            (e.currentTarget as HTMLImageElement).src =
+              "/assets/generated/minty-pack-wrapper.png";
           }}
         />
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            background: accent,
+            borderRadius: 20,
+            padding: "3px 9px",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#fff",
+            fontFamily: "DM Sans, sans-serif",
+          }}
+        >
+          #{listing.editionNumber}/{listing.totalEditions}
+        </div>
+      </div>
+
+      <div style={{ padding: "12px 14px 14px" }}>
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: "var(--echo-text)",
+            fontFamily: "DM Sans, sans-serif",
+            marginBottom: 2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {listing.clipTitle}
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--echo-text-secondary)",
+            fontFamily: "DM Sans, sans-serif",
+            marginBottom: 12,
+          }}
+        >
+          @{listing.creatorUsername}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: accent,
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            ${listing.listPrice.toFixed(2)}
+          </div>
+          <button
+            type="button"
+            data-ocid="market.buy_now_button"
+            onClick={onBuy}
+            style={{
+              height: 36,
+              paddingLeft: 16,
+              paddingRight: 16,
+              borderRadius: 18,
+              border: "none",
+              background: `linear-gradient(135deg, rgba(${accentR},${accentG},${accentB},0.9) 0%, rgba(160,100,220,0.9) 100%)`,
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "DM Sans, sans-serif",
+              cursor: "pointer",
+              boxShadow: `0 3px 12px rgba(${accentR},${accentG},${accentB},0.30)`,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ShoppingCart size={13} />
+            Buy Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TopMarketCard ─────────────────────────────────────────────────────────────
+
+interface TopMarketEntry {
+  clipId: string;
+  title: string;
+  creator: string;
+  videoUrl: string;
+  marketCap: number; // USD
+  currentPrice: number; // USD
+  copiesMinted: number;
+}
+
+function TopMarketCard({
+  entry,
+  rank,
+  large,
+  accentR,
+  accentG,
+  accentB,
+  onClick,
+}: {
+  entry: TopMarketEntry;
+  rank: number;
+  large: boolean;
+  accentR: number;
+  accentG: number;
+  accentB: number;
+  onClick: () => void;
+}) {
+  const accent = `rgb(${accentR},${accentG},${accentB})`;
+  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.18)`;
+  const accentBg = `rgba(${accentR},${accentG},${accentB},0.07)`;
+
+  const medalColors: Record<number, string> = {
+    1: "rgba(255,215,0,0.90)",
+    2: "rgba(192,192,192,0.90)",
+    3: "rgba(205,127,50,0.90)",
+  };
+  const medalGlows: Record<number, string> = {
+    1: "rgba(255,215,0,0.4)",
+    2: "rgba(192,192,192,0.3)",
+    3: "rgba(205,127,50,0.3)",
+  };
+  const badgeColor = medalColors[rank] ?? accent;
+  const glowColor =
+    medalGlows[rank] ?? `rgba(${accentR},${accentG},${accentB},0.2)`;
+
+  return (
+    <button
+      type="button"
+      data-ocid="market.top_market_card"
+      onClick={onClick}
+      style={{
+        borderRadius: large ? 20 : 14,
+        background: accentBg,
+        border: `1.5px solid ${rank <= 3 ? badgeColor.replace("0.90", "0.3") : accentBorder}`,
+        boxShadow:
+          rank <= 3
+            ? `0 4px 20px ${glowColor}, 0 1px 4px rgba(0,0,0,0.08)`
+            : "0 2px 10px rgba(0,0,0,0.06)",
+        overflow: "hidden",
+        cursor: "pointer",
+        textAlign: "left",
+        padding: 0,
+        width: "100%",
+        transition: "transform 0.15s ease, box-shadow 0.15s ease",
+      }}
+    >
+      {/* Thumbnail (video) */}
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: large ? "4/3" : "16/9",
+          overflow: "hidden",
+          background: "#0d1520",
+        }}
+      >
+        <video
+          src={entry.videoUrl}
+          muted
+          loop
+          playsInline
+          autoPlay
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+        {/* Rank badge */}
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            background: badgeColor,
+            borderRadius: 20,
+            padding: "4px 10px",
+            fontSize: large ? 15 : 12,
+            fontWeight: 800,
+            color: rank <= 3 ? "#1a0a2e" : "#fff",
+            fontFamily: "DM Sans, sans-serif",
+            boxShadow: `0 2px 8px ${glowColor}`,
+          }}
+        >
+          #{rank}
+        </div>
+        {/* Chart hint overlay */}
+        <div
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            background: "rgba(0,0,0,0.5)",
+            borderRadius: 20,
+            padding: "3px 8px",
+            fontSize: 10,
+            color: "#fff",
+            fontFamily: "DM Sans, sans-serif",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          📈 Chart
+        </div>
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 flex-wrap">
-          <p
-            className="font-semibold truncate"
-            style={{ fontSize: "13px", color: textPrimary, lineHeight: 1.3 }}
-          >
-            {nft.title}
-          </p>
-          <span
-            style={{
-              fontSize: "9px",
-              fontWeight: 700,
-              padding: "1px 5px",
-              borderRadius: "6px",
-              background:
-                nft.mediaType === "video"
-                  ? "rgba(88,130,233,0.12)"
-                  : "rgba(0,0,0,0.06)",
-              color: nft.mediaType === "video" ? "#3b5ec6" : "#6b7280",
-              flexShrink: 0,
-            }}
-          >
-            {nft.mediaType === "video" ? "🎬" : "📷"}
-          </span>
-        </div>
-        <p
-          className="truncate"
-          style={{ fontSize: "10px", color: textSecondary, lineHeight: 1.4 }}
-        >
-          {nft.setName} · by {nft.creator}
-        </p>
-        {/* Rarity badge */}
-        <span
-          style={{
-            display: "inline-block",
-            marginTop: "2px",
-            fontSize: "9px",
-            fontWeight: 700,
-            padding: "1px 6px",
-            borderRadius: "6px",
-            background:
-              nft.rarity === "Rare"
-                ? `rgba(${accentRgb}, 0.10)`
-                : "rgba(0,0,0,0.04)",
-            color: nft.rarity === "Rare" ? accentColor : "#9ca3af",
-            border:
-              nft.rarity === "Rare"
-                ? `1px solid rgba(${accentRgb}, 0.22)`
-                : "1px solid rgba(0,0,0,0.08)",
-          }}
-        >
-          {nft.rarity}
-        </span>
-      </div>
-
-      {/* Sale price */}
-      <div className="shrink-0 text-right">
-        <p
-          className="font-bold tabular-nums"
-          style={{
-            fontSize: "14px",
-            color: accentColor,
-            lineHeight: 1.2,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {formatUSD(nft.salePrice)}
-        </p>
-        <p style={{ fontSize: "9px", color: textSecondary }}>sold</p>
-      </div>
-    </motion.div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-interface MarketPageProps {
-  onAlbumClick?: (albumId: string) => void;
-  onSetClick: (slug: string) => void;
-}
-
-export function MarketPage({
-  onAlbumClick: _onAlbumClick,
-  onSetClick: _onSetClick,
-}: MarketPageProps) {
-  const { activeStyle: activeCycle } = usePackStyle();
-  const accentColor = `oklch(${activeCycle.accentOklchLight})`;
-  const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
-
-  const [timeRange, setTimeRange] = useState<TimeRange>("ALL_TIME");
-
-  const filteredNFTs = filterAndSortNFTs(timeRange);
-
-  // Compute total volume and other metrics from sold data
-  const allTimeSales = SOLD_NFTS.reduce((sum, n) => sum + n.salePrice, 0);
-  const last24hSales = SOLD_NFTS.filter((n) => n.soldAt >= NOW - D).reduce(
-    (sum, n) => sum + n.salePrice,
-    0,
-  );
-  const totalTx = SOLD_NFTS.length;
-
-  const timeLabel =
-    TIME_RANGES.find((t) => t.value === timeRange)?.label ?? "All Time";
-
-  return (
-    <div className="px-4 md:px-6 pt-6 pb-32 max-w-2xl mx-auto">
-      {/* ── Signal cards ── */}
-      <div className="grid grid-cols-2 gap-2.5 mb-2">
-        <SignalCard
-          label="Total Volume"
-          plainValue={`$${allTimeSales.toLocaleString()}`}
-          index={0}
-          accentColor={accentColor}
-          accentRgb={accentRgb}
-        />
-        <SignalCard
-          label="24H Volume"
-          plainValue={
-            last24hSales > 0 ? `$${last24hSales.toLocaleString()}` : "$0"
-          }
-          index={1}
-          accentColor={accentColor}
-          accentRgb={accentRgb}
-        />
-        <SignalCard
-          label="Total Transactions"
-          plainValue={`${totalTx} sales`}
-          index={2}
-          accentColor={accentColor}
-          accentRgb={accentRgb}
-        />
-        <SignalCard
-          label="Live Users"
-          plainValue="1,284 active"
-          index={3}
-          accentColor={accentColor}
-          accentRgb={accentRgb}
-        />
-      </div>
-
-      {/* ── Time filter pills ── */}
-      <TimeFilterPills
-        active={timeRange}
-        onChange={setTimeRange}
-        accentColor={accentColor}
-        accentRgb={accentRgb}
-      />
-
-      {/* ── Section header ── */}
-      <div
-        className="flex items-center gap-2 mt-5 mb-3"
-        data-ocid="discover.rankings.section"
-      >
-        <span style={{ fontSize: "16px" }}>🏆</span>
-        <p
-          style={{
-            color: "#333",
-            fontFamily: "var(--font-ui)",
-            fontSize: "15px",
-            fontWeight: 500,
-            lineHeight: 1,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase" as const,
-          }}
-        >
-          Highest Sales · {timeLabel}
-        </p>
+      <div style={{ padding: large ? "14px 16px 16px" : "10px 12px 12px" }}>
         <div
           style={{
-            flex: 1,
-            height: "1px",
-            background: `rgba(${accentRgb}, 0.15)`,
-            marginLeft: "4px",
+            fontSize: large ? 16 : 13,
+            fontWeight: 700,
+            color: "var(--echo-text)",
+            fontFamily: "DM Sans, sans-serif",
+            marginBottom: 2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
-        />
+        >
+          {entry.title}
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--echo-text-secondary)",
+            fontFamily: "DM Sans, sans-serif",
+            marginBottom: 8,
+          }}
+        >
+          @{entry.creator}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--echo-text-muted)",
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            {entry.copiesMinted.toLocaleString()} minted
+          </div>
+          <div
+            style={{
+              fontSize: large ? 14 : 12,
+              fontWeight: 800,
+              color: accent,
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            $
+            {entry.marketCap.toLocaleString("en-US", {
+              maximumFractionDigits: 0,
+            })}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Main MarketPage ───────────────────────────────────────────────────────────
+
+export function MarketPage() {
+  const { activeStyle } = usePackStyle();
+  const { accentR, accentG, accentB } = activeStyle;
+  const accent = `rgb(${accentR},${accentG},${accentB})`;
+  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.15)`;
+
+  const [listings, setListings] = useState<MarketListing[]>(() =>
+    loadListings(),
+  );
+  const [buyTarget, setBuyTarget] = useState<MarketListing | null>(null);
+  const [chartClip, setChartClip] = useState<VideoClip | null>(null);
+
+  const { getAllCurveStates, marketCap, ticker } = useBondingCurve();
+  const { clips } = useVideoFeed();
+  useReleasesMarket();
+
+  // Build top 10 by market cap — re-sorts every ticker tick (8s)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ticker forces re-sort
+  const top10 = useMemo(() => {
+    const states = getAllCurveStates();
+    return states
+      .map((s) => {
+        const clip = clips.find((c) => c.id === s.clipId);
+        const mcap = marketCap(s.clipId);
+        const priceUsd =
+          (s.startingPriceCents + s.copiesMinted * s.priceIncrementCents) / 100;
+        return {
+          clipId: s.clipId,
+          title: clip?.title ?? s.clipId,
+          creator: clip?.creatorName ?? "—",
+          videoUrl: clip?.videoUrl ?? "",
+          marketCap: mcap,
+          currentPrice: priceUsd,
+          copiesMinted: s.copiesMinted,
+          clip: clip ?? null,
+        };
+      })
+      .sort((a, b) => b.marketCap - a.marketCap)
+      .slice(0, 10);
+  }, [getAllCurveStates, clips, marketCap, ticker]);
+
+  const handleTopCardClick = useCallback((entry: (typeof top10)[0]) => {
+    if (entry.clip) setChartClip(entry.clip);
+  }, []);
+
+  function handleBuyConfirm() {
+    if (!buyTarget) return;
+    const next = listings.filter((l) => l.id !== buyTarget.id);
+    setListings(next);
+    saveListings(next);
+    setBuyTarget(null);
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100%",
+        background: "var(--echo-bg)",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "20px 16px 14px",
+          borderBottom: "1px solid var(--echo-border)",
+          background: "var(--echo-surface)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Tag size={18} color={accent} />
+          <h1
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "var(--echo-text)",
+              fontFamily: "DM Sans, sans-serif",
+              margin: 0,
+            }}
+          >
+            Market
+          </h1>
+        </div>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--echo-text-secondary)",
+            fontFamily: "DM Sans, sans-serif",
+            margin: "4px 0 0",
+          }}
+        >
+          Buy and discover trending moments
+        </p>
       </div>
 
-      {/* ── Leaderboard ── */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={timeRange}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.22 }}
-        >
-          {filteredNFTs.length === 0 ? (
-            <div
-              className="flex flex-col items-center justify-center py-14 text-center"
-              data-ocid="discover.rankings.empty_state"
+      <div style={{ flex: 1, padding: "16px" }}>
+        {/* ── Top 10 by Market Cap ──────────────────────────────── */}
+        <div style={{ marginBottom: 28 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 6,
+            }}
+          >
+            <TrendingUp size={16} color={accent} />
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--echo-text)",
+                fontFamily: "DM Sans, sans-serif",
+                margin: 0,
+              }}
             >
-              <p
+              Top 10 by Market Cap
+            </h2>
+          </div>
+          <p
+            style={{
+              fontSize: 11,
+              color: "var(--echo-text-muted)",
+              fontFamily: "DM Sans, sans-serif",
+              margin: "0 0 14px",
+            }}
+          >
+            Total market cap = price × 1,000 copies · tap any card for chart
+          </p>
+
+          {/* Top 3 — larger cards in a row */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: 10,
+              marginBottom: 10,
+            }}
+          >
+            {top10.slice(0, 3).map((entry, i) => (
+              <TopMarketCard
+                key={entry.clipId}
+                entry={entry}
+                rank={i + 1}
+                large={false}
+                accentR={accentR}
+                accentG={accentG}
+                accentB={accentB}
+                onClick={() => handleTopCardClick(entry)}
+              />
+            ))}
+          </div>
+
+          {/* Ranks 4–10 — compact horizontal rows */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {top10.slice(3).map((entry, i) => (
+              <button
+                key={entry.clipId}
+                type="button"
+                data-ocid="market.top_row"
+                onClick={() => handleTopCardClick(entry)}
                 style={{
-                  color: "#1a1a1a",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  marginBottom: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  background: `rgba(${accentR},${accentG},${accentB},0.05)`,
+                  border: `1px solid ${accentBorder}`,
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  width: "100%",
+                  transition: "background 0.15s ease",
                 }}
               >
-                No sales recorded in this period
-              </p>
-              <p style={{ color: "#9ca3af", fontSize: "12px" }}>
-                Try a broader time range to see top sold NFTs.
-              </p>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: accent,
+                    fontFamily: "DM Sans, sans-serif",
+                    width: 24,
+                    flexShrink: 0,
+                  }}
+                >
+                  #{i + 4}
+                </span>
+                {/* Mini video thumb */}
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    background: "#0d1520",
+                  }}
+                >
+                  <video
+                    src={entry.videoUrl}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "var(--echo-text)",
+                      fontFamily: "DM Sans, sans-serif",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {entry.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--echo-text-muted)",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    {entry.copiesMinted.toLocaleString()} minted
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: 2,
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 800,
+                      color: accent,
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    $
+                    {entry.marketCap.toLocaleString("en-US", {
+                      maximumFractionDigits: 0,
+                    })}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "var(--echo-text-muted)",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    📈 chart
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Listed For Sale ────────────────────────────────────────── */}
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            <ShoppingCart size={16} color={accent} />
+            <h2
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--echo-text)",
+                fontFamily: "DM Sans, sans-serif",
+                margin: 0,
+              }}
+            >
+              Listed For Sale
+            </h2>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: accent,
+                background: `rgba(${accentR},${accentG},${accentB},0.12)`,
+                border: `1px solid ${accentBorder}`,
+                borderRadius: 20,
+                padding: "2px 8px",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              {listings.length}
+            </span>
+          </div>
+
+          {listings.length === 0 ? (
+            <div
+              data-ocid="market.empty_state"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 200,
+                gap: 12,
+                textAlign: "center",
+              }}
+            >
+              <ShoppingCart
+                size={32}
+                color={`rgba(${accentR},${accentG},${accentB},0.4)`}
+              />
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--echo-text)",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                No listings yet
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--echo-text-secondary)",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                List a clip from your Collection to sell here.
+              </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {filteredNFTs.map((nft, i) => (
-                <SoldNFTRow
-                  key={nft.id}
-                  nft={nft}
-                  rank={i + 1}
-                  accentColor={accentColor}
-                  accentRgb={accentRgb}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  onBuy={() => setBuyTarget(listing)}
+                  accentR={accentR}
+                  accentG={accentG}
+                  accentB={accentB}
                 />
               ))}
             </div>
           )}
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Buy Confirm Modal */}
+      {buyTarget && (
+        <BuyConfirmModal
+          listing={buyTarget}
+          onClose={() => setBuyTarget(null)}
+          onConfirm={handleBuyConfirm}
+          accentR={accentR}
+          accentG={accentG}
+          accentB={accentB}
+        />
+      )}
+
+      {/* Chart Modal */}
+      {chartClip && (
+        <ClipChartModal clip={chartClip} onClose={() => setChartClip(null)} />
+      )}
     </div>
   );
 }

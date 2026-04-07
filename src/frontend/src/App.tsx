@@ -8,6 +8,7 @@ import { SplashScreen } from "./components/SplashScreen";
 import { TopBar } from "./components/TopBar";
 import { AdminReleasesProvider } from "./context/AdminReleasesContext";
 import { AuctionProvider } from "./context/AuctionContext";
+import { BondingCurveProvider } from "./context/BondingCurveContext";
 import { CollectionProvider } from "./context/CollectionContext";
 import {
   MomentDraftProvider,
@@ -26,6 +27,7 @@ import { WalletProvider } from "./context/WalletContext";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { LibraryPage } from "./pages/LibraryPage";
+import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import { UploadPage } from "./pages/UploadPage";
@@ -77,9 +79,8 @@ function AppContent() {
     const draft = pendingMintDraft;
     const now = Date.now();
     const totalPacks = 300;
-    const priceUsd = 10; // bonding curve starting price
+    const priceUsd = 10;
 
-    // Simulate $100 minting fee payment
     console.log("[Minty] Minting fee: $100 deducted");
 
     const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
@@ -115,7 +116,7 @@ function AppContent() {
     const releaseTitle = draft.title?.trim() || "Mint Moment";
     const releaseCaption =
       draft.caption?.trim() ||
-      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
+      `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`;
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
@@ -131,7 +132,6 @@ function AppContent() {
       packIds,
       priceUsd,
       listedAt: now,
-      // Standardized releases: 1 year expiry (no burn for normal releases)
       expiresAt: now + 365 * 24 * 3600000,
       status: "active",
       collectibleType: "photo",
@@ -168,9 +168,10 @@ function AppContent() {
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
         {view.type === "tab" && view.tab === "collection" && (
           <CollectionPage
-            onGoToLibrary={() => setView({ type: "tab", tab: "library" })}
+            onGoToLibrary={() => setView({ type: "tab", tab: "releases" })}
           />
         )}
+        {view.type === "tab" && view.tab === "market" && <MarketPage />}
         {view.type === "upload" && (
           <UploadPage
             onBack={() => setView({ type: "tab", tab: "releases" })}
@@ -206,7 +207,9 @@ export default function App() {
                     <ReleasesMarketProvider>
                       <AuctionProvider>
                         <VideoFeedProvider>
-                          <AppContent />
+                          <BondingCurveProvider>
+                            <AppContent />
+                          </BondingCurveProvider>
                         </VideoFeedProvider>
                       </AuctionProvider>
                     </ReleasesMarketProvider>

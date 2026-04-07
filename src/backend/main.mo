@@ -7,9 +7,9 @@ import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // ─────────────────────────────────────────────
   // INLINE ACCESS CONTROL (replaces missing authorization/ package)

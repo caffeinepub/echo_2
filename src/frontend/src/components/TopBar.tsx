@@ -10,12 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  PACK_STYLES,
-  type PackStyle,
-  type PackStyleId,
-  usePackStyle,
-} from "../context/PackStyleContext";
+import { usePackStyle } from "../context/PackStyleContext";
 
 // Always light mode — dark mode removed
 const isLight = true;
@@ -157,48 +152,6 @@ function useBtcPrice(): BtcPriceState {
   }, [fetchPrice]);
 
   return state;
-}
-
-// ─── Pack Style Selector ──────────────────────────────────────────────────────
-function PackStyleSelector() {
-  const { activeStyleId, setStyleId } = usePackStyle();
-
-  return (
-    <div
-      data-ocid="topbar.packstyle.panel"
-      style={{ display: "flex", alignItems: "center", gap: "6px" }}
-    >
-      {(Object.values(PACK_STYLES) as PackStyle[]).map((style) => {
-        const isActive = activeStyleId === style.id;
-        const cRgb = `${style.accentR},${style.accentG},${style.accentB}`;
-        return (
-          <button
-            key={style.id}
-            type="button"
-            data-ocid={`topbar.packstyle.${style.name}.button`}
-            onClick={() => setStyleId(style.id as PackStyleId)}
-            aria-label={`Pack style: ${style.label}`}
-            title={style.label}
-            style={{
-              width: "22px",
-              height: "22px",
-              borderRadius: "50%",
-              border: isActive
-                ? `2px solid oklch(${style.accentOklchLight})`
-                : "2px solid transparent",
-              background: `oklch(${style.accentOklchLight})`,
-              opacity: isActive ? 1 : 0.65,
-              cursor: "pointer",
-              padding: 0,
-              boxShadow: isActive ? `0 0 8px rgba(${cRgb},0.55)` : "none",
-              transition: "opacity 0.15s, box-shadow 0.15s, border-color 0.15s",
-              flexShrink: 0,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
 }
 
 // ─── Action pill button ───────────────────────────────────────────────────────
@@ -1367,9 +1320,6 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               Profile
             </button>
           )}
-
-          {/* Pack Style Selector */}
-          <PackStyleSelector />
 
           {/* Auth / Wallet button */}
           <button

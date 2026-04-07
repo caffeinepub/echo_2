@@ -1,5 +1,7 @@
-import { Heart, Volume2, VolumeX, X } from "lucide-react";
+import { Heart, LineChart, Volume2, VolumeX, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BondingCurveModule } from "../components/BondingCurveModule";
+import { ClipChartModal } from "../components/ClipChartModal";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { FeedSort, VideoClip } from "../context/VideoFeedContext";
 import { useVideoFeed } from "../context/VideoFeedContext";
@@ -19,10 +21,8 @@ function CreatorProfile({
     (c) => c.creatorName === clip.creatorName,
   );
   const totalLikes = creatorClips.reduce((s, c) => s + c.likeCount, 0);
-
   const initials = clip.creatorName.slice(0, 2).toUpperCase();
 
-  // Close on escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -42,7 +42,6 @@ function CreatorProfile({
         background: "var(--echo-bg)",
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -86,7 +85,6 @@ function CreatorProfile({
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
-        {/* Avatar + stats */}
         <div
           style={{
             display: "flex",
@@ -188,7 +186,6 @@ function CreatorProfile({
           </div>
         </div>
 
-        {/* Clips grid */}
         <div
           style={{
             display: "grid",
@@ -251,10 +248,12 @@ function VideoCard({
   clip,
   isActive,
   onCreatorTap,
+  onChartTap,
 }: {
   clip: VideoClip;
   isActive: boolean;
   onCreatorTap: () => void;
+  onChartTap: () => void;
 }) {
   const { likedIds, toggleLike } = useVideoFeed();
   const { activeStyle } = usePackStyle();
@@ -269,7 +268,6 @@ function VideoCard({
   const accentSolid = `rgb(${accentR},${accentG},${accentB})`;
   const accentGlow = `rgba(${accentR},${accentG},${accentB},0.30)`;
 
-  // Auto-play when this card is centered
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -281,7 +279,6 @@ function VideoCard({
     }
   }, [isActive]);
 
-  // Sync muted state with video element
   useEffect(() => {
     const vid = videoRef.current;
     if (vid) vid.muted = muted;
@@ -304,13 +301,13 @@ function VideoCard({
       style={{
         position: "relative",
         width: "100%",
-        height: "100%",
         borderRadius: 20,
         overflow: "hidden",
         background: "#0d1520",
         boxShadow: `0 0 20px ${accentGlow}, 0 4px 20px rgba(0,0,0,0.12)`,
         border: `1px solid rgba(${accentR},${accentG},${accentB},0.18)`,
         flexShrink: 0,
+        aspectRatio: "9/16",
       }}
     >
       {/* Video */}
@@ -366,7 +363,7 @@ function VideoCard({
         </div>
       )}
 
-      {/* Faint glass overlay at bottom */}
+      {/* Bottom gradient */}
       <div
         style={{
           position: "absolute",
@@ -380,32 +377,72 @@ function VideoCard({
         }}
       />
 
-      {/* Mute indicator top-right */}
+      {/* Top-right controls row: mute + chart */}
       <div
         style={{
           position: "absolute",
           top: 12,
           right: 12,
-          background: "rgba(0,0,0,0.40)",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
-          borderRadius: "50%",
-          width: 32,
-          height: 32,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "none",
+          flexDirection: "column",
+          gap: 8,
+          pointerEvents: "auto",
         }}
       >
-        {muted ? (
-          <VolumeX size={14} color="rgba(255,255,255,0.75)" />
-        ) : (
-          <Volume2 size={14} color="rgba(255,255,255,0.9)" />
-        )}
+        {/* Mute toggle */}
+        <button
+          type="button"
+          onClick={() => setMuted((m) => !m)}
+          aria-label={muted ? "Unmute" : "Mute"}
+          style={{
+            background: "rgba(0,0,0,0.40)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            border: "none",
+            borderRadius: "50%",
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          {muted ? (
+            <VolumeX size={14} color="rgba(255,255,255,0.75)" />
+          ) : (
+            <Volume2 size={14} color="rgba(255,255,255,0.9)" />
+          )}
+        </button>
+
+        {/* Chart icon */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChartTap();
+          }}
+          aria-label="View price chart"
+          data-ocid="releases.feed.chart_button"
+          style={{
+            background: `rgba(${accentR},${accentG},${accentB},0.55)`,
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            border: `1px solid rgba(${accentR},${accentG},${accentB},0.4)`,
+            borderRadius: "50%",
+            width: 32,
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <LineChart size={14} color="#fff" />
+        </button>
       </div>
 
-      {/* Bottom overlay bar */}
+      {/* Bottom overlay */}
       <div
         style={{
           position: "absolute",
@@ -507,7 +544,7 @@ function VideoCard({
           </div>
         </div>
 
-        {/* Right: heart + count */}
+        {/* Right: like */}
         <div
           style={{
             display: "flex",
@@ -571,7 +608,6 @@ const SORT_OPTIONS: { id: FeedSort; label: string }[] = [
   { id: "top", label: "Top" },
 ];
 
-// Hashtags that are "hot" (simulate by marking some)
 const HOT_HASHTAGS = new Set([
   "#goldenhour",
   "#citylights",
@@ -603,7 +639,6 @@ function FilterRow() {
         paddingBottom: 10,
       }}
     >
-      {/* Sort pills */}
       <div
         style={{
           display: "flex",
@@ -641,7 +676,6 @@ function FilterRow() {
         })}
       </div>
 
-      {/* Hashtag chips */}
       <div
         className="no-scrollbar"
         style={{
@@ -695,6 +729,15 @@ export function ReleasesPage() {
   const feedRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [profileClip, setProfileClip] = useState<VideoClip | null>(null);
+  const [chartClip, setChartClip] = useState<VideoClip | null>(null);
+
+  const handleCreatorTap = useCallback((clip: VideoClip) => {
+    setProfileClip(clip);
+  }, []);
+
+  const handleChartTap = useCallback((clip: VideoClip) => {
+    setChartClip(clip);
+  }, []);
 
   // IntersectionObserver — detect which card is centered
   useEffect(() => {
@@ -713,10 +756,7 @@ export function ReleasesPage() {
           }
         }
       },
-      {
-        root: container,
-        threshold: 0.55,
-      },
+      { root: container, threshold: 0.55 },
     );
 
     for (const card of cards) observer.observe(card);
@@ -769,14 +809,7 @@ export function ReleasesPage() {
               padding: 24,
             }}
           >
-            <div
-              style={{
-                fontSize: 32,
-                marginBottom: 4,
-              }}
-            >
-              🎬
-            </div>
+            <div style={{ fontSize: 32, marginBottom: 4 }}>🎬</div>
             <div
               style={{
                 fontSize: 17,
@@ -803,19 +836,19 @@ export function ReleasesPage() {
               key={clip.id}
               data-feed-card={idx}
               style={{
-                scrollSnapAlign: "center",
-                height: "85svh",
+                scrollSnapAlign: "start",
                 padding: "10px 12px",
                 boxSizing: "border-box",
-                display: "flex",
-                alignItems: "center",
               }}
             >
               <VideoCard
                 clip={clip}
                 isActive={activeIndex === idx}
-                onCreatorTap={() => setProfileClip(clip)}
+                onCreatorTap={() => handleCreatorTap(clip)}
+                onChartTap={() => handleChartTap(clip)}
               />
+              {/* Bonding curve module below each video */}
+              <BondingCurveModule clip={clip} />
             </div>
           ))
         )}
@@ -830,6 +863,11 @@ export function ReleasesPage() {
           />
         ))}
       </div>
+
+      {/* Chart modal */}
+      {chartClip && (
+        <ClipChartModal clip={chartClip} onClose={() => setChartClip(null)} />
+      )}
     </div>
   );
 }

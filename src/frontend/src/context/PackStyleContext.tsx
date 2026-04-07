@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-export type PackStyleId = 1 | 2 | 3 | 4;
+export type PackStyleId = 3;
 
 export interface PackStyle {
   id: PackStyleId;
@@ -24,34 +24,6 @@ export interface PackStyle {
 }
 
 export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
-  1: {
-    id: 1,
-    name: "mint",
-    label: "Mint",
-    accentOklch: "0.80 0.10 160",
-    accentOklchDark: "0.84 0.10 160",
-    accentOklchLight: "0.73 0.11 160",
-    accentR: 126,
-    accentG: 214,
-    accentB: 177,
-    glowDark: "rgba(126,214,177,",
-    glowLight: "rgba(95,196,154,",
-    logoFilter: "none",
-  },
-  2: {
-    id: 2,
-    name: "pink",
-    label: "Pink",
-    accentOklch: "0.78 0.12 0",
-    accentOklchDark: "0.82 0.13 0",
-    accentOklchLight: "0.62 0.13 0",
-    accentR: 240,
-    accentG: 171,
-    accentB: 185,
-    glowDark: "rgba(240,171,185,",
-    glowLight: "rgba(210,140,160,",
-    logoFilter: "hue-rotate(-160deg) saturate(0.9)",
-  },
   3: {
     id: 3,
     name: "purple",
@@ -66,21 +38,6 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     glowLight: "rgba(160,120,200,",
     logoFilter: "hue-rotate(140deg) saturate(0.85)",
   },
-  4: {
-    id: 4,
-    name: "blue",
-    label: "Blue",
-    // Soft pastel blue — iOS-inspired, slightly desaturated, calm and premium
-    accentOklch: "0.76 0.09 228",
-    accentOklchDark: "0.80 0.08 228",
-    accentOklchLight: "0.72 0.10 228",
-    accentR: 148,
-    accentG: 190,
-    accentB: 230,
-    glowDark: "rgba(148,190,230,",
-    glowLight: "rgba(120,168,215,",
-    logoFilter: "hue-rotate(75deg) saturate(0.65) brightness(1.08)",
-  },
 };
 
 interface PackStyleContextValue {
@@ -90,8 +47,8 @@ interface PackStyleContextValue {
 }
 
 const PackStyleContext = createContext<PackStyleContextValue>({
-  activeStyleId: 1,
-  activeStyle: PACK_STYLES[1],
+  activeStyleId: 3,
+  activeStyle: PACK_STYLES[3],
   setStyleId: () => {},
 });
 
@@ -114,26 +71,22 @@ function applyThemeVars(style: PackStyle) {
 }
 
 export function PackStyleProvider({ children }: { children: React.ReactNode }) {
-  const [activeStyleId, setActiveStyleId] = useState<PackStyleId>(() => {
-    const saved = localStorage.getItem("minty_pack_style");
-    // also check legacy key for backwards compat
-    const legacy = localStorage.getItem("minty_active_cycle");
-    const raw = saved ?? legacy ?? "1";
-    const parsed = Number.parseInt(raw, 10);
-    if (parsed >= 1 && parsed <= 4) return parsed as PackStyleId;
-    return 1; // default mint
+  const [activeStyleId] = useState<PackStyleId>(() => {
+    // Always force purple — override any previously saved theme
+    localStorage.setItem("minty_pack_style", "3");
+    return 3;
   });
 
-  const activeStyle = PACK_STYLES[activeStyleId];
+  const activeStyle = PACK_STYLES[3];
 
-  // Inject CSS vars whenever style changes (always light)
+  // Inject CSS vars on mount and whenever style changes (always purple)
   useEffect(() => {
     applyThemeVars(activeStyle);
   }, [activeStyle]);
 
-  const setStyleId = useCallback((id: PackStyleId) => {
-    setActiveStyleId(id);
-    localStorage.setItem("minty_pack_style", String(id));
+  // setStyleId is a no-op — purple is the only theme
+  const setStyleId = useCallback((_id: PackStyleId) => {
+    // noop: only purple supported
   }, []);
 
   return (
