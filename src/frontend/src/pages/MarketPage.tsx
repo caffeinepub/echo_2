@@ -1,4 +1,4 @@
-import { ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
+import { Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipChartModal } from "../components/ClipChartModal";
 import { useBondingCurve } from "../context/BondingCurveContext";
@@ -343,9 +343,9 @@ function BuyConfirmModal({
   );
 }
 
-// ─── ListingCard ───────────────────────────────────────────────────────────────
+// ─── ListingRow ───────────────────────────────────────────────────────────────
 
-function ListingCard({
+function ListingRow({
   listing,
   onBuy,
   accentR,
@@ -359,72 +359,83 @@ function ListingCard({
   accentB: number;
 }) {
   const accent = `rgb(${accentR},${accentG},${accentB})`;
-  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.15)`;
-  const accentBg = `rgba(${accentR},${accentG},${accentB},0.06)`;
+  const accentBorder = `rgba(${accentR},${accentG},${accentB},0.12)`;
 
   return (
     <div
-      data-ocid="market.listing_card"
+      data-ocid="market.listing_row"
       style={{
-        borderRadius: 16,
-        background: accentBg,
-        border: `1px solid ${accentBorder}`,
-        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-        overflow: "hidden",
         display: "flex",
-        flexDirection: "column",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 4px",
+        borderBottom: `1px solid ${accentBorder}`,
+        transition: "background 0.15s ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background =
+          "rgba(255,255,255,0.04)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = "transparent";
       }}
     >
+      {/* Thumbnail */}
       <div
         style={{
-          position: "relative",
-          aspectRatio: "16/9",
+          width: 68,
+          height: 68,
+          borderRadius: 10,
           overflow: "hidden",
+          flexShrink: 0,
+          background: "#0d1520",
         }}
       >
-        <img
-          src={listing.imageUrl}
-          alt={listing.clipTitle}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "/assets/generated/minty-pack-wrapper.png";
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            background: accent,
-            borderRadius: 20,
-            padding: "3px 9px",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#fff",
-            fontFamily: "DM Sans, sans-serif",
-          }}
-        >
-          #{listing.editionNumber}/{listing.totalEditions}
-        </div>
+        {listing.videoUrl ? (
+          <video
+            key={listing.videoUrl}
+            src={listing.videoUrl}
+            muted
+            loop
+            playsInline
+            autoPlay
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <img
+            src={listing.imageUrl}
+            alt={listing.clipTitle}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                "/assets/generated/minty-pack-wrapper.png";
+            }}
+          />
+        )}
       </div>
 
-      <div style={{ padding: "12px 14px 14px" }}>
+      {/* Text stack */}
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: 700,
             color: "var(--echo-text)",
             fontFamily: "DM Sans, sans-serif",
-            marginBottom: 2,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            marginBottom: 2,
           }}
         >
           {listing.clipTitle}
@@ -434,54 +445,68 @@ function ListingCard({
             fontSize: 12,
             color: "var(--echo-text-secondary)",
             fontFamily: "DM Sans, sans-serif",
-            marginBottom: 12,
+            marginBottom: 4,
           }}
         >
           @{listing.creatorUsername}
         </div>
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            display: "inline-block",
+            fontSize: 10,
+            fontWeight: 700,
+            color: accent,
+            background: `rgba(${accentR},${accentG},${accentB},0.10)`,
+            borderRadius: 20,
+            padding: "2px 7px",
+            fontFamily: "DM Sans, sans-serif",
           }}
         >
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 800,
-              color: accent,
-              fontFamily: "DM Sans, sans-serif",
-            }}
-          >
-            ${listing.listPrice.toFixed(2)}
-          </div>
-          <button
-            type="button"
-            data-ocid="market.buy_now_button"
-            onClick={onBuy}
-            style={{
-              height: 36,
-              paddingLeft: 16,
-              paddingRight: 16,
-              borderRadius: 18,
-              border: "none",
-              background: `linear-gradient(135deg, rgba(${accentR},${accentG},${accentB},0.9) 0%, rgba(160,100,220,0.9) 100%)`,
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: "DM Sans, sans-serif",
-              cursor: "pointer",
-              boxShadow: `0 3px 12px rgba(${accentR},${accentG},${accentB},0.30)`,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <ShoppingCart size={13} />
-            Buy Now
-          </button>
+          #{listing.editionNumber}/{listing.totalEditions}
         </div>
+      </div>
+
+      {/* Price + Buy */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 6,
+          flexShrink: 0,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 16,
+            fontWeight: 800,
+            color: accent,
+            fontFamily: "DM Sans, sans-serif",
+          }}
+        >
+          ${listing.listPrice.toFixed(2)}
+        </div>
+        <button
+          type="button"
+          data-ocid="market.buy_now_button"
+          onClick={onBuy}
+          style={{
+            height: 30,
+            paddingLeft: 14,
+            paddingRight: 14,
+            borderRadius: 20,
+            border: "none",
+            background: `linear-gradient(135deg, rgba(${accentR},${accentG},${accentB},0.9) 0%, rgba(160,100,220,0.9) 100%)`,
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            fontFamily: "DM Sans, sans-serif",
+            cursor: "pointer",
+            boxShadow: `0 2px 10px rgba(${accentR},${accentG},${accentB},0.28)`,
+          }}
+        >
+          Buy
+        </button>
       </div>
     </div>
   );
@@ -678,8 +703,6 @@ function TopMarketCard({
   );
 }
 
-// ─── Main MarketPage ───────────────────────────────────────────────────────────
-
 export function MarketPage() {
   const { activeStyle } = usePackStyle();
   const { accentR, accentG, accentB } = activeStyle;
@@ -691,6 +714,10 @@ export function MarketPage() {
   );
   const [buyTarget, setBuyTarget] = useState<MarketListing | null>(null);
   const [chartClip, setChartClip] = useState<VideoClip | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"newest" | "trending">(
+    "newest",
+  );
 
   const { getAllCurveStates, marketCap, ticker } = useBondingCurve();
   const { clips } = useVideoFeed();
@@ -724,6 +751,26 @@ export function MarketPage() {
   const handleTopCardClick = useCallback((entry: (typeof top10)[0]) => {
     if (entry.clip) setChartClip(entry.clip);
   }, []);
+
+  // Filtered + sorted listings
+  const filteredListings = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let result = listings;
+    if (q) {
+      result = result.filter(
+        (l) =>
+          l.clipTitle.toLowerCase().includes(q) ||
+          l.creatorUsername.toLowerCase().includes(q),
+      );
+    }
+    if (activeFilter === "newest") {
+      result = [...result].sort((a, b) => b.listedAt - a.listedAt);
+    } else {
+      // trending = highest price first
+      result = [...result].sort((a, b) => b.listPrice - a.listPrice);
+    }
+    return result;
+  }, [listings, searchQuery, activeFilter]);
 
   function handleBuyConfirm() {
     if (!buyTarget) return;
@@ -956,6 +1003,7 @@ export function MarketPage() {
 
         {/* ── Listed For Sale ────────────────────────────────────────── */}
         <div>
+          {/* Section header */}
           <div
             style={{
               display: "flex",
@@ -992,7 +1040,111 @@ export function MarketPage() {
             </span>
           </div>
 
-          {listings.length === 0 ? (
+          {/* Search bar */}
+          <div
+            style={{
+              position: "relative",
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                left: 14,
+                top: "50%",
+                transform: "translateY(-50%)",
+                pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <Search
+                size={15}
+                color={`rgba(${accentR},${accentG},${accentB},0.6)`}
+              />
+            </div>
+            <input
+              data-ocid="market.search_input"
+              type="text"
+              placeholder="Search clips..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                height: 42,
+                paddingLeft: 38,
+                paddingRight: 14,
+                borderRadius: 21,
+                border: `1.5px solid rgba(${accentR},${accentG},${accentB},0.25)`,
+                background: `rgba(${accentR},${accentG},${accentB},0.05)`,
+                color: "var(--echo-text)",
+                fontSize: 14,
+                fontFamily: "DM Sans, sans-serif",
+                outline: "none",
+                boxSizing: "border-box",
+                transition: "border-color 0.15s ease",
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = accent;
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = `rgba(${accentR},${accentG},${accentB},0.25)`;
+              }}
+            />
+          </div>
+
+          {/* Filter pills */}
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            {(["newest", "trending"] as const).map((filter) => {
+              const isActive = activeFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  data-ocid={`market.filter_${filter}`}
+                  onClick={() => setActiveFilter(filter)}
+                  style={{
+                    height: 32,
+                    paddingLeft: 16,
+                    paddingRight: 16,
+                    borderRadius: 20,
+                    border: isActive
+                      ? "none"
+                      : `1.5px solid rgba(${accentR},${accentG},${accentB},0.30)`,
+                    background: isActive
+                      ? `linear-gradient(135deg, rgba(${accentR},${accentG},${accentB},0.9) 0%, rgba(160,100,220,0.9) 100%)`
+                      : "transparent",
+                    color: isActive
+                      ? "#fff"
+                      : `rgba(${accentR},${accentG},${accentB},0.85)`,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: "DM Sans, sans-serif",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    transition: "all 0.15s ease",
+                    boxShadow: isActive
+                      ? `0 2px 10px rgba(${accentR},${accentG},${accentB},0.28)`
+                      : "none",
+                  }}
+                >
+                  {filter === "trending" && <TrendingUp size={12} />}
+                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Listings */}
+          {filteredListings.length === 0 ? (
             <div
               data-ocid="market.empty_state"
               style={{
@@ -1000,7 +1152,7 @@ export function MarketPage() {
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                minHeight: 200,
+                minHeight: 180,
                 gap: 12,
                 textAlign: "center",
               }}
@@ -1017,7 +1169,7 @@ export function MarketPage() {
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >
-                No listings yet
+                {searchQuery ? "No results found" : "No listings yet"}
               </div>
               <div
                 style={{
@@ -1026,13 +1178,23 @@ export function MarketPage() {
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >
-                List a clip from your Collection to sell here.
+                {searchQuery
+                  ? "Try a different search term."
+                  : "List a clip from your Collection to sell here."}
               </div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {listings.map((listing) => (
-                <ListingCard
+            <div
+              style={{
+                borderRadius: 14,
+                border: `1px solid rgba(${accentR},${accentG},${accentB},0.10)`,
+                background: `rgba(${accentR},${accentG},${accentB},0.03)`,
+                padding: "0 12px",
+                overflow: "hidden",
+              }}
+            >
+              {filteredListings.map((listing) => (
+                <ListingRow
                   key={listing.id}
                   listing={listing}
                   onBuy={() => setBuyTarget(listing)}
