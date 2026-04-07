@@ -4,15 +4,91 @@ import Int "mo:core/Int";
 import Order "mo:core/Order";
 import Map "mo:core/Map";
 import Array "mo:core/Array";
-import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
-  // --- TYPES ---
+  // ─────────────────────────────────────────────
+  // INLINE ACCESS CONTROL (replaces missing authorization/ package)
+  // ─────────────────────────────────────────────
+
+  type UserRole = { #admin; #user; #guest };
+
+  // role storage: principal → role
+  let roleMap = Map.empty<Principal, UserRole>();
+  var firstAdminSet : Bool = false;
+
+  func _isAdmin(caller : Principal) : Bool {
+    switch (roleMap.get(caller)) {
+      case (? #admin) true;
+      case _ false;
+    };
+  };
+
+  func _hasPermission(caller : Principal, required : UserRole) : Bool {
+    let role : UserRole = switch (roleMap.get(caller)) {
+      case (?r) r;
+      case null #guest;
+    };
+    switch (required) {
+      case (#guest) true;
+      case (#user) {
+        switch (role) {
+          case (#admin) true;
+          case (#user) true;
+          case (#guest) false;
+        };
+      };
+      case (#admin) {
+        switch (role) {
+          case (#admin) true;
+          case _ false;
+        };
+      };
+    };
+  };
+
+  // Auto-promote: first caller who hits a "user" action becomes admin
+  func _ensureRegistered(caller : Principal) {
+    if (not caller.isAnonymous()) {
+      switch (roleMap.get(caller)) {
+        case null {
+          let newRole : UserRole = if (not firstAdminSet) {
+            firstAdminSet := true;
+            #admin;
+          } else {
+            #user;
+          };
+          roleMap.add(caller, newRole);
+        };
+        case _ {};
+      };
+    };
+  };
+
+  // Authorization public endpoints (replaces MixinAuthorization mixin)
+  public shared ({ caller }) func assignRole(user : Principal, role : UserRole) : async () {
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can assign roles");
+    roleMap.add(user, role);
+  };
+
+  public query ({ caller }) func getMyRole() : async UserRole {
+    switch (roleMap.get(caller)) {
+      case (?r) r;
+      case null #guest;
+    };
+  };
+
+  public query ({ caller }) func isAdmin() : async Bool {
+    _isAdmin(caller);
+  };
+
+  // ─────────────────────────────────────────────
+  // EXISTING TYPES
+  // ─────────────────────────────────────────────
 
   type Track = {
     title : Text;
@@ -209,10 +285,34 @@ actor {
     packCount : Nat;
   };
 
-  // --- STATE ---
+  // ─────────────────────────────────────────────
+  // VIDEO CLIP TYPES
+  // ─────────────────────────────────────────────
 
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
+  public type VideoClipSort = { #newest; #trending; #top };
+
+  public type LikeResult = { #ok : Nat; #alreadyLiked; #notFound };
+
+  // Internal clip record — stores mutable like_timestamps as array for shared API
+  public type VideoClip = {
+    clip_id : Text;
+    creator_principal_id : Principal;
+    video_file_url : Text;
+    preview_loop_url : Text;
+    timestamp : Int;
+    title : ?Text;
+    hashtags : [Text];
+    explicit_flag : Bool;
+    like_count : Nat;
+    likes_last_hour : Nat;
+    likes_last_6_hours : Nat;
+    likes_last_24_hours : Nat;
+    like_timestamps : [(Principal, Int)];
+  };
+
+  // ─────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────
 
   let albums = Map.empty<Text, Album>();
   let releases = Map.empty<Text, Release>();
@@ -243,7 +343,133 @@ actor {
   let collectibles = Map.empty<Text, Collectible>();
   var nextCollectibleSeq : Nat = 1;
 
-  // --- COMPARATORS ---
+  // Video clips
+  let videoClips = Map.empty<Text, VideoClip>();
+  var nextClipSeq : Nat = 1;
+
+  // ─────────────────────────────────────────────
+  // SEED VIDEO CLIPS
+  // Times are approximate nanoseconds relative to a recent reference point.
+  // Using Int literals offset from a base to simulate clips within last 7 days.
+  // Base ≈ 2026-04-07T00:00:00 UTC in nanoseconds: 1744070400000000000
+  // ─────────────────────────────────────────────
+  let _seedBase : Int = 1_744_070_400_000_000_000; // 2026-04-07 00:00 UTC
+
+  videoClips.add("clip_001", {
+    clip_id = "clip_001";
+    creator_principal_id = Principal.fromText("2vxsx-fae"); // anonymous placeholder
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    timestamp = _seedBase - 518_400_000_000_000; // 6 days ago
+    title = ?"Golden Hour Vibes";
+    hashtags = ["goldenhour", "sunset", "vibes"];
+    explicit_flag = false;
+    like_count = 1842;
+    likes_last_hour = 12;
+    likes_last_6_hours = 87;
+    likes_last_24_hours = 340;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_002", {
+    clip_id = "clip_002";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
+    timestamp = _seedBase - 432_000_000_000_000; // 5 days ago
+    title = ?"City Lights After Midnight";
+    hashtags = ["citylights", "nightlife", "urban"];
+    explicit_flag = false;
+    like_count = 3210;
+    likes_last_hour = 45;
+    likes_last_6_hours = 210;
+    likes_last_24_hours = 870;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_003", {
+    clip_id = "clip_003";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+    timestamp = _seedBase - 345_600_000_000_000; // 4 days ago
+    title = ?"Coastal Drift";
+    hashtags = ["coastaldrift", "ocean", "summer"];
+    explicit_flag = false;
+    like_count = 987;
+    likes_last_hour = 5;
+    likes_last_6_hours = 32;
+    likes_last_24_hours = 150;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_004", {
+    clip_id = "clip_004";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
+    timestamp = _seedBase - 259_200_000_000_000; // 3 days ago
+    title = ?"Mountain Echo";
+    hashtags = ["mountains", "nature", "hiking"];
+    explicit_flag = false;
+    like_count = 2554;
+    likes_last_hour = 30;
+    likes_last_6_hours = 145;
+    likes_last_24_hours = 620;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_005", {
+    clip_id = "clip_005";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
+    timestamp = _seedBase - 172_800_000_000_000; // 2 days ago
+    title = ?"Street Art Dispatch";
+    hashtags = ["streetart", "graffiti", "culture"];
+    explicit_flag = false;
+    like_count = 4102;
+    likes_last_hour = 78;
+    likes_last_6_hours = 380;
+    likes_last_24_hours = 1200;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_006", {
+    clip_id = "clip_006";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+    timestamp = _seedBase - 86_400_000_000_000; // 1 day ago
+    title = ?"Neon Rain";
+    hashtags = ["neon", "rain", "nightcity"];
+    explicit_flag = false;
+    like_count = 1530;
+    likes_last_hour = 20;
+    likes_last_6_hours = 95;
+    likes_last_24_hours = 450;
+    like_timestamps = [];
+  });
+
+  videoClips.add("clip_007", {
+    clip_id = "clip_007";
+    creator_principal_id = Principal.fromText("2vxsx-fae");
+    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
+    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
+    timestamp = _seedBase - 28_800_000_000_000; // 8 hours ago
+    title = ?"Desert Dawn";
+    hashtags = ["desert", "dawn", "travel"];
+    explicit_flag = false;
+    like_count = 720;
+    likes_last_hour = 60;
+    likes_last_6_hours = 200;
+    likes_last_24_hours = 720;
+    like_timestamps = [];
+  });
+
+  // ─────────────────────────────────────────────
+  // COMPARATORS
+  // ─────────────────────────────────────────────
 
   module TcgCategory {
     public func compare(a : TcgCategory, b : TcgCategory) : Order.Order {
@@ -275,16 +501,16 @@ actor {
     };
   };
 
-  // --- HELPER: pseudo-random roll ---
-  // Returns true (~10% chance) for video, false (~90%) for photo
-  // Uses Time.now() + serial number as seed; all arithmetic stays in Nat
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
+
   func rollIsVideo(serialNumber : Nat, salt : Int) : Bool {
     let saltNat : Nat = Int.abs(salt);
     let seed : Nat = (saltNat + serialNumber * 7919) % 10;
     seed == 0;
   };
 
-  // Count how many collectibles of a given type exist for a release
   func countTypeForRelease(releaseId : Text, isVideo : Bool) : Nat {
     var count = 0;
     for (c in collectibles.values()) {
@@ -298,7 +524,39 @@ actor {
     count;
   };
 
-  // --- PACK FUNCTIONS ---
+  // Viral score: like_count*0.6 + last24h*0.25 + last6h*0.1 + lastHour*0.05
+  func viralScore(clip : VideoClip) : Float {
+    clip.like_count.toFloat() * 0.6
+    + clip.likes_last_24_hours.toFloat() * 0.25
+    + clip.likes_last_6_hours.toFloat() * 0.1
+    + clip.likes_last_hour.toFloat() * 0.05;
+  };
+
+  // Recompute rolling like windows from stored timestamps
+  func recomputeWindows(clip : VideoClip) : VideoClip {
+    let now = Time.now();
+    let oneHour : Int = 3_600_000_000_000;
+    let sixHours : Int = 6 * oneHour;
+    let oneDay : Int = 24 * oneHour;
+
+    var h : Nat = 0;
+    var s : Nat = 0;
+    var d : Nat = 0;
+
+    for (entry in clip.like_timestamps.values()) {
+      let ts = entry.1;
+      let age = now - ts;
+      if (age <= oneHour) { h += 1 };
+      if (age <= sixHours) { s += 1 };
+      if (age <= oneDay) { d += 1 };
+    };
+
+    { clip with likes_last_hour = h; likes_last_6_hours = s; likes_last_24_hours = d };
+  };
+
+  // ─────────────────────────────────────────────
+  // PACK FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public shared ({ caller = _ }) func addPack(input : AddPackInput) : async () {
     let pack : Pack = {
@@ -319,46 +577,28 @@ actor {
   };
 
   public shared ({ caller }) func openPack(packId : Text) : async PackOpenResult {
-    // 1. Look up the pack
     switch (packs.get(packId)) {
       case (null) { return #err("Pack not found") };
       case (?pack) {
-        // 2. Validate ownership
         if (pack.ownerPrincipal != caller) {
           return #err("You do not own this pack");
         };
-        // 3. Validate sealed (atomic: check status first)
         switch (pack.status) {
           case (#opened) { return #err("Pack has already been opened") };
           case (#sealed) {
             let now = Time.now();
-
-            // 4. Atomically mark as opened BEFORE rolling outcome
-            let lockedPack : Pack = {
-              pack with
-              status = #opened;
-              openedAt = ?now;
-            };
+            let lockedPack : Pack = { pack with status = #opened; openedAt = ?now };
             packs.add(packId, lockedPack);
 
-            // 5. Roll collectible type: video ~10%, photo ~90%
             let isVideo = rollIsVideo(pack.serialNumber, now);
-
-            // 6. Determine edition number within the type for this release
             let typeCount = countTypeForRelease(pack.releaseId, isVideo);
             let editionNumber = typeCount + 1;
-
-            // 7. Calculate type supply based on packCount
             let videoSupply = pack.packCount / 10;
-            let photoSupply = pack.packCount - videoSupply;
+            let photoSupply = if (pack.packCount >= videoSupply) { pack.packCount - videoSupply } else { 0 };
             let typeSupply = if (isVideo) { videoSupply } else { photoSupply };
-
-            // 8. Build collectible id using dot-notation toText
             let seqStr = nextCollectibleSeq.toText();
             nextCollectibleSeq += 1;
             let collectibleId = "col_" # packId # "_" # seqStr;
-
-            // 9. Build collectible record
             let mediaType : CollectibleMediaType = if (isVideo) { #video } else { #photo };
             let rarity = if (isVideo) { "Rare" } else { "Common" };
             let typeLabel = if (isVideo) { "Video" } else { "Photo" };
@@ -382,12 +622,8 @@ actor {
               openedAt = now;
             };
 
-            // 10. Store collectible
             collectibles.add(collectibleId, collectible);
-
-            // 11. Update pack with collectible id
             packs.add(packId, { lockedPack with collectibleId = ?collectibleId });
-
             return #ok(collectible);
           };
         };
@@ -396,14 +632,14 @@ actor {
   };
 
   public query ({ caller }) func getUserPacks(user : Principal) : async [Pack] {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not _isAdmin(caller)) {
       Runtime.trap("Unauthorized");
     };
     packs.values().toArray().filter(func(p : Pack) : Bool { p.ownerPrincipal == user });
   };
 
   public query ({ caller }) func getUserCollectibles(user : Principal) : async [Collectible] {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not _isAdmin(caller)) {
       Runtime.trap("Unauthorized");
     };
     collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == user });
@@ -417,42 +653,43 @@ actor {
     collectibles.values().toArray().filter(func(c : Collectible) : Bool { c.ownerPrincipal == caller });
   };
 
-  // --- USER PROFILE FUNCTIONS ---
+  // ─────────────────────────────────────────────
+  // USER PROFILE FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (caller.isAnonymous()) {
       Runtime.trap("Unauthorized: Only users can view profiles");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not _isAdmin(caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (caller.isAnonymous()) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
+    _ensureRegistered(caller);
     userProfiles.add(caller, profile);
   };
 
-  // --- COLLECTIBLE MARKETPLACE FUNCTIONS ---
+  // ─────────────────────────────────────────────
+  // COLLECTIBLE MARKETPLACE FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public shared ({ caller }) func addAlbum(album : Album) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can add albums");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can add albums");
     albums.add(album.id, album);
   };
 
   public shared ({ caller }) func addRelease(release : Release) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can add releases");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can add releases");
     releases.add(release.album.id, release);
   };
 
@@ -472,12 +709,12 @@ actor {
     albums.get(id);
   };
 
-  // --- CATEGORY FUNCTIONS ---
+  // ─────────────────────────────────────────────
+  // CATEGORY FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public shared ({ caller }) func createCategory(input : CreateTcgCategoryInput) : async TcgCategory {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can create categories");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can create categories");
     let newCat : TcgCategory = { input with id = nextCategoryId };
     tcgCategories.add(nextCategoryId, newCat);
     nextCategoryId += 1;
@@ -485,32 +722,22 @@ actor {
   };
 
   public shared ({ caller }) func updateCategory(input : UpdateTcgCategoryInput) : async TcgCategory {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can update categories");
-    };
-    if (not tcgCategories.containsKey(input.id)) {
-      Runtime.trap("Category not found");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can update categories");
+    if (not tcgCategories.containsKey(input.id)) Runtime.trap("Category not found");
     let updated : TcgCategory = { input with id = input.id };
     tcgCategories.add(input.id, updated);
     updated;
   };
 
   public shared ({ caller }) func deleteCategory(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can delete categories");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can delete categories");
     tcgCategories.remove(id);
   };
 
   public shared ({ caller }) func toggleCategoryActive(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can toggle categories");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can toggle categories");
     switch (tcgCategories.get(id)) {
-      case (?cat) {
-        tcgCategories.add(id, { cat with isActive = not cat.isActive });
-      };
+      case (?cat) { tcgCategories.add(id, { cat with isActive = not cat.isActive }) };
       case (null) { Runtime.trap("Category not found") };
     };
   };
@@ -520,18 +747,16 @@ actor {
   };
 
   public query ({ caller }) func getAllCategoriesAdmin() : async [TcgCategory] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all categories");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can view all categories");
     tcgCategories.values().toArray().sort();
   };
 
-  // --- TCG SETS CMS FUNCTIONS ---
+  // ─────────────────────────────────────────────
+  // TCG SET FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public shared ({ caller }) func createSet(input : CreateTcgSetInput) : async TcgSet {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can create TCG sets");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can create TCG sets");
     let newSet : TcgSet = { input with id = nextTcgSetId };
     tcgSets.add(nextTcgSetId, newSet);
     nextTcgSetId += 1;
@@ -539,32 +764,22 @@ actor {
   };
 
   public shared ({ caller }) func updateSet(input : UpdateTcgSetInput) : async TcgSet {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can update TCG sets");
-    };
-    if (not tcgSets.containsKey(input.id)) {
-      Runtime.trap("TCG set not found");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can update TCG sets");
+    if (not tcgSets.containsKey(input.id)) Runtime.trap("TCG set not found");
     let updatedSet : TcgSet = { input with id = input.id };
     tcgSets.add(input.id, updatedSet);
     updatedSet;
   };
 
   public shared ({ caller }) func deleteSet(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can delete TCG sets");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can delete TCG sets");
     tcgSets.remove(id);
   };
 
   public shared ({ caller }) func toggleSetActive(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can toggle TCG sets");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can toggle TCG sets");
     switch (tcgSets.get(id)) {
-      case (?set) {
-        tcgSets.add(id, { set with isActive = not set.isActive });
-      };
+      case (?set) { tcgSets.add(id, { set with isActive = not set.isActive }) };
       case (null) { Runtime.trap("TCG set not found") };
     };
   };
@@ -574,9 +789,7 @@ actor {
   };
 
   public query ({ caller }) func getAllSetsAdmin() : async [TcgSet] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can get all sets");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can get all sets");
     tcgSets.values().toArray().sort();
   };
 
@@ -604,12 +817,12 @@ actor {
     tcgSets.values().toArray().filter(func(set) { set.tcgCategory == "pokemon" });
   };
 
-  // --- CARD FUNCTIONS ---
+  // ─────────────────────────────────────────────
+  // CARD FUNCTIONS
+  // ─────────────────────────────────────────────
 
   public shared ({ caller }) func createCard(input : CreateTcgCardInput) : async TcgCard {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can create cards");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can create cards");
     let newCard : TcgCard = { input with id = nextCardId };
     tcgCards.add(nextCardId, newCard);
     nextCardId += 1;
@@ -617,44 +830,30 @@ actor {
   };
 
   public shared ({ caller }) func updateCard(input : UpdateTcgCardInput) : async TcgCard {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can update cards");
-    };
-    if (not tcgCards.containsKey(input.id)) {
-      Runtime.trap("Card not found");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can update cards");
+    if (not tcgCards.containsKey(input.id)) Runtime.trap("Card not found");
     let updated : TcgCard = { input with id = input.id };
     tcgCards.add(input.id, updated);
     updated;
   };
 
   public shared ({ caller }) func deleteCard(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can delete cards");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can delete cards");
     tcgCards.remove(id);
   };
 
   public shared ({ caller }) func toggleCardActive(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can toggle cards");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can toggle cards");
     switch (tcgCards.get(id)) {
-      case (?card) {
-        tcgCards.add(id, { card with isActive = not card.isActive });
-      };
+      case (?card) { tcgCards.add(id, { card with isActive = not card.isActive }) };
       case (null) { Runtime.trap("Card not found") };
     };
   };
 
   public shared ({ caller }) func toggleCardSupported(id : Nat) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can toggle card support");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can toggle card support");
     switch (tcgCards.get(id)) {
-      case (?card) {
-        tcgCards.add(id, { card with isSupported = not card.isSupported });
-      };
+      case (?card) { tcgCards.add(id, { card with isSupported = not card.isSupported }) };
       case (null) { Runtime.trap("Card not found") };
     };
   };
@@ -664,16 +863,132 @@ actor {
   };
 
   public query ({ caller }) func getAllCardsAdmin() : async [TcgCard] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all cards");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can view all cards");
     tcgCards.values().toArray().sort();
   };
 
   public query ({ caller }) func getCardsBySetAdmin(setId : Nat) : async [TcgCard] {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all cards");
-    };
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized: Only admins can view all cards");
     tcgCards.values().toArray().filter(func(c) { c.setId == setId }).sort();
+  };
+
+  // ─────────────────────────────────────────────
+  // VIDEO CLIP FUNCTIONS
+  // ─────────────────────────────────────────────
+
+  /// Create a new video clip post. Returns the generated clip_id.
+  public shared ({ caller }) func createClip(
+    video_file_url : Text,
+    preview_loop_url : Text,
+    title : ?Text,
+    hashtags : [Text],
+    explicit_flag : Bool,
+  ) : async Text {
+    _ensureRegistered(caller);
+    let seq = nextClipSeq.toText();
+    nextClipSeq += 1;
+    let clip_id = "clip_" # seq;
+    let clip : VideoClip = {
+      clip_id;
+      creator_principal_id = caller;
+      video_file_url;
+      preview_loop_url;
+      timestamp = Time.now();
+      title;
+      hashtags;
+      explicit_flag;
+      like_count = 0;
+      likes_last_hour = 0;
+      likes_last_6_hours = 0;
+      likes_last_24_hours = 0;
+      like_timestamps = [];
+    };
+    videoClips.add(clip_id, clip);
+    clip_id;
+  };
+
+  /// Fetch clips sorted by newest, trending (viral score), or top (total likes).
+  /// safeView=true hides explicit clips.
+  public query func getClips(sortBy : VideoClipSort, safeView : Bool) : async [VideoClip] {
+    let all = videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
+      if (safeView and c.explicit_flag) false else true
+    });
+    switch (sortBy) {
+      case (#newest) {
+        all.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          Int.compare(b.timestamp, a.timestamp)
+        });
+      };
+      case (#trending) {
+        all.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          let sa = viralScore(a);
+          let sb = viralScore(b);
+          if (sb > sa) #less
+          else if (sb < sa) #greater
+          else #equal
+        });
+      };
+      case (#top) {
+        all.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          Nat.compare(b.like_count, a.like_count)
+        });
+      };
+    };
+  };
+
+  /// Fetch clips filtered to a specific hashtag.
+  public query func getClipsByHashtag(hashtag : Text) : async [VideoClip] {
+    videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
+      c.hashtags.find(func(h : Text) : Bool { h == hashtag }) != null
+    });
+  };
+
+  /// Like a clip. Each caller can only like once. Returns new like_count.
+  public shared ({ caller }) func likeClip(clip_id : Text) : async LikeResult {
+    switch (videoClips.get(clip_id)) {
+      case (null) { #notFound };
+      case (?clip) {
+        // Check duplicate
+        let alreadyLiked = clip.like_timestamps.find(func(entry : (Principal, Int)) : Bool {
+          Principal.equal(entry.0, caller)
+        }) != null;
+        if (alreadyLiked) return #alreadyLiked;
+
+        let now = Time.now();
+        let newTimestamps = clip.like_timestamps.concat([(caller, now)]);
+        let updated : VideoClip = { clip with
+          like_count = clip.like_count + 1;
+          like_timestamps = newTimestamps;
+        };
+        // Recompute rolling windows with the new timestamp included
+        let withWindows = recomputeWindows(updated);
+        videoClips.add(clip_id, withWindows);
+        #ok(withWindows.like_count);
+      };
+    };
+  };
+
+  /// Get all clips created by a specific principal.
+  public query func getCreatorClips(creator : Principal) : async [VideoClip] {
+    videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
+      Principal.equal(c.creator_principal_id, creator)
+    });
+  };
+
+  /// Get trending hashtags with their post counts, sorted by count descending.
+  public query func getTrendingHashtags() : async [(Text, Nat)] {
+    let tagCounts = Map.empty<Text, Nat>();
+    for (clip in videoClips.values()) {
+      for (tag in clip.hashtags.values()) {
+        let current = switch (tagCounts.get(tag)) {
+          case (?n) n;
+          case null 0;
+        };
+        tagCounts.add(tag, current + 1);
+      };
+    };
+    tagCounts.toArray().sort(func(a : (Text, Nat), b : (Text, Nat)) : Order.Order {
+      Nat.compare(b.1, a.1)
+    });
   };
 };

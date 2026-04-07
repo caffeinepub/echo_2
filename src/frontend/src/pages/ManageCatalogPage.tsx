@@ -1,3 +1,4 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   ArrowLeft,
   Loader2,
@@ -10,7 +11,6 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import { isAdminPrincipal } from "../config/admin";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import type { MockCard, MockCategory, MockSet } from "../store/mockCatalog";
 import {
   addCard,

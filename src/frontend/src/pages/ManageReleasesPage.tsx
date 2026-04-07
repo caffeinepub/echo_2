@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Archive,
   ArrowLeft,
@@ -30,11 +31,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "../ThemeContext";
-import type {
-  CreateTcgSetInput,
-  TcgSet,
-  UpdateTcgSetInput,
-} from "../backend.d";
+import { createActor } from "../backend";
+import type { CreateTcgSetInput, TcgSet, UpdateTcgSetInput } from "../backend";
 import { isAdminPrincipal } from "../config/admin";
 import {
   type AdminRelease,
@@ -43,8 +41,6 @@ import {
   type Visibility,
   useAdminReleases,
 } from "../context/AdminReleasesContext";
-import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 type FilterStatus = "all" | ReleaseStatus;
 
@@ -2588,7 +2584,7 @@ function SetsManagementSection({
   textPrimary: string;
   textSecondary: string;
 }) {
-  const { actor, isFetching } = useActor();
+  const { actor, isFetching } = useActor(createActor);
   const [sets, setSets] = useState<TcgSet[]>([]);
   const [loadingSets, setLoadingSets] = useState(true);
   const [showForm, setShowForm] = useState(false);

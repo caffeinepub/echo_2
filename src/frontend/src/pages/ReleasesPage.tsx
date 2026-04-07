@@ -1,767 +1,834 @@
-import { Heart, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Heart, Volume2, VolumeX, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
-import { useReleasesMarket } from "../context/ReleasesMarketContext";
-import type { MarketRelease } from "../context/ReleasesMarketContext";
-import { useWeeklyRound } from "../context/WeeklyRoundContext";
+import type { FeedSort, VideoClip } from "../context/VideoFeedContext";
+import { useVideoFeed } from "../context/VideoFeedContext";
 
-// ── Types ─────────────────────────────────────────────────────────────────────────────────
-type FeedFilter = "recent" | "trending" | "liked";
+// ─── Creator Profile Sheet ─────────────────────────────────────────────────────
 
-// ── FilterBar ──────────────────────────────────────────────────────────────────────────────────
-interface FilterBarProps {
-  active: FeedFilter;
-  onChange: (f: FeedFilter) => void;
-  accentColor: string;
-}
+function CreatorProfile({
+  clip,
+  allClips,
+  onClose,
+}: {
+  clip: VideoClip;
+  allClips: VideoClip[];
+  onClose: () => void;
+}) {
+  const creatorClips = allClips.filter(
+    (c) => c.creatorName === clip.creatorName,
+  );
+  const totalLikes = creatorClips.reduce((s, c) => s + c.likeCount, 0);
 
-function FilterBar({ active, onChange, accentColor }: FilterBarProps) {
-  const tabs: { id: FeedFilter; label: string }[] = [
-    { id: "recent", label: "Most Recent" },
-    { id: "trending", label: "Trending" },
-    { id: "liked", label: "Most Liked" },
-  ];
+  const initials = clip.creatorName.slice(0, 2).toUpperCase();
+
+  // Close on escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
     <div
       style={{
-        height: 56,
-        background: "#f7f8f6",
+        position: "fixed",
+        inset: 0,
+        zIndex: 300,
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        padding: "0 20px",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
-        flexShrink: 0,
-        zIndex: 10,
+        flexDirection: "column",
+        background: "var(--echo-bg)",
       }}
     >
-      {tabs.map((tab) => {
-        const isActive = active === tab.id;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            data-ocid={`releases.${tab.id}.tab`}
-            onClick={() => onChange(tab.id)}
-            style={{
-              flex: 1,
-              height: 36,
-              border: "none",
-              borderRadius: 30,
-              background: isActive ? accentColor : "transparent",
-              color: isActive ? "#fff" : "#8E8E93",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 13,
-              fontWeight: isActive ? 600 : 500,
-              letterSpacing: "0.02em",
-              cursor: "pointer",
-              opacity: isActive ? 1 : 0.65,
-              transition:
-                "background 0.2s ease, color 0.2s ease, opacity 0.2s ease",
-              WebkitTapHighlightColor: "transparent",
-              outline: "none",
-              whiteSpace: "nowrap",
-              padding: "0 8px",
-            }}
-          >
-            {tab.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Rank badge colors ──────────────────────────────────────────────────────────────────────
-const RANK_GOLD = "#C9A84C";
-const RANK_SILVER = "#A8A8A8";
-const RANK_BRONZE = "#CD7F32";
-
-function getRankColor(rank: number): string {
-  if (rank === 1) return RANK_GOLD;
-  if (rank === 2) return RANK_SILVER;
-  if (rank === 3) return RANK_BRONZE;
-  return "rgba(255,255,255,0.80)";
-}
-
-function getRankGlow(rank: number): string {
-  if (rank === 1) return `0 0 12px ${RANK_GOLD}70`;
-  if (rank === 2) return `0 0 12px ${RANK_SILVER}60`;
-  if (rank === 3) return `0 0 12px ${RANK_BRONZE}60`;
-  return "none";
-}
-
-// ── VideoFeedItem ─────────────────────────────────────────────────────────────────────────────────
-interface VideoFeedItemProps {
-  release: MarketRelease;
-  isLiked: boolean;
-  onLike: (id: string) => void;
-  accentColor: string;
-  isLikeRateLimited: boolean;
-  likeRateLimitSecondsLeft: number;
-  isNewAccount: boolean;
-  canLikeResult: { allowed: boolean; reason?: string };
-  /** Rank in Most Liked view (1-based). undefined when not in liked filter. */
-  likedRank?: number;
-}
-
-function formatMintDate(ts: number): string {
-  return new Date(ts).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function VideoFeedItem({
-  release,
-  isLiked,
-  onLike,
-  accentColor,
-  isLikeRateLimited,
-  likeRateLimitSecondsLeft,
-  isNewAccount,
-  canLikeResult,
-  likedRank,
-}: VideoFeedItemProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [heartAnim, setHeartAnim] = useState(false);
-  const [likeCount, setLikeCount] = useState(release.likes);
-  const [localLiked, setLocalLiked] = useState(isLiked);
-  const [spamBanner, setSpamBanner] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
-
-  const showRankBadge = likedRank !== undefined && likedRank <= 10;
-  const rankColor =
-    likedRank !== undefined
-      ? getRankColor(likedRank)
-      : "rgba(255,255,255,0.80)";
-  const rankGlow = likedRank !== undefined ? getRankGlow(likedRank) : "none";
-
-  // Keep localLiked in sync with parent
-  useEffect(() => {
-    setLocalLiked(isLiked);
-  }, [isLiked]);
-
-  useEffect(() => {
-    setLikeCount(release.likes);
-  }, [release.likes]);
-
-  useEffect(() => {
-    if (!spamBanner) return;
-    const t = setTimeout(() => setSpamBanner(null), 3000);
-    return () => clearTimeout(t);
-  }, [spamBanner]);
-
-  // Auto-play video when visible using IntersectionObserver
-  useEffect(() => {
-    const video = videoRef.current;
-    const container = containerRef.current;
-    if (!video || !container) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            video.play().catch(() => {});
-          } else {
-            video.pause();
-          }
-        }
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
-
-  const handleHeartTap = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      e.stopPropagation();
-
-      if (!canLikeResult.allowed) {
-        if (canLikeResult.reason === "Account too new") {
-          setSpamBanner("Your account is too new to like");
-        } else if (canLikeResult.reason === "Rate limited") {
-          setSpamBanner(`Too many likes. Wait ${likeRateLimitSecondsLeft}s`);
-        }
-        return;
-      }
-
-      setHeartAnim(true);
-      setTimeout(() => setHeartAnim(false), 300);
-
-      if (!localLiked) {
-        setLikeCount((c) => c + 1);
-      } else {
-        setLikeCount((c) => Math.max(0, c - 1));
-      }
-      setLocalLiked((prev) => !prev);
-      onLike(release.id);
-    },
-    [localLiked, onLike, release.id, canLikeResult, likeRateLimitSecondsLeft],
-  );
-
-  const handleVideoTap = useCallback((e: React.MouseEvent) => {
-    // Don't toggle mute if clicking on the like button area
-    const target = e.target as HTMLElement;
-    if (target.closest("[data-heart-area]")) return;
-    setIsMuted((prev) => !prev);
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-    }
-  }, []);
-
-  const mintDateLabel = useMemo(
-    () => formatMintDate(release.listedAt),
-    [release.listedAt],
-  );
-
-  const heartIsDisabled = isLikeRateLimited || isNewAccount;
-  const videoSrc = release.videoUrl || release.previewClipUrl;
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        height: "calc(100dvh - 64px - 68px - 56px)",
-        scrollSnapAlign: "start",
-        flexShrink: 0,
-        padding: "0 16px",
-        display: "flex",
-        alignItems: "center",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* Video card */}
+      {/* Header */}
       <div
         style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          borderRadius: 20,
-          overflow: "hidden",
-          background: "#111",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-          // Gold/silver/bronze glow border for top 3 in Most Liked
-          boxShadow:
-            showRankBadge && likedRank! <= 3
-              ? `0 0 0 2px ${rankColor}60, 0 4px 24px ${rankColor}30`
-              : undefined,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "16px 16px 12px",
+          borderBottom: "1px solid var(--echo-border)",
+          background: "var(--echo-surface)",
         }}
       >
-        {/* Full-coverage mute toggle button (behind all controls) */}
         <button
           type="button"
-          onClick={handleVideoTap}
-          aria-label={isMuted ? "Unmute video" : "Mute video"}
+          onClick={onClose}
+          aria-label="Back"
           style={{
-            position: "absolute",
-            inset: 0,
-            background: "transparent",
+            background: "rgba(0,0,0,0.05)",
             border: "none",
-            cursor: "pointer",
-            zIndex: 1,
-            outline: "none",
-          }}
-        />
-        {/* Video */}
-        {videoSrc ? (
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            loop
-            muted={isMuted}
-            playsInline
-            poster={release.coverImageUrl || undefined}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-            onError={(e) => {
-              // Fallback to poster/cover image on video load error
-              const video = e.currentTarget;
-              video.style.display = "none";
-            }}
-          />
-        ) : (
-          <img
-            src={
-              release.coverImageUrl ||
-              "/assets/generated/minty-pack-wrapper.png"
-            }
-            alt={release.title}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "/assets/generated/minty-pack-wrapper.png";
-            }}
-          />
-        )}
-
-        {/* Bottom gradient */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        {/* Mute/unmute indicator — top left */}
-        <div
-          style={{
-            position: "absolute",
-            top: 12,
-            left: 14,
-            background: "rgba(0,0,0,0.50)",
-            backdropFilter: "blur(4px)",
-            borderRadius: "20px",
-            padding: "5px 10px",
+            borderRadius: "50%",
+            width: 36,
+            height: 36,
             display: "flex",
             alignItems: "center",
-            gap: 4,
-            pointerEvents: "none",
-            zIndex: 2,
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#374151",
+            flexShrink: 0,
           }}
         >
-          {isMuted ? (
-            <VolumeX size={14} color="rgba(255,255,255,0.8)" />
-          ) : (
-            <Volume2 size={14} color="rgba(255,255,255,0.9)" />
-          )}
-          <span
-            style={{
-              color: "rgba(255,255,255,0.75)",
-              fontSize: 10,
-              fontWeight: 600,
-              fontFamily: "'DM Sans', sans-serif",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {isMuted ? "TAP FOR SOUND" : "SOUND ON"}
-          </span>
-        </div>
+          <X size={16} />
+        </button>
+        <span
+          style={{
+            fontSize: 17,
+            fontWeight: 700,
+            color: "var(--echo-text)",
+            fontFamily: "DM Sans, sans-serif",
+          }}
+        >
+          @{clip.creatorName}
+        </span>
+      </div>
 
-        {/* Rank badge — top right (Most Liked top 10 only) */}
-        {showRankBadge && (
-          <div
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              background: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(6px)",
-              borderRadius: "20px",
-              padding: "4px 12px",
-              pointerEvents: "none",
-              zIndex: 3,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              border: `1px solid ${rankColor}50`,
-            }}
-          >
-            <span
-              style={{
-                color: rankColor,
-                fontSize: likedRank! <= 3 ? 15 : 13,
-                fontWeight: 800,
-                fontFamily: "'DM Sans', sans-serif",
-                letterSpacing: "0.02em",
-                textShadow: rankGlow,
-              }}
-            >
-              #{likedRank}
-            </span>
-            {likedRank! <= 3 && (
-              <span style={{ fontSize: 12 }}>
-                {likedRank === 1 ? "🥇" : likedRank === 2 ? "🥈" : "🥉"}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Round badge — only shown when not in liked mode (would conflict with rank badge) */}
-        {!showRankBadge && release.roundId !== undefined && (
-          <div
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              background: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(4px)",
-              borderRadius: "20px",
-              padding: "3px 10px",
-              pointerEvents: "none",
-              zIndex: 2,
-            }}
-          >
-            <span
-              style={{
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: "'DM Sans', sans-serif",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Round #{release.roundId}
-            </span>
-          </div>
-        )}
-
-        {/* Spam banner */}
-        {spamBanner && (
-          <div
-            data-ocid="releases.toast"
-            style={{
-              position: "absolute",
-              bottom: 90,
-              left: 20,
-              right: 20,
-              background: "rgba(220,38,38,0.90)",
-              backdropFilter: "blur(8px)",
-              borderRadius: 12,
-              padding: "8px 14px",
-              zIndex: 10,
-            }}
-          >
-            <span
-              style={{
-                color: "#fff",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-              }}
-            >
-              {spamBanner}
-            </span>
-          </div>
-        )}
-
-        {/* Bottom-left: creator label + mint date */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
+        {/* Avatar + stats */}
         <div
           style={{
-            position: "absolute",
-            bottom: 20,
-            left: 20,
-            pointerEvents: "none",
-            textAlign: "left",
-            maxWidth: "calc(100% - 80px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 24,
           }}
         >
-          {release.title && (
-            <div
-              style={{
-                color: "#fff",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 15,
-                fontWeight: 700,
-                textShadow: "0 1px 4px rgba(0,0,0,0.6)",
-                letterSpacing: "-0.01em",
-                display: "block",
-                marginBottom: 4,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {release.title}
-            </div>
-          )}
           <div
             style={{
-              color: "rgba(255,255,255,0.7)",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 11,
-              fontWeight: 500,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              marginBottom: 2,
-              textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-            }}
-          >
-            Minted by
-          </div>
-          <span
-            style={{
-              color: "#fff",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 14,
-              fontWeight: 600,
-              textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-              letterSpacing: "0.01em",
-              display: "block",
-            }}
-          >
-            @{release.creatorName}
-          </span>
-          <span
-            style={{
-              color: "rgba(255,255,255,0.55)",
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 11,
-              fontWeight: 400,
-              textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-              letterSpacing: "0.01em",
-              display: "block",
-              marginTop: 3,
-            }}
-          >
-            {mintDateLabel}
-          </span>
-        </div>
-
-        {/* Bottom-right: heart + count */}
-        <div
-          data-heart-area="true"
-          style={{ position: "relative", zIndex: 10 }}
-        >
-          <button
-            type="button"
-            onClick={handleHeartTap}
-            aria-label={localLiked ? "Unlike" : "Like"}
-            aria-pressed={localLiked}
-            data-ocid="releases.toggle"
-            style={{
-              position: "absolute",
-              bottom: 16,
-              right: 18,
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: "var(--cycle-accent)",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
-              gap: 4,
-              cursor: heartIsDisabled ? "default" : "pointer",
-              WebkitTapHighlightColor: "transparent",
-              background: "transparent",
-              border: "none",
-              padding: 6,
-              outline: "none",
-              opacity: heartIsDisabled ? 0.4 : 1,
-              transition: "opacity 0.2s ease",
-              pointerEvents: heartIsDisabled && !isNewAccount ? "none" : "auto",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 22,
+              fontWeight: 700,
+              fontFamily: "DM Sans, sans-serif",
             }}
           >
-            <Heart
-              size={26}
-              fill={localLiked ? accentColor : "none"}
-              color={localLiked ? accentColor : "#fff"}
+            {initials}
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div
               style={{
-                transform: heartAnim ? "scale(1.4)" : "scale(1)",
-                transition: "transform 0.15s ease",
-                filter: localLiked
-                  ? `drop-shadow(0 0 6px ${accentColor}80)`
-                  : "drop-shadow(0 1px 3px rgba(0,0,0,0.5))",
-              }}
-            />
-            <span
-              style={{
-                color: "#fff",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 13,
-                fontWeight: 500,
-                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-                lineHeight: 1,
+                fontSize: 18,
+                fontWeight: 700,
+                color: "var(--echo-text)",
+                fontFamily: "DM Sans, sans-serif",
               }}
             >
-              {likeCount.toLocaleString()}
-            </span>
-            {isLikeRateLimited && likeRateLimitSecondsLeft > 0 && (
-              <span
+              @{clip.creatorName}
+            </div>
+            {clip.creatorBio && (
+              <div
                 style={{
-                  color: "rgba(255,100,100,0.9)",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  lineHeight: 1,
-                  textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+                  fontSize: 13,
+                  color: "var(--echo-text-secondary)",
+                  marginTop: 4,
+                  lineHeight: 1.5,
                 }}
               >
-                {likeRateLimitSecondsLeft}s
-              </span>
+                {clip.creatorBio}
+              </div>
             )}
-          </button>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                gap: 20,
+                justifyContent: "center",
+              }}
+            >
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "var(--echo-text)",
+                  }}
+                >
+                  {creatorClips.length}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--echo-text-muted)",
+                    marginTop: 2,
+                  }}
+                >
+                  clips
+                </div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "var(--echo-text)",
+                  }}
+                >
+                  {totalLikes.toLocaleString()}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--echo-text-muted)",
+                    marginTop: 2,
+                  }}
+                >
+                  likes
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Clips grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 4,
+          }}
+        >
+          {creatorClips.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                aspectRatio: "9/16",
+                borderRadius: 8,
+                overflow: "hidden",
+                background: "#e8f0fa",
+                position: "relative",
+              }}
+            >
+              <video
+                src={c.videoUrl}
+                muted
+                loop
+                playsInline
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 4,
+                  left: 4,
+                  background: "rgba(0,0,0,0.55)",
+                  borderRadius: 4,
+                  padding: "2px 5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                }}
+              >
+                <Heart size={9} color="#fff" fill="#fff" />
+                <span style={{ fontSize: 9, color: "#fff", fontWeight: 600 }}>
+                  {c.likeCount.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-// ── ReleasesPage ────────────────────────────────────────────────────────────────────────────────────
-function sortReleases(
-  items: MarketRelease[],
-  filter: FeedFilter,
-): MarketRelease[] {
-  const nowTs = Date.now();
-  const ONE_HOUR = 3600000;
-  const ONE_DAY = 86400000;
+// ─── Video Card ────────────────────────────────────────────────────────────────
 
-  if (filter === "recent") {
-    return [...items].sort((a, b) => b.listedAt - a.listedAt);
+function VideoCard({
+  clip,
+  isActive,
+  onCreatorTap,
+}: {
+  clip: VideoClip;
+  isActive: boolean;
+  onCreatorTap: () => void;
+}) {
+  const { likedIds, toggleLike } = useVideoFeed();
+  const { activeStyle } = usePackStyle();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [muted, setMuted] = useState(true);
+  const [likeAnim, setLikeAnim] = useState(false);
+  const isLiked = likedIds.has(clip.id);
+
+  const accentR = activeStyle.accentR;
+  const accentG = activeStyle.accentG;
+  const accentB = activeStyle.accentB;
+  const accentSolid = `rgb(${accentR},${accentG},${accentB})`;
+  const accentGlow = `rgba(${accentR},${accentG},${accentB},0.30)`;
+
+  // Auto-play when this card is centered
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (isActive) {
+      vid.currentTime = 0;
+      vid.play().catch(() => {});
+    } else {
+      vid.pause();
+    }
+  }, [isActive]);
+
+  // Sync muted state with video element
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (vid) vid.muted = muted;
+  }, [muted]);
+
+  function handleLike(e: React.MouseEvent) {
+    e.stopPropagation();
+    toggleLike(clip.id);
+    if (!isLiked) {
+      setLikeAnim(true);
+      setTimeout(() => setLikeAnim(false), 600);
+    }
   }
 
-  if (filter === "trending") {
-    let candidates = items.filter((r) => r.listedAt >= nowTs - ONE_HOUR);
-    if (candidates.length < 3) {
-      candidates = items.filter((r) => r.listedAt >= nowTs - ONE_DAY);
-    }
-    if (candidates.length < 3) {
-      candidates = [...items];
-    }
-    return [...candidates].sort((a, b) => b.likes - a.likes);
-  }
+  const initials = clip.creatorName.slice(0, 2).toUpperCase();
 
-  // Most Liked
-  return [...items].sort((a, b) => b.likes - a.likes);
+  return (
+    <div
+      data-ocid="releases.feed.card"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        borderRadius: 20,
+        overflow: "hidden",
+        background: "#0d1520",
+        boxShadow: `0 0 20px ${accentGlow}, 0 4px 20px rgba(0,0,0,0.12)`,
+        border: `1px solid rgba(${accentR},${accentG},${accentB},0.18)`,
+        flexShrink: 0,
+      }}
+    >
+      {/* Video */}
+      <video
+        ref={videoRef}
+        src={clip.videoUrl}
+        loop
+        muted={muted}
+        playsInline
+        preload="auto"
+        onClick={() => setMuted((m) => !m)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setMuted((m) => !m);
+        }}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+          cursor: "pointer",
+        }}
+      />
+
+      {/* Explicit blur overlay */}
+      {clip.explicitFlag && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#fff",
+              letterSpacing: "0.04em",
+              background: "rgba(0,0,0,0.6)",
+              borderRadius: 20,
+              padding: "6px 14px",
+            }}
+          >
+            Sensitive Content
+          </span>
+        </div>
+      )}
+
+      {/* Faint glass overlay at bottom */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "40%",
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Mute indicator top-right */}
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          background: "rgba(0,0,0,0.40)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          borderRadius: "50%",
+          width: 32,
+          height: 32,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          pointerEvents: "none",
+        }}
+      >
+        {muted ? (
+          <VolumeX size={14} color="rgba(255,255,255,0.75)" />
+        ) : (
+          <Volume2 size={14} color="rgba(255,255,255,0.9)" />
+        )}
+      </div>
+
+      {/* Bottom overlay bar */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "12px 14px 16px",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 10,
+          pointerEvents: "none",
+        }}
+      >
+        {/* Left: avatar + name */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            flex: 1,
+            minWidth: 0,
+            pointerEvents: "auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreatorTap();
+            }}
+            aria-label={`View ${clip.creatorName}'s profile`}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: accentSolid,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 700,
+              border: "2px solid rgba(255,255,255,0.35)",
+              flexShrink: 0,
+              cursor: "pointer",
+              padding: 0,
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            {initials}
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreatorTap();
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#fff",
+                  fontFamily: "DM Sans, sans-serif",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                @{clip.creatorName}
+              </div>
+            </button>
+            {clip.title && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.75)",
+                  fontFamily: "DM Sans, sans-serif",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  marginTop: 2,
+                  textShadow: "0 1px 3px rgba(0,0,0,0.4)",
+                }}
+              >
+                {clip.title}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: heart + count */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 3,
+            flexShrink: 0,
+            pointerEvents: "auto",
+          }}
+        >
+          <button
+            type="button"
+            data-ocid="releases.feed.like_button"
+            onClick={handleLike}
+            aria-label={isLiked ? "Unlike" : "Like"}
+            style={{
+              background: "rgba(0,0,0,0.35)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              border: "none",
+              borderRadius: "50%",
+              width: 40,
+              height: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transform: likeAnim ? "scale(1.35)" : "scale(1)",
+              transition: "transform 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            }}
+          >
+            <Heart
+              size={20}
+              color={isLiked ? "#ff6b8a" : "rgba(255,255,255,0.9)"}
+              fill={isLiked ? "#ff6b8a" : "transparent"}
+            />
+          </button>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "rgba(255,255,255,0.9)",
+              fontFamily: "DM Sans, sans-serif",
+              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+              lineHeight: 1,
+            }}
+          >
+            {clip.likeCount.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default function ReleasesPage() {
+// ─── Filter Row ────────────────────────────────────────────────────────────────
+
+const SORT_OPTIONS: { id: FeedSort; label: string }[] = [
+  { id: "newest", label: "Newest" },
+  { id: "trending", label: "Trending" },
+  { id: "top", label: "Top" },
+];
+
+// Hashtags that are "hot" (simulate by marking some)
+const HOT_HASHTAGS = new Set([
+  "#goldenhour",
+  "#citylights",
+  "#coastaldrift",
+  "#nightdrive",
+]);
+
+function FilterRow() {
   const {
-    releases,
-    likedIds,
-    likeRelease,
-    isLikeRateLimited,
-    likeRateLimitSecondsLeft,
-    isNewAccount,
-    canLike,
-  } = useReleasesMarket();
+    activeSort,
+    setActiveSort,
+    activeHashtag,
+    setActiveHashtag,
+    trendingHashtags,
+  } = useVideoFeed();
   const { activeStyle } = usePackStyle();
-  const { accentR, accentG, accentB } = activeStyle;
-  const accentColor = `rgb(${accentR},${accentG},${accentB})`;
-  const { roundId: currentRoundId } = useWeeklyRound();
+  const accentR = activeStyle.accentR;
+  const accentG = activeStyle.accentG;
+  const accentB = activeStyle.accentB;
+  const accentSolid = `rgb(${accentR},${accentG},${accentB})`;
+  const accentBg = `rgba(${accentR},${accentG},${accentB},0.12)`;
 
-  const [activeFilter, setActiveFilter] = useState<FeedFilter>("recent");
+  return (
+    <div
+      style={{
+        background: "var(--echo-surface)",
+        borderBottom: "1px solid var(--echo-border)",
+        paddingTop: 10,
+        paddingBottom: 10,
+      }}
+    >
+      {/* Sort pills */}
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          paddingLeft: 16,
+          paddingRight: 16,
+          marginBottom: 10,
+        }}
+      >
+        {SORT_OPTIONS.map(({ id, label }) => {
+          const isActive = activeSort === id;
+          return (
+            <button
+              type="button"
+              key={id}
+              data-ocid={`releases.filter.${id}`}
+              onClick={() => setActiveSort(id)}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 14,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "DM Sans, sans-serif",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                border: isActive ? "none" : "1.5px solid var(--echo-border)",
+                background: isActive ? accentSolid : "transparent",
+                color: isActive ? "#fff" : "var(--echo-text-muted)",
+                letterSpacing: "0.01em",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
-  const feedItems = useMemo(() => {
-    const visible = releases.filter(
-      (r) =>
-        !r.explicit &&
-        !r.isDeletedAfterRound &&
-        (r.roundId === undefined ||
-          r.roundId === currentRoundId ||
-          r.isTop10 ||
-          r.isTop25),
+      {/* Hashtag chips */}
+      <div
+        className="no-scrollbar"
+        style={{
+          display: "flex",
+          gap: 8,
+          overflowX: "auto",
+          paddingLeft: 16,
+          paddingRight: 16,
+        }}
+      >
+        {trendingHashtags.map((tag) => {
+          const isActiveTag = activeHashtag === tag;
+          const isHot = HOT_HASHTAGS.has(tag);
+          return (
+            <button
+              type="button"
+              key={tag}
+              data-ocid="releases.hashtag.chip"
+              onClick={() => setActiveHashtag(isActiveTag ? null : tag)}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: "DM Sans, sans-serif",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+                transition: "all 0.15s ease",
+                border: isActiveTag
+                  ? `1.5px solid ${accentSolid}`
+                  : "1.5px solid var(--echo-border)",
+                background: isActiveTag ? accentBg : "transparent",
+                color: isActiveTag ? accentSolid : "var(--echo-text-secondary)",
+              }}
+            >
+              {tag}
+              {isHot && " 🔥"}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ReleasesPage ──────────────────────────────────────────────────────────────
+
+export function ReleasesPage() {
+  const { filteredClips, clips } = useVideoFeed();
+  const feedRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [profileClip, setProfileClip] = useState<VideoClip | null>(null);
+
+  // IntersectionObserver — detect which card is centered
+  useEffect(() => {
+    const container = feedRef.current;
+    if (!container) return;
+
+    const cards = container.querySelectorAll("[data-feed-card]");
+    if (!cards.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = Number((entry.target as HTMLElement).dataset.feedCard);
+            if (!Number.isNaN(idx)) setActiveIndex(idx);
+          }
+        }
+      },
+      {
+        root: container,
+        threshold: 0.55,
+      },
     );
-    return sortReleases(visible, activeFilter);
-  }, [releases, activeFilter, currentRoundId]);
+
+    for (const card of cards) observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+
+  if (profileClip) {
+    return (
+      <CreatorProfile
+        clip={profileClip}
+        allClips={clips}
+        onClose={() => setProfileClip(null)}
+      />
+    );
+  }
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "calc(100dvh - 64px - 68px)",
-        background: "#f7f8f6",
+        height: "100%",
+        background: "var(--echo-bg)",
         overflow: "hidden",
       }}
     >
-      {/* Sticky filter bar */}
-      <FilterBar
-        active={activeFilter}
-        onChange={setActiveFilter}
-        accentColor={accentColor}
-      />
-
-      {/* Most Liked header banner */}
-      {activeFilter === "liked" && feedItems.length > 0 && (
-        <div
-          style={{
-            padding: "8px 20px 6px",
-            background: "#f7f8f6",
-            borderBottom: "1px solid rgba(0,0,0,0.05)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ fontSize: 14 }}>🏆</span>
-          <span
-            style={{
-              fontFamily: "'DM Sans', sans-serif",
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#8E8E93",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            Top 10 labeled with rank badges
-          </span>
-        </div>
-      )}
+      {/* Sticky filter row */}
+      <FilterRow />
 
       {/* Snap-scroll feed */}
       <div
-        data-ocid="releases.list"
+        ref={feedRef}
+        className="no-scrollbar"
         style={{
           flex: 1,
-          overflowY: "scroll",
+          overflowY: "auto",
           scrollSnapType: "y mandatory",
-          WebkitOverflowScrolling:
-            "touch" as React.CSSProperties["WebkitOverflowScrolling"],
-          display: "flex",
-          flexDirection: "column",
-          scrollbarWidth: "none" as React.CSSProperties["scrollbarWidth"],
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        {feedItems.length === 0 ? (
+        {filteredClips.length === 0 ? (
           <div
-            data-ocid="releases.empty_state"
             style={{
-              height: "100%",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              height: "100%",
+              gap: 12,
+              padding: 24,
             }}
           >
-            <span
+            <div
               style={{
-                color: "#b0b8c1",
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 16,
-                fontWeight: 400,
-                letterSpacing: "0.01em",
+                fontSize: 32,
+                marginBottom: 4,
               }}
             >
-              No moments yet
-            </span>
+              🎬
+            </div>
+            <div
+              style={{
+                fontSize: 17,
+                fontWeight: 700,
+                color: "var(--echo-text)",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              No clips here
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "var(--echo-text-muted)",
+                textAlign: "center",
+              }}
+            >
+              Try a different filter or hashtag
+            </div>
           </div>
         ) : (
-          feedItems.map((release, idx) => (
-            <VideoFeedItem
-              key={release.id}
-              release={release}
-              isLiked={likedIds.has(release.id)}
-              onLike={likeRelease}
-              accentColor={accentColor}
-              isLikeRateLimited={isLikeRateLimited}
-              likeRateLimitSecondsLeft={likeRateLimitSecondsLeft}
-              isNewAccount={isNewAccount}
-              canLikeResult={canLike(release.id)}
-              likedRank={activeFilter === "liked" ? idx + 1 : undefined}
-            />
+          filteredClips.map((clip, idx) => (
+            <div
+              key={clip.id}
+              data-feed-card={idx}
+              style={{
+                scrollSnapAlign: "center",
+                height: "85svh",
+                padding: "10px 12px",
+                boxSizing: "border-box",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <VideoCard
+                clip={clip}
+                isActive={activeIndex === idx}
+                onCreatorTap={() => setProfileClip(clip)}
+              />
+            </div>
           ))
         )}
+
+        {/* Preload next 2 videos off-screen */}
+        {filteredClips.slice(activeIndex + 1, activeIndex + 3).map((clip) => (
+          <link
+            key={`preload-${clip.id}`}
+            rel="preload"
+            as="video"
+            href={clip.videoUrl}
+          />
+        ))}
       </div>
     </div>
   );

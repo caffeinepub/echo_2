@@ -1,0 +1,293 @@
+type VideoClipSort = 
+ variant {
+   newest;
+   top;
+   trending;
+ };
+type VideoClip = 
+ record {
+   clip_id: text;
+   creator_principal_id: principal;
+   explicit_flag: bool;
+   hashtags: vec text;
+   like_count: nat;
+   like_timestamps: vec record {
+                          principal;
+                          int;
+                        };
+   likes_last_24_hours: nat;
+   likes_last_6_hours: nat;
+   likes_last_hour: nat;
+   preview_loop_url: text;
+   timestamp: int;
+   title: opt text;
+   video_file_url: text;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = record {name: text;};
+type UpdateTcgSetInput = 
+ record {
+   cardCount: opt nat;
+   coverImageUrl: text;
+   featured: bool;
+   id: nat;
+   isActive: bool;
+   releaseYear: nat;
+   setCode: text;
+   setName: text;
+   slug: text;
+   sortOrder: nat;
+   tcgCategory: text;
+ };
+type UpdateTcgCategoryInput = 
+ record {
+   id: nat;
+   imageUrl: text;
+   isActive: bool;
+   name: text;
+   slug: text;
+   sortOrder: nat;
+ };
+type UpdateTcgCardInput = 
+ record {
+   cardName: text;
+   cardNumber: text;
+   id: nat;
+   imageUrl: text;
+   isActive: bool;
+   isSupported: bool;
+   rarity: text;
+   setId: nat;
+   sortOrder: nat;
+ };
+type Track = 
+ record {
+   duration: nat;
+   title: text;
+ };
+type TcgSet = 
+ record {
+   cardCount: opt nat;
+   coverImageUrl: text;
+   featured: bool;
+   id: nat;
+   isActive: bool;
+   releaseYear: nat;
+   setCode: text;
+   setName: text;
+   slug: text;
+   sortOrder: nat;
+   tcgCategory: text;
+ };
+type TcgCategory = 
+ record {
+   id: nat;
+   imageUrl: text;
+   isActive: bool;
+   name: text;
+   slug: text;
+   sortOrder: nat;
+ };
+type TcgCard = 
+ record {
+   cardName: text;
+   cardNumber: text;
+   id: nat;
+   imageUrl: text;
+   isActive: bool;
+   isSupported: bool;
+   rarity: text;
+   setId: nat;
+   sortOrder: nat;
+ };
+type Release = 
+ record {
+   album: Album;
+   floorPrice: nat;
+   isActive: bool;
+   lastSoldPrice: nat;
+   mintOpenTime: int;
+   mintedCount: nat;
+   ownersCount: nat;
+ };
+type PackStatus = 
+ variant {
+   opened;
+   sealed;
+ };
+type PackOpenResult = 
+ variant {
+   err: text;
+   ok: Collectible;
+ };
+type Pack = 
+ record {
+   collectibleId: opt text;
+   coverImageUrl: text;
+   createdAt: int;
+   id: text;
+   openedAt: opt int;
+   ownerPrincipal: principal;
+   packCount: nat;
+   releaseId: text;
+   serialNumber: nat;
+   setName: text;
+   status: PackStatus;
+   totalSupply: nat;
+ };
+type MarketListing = 
+ record {
+   editionId: nat;
+   price: nat;
+   seller: principal;
+ };
+type LikeResult = 
+ variant {
+   alreadyLiked;
+   notFound;
+   ok: nat;
+ };
+type CreateTcgSetInput = 
+ record {
+   cardCount: opt nat;
+   coverImageUrl: text;
+   featured: bool;
+   isActive: bool;
+   releaseYear: nat;
+   setCode: text;
+   setName: text;
+   slug: text;
+   sortOrder: nat;
+   tcgCategory: text;
+ };
+type CreateTcgCategoryInput = 
+ record {
+   imageUrl: text;
+   isActive: bool;
+   name: text;
+   slug: text;
+   sortOrder: nat;
+ };
+type CreateTcgCardInput = 
+ record {
+   cardName: text;
+   cardNumber: text;
+   imageUrl: text;
+   isActive: bool;
+   isSupported: bool;
+   rarity: text;
+   setId: nat;
+   sortOrder: nat;
+ };
+type CollectibleMediaType = 
+ variant {
+   photo;
+   video;
+ };
+type Collectible = 
+ record {
+   creator: text;
+   editionNumber: nat;
+   id: text;
+   imageUrl: text;
+   mediaType: CollectibleMediaType;
+   mintDate: text;
+   openedAt: int;
+   ownerPrincipal: principal;
+   packId: text;
+   rarity: text;
+   releaseId: text;
+   setName: text;
+   title: text;
+   totalSupply: nat;
+   typeSupply: nat;
+ };
+type Album = 
+ record {
+   artist: text;
+   collectionName: text;
+   coverImageUrl: text;
+   id: text;
+   title: text;
+   totalSupply: nat;
+   tracklist: vec Track;
+ };
+type AddPackInput = 
+ record {
+   coverImageUrl: text;
+   id: text;
+   ownerPrincipal: principal;
+   packCount: nat;
+   releaseId: text;
+   serialNumber: nat;
+   setName: text;
+   totalSupply: nat;
+ };
+service : {
+  addAlbum: (album: Album) -> ();
+  addPack: (input: AddPackInput) -> ();
+  addRelease: (release: Release) -> ();
+  assignRole: (user: principal, role: UserRole) -> ();
+  createCard: (input: CreateTcgCardInput) -> (TcgCard);
+  createCategory: (input: CreateTcgCategoryInput) -> (TcgCategory);
+  /// Create a new video clip post. Returns the generated clip_id.
+  createClip: (video_file_url: text, preview_loop_url: text, title: opt text,
+   hashtags: vec text, explicit_flag: bool) -> (text);
+  createSet: (input: CreateTcgSetInput) -> (TcgSet);
+  deleteCard: (id: nat) -> ();
+  deleteCategory: (id: nat) -> ();
+  deleteSet: (id: nat) -> ();
+  getAlbumById: (id: text) -> (opt Album) query;
+  getAlbums: () -> (vec Album) query;
+  getAllCardsAdmin: () -> (vec TcgCard) query;
+  getAllCategoriesAdmin: () -> (vec TcgCategory) query;
+  getAllSetsAdmin: () -> (vec TcgSet) query;
+  getCallerCollectibles: () -> (vec Collectible) query;
+  getCallerPacks: () -> (vec Pack) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCardsBySet: (setId: nat) -> (vec TcgCard) query;
+  getCardsBySetAdmin: (setId: nat) -> (vec TcgCard) query;
+  getCategories: () -> (vec TcgCategory) query;
+  /// Fetch clips sorted by newest, trending (viral score), or top (total likes).
+  /// safeView=true hides explicit clips.
+  getClips: (sortBy: VideoClipSort, safeView: bool) -> (vec VideoClip) query;
+  /// Fetch clips filtered to a specific hashtag.
+  getClipsByHashtag: (hashtag: text) -> (vec VideoClip) query;
+  /// Get all clips created by a specific principal.
+  getCreatorClips: (creator: principal) -> (vec VideoClip) query;
+  getFeaturedSets: () -> (vec TcgSet) query;
+  getMarketListings: () -> (vec MarketListing) query;
+  getMyRole: () -> (UserRole) query;
+  getPokemonSets: () -> (vec TcgSet) query;
+  getReleases: () -> (vec Release) query;
+  getSetById: (id: nat) -> (opt TcgSet) query;
+  getSetBySlug: (slug: text) -> (opt TcgSet) query;
+  getSets: () -> (vec TcgSet) query;
+  getSetsByCategory: (categorySlug: text) -> (vec TcgSet) query;
+  /// Get trending hashtags with their post counts, sorted by count descending.
+  getTrendingHashtags: () -> (vec record {
+                                    text;
+                                    nat;
+                                  }) query;
+  getUserCollectibles: (user: principal) -> (vec Collectible) query;
+  getUserPacks: (user: principal) -> (vec Pack) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  isAdmin: () -> (bool) query;
+  /// Like a clip. Each caller can only like once. Returns new like_count.
+  likeClip: (clip_id: text) -> (LikeResult);
+  openPack: (packId: text) -> (PackOpenResult);
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  searchSetsByName: (searchTerm: text) -> (vec TcgSet) query;
+  toggleCardActive: (id: nat) -> ();
+  toggleCardSupported: (id: nat) -> ();
+  toggleCategoryActive: (id: nat) -> ();
+  toggleSetActive: (id: nat) -> ();
+  updateCard: (input: UpdateTcgCardInput) -> (TcgCard);
+  updateCategory: (input: UpdateTcgCategoryInput) -> (TcgCategory);
+  updateSet: (input: UpdateTcgSetInput) -> (TcgSet);
+}

@@ -1,3 +1,4 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   ArrowLeft,
   Camera,
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "../ThemeContext";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 type Grader = "TAG" | "PSA" | null;
 type PaymentRail = "USDC" | "BTC" | "ETH" | "SOL";

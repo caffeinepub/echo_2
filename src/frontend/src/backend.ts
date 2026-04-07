@@ -89,14 +89,30 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface Album {
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
+}
+export interface Collectible {
     id: string;
-    coverImageUrl: string;
+    setName: string;
     title: string;
-    tracklist: Array<Track>;
+    creator: string;
+    typeSupply: bigint;
+    editionNumber: bigint;
+    ownerPrincipal: Principal;
+    mintDate: string;
     totalSupply: bigint;
-    artist: string;
-    collectionName: string;
+    imageUrl: string;
+    releaseId: string;
+    mediaType: CollectibleMediaType;
+    rarity: string;
+    packId: string;
+    openedAt: bigint;
 }
 export interface Track {
     title: string;
@@ -120,27 +136,31 @@ export interface MarketListing {
     editionId: bigint;
     price: bigint;
 }
-export interface UpdateTcgSetInput {
-    id: bigint;
-    setCode: string;
-    coverImageUrl: string;
-    setName: string;
-    featured: boolean;
-    tcgCategory: string;
-    sortOrder: bigint;
-    slug: string;
-    isActive: boolean;
-    cardCount?: bigint;
-    releaseYear: bigint;
+export interface VideoClip {
+    clip_id: string;
+    like_timestamps: Array<[Principal, bigint]>;
+    title?: string;
+    hashtags: Array<string>;
+    preview_loop_url: string;
+    like_count: bigint;
+    likes_last_6_hours: bigint;
+    likes_last_24_hours: bigint;
+    timestamp: bigint;
+    likes_last_hour: bigint;
+    explicit_flag: boolean;
+    creator_principal_id: Principal;
+    video_file_url: string;
 }
-export interface Release {
-    album: Album;
-    floorPrice: bigint;
+export interface UpdateTcgCardInput {
+    id: bigint;
+    cardName: string;
+    sortOrder: bigint;
     isActive: boolean;
-    lastSoldPrice: bigint;
-    mintedCount: bigint;
-    ownersCount: bigint;
-    mintOpenTime: bigint;
+    setId: bigint;
+    imageUrl: string;
+    rarity: string;
+    cardNumber: string;
+    isSupported: boolean;
 }
 export interface CreateTcgSetInput {
     setCode: string;
@@ -154,57 +174,209 @@ export interface CreateTcgSetInput {
     cardCount?: bigint;
     releaseYear: bigint;
 }
+export interface CreateTcgCardInput {
+    cardName: string;
+    sortOrder: bigint;
+    isActive: boolean;
+    setId: bigint;
+    imageUrl: string;
+    rarity: string;
+    cardNumber: string;
+    isSupported: boolean;
+}
+export interface CreateTcgCategoryInput {
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
+}
+export interface Release {
+    album: Album;
+    floorPrice: bigint;
+    isActive: boolean;
+    lastSoldPrice: bigint;
+    mintedCount: bigint;
+    ownersCount: bigint;
+    mintOpenTime: bigint;
+}
+export interface UpdateTcgCategoryInput {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
+}
+export interface UpdateTcgSetInput {
+    id: bigint;
+    setCode: string;
+    coverImageUrl: string;
+    setName: string;
+    featured: boolean;
+    tcgCategory: string;
+    sortOrder: bigint;
+    slug: string;
+    isActive: boolean;
+    cardCount?: bigint;
+    releaseYear: bigint;
+}
+export interface TcgCard {
+    id: bigint;
+    cardName: string;
+    sortOrder: bigint;
+    isActive: boolean;
+    setId: bigint;
+    imageUrl: string;
+    rarity: string;
+    cardNumber: string;
+    isSupported: boolean;
+}
+export interface Album {
+    id: string;
+    coverImageUrl: string;
+    title: string;
+    tracklist: Array<Track>;
+    totalSupply: bigint;
+    artist: string;
+    collectionName: string;
+}
+export interface Pack {
+    id: string;
+    status: PackStatus;
+    coverImageUrl: string;
+    setName: string;
+    ownerPrincipal: Principal;
+    createdAt: bigint;
+    totalSupply: bigint;
+    releaseId: string;
+    serialNumber: bigint;
+    packCount: bigint;
+    collectibleId?: string;
+    openedAt?: bigint;
+}
+export interface AddPackInput {
+    id: string;
+    coverImageUrl: string;
+    setName: string;
+    ownerPrincipal: Principal;
+    totalSupply: bigint;
+    releaseId: string;
+    serialNumber: bigint;
+    packCount: bigint;
+}
+export type LikeResult = {
+    __kind__: "ok";
+    ok: bigint;
+} | {
+    __kind__: "alreadyLiked";
+    alreadyLiked: null;
+} | {
+    __kind__: "notFound";
+    notFound: null;
+};
+export type PackOpenResult = {
+    __kind__: "ok";
+    ok: Collectible;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface UserProfile {
     name: string;
+}
+export enum CollectibleMediaType {
+    video = "video",
+    photo = "photo"
+}
+export enum PackStatus {
+    opened = "opened",
+    sealed = "sealed"
 }
 export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
 }
+export enum VideoClipSort {
+    top = "top",
+    trending = "trending",
+    newest = "newest"
+}
 export interface backendInterface {
-    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addAlbum(album: Album): Promise<void>;
+    addPack(input: AddPackInput): Promise<void>;
     addRelease(release: Release): Promise<void>;
-    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    assignRole(user: Principal, role: UserRole): Promise<void>;
+    createCard(input: CreateTcgCardInput): Promise<TcgCard>;
+    createCategory(input: CreateTcgCategoryInput): Promise<TcgCategory>;
+    /**
+     * / Create a new video clip post. Returns the generated clip_id.
+     */
+    createClip(video_file_url: string, preview_loop_url: string, title: string | null, hashtags: Array<string>, explicit_flag: boolean): Promise<string>;
     createSet(input: CreateTcgSetInput): Promise<TcgSet>;
+    deleteCard(id: bigint): Promise<void>;
+    deleteCategory(id: bigint): Promise<void>;
     deleteSet(id: bigint): Promise<void>;
     getAlbumById(id: string): Promise<Album | null>;
     getAlbums(): Promise<Array<Album>>;
+    getAllCardsAdmin(): Promise<Array<TcgCard>>;
+    getAllCategoriesAdmin(): Promise<Array<TcgCategory>>;
     getAllSetsAdmin(): Promise<Array<TcgSet>>;
+    getCallerCollectibles(): Promise<Array<Collectible>>;
+    getCallerPacks(): Promise<Array<Pack>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
-    getCallerUserRole(): Promise<UserRole>;
+    getCardsBySet(setId: bigint): Promise<Array<TcgCard>>;
+    getCardsBySetAdmin(setId: bigint): Promise<Array<TcgCard>>;
+    getCategories(): Promise<Array<TcgCategory>>;
+    /**
+     * / Fetch clips sorted by newest, trending (viral score), or top (total likes).
+     * / safeView=true hides explicit clips.
+     */
+    getClips(sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
+    /**
+     * / Fetch clips filtered to a specific hashtag.
+     */
+    getClipsByHashtag(hashtag: string): Promise<Array<VideoClip>>;
+    /**
+     * / Get all clips created by a specific principal.
+     */
+    getCreatorClips(creator: Principal): Promise<Array<VideoClip>>;
     getFeaturedSets(): Promise<Array<TcgSet>>;
     getMarketListings(): Promise<Array<MarketListing>>;
+    getMyRole(): Promise<UserRole>;
     getPokemonSets(): Promise<Array<TcgSet>>;
     getReleases(): Promise<Array<Release>>;
     getSetById(id: bigint): Promise<TcgSet | null>;
     getSetBySlug(slug: string): Promise<TcgSet | null>;
     getSets(): Promise<Array<TcgSet>>;
+    getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
+    /**
+     * / Get trending hashtags with their post counts, sorted by count descending.
+     */
+    getTrendingHashtags(): Promise<Array<[string, bigint]>>;
+    getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
+    getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    isCallerAdmin(): Promise<boolean>;
+    isAdmin(): Promise<boolean>;
+    /**
+     * / Like a clip. Each caller can only like once. Returns new like_count.
+     */
+    likeClip(clip_id: string): Promise<LikeResult>;
+    openPack(packId: string): Promise<PackOpenResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
+    toggleCardActive(id: bigint): Promise<void>;
+    toggleCardSupported(id: bigint): Promise<void>;
+    toggleCategoryActive(id: bigint): Promise<void>;
     toggleSetActive(id: bigint): Promise<void>;
+    updateCard(input: UpdateTcgCardInput): Promise<TcgCard>;
+    updateCategory(input: UpdateTcgCategoryInput): Promise<TcgCategory>;
     updateSet(input: UpdateTcgSetInput): Promise<TcgSet>;
 }
-import type { Album as _Album, CreateTcgSetInput as _CreateTcgSetInput, TcgSet as _TcgSet, UpdateTcgSetInput as _UpdateTcgSetInput, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { Album as _Album, Collectible as _Collectible, CollectibleMediaType as _CollectibleMediaType, CreateTcgSetInput as _CreateTcgSetInput, LikeResult as _LikeResult, Pack as _Pack, PackOpenResult as _PackOpenResult, PackStatus as _PackStatus, TcgSet as _TcgSet, UpdateTcgSetInput as _UpdateTcgSetInput, UserProfile as _UserProfile, UserRole as _UserRole, VideoClip as _VideoClip, VideoClipSort as _VideoClipSort } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor._initializeAccessControlWithSecret(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor._initializeAccessControlWithSecret(arg0);
-            return result;
-        }
-    }
     async addAlbum(arg0: Album): Promise<void> {
         if (this.processError) {
             try {
@@ -216,6 +388,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addAlbum(arg0);
+            return result;
+        }
+    }
+    async addPack(arg0: AddPackInput): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addPack(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addPack(arg0);
             return result;
         }
     }
@@ -233,32 +419,102 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+    async assignRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.assignRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.assignRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async createCard(arg0: CreateTcgCardInput): Promise<TcgCard> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createCard(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createCard(arg0);
+            return result;
+        }
+    }
+    async createCategory(arg0: CreateTcgCategoryInput): Promise<TcgCategory> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createCategory(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createCategory(arg0);
+            return result;
+        }
+    }
+    async createClip(arg0: string, arg1: string, arg2: string | null, arg3: Array<string>, arg4: boolean): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createClip(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createClip(arg0, arg1, to_candid_opt_n3(this._uploadFile, this._downloadFile, arg2), arg3, arg4);
             return result;
         }
     }
     async createSet(arg0: CreateTcgSetInput): Promise<TcgSet> {
         if (this.processError) {
             try {
-                const result = await this.actor.createSet(to_candid_CreateTcgSetInput_n3(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_TcgSet_n5(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.createSet(to_candid_CreateTcgSetInput_n4(this._uploadFile, this._downloadFile, arg0));
+                return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createSet(to_candid_CreateTcgSetInput_n3(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_TcgSet_n5(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.createSet(to_candid_CreateTcgSetInput_n4(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async deleteCard(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteCard(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteCard(arg0);
+            return result;
+        }
+    }
+    async deleteCategory(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteCategory(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteCategory(arg0);
+            return result;
         }
     }
     async deleteSet(arg0: bigint): Promise<void> {
@@ -279,14 +535,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAlbumById(arg0);
-                return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAlbumById(arg0);
-            return from_candid_opt_n8(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAlbums(): Promise<Array<Album>> {
@@ -303,60 +559,186 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getAllCardsAdmin(): Promise<Array<TcgCard>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllCardsAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllCardsAdmin();
+            return result;
+        }
+    }
+    async getAllCategoriesAdmin(): Promise<Array<TcgCategory>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllCategoriesAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllCategoriesAdmin();
+            return result;
+        }
+    }
     async getAllSetsAdmin(): Promise<Array<TcgSet>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllSetsAdmin();
-                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllSetsAdmin();
-            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerCollectibles(): Promise<Array<Collectible>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerCollectibles();
+                return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerCollectibles();
+            return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerPacks(): Promise<Array<Pack>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerPacks();
+                return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerPacks();
+            return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getCallerUserRole(): Promise<UserRole> {
+    async getCardsBySet(arg0: bigint): Promise<Array<TcgCard>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n11(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getCardsBySet(arg0);
+                return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n11(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getCardsBySet(arg0);
+            return result;
+        }
+    }
+    async getCardsBySetAdmin(arg0: bigint): Promise<Array<TcgCard>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCardsBySetAdmin(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCardsBySetAdmin(arg0);
+            return result;
+        }
+    }
+    async getCategories(): Promise<Array<TcgCategory>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCategories();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCategories();
+            return result;
+        }
+    }
+    async getClips(arg0: VideoClipSort, arg1: boolean): Promise<Array<VideoClip>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getClips(to_candid_VideoClipSort_n24(this._uploadFile, this._downloadFile, arg0), arg1);
+                return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getClips(to_candid_VideoClipSort_n24(this._uploadFile, this._downloadFile, arg0), arg1);
+            return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getClipsByHashtag(arg0: string): Promise<Array<VideoClip>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getClipsByHashtag(arg0);
+                return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getClipsByHashtag(arg0);
+            return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCreatorClips(arg0: Principal): Promise<Array<VideoClip>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCreatorClips(arg0);
+                return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCreatorClips(arg0);
+            return from_candid_vec_n26(this._uploadFile, this._downloadFile, result);
         }
     }
     async getFeaturedSets(): Promise<Array<TcgSet>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getFeaturedSets();
-                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getFeaturedSets();
-            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMarketListings(): Promise<Array<MarketListing>> {
@@ -373,18 +755,32 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getMyRole(): Promise<UserRole> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyRole();
+                return from_candid_UserRole_n29(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyRole();
+            return from_candid_UserRole_n29(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getPokemonSets(): Promise<Array<TcgSet>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getPokemonSets();
-                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getPokemonSets();
-            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getReleases(): Promise<Array<Release>> {
@@ -405,70 +801,154 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getSetById(arg0);
-                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n31(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSetById(arg0);
-            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n31(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSetBySlug(arg0: string): Promise<TcgSet | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getSetBySlug(arg0);
-                return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n31(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSetBySlug(arg0);
-            return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n31(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSets(): Promise<Array<TcgSet>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getSets();
-                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSets();
-            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+    async getSetsByCategory(arg0: string): Promise<Array<TcgSet>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getSetsByCategory(arg0);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getSetsByCategory(arg0);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
         }
     }
-    async isCallerAdmin(): Promise<boolean> {
+    async getTrendingHashtags(): Promise<Array<[string, bigint]>> {
         if (this.processError) {
             try {
-                const result = await this.actor.isCallerAdmin();
+                const result = await this.actor.getTrendingHashtags();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.isCallerAdmin();
+            const result = await this.actor.getTrendingHashtags();
             return result;
+        }
+    }
+    async getUserCollectibles(arg0: Principal): Promise<Array<Collectible>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserCollectibles(arg0);
+                return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserCollectibles(arg0);
+            return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserPacks(arg0: Principal): Promise<Array<Pack>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserPacks(arg0);
+                return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserPacks(arg0);
+            return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async isAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isAdmin();
+            return result;
+        }
+    }
+    async likeClip(arg0: string): Promise<LikeResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.likeClip(arg0);
+                return from_candid_LikeResult_n32(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.likeClip(arg0);
+            return from_candid_LikeResult_n32(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async openPack(arg0: string): Promise<PackOpenResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.openPack(arg0);
+                return from_candid_PackOpenResult_n34(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.openPack(arg0);
+            return from_candid_PackOpenResult_n34(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
@@ -489,14 +969,56 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.searchSetsByName(arg0);
-                return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.searchSetsByName(arg0);
-            return from_candid_vec_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n10(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async toggleCardActive(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.toggleCardActive(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.toggleCardActive(arg0);
+            return result;
+        }
+    }
+    async toggleCardSupported(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.toggleCardSupported(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.toggleCardSupported(arg0);
+            return result;
+        }
+    }
+    async toggleCategoryActive(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.toggleCategoryActive(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.toggleCategoryActive(arg0);
+            return result;
         }
     }
     async toggleSetActive(arg0: bigint): Promise<void> {
@@ -513,40 +1035,233 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateSet(arg0: UpdateTcgSetInput): Promise<TcgSet> {
+    async updateCard(arg0: UpdateTcgCardInput): Promise<TcgCard> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n14(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_TcgSet_n5(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.updateCard(arg0);
+                return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n14(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_TcgSet_n5(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.updateCard(arg0);
+            return result;
+        }
+    }
+    async updateCategory(arg0: UpdateTcgCategoryInput): Promise<TcgCategory> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateCategory(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateCategory(arg0);
+            return result;
+        }
+    }
+    async updateSet(arg0: UpdateTcgSetInput): Promise<TcgSet> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n36(this._uploadFile, this._downloadFile, arg0));
+                return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n36(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
         }
     }
 }
-function from_candid_TcgSet_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TcgSet): TcgSet {
-    return from_candid_record_n6(_uploadFile, _downloadFile, value);
+function from_candid_CollectibleMediaType_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CollectibleMediaType): CollectibleMediaType {
+    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n12(_uploadFile, _downloadFile, value);
+function from_candid_Collectible_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Collectible): Collectible {
+    return from_candid_record_n13(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_LikeResult_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LikeResult): LikeResult {
+    return from_candid_variant_n33(_uploadFile, _downloadFile, value);
+}
+function from_candid_PackOpenResult_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackOpenResult): PackOpenResult {
+    return from_candid_variant_n35(_uploadFile, _downloadFile, value);
+}
+function from_candid_PackStatus_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackStatus): PackStatus {
+    return from_candid_variant_n20(_uploadFile, _downloadFile, value);
+}
+function from_candid_Pack_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Pack): Pack {
+    return from_candid_record_n18(_uploadFile, _downloadFile, value);
+}
+function from_candid_TcgSet_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _TcgSet): TcgSet {
+    return from_candid_record_n7(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n30(_uploadFile, _downloadFile, value);
+}
+function from_candid_VideoClip_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _VideoClip): VideoClip {
+    return from_candid_record_n28(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_TcgSet]): TcgSet | null {
-    return value.length === 0 ? null : from_candid_TcgSet_n5(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
+function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Album]): Album | null {
+function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_TcgSet]): TcgSet | null {
+    return value.length === 0 ? null : from_candid_TcgSet_n6(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Album]): Album | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    setName: string;
+    title: string;
+    creator: string;
+    typeSupply: bigint;
+    editionNumber: bigint;
+    ownerPrincipal: Principal;
+    mintDate: string;
+    totalSupply: bigint;
+    imageUrl: string;
+    releaseId: string;
+    mediaType: _CollectibleMediaType;
+    rarity: string;
+    packId: string;
+    openedAt: bigint;
+}): {
+    id: string;
+    setName: string;
+    title: string;
+    creator: string;
+    typeSupply: bigint;
+    editionNumber: bigint;
+    ownerPrincipal: Principal;
+    mintDate: string;
+    totalSupply: bigint;
+    imageUrl: string;
+    releaseId: string;
+    mediaType: CollectibleMediaType;
+    rarity: string;
+    packId: string;
+    openedAt: bigint;
+} {
+    return {
+        id: value.id,
+        setName: value.setName,
+        title: value.title,
+        creator: value.creator,
+        typeSupply: value.typeSupply,
+        editionNumber: value.editionNumber,
+        ownerPrincipal: value.ownerPrincipal,
+        mintDate: value.mintDate,
+        totalSupply: value.totalSupply,
+        imageUrl: value.imageUrl,
+        releaseId: value.releaseId,
+        mediaType: from_candid_CollectibleMediaType_n14(_uploadFile, _downloadFile, value.mediaType),
+        rarity: value.rarity,
+        packId: value.packId,
+        openedAt: value.openedAt
+    };
+}
+function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    id: string;
+    status: _PackStatus;
+    coverImageUrl: string;
+    setName: string;
+    ownerPrincipal: Principal;
+    createdAt: bigint;
+    totalSupply: bigint;
+    releaseId: string;
+    serialNumber: bigint;
+    packCount: bigint;
+    collectibleId: [] | [string];
+    openedAt: [] | [bigint];
+}): {
+    id: string;
+    status: PackStatus;
+    coverImageUrl: string;
+    setName: string;
+    ownerPrincipal: Principal;
+    createdAt: bigint;
+    totalSupply: bigint;
+    releaseId: string;
+    serialNumber: bigint;
+    packCount: bigint;
+    collectibleId?: string;
+    openedAt?: bigint;
+} {
+    return {
+        id: value.id,
+        status: from_candid_PackStatus_n19(_uploadFile, _downloadFile, value.status),
+        coverImageUrl: value.coverImageUrl,
+        setName: value.setName,
+        ownerPrincipal: value.ownerPrincipal,
+        createdAt: value.createdAt,
+        totalSupply: value.totalSupply,
+        releaseId: value.releaseId,
+        serialNumber: value.serialNumber,
+        packCount: value.packCount,
+        collectibleId: record_opt_to_undefined(from_candid_opt_n21(_uploadFile, _downloadFile, value.collectibleId)),
+        openedAt: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.openedAt))
+    };
+}
+function from_candid_record_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    clip_id: string;
+    like_timestamps: Array<[Principal, bigint]>;
+    title: [] | [string];
+    hashtags: Array<string>;
+    preview_loop_url: string;
+    like_count: bigint;
+    likes_last_6_hours: bigint;
+    likes_last_24_hours: bigint;
+    timestamp: bigint;
+    likes_last_hour: bigint;
+    explicit_flag: boolean;
+    creator_principal_id: Principal;
+    video_file_url: string;
+}): {
+    clip_id: string;
+    like_timestamps: Array<[Principal, bigint]>;
+    title?: string;
+    hashtags: Array<string>;
+    preview_loop_url: string;
+    like_count: bigint;
+    likes_last_6_hours: bigint;
+    likes_last_24_hours: bigint;
+    timestamp: bigint;
+    likes_last_hour: bigint;
+    explicit_flag: boolean;
+    creator_principal_id: Principal;
+    video_file_url: string;
+} {
+    return {
+        clip_id: value.clip_id,
+        like_timestamps: value.like_timestamps,
+        title: record_opt_to_undefined(from_candid_opt_n21(_uploadFile, _downloadFile, value.title)),
+        hashtags: value.hashtags,
+        preview_loop_url: value.preview_loop_url,
+        like_count: value.like_count,
+        likes_last_6_hours: value.likes_last_6_hours,
+        likes_last_24_hours: value.likes_last_24_hours,
+        timestamp: value.timestamp,
+        likes_last_hour: value.likes_last_hour,
+        explicit_flag: value.explicit_flag,
+        creator_principal_id: value.creator_principal_id,
+        video_file_url: value.video_file_url
+    };
+}
+function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     setCode: string;
     coverImageUrl: string;
@@ -581,11 +1296,25 @@ function from_candid_record_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint
         sortOrder: value.sortOrder,
         slug: value.slug,
         isActive: value.isActive,
-        cardCount: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.cardCount)),
+        cardCount: record_opt_to_undefined(from_candid_opt_n8(_uploadFile, _downloadFile, value.cardCount)),
         releaseYear: value.releaseYear
     };
 }
-function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    video: null;
+} | {
+    photo: null;
+}): CollectibleMediaType {
+    return "video" in value ? CollectibleMediaType.video : "photo" in value ? CollectibleMediaType.photo : value;
+}
+function from_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    opened: null;
+} | {
+    sealed: null;
+}): PackStatus {
+    return "opened" in value ? PackStatus.opened : "sealed" in value ? PackStatus.sealed : value;
+}
+function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -594,19 +1323,80 @@ function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_TcgSet>): Array<TcgSet> {
-    return value.map((x)=>from_candid_TcgSet_n5(_uploadFile, _downloadFile, x));
+function from_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    ok: bigint;
+} | {
+    alreadyLiked: null;
+} | {
+    notFound: null;
+}): {
+    __kind__: "ok";
+    ok: bigint;
+} | {
+    __kind__: "alreadyLiked";
+    alreadyLiked: null;
+} | {
+    __kind__: "notFound";
+    notFound: null;
+} {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: value.ok
+    } : "alreadyLiked" in value ? {
+        __kind__: "alreadyLiked",
+        alreadyLiked: value.alreadyLiked
+    } : "notFound" in value ? {
+        __kind__: "notFound",
+        notFound: value.notFound
+    } : value;
 }
-function to_candid_CreateTcgSetInput_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: CreateTcgSetInput): _CreateTcgSetInput {
-    return to_candid_record_n4(_uploadFile, _downloadFile, value);
+function from_candid_variant_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    ok: _Collectible;
+} | {
+    err: string;
+}): {
+    __kind__: "ok";
+    ok: Collectible;
+} | {
+    __kind__: "err";
+    err: string;
+} {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: from_candid_Collectible_n12(_uploadFile, _downloadFile, value.ok)
+    } : "err" in value ? {
+        __kind__: "err",
+        err: value.err
+    } : value;
 }
-function to_candid_UpdateTcgSetInput_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UpdateTcgSetInput): _UpdateTcgSetInput {
-    return to_candid_record_n15(_uploadFile, _downloadFile, value);
+function from_candid_vec_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_TcgSet>): Array<TcgSet> {
+    return value.map((x)=>from_candid_TcgSet_n6(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Collectible>): Array<Collectible> {
+    return value.map((x)=>from_candid_Collectible_n12(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Pack>): Array<Pack> {
+    return value.map((x)=>from_candid_Pack_n17(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_VideoClip>): Array<VideoClip> {
+    return value.map((x)=>from_candid_VideoClip_n27(_uploadFile, _downloadFile, x));
+}
+function to_candid_CreateTcgSetInput_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: CreateTcgSetInput): _CreateTcgSetInput {
+    return to_candid_record_n5(_uploadFile, _downloadFile, value);
+}
+function to_candid_UpdateTcgSetInput_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UpdateTcgSetInput): _UpdateTcgSetInput {
+    return to_candid_record_n37(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
 }
-function to_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_VideoClipSort_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: VideoClipSort): _VideoClipSort {
+    return to_candid_variant_n25(_uploadFile, _downloadFile, value);
+}
+function to_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+    return value === null ? candid_none() : candid_some(value);
+}
+function to_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     setCode: string;
     coverImageUrl: string;
@@ -645,7 +1435,7 @@ function to_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         releaseYear: value.releaseYear
     };
 }
-function to_candid_record_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     setCode: string;
     coverImageUrl: string;
     setName: string;
@@ -694,6 +1484,21 @@ function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         user: null
     } : value == UserRole.guest ? {
         guest: null
+    } : value;
+}
+function to_candid_variant_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: VideoClipSort): {
+    top: null;
+} | {
+    trending: null;
+} | {
+    newest: null;
+} {
+    return value == VideoClipSort.top ? {
+        top: null
+    } : value == VideoClipSort.trending ? {
+        trending: null
+    } : value == VideoClipSort.newest ? {
+        newest: null
     } : value;
 }
 export interface CreateActorOptions {

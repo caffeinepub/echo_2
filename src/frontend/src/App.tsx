@@ -1,167 +1,194 @@
+import { InternetIdentityProvider } from "@caffeineai/core-infrastructure";
 import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
+import { BottomNav, type Tab } from "./components/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { MintSetConfirmModal } from "./components/MintSetConfirmModal";
 import { SplashScreen } from "./components/SplashScreen";
+import { TopBar } from "./components/TopBar";
+import { AdminReleasesProvider } from "./context/AdminReleasesContext";
+import { AuctionProvider } from "./context/AuctionContext";
+import { CollectionProvider } from "./context/CollectionContext";
+import {
+  MomentDraftProvider,
+  useMomentDraft,
+} from "./context/MomentDraftContext";
+import type { MomentDraft } from "./context/MomentDraftContext";
 import { PackStyleProvider } from "./context/PackStyleContext";
+import {
+  ReleasesMarketProvider,
+  useReleasesMarket,
+} from "./context/ReleasesMarketContext";
+import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
-import { InternetIdentityProvider } from "./hooks/useInternetIdentity";
-import { LeaderboardPage } from "./pages/LeaderboardPage";
-import { PetPage } from "./pages/PetPage";
+import { VideoFeedProvider } from "./context/VideoFeedContext";
+import { WalletProvider } from "./context/WalletContext";
+import { CaptureMomentPage } from "./pages/CaptureMomentPage";
+import { CollectionPage } from "./pages/CollectionPage";
+import { LibraryPage } from "./pages/LibraryPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ReleasesPage } from "./pages/ReleasesPage";
+import { UploadPage } from "./pages/UploadPage";
+import { seedMockData } from "./store/seedMockData";
 
-type ActiveTab = "pet" | "leaderboard";
-
-function TabBar({
-  active,
-  onChange,
-}: {
-  active: ActiveTab;
-  onChange: (tab: ActiveTab) => void;
-}) {
-  return (
-    <nav
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 72,
-        background: "rgba(255, 255, 255, 0.98)",
-        borderTop: "1px solid #d0dfef",
-        boxShadow: "0 -2px 12px rgba(0,0,0,0.06)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-around",
-        zIndex: 100,
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-      }}
-      aria-label="Main navigation"
-    >
-      <button
-        type="button"
-        aria-label="Pet tab"
-        aria-selected={active === "pet"}
-        data-ocid="pet.tab"
-        onClick={() => onChange("pet")}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          padding: "8px 28px",
-          borderRadius: 14,
-          transition: "background 0.18s ease",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 22,
-            lineHeight: 1,
-            filter:
-              active === "pet"
-                ? "drop-shadow(0 0 4px rgba(127, 184, 232, 0.6))"
-                : "none",
-            transform: active === "pet" ? "scale(1.12)" : "scale(1)",
-            transition: "transform 0.2s ease, filter 0.2s ease",
-            display: "block",
-          }}
-        >
-          🐾
-        </span>
-        <span
-          style={{
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            fontSize: 10,
-            fontWeight: active === "pet" ? 700 : 500,
-            letterSpacing: "0.04em",
-            color:
-              active === "pet" ? "#7fb8e8" : "var(--echo-text-muted, #8baec8)",
-            transition: "color 0.2s ease",
-          }}
-        >
-          Pet
-        </span>
-      </button>
-
-      <button
-        type="button"
-        aria-label="Leaderboard tab"
-        aria-selected={active === "leaderboard"}
-        data-ocid="leaderboard.tab"
-        onClick={() => onChange("leaderboard")}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 4,
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          padding: "8px 28px",
-          borderRadius: 14,
-          transition: "background 0.18s ease",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 22,
-            lineHeight: 1,
-            filter:
-              active === "leaderboard"
-                ? "drop-shadow(0 0 4px rgba(127, 184, 232, 0.6))"
-                : "none",
-            transform: active === "leaderboard" ? "scale(1.12)" : "scale(1)",
-            transition: "transform 0.2s ease, filter 0.2s ease",
-            display: "block",
-          }}
-        >
-          🏆
-        </span>
-        <span
-          style={{
-            fontFamily: "'DM Sans', system-ui, sans-serif",
-            fontSize: 10,
-            fontWeight: active === "leaderboard" ? 700 : 500,
-            letterSpacing: "0.04em",
-            color:
-              active === "leaderboard"
-                ? "#7fb8e8"
-                : "var(--echo-text-muted, #8baec8)",
-            transition: "color 0.2s ease",
-          }}
-        >
-          Leaderboard
-        </span>
-      </button>
-    </nav>
-  );
-}
+type View =
+  | { type: "tab"; tab: Tab }
+  | { type: "upload" }
+  | { type: "capture-moment" }
+  | { type: "profile" };
 
 function AppContent() {
+  const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("pet");
+  const [pendingMintDraft, setPendingMintDraft] = useState<MomentDraft | null>(
+    null,
+  );
+  const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
+  const { startDraft } = useMomentDraft();
+  const { addRelease } = useReleasesMarket();
+
+  useEffect(() => {
+    seedMockData();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(timer);
   }, []);
 
+  const activeTab: Tab = view.type === "tab" ? view.tab : "library";
+
+  function handleTabChange(tab: Tab) {
+    setView({ type: "tab", tab });
+  }
+  function handleCaptureMoment() {
+    startDraft();
+    setView({ type: "capture-moment" });
+  }
+
+  function handleMintComplete(draft: MomentDraft) {
+    setPendingMintDraft(draft);
+    setShowMintSetConfirmModal(true);
+    setView({ type: "tab", tab: "library" });
+  }
+
+  function handleMintSetConfirm() {
+    if (!pendingMintDraft) return;
+    const draft = pendingMintDraft;
+    const now = Date.now();
+    const totalPacks = 300;
+    const priceUsd = 10; // bonding curve starting price
+
+    // Simulate $100 minting fee payment
+    console.log("[Minty] Minting fee: $100 deducted");
+
+    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
+    const photoCount = totalPacks - videoCount;
+
+    type SlotPhoto = { type: "photo"; num: number };
+    type SlotVideo = { type: "video"; num: number };
+    type Slot = SlotPhoto | SlotVideo;
+
+    const pool: Slot[] = [
+      ...Array.from({ length: photoCount }, (_, i) => ({
+        type: "photo" as const,
+        num: i + 1,
+      })),
+      ...Array.from({ length: videoCount }, (_, i) => ({
+        type: "video" as const,
+        num: i + 1,
+      })),
+    ];
+
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    const coverImageUrl =
+      draft.photos.length > 0
+        ? draft.photos[0]
+        : "https://images.pokemontcg.io/sv1/025_hires.png";
+
+    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
+
+    const releaseTitle = draft.title?.trim() || "Mint Moment";
+    const releaseCaption =
+      draft.caption?.trim() ||
+      `${photoCount} photos \u00b7 ${videoCount} video \u00b7 ${totalPacks} packs`;
+
+    const release: MarketRelease = {
+      id: `release_mint_${draft.id}`,
+      creatorName: "You",
+      creatorId: "you",
+      coverImageUrl,
+      previewClipUrl: draft.video ?? undefined,
+      title: releaseTitle,
+      caption: releaseCaption,
+      setName: releaseTitle,
+      packsAvailable: totalPacks,
+      packCount: totalPacks,
+      packIds,
+      priceUsd,
+      listedAt: now,
+      // Standardized releases: 1 year expiry (no burn for normal releases)
+      expiresAt: now + 365 * 24 * 3600000,
+      status: "active",
+      collectibleType: "photo",
+      explicit: draft.explicit ?? false,
+      hashtags: draft.hashtags ?? [],
+    };
+
+    addRelease(release);
+    setPendingMintDraft(null);
+    setShowMintSetConfirmModal(false);
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {showSplash && <SplashScreen />}
-      <main
-        style={{
-          minHeight: "100vh",
-          paddingBottom: 72,
+
+      <MintSetConfirmModal
+        open={showMintSetConfirmModal && pendingMintDraft !== null}
+        onClose={() => {
+          setShowMintSetConfirmModal(false);
+          setPendingMintDraft(null);
         }}
-      >
-        {activeTab === "pet" ? <PetPage /> : <LeaderboardPage />}
+        onConfirm={handleMintSetConfirm}
+      />
+
+      <TopBar onProfileClick={() => setView({ type: "profile" })} />
+      <main className="pt-16 pb-[68px] min-h-screen">
+        {view.type === "tab" && view.tab === "library" && (
+          <LibraryPage
+            onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
+            onCaptureMoment={handleCaptureMoment}
+          />
+        )}
+        {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
+        {view.type === "tab" && view.tab === "collection" && (
+          <CollectionPage
+            onGoToLibrary={() => setView({ type: "tab", tab: "library" })}
+          />
+        )}
+        {view.type === "upload" && (
+          <UploadPage
+            onBack={() => setView({ type: "tab", tab: "releases" })}
+          />
+        )}
+        {view.type === "capture-moment" && (
+          <CaptureMomentPage
+            onBack={() => setView({ type: "tab", tab: "library" })}
+            onMintComplete={handleMintComplete}
+          />
+        )}
+        {view.type === "profile" && (
+          <ProfilePage
+            onBack={() => setView({ type: "tab", tab: "library" })}
+          />
+        )}
       </main>
-      <TabBar active={activeTab} onChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 }
@@ -172,9 +199,21 @@ export default function App() {
       <ThemeProvider>
         <PackStyleProvider>
           <InternetIdentityProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
+            <WalletProvider>
+              <AdminReleasesProvider>
+                <MomentDraftProvider>
+                  <CollectionProvider>
+                    <ReleasesMarketProvider>
+                      <AuctionProvider>
+                        <VideoFeedProvider>
+                          <AppContent />
+                        </VideoFeedProvider>
+                      </AuctionProvider>
+                    </ReleasesMarketProvider>
+                  </CollectionProvider>
+                </MomentDraftProvider>
+              </AdminReleasesProvider>
+            </WalletProvider>
           </InternetIdentityProvider>
         </PackStyleProvider>
       </ThemeProvider>

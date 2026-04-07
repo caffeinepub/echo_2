@@ -1,0 +1,24 @@
+{
+  "overview": "Minty is a premium mobile-first app with a vertical snap-scroll video feed on the Releases tab, showing 15-second HD clips with likes, filtering, and creator profiles. The app also includes an interactive Pet tab with an animated mascot and a Leaderboard tab.",
+  "features": [
+    "Vertical snap-scroll video feed with autoplay and looping",
+    "Like system with duplicate prevention and live counts",
+    "Newest/Trending/Following filters + scrollable hashtag chips",
+    "Creator profile pages with clip grids",
+    "Safe View toggle for explicit content filtering",
+    "Interactive pet mascot (old Asian man with cane)",
+    "Water/food/mood status bars",
+    "Top 50 Leaderboard tab"
+  ],
+  "category": "social",
+  "tags": [
+    "video-feed",
+    "social",
+    "nft",
+    "minty",
+    "vine-style",
+    "pet",
+    "leaderboard"
+  ],
+  "last_updated": "2026-04-07T19:45:48.496Z"
+}

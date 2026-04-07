@@ -1,0 +1,252 @@
+// Version: 3.0.0
+type Album__109360601 =
+  {
+    artist : Text;
+    collectionName : Text;
+    coverImageUrl : Text;
+    id : Text;
+    title : Text;
+    totalSupply : Nat;
+    tracklist : [Track__789517712]
+  };
+type CollectibleMediaType__146897638 = {#photo; #video};
+type Collectible__765459835 =
+  {
+    creator : Text;
+    editionNumber : Nat;
+    id : Text;
+    imageUrl : Text;
+    mediaType : CollectibleMediaType__146897638;
+    mintDate : Text;
+    openedAt : Int;
+    ownerPrincipal : Principal;
+    packId : Text;
+    rarity : Text;
+    releaseId : Text;
+    setName : Text;
+    title : Text;
+    totalSupply : Nat;
+    typeSupply : Nat
+  };
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type MarketListing__465293504 =
+  {editionId : Nat; price : Nat; seller : Principal};
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type PackStatus__442425532 = {#opened; #sealed};
+type Pack__364476570 =
+  {
+    collectibleId : ?Text;
+    coverImageUrl : Text;
+    createdAt : Int;
+    id : Text;
+    openedAt : ?Int;
+    ownerPrincipal : Principal;
+    packCount : Nat;
+    releaseId : Text;
+    serialNumber : Nat;
+    setName : Text;
+    status : PackStatus__442425532;
+    totalSupply : Nat
+  };
+type Release__39174606 =
+  {
+    album : Album__109360601;
+    floorPrice : Nat;
+    isActive : Bool;
+    lastSoldPrice : Nat;
+    mintOpenTime : Int;
+    mintedCount : Nat;
+    ownersCount : Nat
+  };
+type TcgCard__159008560 =
+  {
+    cardName : Text;
+    cardNumber : Text;
+    id : Nat;
+    imageUrl : Text;
+    isActive : Bool;
+    isSupported : Bool;
+    rarity : Text;
+    setId : Nat;
+    sortOrder : Nat
+  };
+type TcgCategory__578202536 =
+  {
+    id : Nat;
+    imageUrl : Text;
+    isActive : Bool;
+    name : Text;
+    slug : Text;
+    sortOrder : Nat
+  };
+type TcgSet__1065024180 =
+  {
+    cardCount : ?Nat;
+    coverImageUrl : Text;
+    featured : Bool;
+    id : Nat;
+    isActive : Bool;
+    releaseYear : Nat;
+    setCode : Text;
+    setName : Text;
+    slug : Text;
+    sortOrder : Nat;
+    tcgCategory : Text
+  };
+type Track__789517712 = {duration : Nat; title : Text};
+type UserProfile__491224006 = {name : Text};
+type UserRole__599675725 = {#admin; #guest; #user};
+type UserRole__717262347 = {#admin; #guest; #user};
+type VideoClip__351680056 =
+  {
+    clip_id : Text;
+    creator_principal_id : Principal;
+    explicit_flag : Bool;
+    hashtags : [Text];
+    like_count : Nat;
+    like_timestamps : [(Principal, Int)];
+    likes_last_24_hours : Nat;
+    likes_last_6_hours : Nat;
+    likes_last_hour : Nat;
+    preview_loop_url : Text;
+    timestamp : Int;
+    title : ?Text;
+    video_file_url : Text
+  };
+actor ({
+  stable _seedBase : Int;
+  in accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__717262347>
+    };
+  stable albums :
+    {
+      var root : Node__46230540<Text, Album__109360601>;
+      var size : Nat__490723111
+    };
+  stable collectibles :
+    {
+      var root : Node__46230540<Text, Collectible__765459835>;
+      var size : Nat__490723111
+    };
+  stable marketListings :
+    {
+      var root : Node__46230540<Nat, MarketListing__465293504>;
+      var size : Nat__490723111
+    };
+  stable var nextCardId : Nat;
+  stable var nextCategoryId : Nat;
+  stable var nextClipSeq : Nat;
+  stable var nextCollectibleSeq : Nat;
+  stable var nextTcgSetId : Nat;
+  stable packs :
+    {
+      var root : Node__46230540<Text, Pack__364476570>;
+      var size : Nat__490723111
+    };
+  stable releases :
+    {
+      var root : Node__46230540<Text, Release__39174606>;
+      var size : Nat__490723111
+    };
+  stable tcgCards :
+    {
+      var root : Node__46230540<Nat, TcgCard__159008560>;
+      var size : Nat__490723111
+    };
+  stable tcgCategories :
+    {
+      var root : Node__46230540<Nat, TcgCategory__578202536>;
+      var size : Nat__490723111
+    };
+  stable tcgSets :
+    {
+      var root : Node__46230540<Nat, TcgSet__1065024180>;
+      var size : Nat__490723111
+    };
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable videoClips :
+    {
+      var root : Node__46230540<Text, VideoClip__351680056>;
+      var size : Nat__490723111
+    }
+}, {
+  stable _seedBase : Int;
+  stable albums :
+    {
+      var root : Node__46230540<Text, Album__109360601>;
+      var size : Nat__490723111
+    };
+  stable collectibles :
+    {
+      var root : Node__46230540<Text, Collectible__765459835>;
+      var size : Nat__490723111
+    };
+  stable var firstAdminSet : Bool;
+  stable marketListings :
+    {
+      var root : Node__46230540<Nat, MarketListing__465293504>;
+      var size : Nat__490723111
+    };
+  stable var nextCardId : Nat;
+  stable var nextCategoryId : Nat;
+  stable var nextClipSeq : Nat;
+  stable var nextCollectibleSeq : Nat;
+  stable var nextTcgSetId : Nat;
+  stable packs :
+    {
+      var root : Node__46230540<Text, Pack__364476570>;
+      var size : Nat__490723111
+    };
+  stable releases :
+    {
+      var root : Node__46230540<Text, Release__39174606>;
+      var size : Nat__490723111
+    };
+  stable roleMap :
+    {
+      var root : Node__46230540<Principal, UserRole__599675725>;
+      var size : Nat__490723111
+    };
+  stable tcgCards :
+    {
+      var root : Node__46230540<Nat, TcgCard__159008560>;
+      var size : Nat__490723111
+    };
+  stable tcgCategories :
+    {
+      var root : Node__46230540<Nat, TcgCategory__578202536>;
+      var size : Nat__490723111
+    };
+  stable tcgSets :
+    {
+      var root : Node__46230540<Nat, TcgSet__1065024180>;
+      var size : Nat__490723111
+    };
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable videoClips :
+    {
+      var root : Node__46230540<Text, VideoClip__351680056>;
+      var size : Nat__490723111
+    }
+}) ;

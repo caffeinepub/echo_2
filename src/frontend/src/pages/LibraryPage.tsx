@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { MintMomentModal } from "../components/MintMomentModal";
 import { useMomentDraft } from "../context/MomentDraftContext";
 import { usePackStyle } from "../context/PackStyleContext";
-import { useWeeklyRound } from "../context/WeeklyRoundContext";
 
 interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
@@ -78,7 +77,7 @@ function PackCard({
   }, []);
 
   return (
-    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "440px" }}>
+    <div style={{ ...CARD_OUTER_STYLE, height: "100%", minHeight: "350px" }}>
       {/* Background layer */}
       <div
         style={{
@@ -120,7 +119,7 @@ function PackCard({
         style={{
           position: "relative",
           zIndex: 3,
-          padding: "28px 24px 32px",
+          padding: "36px 32px 40px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -149,7 +148,7 @@ function PackCard({
             width: "32px",
             height: "1px",
             background: "rgba(0,0,0,0.10)",
-            margin: "10px 0",
+            margin: "12px 0",
           }}
         />
 
@@ -164,19 +163,18 @@ function PackCard({
             transform: mounted ? "translateY(0)" : "translateY(16px)",
             transition: "opacity 0.6s ease, transform 0.6s ease",
             width: "100%",
-            paddingBottom: "8px",
           }}
         >
           <img
             src={WRAPPER_IMG}
             alt="Minty Pack"
             style={{
-              maxHeight: "300px",
+              maxHeight: "190px",
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
               filter:
-                "drop-shadow(0 12px 32px rgba(0,0,0,0.20)) drop-shadow(0 3px 8px rgba(0,0,0,0.12))",
+                "drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.10))",
             }}
           />
         </div>
@@ -187,8 +185,8 @@ function PackCard({
             fontSize: "28px",
             fontWeight: 600,
             color: "#111111",
-            margin: "12px 0 0",
-            marginBottom: "16px",
+            margin: "16px 0 0",
+            marginBottom: "20px",
             textAlign: "center",
             textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontFamily: "var(--font-ui)",
@@ -310,11 +308,11 @@ function RevealedCard({
   );
 }
 
-// ── Locked state shown when a draft is in progress ───────────────────────────────
+// ── Locked state shown when a draft is in progress ───────────────────────────
 function DraftLockedState({
   onFinish,
   accentRgb,
-  accentColor: _accentColor,
+  accentColor,
   accentOklch,
   accentOklchLight,
 }: {
@@ -328,8 +326,8 @@ function DraftLockedState({
   const [isActive, setIsActive] = useState(false);
   const { activeDraft } = useMomentDraft();
 
-  const hasVideo =
-    activeDraft?.videoUrl !== null && activeDraft?.videoUrl !== undefined;
+  const photoCount = activeDraft?.photos.length ?? 0;
+  const hasVideo = activeDraft?.video !== null;
 
   const mintButtonStyle = {
     ...BUTTON_BASE,
@@ -418,11 +416,20 @@ function DraftLockedState({
           <span
             style={{
               fontSize: "12px",
-              color: "#7a9a8a",
-              fontWeight: 400,
+              color: photoCount === 9 ? accentColor : "#7a9a8a",
+              fontWeight: photoCount === 9 ? 600 : 400,
             }}
           >
-            {hasVideo ? "1 video recorded" : "No video yet"}
+            {photoCount}/9 photos
+          </span>
+          <span
+            style={{
+              fontSize: "12px",
+              color: hasVideo ? accentColor : "#7a9a8a",
+              fontWeight: hasVideo ? 600 : 400,
+            }}
+          >
+            {hasVideo ? "1" : "0"}/1 video
           </span>
         </div>
       </div>
@@ -447,93 +454,6 @@ function DraftLockedState({
   );
 }
 
-function WeeklyCountdownBanner() {
-  const { timeRemaining, roundId } = useWeeklyRound();
-  const { activeStyle } = usePackStyle();
-  const accentRgb = `${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB}`;
-  const accentColor = `oklch(${activeStyle.accentOklch})`;
-
-  const { days, hours, minutes, seconds } = timeRemaining;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const countdownStr = `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
-
-  return (
-    <div
-      data-ocid="library.countdown_panel"
-      style={{
-        width: "280px",
-        background: `rgba(${accentRgb}, 0.06)`,
-        border: `1px solid rgba(${accentRgb}, 0.18)`,
-        borderRadius: "16px",
-        padding: "16px 20px",
-        marginBottom: "24px",
-        textAlign: "center",
-      }}
-    >
-      {/* Round label */}
-      <div
-        style={{
-          fontSize: "10px",
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          fontWeight: 600,
-          color: `rgba(${accentRgb}, 0.65)`,
-          marginBottom: "4px",
-          fontFamily: "var(--font-ui)",
-        }}
-      >
-        Round #{roundId} · Weekly Round ends in
-      </div>
-
-      {/* Big countdown */}
-      <div
-        style={{
-          fontSize: "26px",
-          fontWeight: 800,
-          letterSpacing: "-0.02em",
-          color: accentColor,
-          fontFamily: "var(--font-ui)",
-          lineHeight: 1.1,
-          marginBottom: "12px",
-        }}
-      >
-        {countdownStr}
-      </div>
-
-      {/* Divider */}
-      <div
-        style={{
-          height: "1px",
-          background: `rgba(${accentRgb}, 0.12)`,
-          marginBottom: "12px",
-        }}
-      />
-
-      {/* Rules */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        {[
-          "Mint unlimited photo NFTs this round",
-          "Each mint costs $1 in BTC",
-          "Only the Top 25 most liked survive",
-        ].map((line) => (
-          <p
-            key={line}
-            style={{
-              margin: 0,
-              fontSize: "12px",
-              color: `rgba(${accentRgb}, 0.70)`,
-              fontFamily: "var(--font-ui)",
-              lineHeight: 1.4,
-            }}
-          >
-            {line}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function LibraryPage({
   onBrowseReleases,
   onCaptureMoment,
@@ -555,7 +475,7 @@ export function LibraryPage({
   const accentText = `rgba(${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB},0.85)`;
   const accentGlow = `rgba(${accentRgb},0.28)`;
 
-  // Inject keyframes once
+  // Inject keyframes once — uses CSS custom property var(--cycle-accent-rgb) for the glow
   useEffect(() => {
     const id = "library-keyframes-style";
     if (document.getElementById(id)) return;
@@ -566,10 +486,13 @@ export function LibraryPage({
         0%, 100% { opacity: 0.5; transform: scale(1); }
         50%       { opacity: 1;   transform: scale(1.25); }
       }
+      /* ── Pack preview image animations ─────────────────────────────── */
+      /* Gentle float: 6px vertical travel over 5s */
       @keyframes packPreviewFloat {
         0%, 100% { transform: translateY(0px) scale(1); }
         50%       { transform: translateY(-5px) scale(1.012); }
       }
+      /* Soft glow pulse on the wrapper — uses CSS custom property set by PackStyleContext */
       @keyframes packPreviewGlow {
         0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.9),
                                0 6px 24px rgba(0,0,0,0.08),
@@ -647,8 +570,10 @@ export function LibraryPage({
     border: `1px solid rgba(${accentRgb},0.22)`,
   };
 
+  // Determine if we show the flippable pack or the revealed card / draft locked
   const showFlippable = !hasDraft && packState === "idle";
 
+  // Suppress unused variable warning — accentGlow is available for future use
   void accentGlow;
   void accentText;
 
@@ -697,9 +622,6 @@ export function LibraryPage({
           zIndex: 1,
         }}
       >
-        {/* Weekly Round countdown banner */}
-        <WeeklyCountdownBanner />
-
         <AnimatePresence mode="wait">
           {/* LOCKED STATE — draft in progress */}
           {hasDraft && packState === "idle" && (
@@ -715,6 +637,7 @@ export function LibraryPage({
                 alignItems: "center",
               }}
             >
+              {/* Show pack card with first captured photo as preview */}
               <PackCard accentRgb={accentRgb} accentText="" />
               <div style={{ height: "20px" }} />
               <DraftLockedState
@@ -742,6 +665,17 @@ export function LibraryPage({
               }}
             >
               <PackCard accentRgb={accentRgb} accentText="" />
+
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: `rgba(${accentRgb},0.55)`,
+                  marginTop: "16px",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Supply remaining: 50,000
+              </p>
 
               <button
                 type="button"
@@ -773,7 +707,7 @@ export function LibraryPage({
               transition={{ duration: 0.25 }}
               style={{
                 width: "280px",
-                height: "440px",
+                height: "373px",
                 background: "var(--echo-surface, #FCFCFC)",
                 borderRadius: "20px",
               }}

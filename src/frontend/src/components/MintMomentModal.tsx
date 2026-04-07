@@ -12,6 +12,31 @@ interface MintMomentModalProps {
 const THUMB_DIAMETER = 48;
 const THUMB_RADIUS = THUMB_DIAMETER / 2;
 
+// Quadratic bonding curve: same formula used in Releases
+function bondingCurvePrice(
+  packsSold: number,
+  totalPacks = 300,
+  basePrice = 10,
+  maxPrice = 60,
+): number {
+  return basePrice + (packsSold / totalPacks) ** 2 * (maxPrice - basePrice);
+}
+
+function estimateRevenue(packsSold: number): number {
+  let total = 0;
+  for (let i = 0; i < packsSold; i++) {
+    total += bondingCurvePrice(i);
+  }
+  // Creator keeps 95%
+  return total * 0.95;
+}
+
+const EARNINGS_SCENARIOS = [
+  { packs: 25, label: "25 packs sold" },
+  { packs: 100, label: "100 packs sold" },
+  { packs: 300, label: "300 packs sold" },
+];
+
 function SlideToMint({
   onComplete,
   accentRgb,
@@ -343,10 +368,17 @@ export function MintMomentModal({
   ];
 
   const STEPS = [
-    "Record a 15-second video (audio included)",
-    "Add a title and caption",
-    "Slide to pay $1 in BTC",
-    "Video NFT is minted and posted to Releases",
+    "Capture 9 photos",
+    "Record 1 video",
+    "Mint the moment into sealed packs",
+  ];
+
+  // Bonding curve milestones
+  const milestones = [
+    { pack: 1, price: bondingCurvePrice(0) },
+    { pack: 100, price: bondingCurvePrice(100) },
+    { pack: 200, price: bondingCurvePrice(200) },
+    { pack: 300, price: bondingCurvePrice(299) },
   ];
 
   return (
@@ -461,8 +493,8 @@ export function MintMomentModal({
                     fontFamily: "var(--font-ui)",
                   }}
                 >
-                  Record a 15-second video NFT and compete for likes during the
-                  weekly round.
+                  Create a sealed collectible moment and distribute it through
+                  limited packs.
                 </p>
               </div>
 
@@ -530,6 +562,82 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
+              {/* ── Pack Structure ────────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Pack Structure</span>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.45)",
+                    margin: "0 0 12px",
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  Each Mint a Moment creates:
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  {[
+                    { label: "300 total packs", accent: false },
+                    { label: "299 photo collectibles", accent: false },
+                    { label: "1 rare video collectible", accent: true },
+                  ].map(({ label, accent }) => (
+                    <div
+                      key={label}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          background: accent
+                            ? accentColor
+                            : "rgba(255,255,255,0.30)",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "13px",
+                          color: accent
+                            ? accentColorDark
+                            : "rgba(255,255,255,0.75)",
+                          fontWeight: accent ? 600 : 400,
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        {label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.35)",
+                    margin: "12px 0 0",
+                    lineHeight: 1.55,
+                    fontStyle: "italic",
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  The rare video appears only once across the 300 pack supply.
+                </p>
+              </div>
+
+              <hr style={DIVIDER} />
+
               {/* ── Mint Cost ─────────────────────────────────────────────── */}
               <div style={{ marginBottom: 4 }}>
                 <span style={SECTION_LABEL}>Mint Cost</span>
@@ -585,7 +693,7 @@ export function MintMomentModal({
                           fontFamily: "var(--font-ui)",
                         }}
                       >
-                        $1
+                        $10
                       </span>
                       <span
                         style={{
@@ -604,7 +712,7 @@ export function MintMomentModal({
                         fontFamily: "var(--font-ui)",
                       }}
                     >
-                      ≈ {usdToBtc(1)} BTC
+                      ≈ {usdToBtc(10)} BTC
                     </span>
                   </div>
                   <div style={{ marginLeft: "auto" }}>
@@ -634,49 +742,72 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Weekly Round Rules ────────────────────────────────────── */}
+              {/* ── Bonding Curve ─────────────────────────────────────────── */}
               <div style={{ marginBottom: 4 }}>
-                <span style={SECTION_LABEL}>Weekly Round Rules</span>
-                <div
+                <span style={SECTION_LABEL}>Pack Pricing</span>
+                <p
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.65)",
+                    margin: "0 0 4px",
+                    lineHeight: 1.55,
+                    fontFamily: "var(--font-ui)",
                   }}
                 >
-                  {[
-                    "Unlimited mints per round",
-                    "Only the Top 25 most liked NFTs survive",
-                    "All other NFTs are deleted when the round ends",
-                  ].map((rule) => (
+                  Pack pricing uses a bonding curve — early packs cost less,
+                  later packs cost more as demand increases.
+                </p>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "rgba(255,255,255,0.38)",
+                    margin: "0 0 14px",
+                    lineHeight: 1.5,
+                    fontFamily: "var(--font-ui)",
+                  }}
+                >
+                  Starting at $10, price increases gradually toward $60 as all
+                  300 packs are purchased.
+                </p>
+                {/* Milestones */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                    gap: "6px",
+                  }}
+                >
+                  {milestones.map(({ pack, price }) => (
                     <div
-                      key={rule}
+                      key={pack}
                       style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "8px",
+                        padding: "10px 8px",
+                        borderRadius: "10px",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        textAlign: "center",
                       }}
                     >
                       <div
                         style={{
-                          flexShrink: 0,
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background: accentColor,
-                          marginTop: 6,
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: "13px",
-                          color: "rgba(255,255,255,0.75)",
-                          lineHeight: 1.5,
+                          fontSize: "10px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "4px",
                           fontFamily: "var(--font-ui)",
                         }}
                       >
-                        {rule}
-                      </span>
+                        Pack {pack}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          color: `rgba(${accentRgb},0.90)`,
+                          fontFamily: "var(--font-ui)",
+                        }}
+                      >
+                        ${price.toFixed(2)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -684,37 +815,213 @@ export function MintMomentModal({
 
               <hr style={DIVIDER} />
 
-              {/* ── Survival Info ─────────────────────────────────────────── */}
-              <div
-                style={{
-                  marginBottom: 4,
-                  padding: "14px 16px",
-                  borderRadius: "14px",
-                  background: `rgba(${accentRgb},0.06)`,
-                  border: `1px solid rgba(${accentRgb},0.18)`,
-                }}
-              >
-                <p
+              {/* ── Creator Earnings ──────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Creator Earnings</span>
+                <div
                   style={{
-                    fontSize: "13px",
-                    color: "rgba(255,255,255,0.70)",
-                    margin: 0,
-                    lineHeight: 1.6,
-                    fontFamily: "var(--font-ui)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "10px",
                   }}
                 >
-                  Your NFT competes for likes during the 7-day round.{" "}
-                  <span
+                  {/* Pack sales */}
+                  <div
                     style={{
-                      color: accentColorDark,
-                      fontWeight: 600,
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
-                    At the end of each round, only the top 25 most liked NFTs
-                    remain permanently.
-                  </span>{" "}
-                  All others are removed.
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(255,255,255,0.75)",
+                        margin: "0 0 4px",
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      <span style={{ color: accentColorDark, fontWeight: 600 }}>
+                        95%
+                      </span>{" "}
+                      of pack sales go directly to you.
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "rgba(255,255,255,0.38)",
+                        margin: 0,
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      Minty receives 5%. Proceeds are deposited automatically to
+                      your Minty wallet in BTC.
+                    </p>
+                  </div>
+                  {/* Video resale */}
+                  <div
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: "12px",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(255,255,255,0.75)",
+                        margin: "0 0 4px",
+                        lineHeight: 1.5,
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      When the rare video NFT is resold:
+                    </p>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          background: `rgba(${accentRgb},0.08)`,
+                          border: `1px solid rgba(${accentRgb},0.18)`,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: 800,
+                            color: accentColor,
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          4%
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "rgba(255,255,255,0.45)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          to you
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          flex: 1,
+                          padding: "8px 10px",
+                          borderRadius: "8px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "16px",
+                            fontWeight: 800,
+                            color: "rgba(255,255,255,0.55)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          1%
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            color: "rgba(255,255,255,0.30)",
+                            fontFamily: "var(--font-ui)",
+                          }}
+                        >
+                          to Minty
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <hr style={DIVIDER} />
+
+              {/* ── Earnings Estimator ────────────────────────────────────── */}
+              <div style={{ marginBottom: 4 }}>
+                <span style={SECTION_LABEL}>Earnings Estimator</span>
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.35)",
+                    margin: "0 0 12px",
+                    fontFamily: "var(--font-ui)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Estimated creator proceeds deposited to your Minty wallet
                 </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                  }}
+                >
+                  {EARNINGS_SCENARIOS.map(({ packs, label }) => {
+                    const usd = estimateRevenue(packs);
+                    const btc = btcPrice ? (usd / btcPrice).toFixed(6) : "...";
+                    return (
+                      <div
+                        key={packs}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                          gap: "8px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.45)",
+                            fontFamily: "var(--font-ui)",
+                            minWidth: "90px",
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <div style={{ textAlign: "right" }}>
+                          <div
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: "rgba(255,255,255,0.85)",
+                              fontFamily: "var(--font-ui)",
+                            }}
+                          >
+                            ≈ ${usd.toFixed(0)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: `rgba(${accentRgb},0.70)`,
+                              fontFamily: "var(--font-ui)",
+                            }}
+                          >
+                            ≈ {btc} BTC
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <hr style={DIVIDER} />
