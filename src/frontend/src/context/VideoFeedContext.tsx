@@ -1,3 +1,4 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import {
   createContext,
   useCallback,
@@ -6,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { VideoClipSort, createActor } from "../backend";
+import type { VideoClip as BackendVideoClip } from "../backend";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,157 +41,45 @@ interface VideoFeedContextValue {
   trendingHashtags: string[];
   safeView: boolean;
   setSafeView: (v: boolean) => void;
+  /** Optimistically add a newly minted clip — it will also appear after the next backend refresh */
   addClipToFeed: (clip: VideoClip) => void;
+  isLoading: boolean;
 }
 
-// ─── Seed data ────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const NOW = Date.now();
 const H = 3_600_000;
 
-function viralScore(clip: {
+function computeViralScore(c: {
   likeCount: number;
   timestamp: number;
 }): number {
-  const age = NOW - clip.timestamp;
-  const lastHour = age < H ? clip.likeCount * 0.05 : 0;
-  const last6h = age < 6 * H ? clip.likeCount * 0.1 : 0;
-  const last24h = age < 24 * H ? clip.likeCount * 0.25 : 0;
-  return clip.likeCount * 0.6 + last24h + last6h + lastHour;
+  const age = NOW - c.timestamp;
+  const lastHour = age < H ? c.likeCount * 0.05 : 0;
+  const last6h = age < 6 * H ? c.likeCount * 0.1 : 0;
+  const last24h = age < 24 * H ? c.likeCount * 0.25 : 0;
+  return c.likeCount * 0.6 + last24h + last6h + lastHour;
 }
 
-const SEED_CLIPS: VideoClip[] = [
-  {
-    id: "clip_1",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    creatorName: "auroraskies",
+function mapBackendClip(bc: BackendVideoClip): VideoClip {
+  const likeCount = Number(bc.like_count);
+  const timestamp = Number(bc.timestamp);
+  return {
+    id: bc.clip_id,
+    videoUrl: bc.video_file_url,
+    previewUrl: bc.preview_loop_url || bc.video_file_url,
+    creatorName: bc.creator_principal_id.toString().slice(0, 8),
     creatorAvatar: null,
-    creatorBio: "Chasing light and color wherever it hides 🌅",
-    title: "Golden Hour Cascade",
-    hashtags: ["#goldenhour", "#nature", "#timelapse"],
-    explicitFlag: false,
-    likeCount: 4821,
-    timestamp: NOW - 1.2 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_2",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    creatorName: "lumenwaves",
-    creatorAvatar: null,
-    creatorBio: "Urban explorer · street photographer",
-    title: "City Lights at Dusk",
-    hashtags: ["#citylights", "#urban", "#nightlife"],
-    explicitFlag: false,
-    likeCount: 3104,
-    timestamp: NOW - 3.5 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_3",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    creatorName: "coastaldrift",
-    creatorAvatar: null,
-    creatorBio: "Living for the salt air and slow waves 🌊",
-    title: "Coastal Drift",
-    hashtags: ["#coastaldrift", "#ocean", "#summer"],
-    explicitFlag: false,
-    likeCount: 6290,
-    timestamp: NOW - 5 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_4",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-    creatorName: "nightrider99",
-    creatorAvatar: null,
-    creatorBio: "Late nights, fast cars, longer roads 🚗",
-    title: "Night Drive Series",
-    hashtags: ["#nightdrive", "#citylights", "#cars"],
-    explicitFlag: false,
-    likeCount: 2877,
-    timestamp: NOW - 8 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_5",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-    creatorName: "petal.days",
-    creatorAvatar: null,
-    creatorBio: "Bloom where you're planted 🌸",
-    title: "Spring Bloom",
-    hashtags: ["#spring", "#nature", "#goldenhour"],
-    explicitFlag: false,
-    likeCount: 8132,
-    timestamp: NOW - 14 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_6",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4",
-    creatorName: "desertpulse",
-    creatorAvatar: null,
-    creatorBio: "Desert frequencies and open skies 🌵",
-    title: "Desert Frequencies",
-    hashtags: ["#desert", "#roadtrip", "#cars"],
-    explicitFlag: false,
-    likeCount: 1543,
-    timestamp: NOW - 20 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_7",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-    creatorName: "neonforests",
-    creatorAvatar: null,
-    creatorBio: "Infrared · film · dreams 🌿",
-    title: "Infrared Forest",
-    hashtags: ["#forest", "#nature", "#film"],
-    explicitFlag: false,
-    likeCount: 5671,
-    timestamp: NOW - 30 * H,
-    viralScore: 0,
-  },
-  {
-    id: "clip_8",
-    videoUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    previewUrl:
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-    creatorName: "amberskies",
-    creatorAvatar: null,
-    creatorBio: "Somewhere between the clouds and the sea ☁️",
-    title: "Amber Skies",
-    hashtags: ["#amberlight", "#sky", "#goldenhour"],
-    explicitFlag: false,
-    likeCount: 3400,
-    timestamp: NOW - 48 * H,
-    viralScore: 0,
-  },
-].map((c) => ({ ...c, viralScore: viralScore(c) }));
-
-const SEED_IDS = new Set(SEED_CLIPS.map((c) => c.id));
+    creatorBio: "",
+    title: bc.title ?? "",
+    hashtags: bc.hashtags,
+    explicitFlag: bc.explicit_flag,
+    likeCount,
+    timestamp,
+    viralScore: computeViralScore({ likeCount, timestamp }),
+  };
+}
 
 const TRENDING_HASHTAGS = [
   "#goldenhour",
@@ -203,7 +94,6 @@ const TRENDING_HASHTAGS = [
 
 const LS_LIKED_KEY = "minty_feed_liked_v1";
 const LS_SAFE_KEY = "minty_feed_safevew_v1";
-const LS_MINTED_CLIPS_KEY = "minty_feed_minted_v1";
 
 function loadLiked(): Set<string> {
   try {
@@ -223,42 +113,11 @@ function saveLiked(set: Set<string>) {
   }
 }
 
-/** Load only user-minted clips (not seed clips) from localStorage */
-function loadMintedClips(): VideoClip[] {
-  try {
-    const raw = localStorage.getItem(LS_MINTED_CLIPS_KEY);
-    if (raw) return JSON.parse(raw) as VideoClip[];
-  } catch {
-    /* ignore */
-  }
-  return [];
-}
-
-function saveMintedClips(clips: VideoClip[]) {
-  try {
-    localStorage.setItem(LS_MINTED_CLIPS_KEY, JSON.stringify(clips));
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Merge minted clips (front) with seed clips (back), deduplicating by id */
-function buildInitialClips(minted: VideoClip[]): VideoClip[] {
-  const seen = new Set<string>();
-  const result: VideoClip[] = [];
-  for (const c of minted) {
-    if (!seen.has(c.id)) {
-      seen.add(c.id);
-      result.push(c);
-    }
-  }
-  for (const c of SEED_CLIPS) {
-    if (!seen.has(c.id)) {
-      seen.add(c.id);
-      result.push(c);
-    }
-  }
-  return result;
+// Map FeedSort → VideoClipSort for backend (module-level to avoid useEffect dep issues)
+function toBackendSort(sort: FeedSort): VideoClipSort {
+  if (sort === "trending") return VideoClipSort.trending;
+  if (sort === "top") return VideoClipSort.top;
+  return VideoClipSort.newest;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -266,9 +125,10 @@ function buildInitialClips(minted: VideoClip[]): VideoClip[] {
 const VideoFeedCtx = createContext<VideoFeedContextValue | null>(null);
 
 export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
-  const [clips, setClips] = useState<VideoClip[]>(() =>
-    buildInitialClips(loadMintedClips()),
-  );
+  const { actor, isFetching } = useActor(createActor);
+
+  const [clips, setClips] = useState<VideoClip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [likedIds, setLikedIds] = useState<Set<string>>(loadLiked);
   const [activeSort, setActiveSort] = useState<FeedSort>("newest");
   const [activeHashtag, setActiveHashtag] = useState<string | null>(null);
@@ -289,42 +149,88 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Fetch clips from backend whenever sort or safeView changes
+  useEffect(() => {
+    if (!actor || isFetching) return;
+
+    setIsLoading(true);
+    actor
+      .getClips(toBackendSort(activeSort), safeView)
+      .then((backendClips) => {
+        setClips((prev) => {
+          // Merge: keep optimistic clips that aren't in the backend response yet
+          const backendIds = new Set(backendClips.map((c) => c.clip_id));
+          const optimistic = prev.filter(
+            (c) => c.id.startsWith("optimistic_") && !backendIds.has(c.id),
+          );
+          const mapped = backendClips.map(mapBackendClip);
+          return [...optimistic, ...mapped];
+        });
+      })
+      .catch((err) => {
+        console.error("[VideoFeed] getClips failed:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [actor, isFetching, activeSort, safeView]);
+
   // Use a ref to avoid stale closure in toggleLike
   const likedIdsRef = useRef(likedIds);
   useEffect(() => {
     likedIdsRef.current = likedIds;
   }, [likedIds]);
 
-  const toggleLikeStable = useCallback((id: string) => {
-    const wasLiked = likedIdsRef.current.has(id);
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (wasLiked) next.delete(id);
-      else next.add(id);
-      saveLiked(next);
-      return next;
-    });
-    setClips((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? { ...c, likeCount: c.likeCount + (wasLiked ? -1 : 1) }
-          : c,
-      ),
-    );
-  }, []);
+  const toggleLikeStable = useCallback(
+    (id: string) => {
+      const wasLiked = likedIdsRef.current.has(id);
+
+      // Optimistic local update
+      setLikedIds((prev) => {
+        const next = new Set(prev);
+        if (wasLiked) next.delete(id);
+        else next.add(id);
+        saveLiked(next);
+        return next;
+      });
+      setClips((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, likeCount: c.likeCount + (wasLiked ? -1 : 1) }
+            : c,
+        ),
+      );
+
+      // Sync to backend (only like, not unlike — backend enforces one like)
+      if (!wasLiked && actor) {
+        actor.likeClip(id).catch((err) => {
+          console.warn("[VideoFeed] likeClip failed:", err);
+          // Revert optimistic update
+          setLikedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            saveLiked(next);
+            return next;
+          });
+          setClips((prev) =>
+            prev.map((c) =>
+              c.id === id ? { ...c, likeCount: c.likeCount - 1 } : c,
+            ),
+          );
+        });
+      }
+    },
+    [actor],
+  );
 
   /**
-   * Insert a newly minted clip at the front of the feed and persist it so it
-   * survives page refreshes. Silently skips if the id already exists.
+   * Optimistically insert a newly minted clip at the top of the feed.
+   * The clip will be merged with the real backend data on the next refresh.
    */
   const addClipToFeed = useCallback((clip: VideoClip) => {
     setClips((prev) => {
       if (prev.some((c) => c.id === clip.id)) return prev;
-      const next = [clip, ...prev];
-      // Persist only the non-seed clips
-      const minted = next.filter((c) => !SEED_IDS.has(c.id));
-      saveMintedClips(minted);
-      return next;
+      return [{ ...clip, id: `optimistic_${clip.id}` }, ...prev];
     });
   }, []);
 
@@ -358,6 +264,7 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
         safeView,
         setSafeView,
         addClipToFeed,
+        isLoading,
       }}
     >
       {children}

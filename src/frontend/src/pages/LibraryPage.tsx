@@ -168,7 +168,9 @@ function DraftLockedState({
   const { activeDraft } = useMomentDraft();
 
   const hasVideo =
-    activeDraft?.video !== null && activeDraft?.video !== undefined;
+    (activeDraft?.videoBlobUrl !== null &&
+      activeDraft?.videoBlobUrl !== undefined) ||
+    (activeDraft?.videoUrl !== null && activeDraft?.videoUrl !== undefined);
 
   const mintButtonStyle = {
     ...BUTTON_BASE,

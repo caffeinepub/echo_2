@@ -168,6 +168,13 @@ export const MarketListing = IDL.Record({
   'editionId' : IDL.Nat,
   'price' : IDL.Nat,
 });
+export const VideoAsset = IDL.Record({
+  'owner' : IDL.Principal,
+  'data' : IDL.Vec(IDL.Nat8),
+  'content_type' : IDL.Text,
+  'created_at' : IDL.Int,
+  'asset_id' : IDL.Text,
+});
 export const LikeResult = IDL.Variant({
   'ok' : IDL.Nat,
   'alreadyLiked' : IDL.Null,
@@ -273,6 +280,7 @@ export const idlService = IDL.Service({
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getVideoBlob' : IDL.Func([IDL.Text], [IDL.Opt(VideoAsset)], ['query']),
   'isAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'likeClip' : IDL.Func([IDL.Text], [LikeResult], []),
   'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
@@ -285,6 +293,8 @@ export const idlService = IDL.Service({
   'updateCard' : IDL.Func([UpdateTcgCardInput], [TcgCard], []),
   'updateCategory' : IDL.Func([UpdateTcgCategoryInput], [TcgCategory], []),
   'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
+  'uploadPreviewBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
+  'uploadVideoBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
 });
 
 export const idlInitArgs = [];
@@ -447,6 +457,13 @@ export const idlFactory = ({ IDL }) => {
     'editionId' : IDL.Nat,
     'price' : IDL.Nat,
   });
+  const VideoAsset = IDL.Record({
+    'owner' : IDL.Principal,
+    'data' : IDL.Vec(IDL.Nat8),
+    'content_type' : IDL.Text,
+    'created_at' : IDL.Int,
+    'asset_id' : IDL.Text,
+  });
   const LikeResult = IDL.Variant({
     'ok' : IDL.Nat,
     'alreadyLiked' : IDL.Null,
@@ -549,6 +566,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getVideoBlob' : IDL.Func([IDL.Text], [IDL.Opt(VideoAsset)], ['query']),
     'isAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'likeClip' : IDL.Func([IDL.Text], [LikeResult], []),
     'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
@@ -561,6 +579,12 @@ export const idlFactory = ({ IDL }) => {
     'updateCard' : IDL.Func([UpdateTcgCardInput], [TcgCard], []),
     'updateCategory' : IDL.Func([UpdateTcgCategoryInput], [TcgCategory], []),
     'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
+    'uploadPreviewBlob' : IDL.Func(
+        [IDL.Vec(IDL.Nat8), IDL.Text],
+        [IDL.Text],
+        [],
+      ),
+    'uploadVideoBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
   });
 };
 

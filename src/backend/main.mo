@@ -3,7 +3,6 @@ import Nat "mo:core/Nat";
 import Int "mo:core/Int";
 import Order "mo:core/Order";
 import Map "mo:core/Map";
-import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
@@ -237,7 +236,7 @@ actor {
 
   public type PackStatus = { #sealed; #opened };
 
-  public type CollectibleMediaType = { #photo; #video };
+  public type CollectibleMediaType = { #video; #photo };
 
   public type Pack = {
     id : Text;
@@ -310,6 +309,15 @@ actor {
     like_timestamps : [(Principal, Int)];
   };
 
+  // Stored video blob metadata
+  public type VideoAsset = {
+    asset_id : Text;
+    owner : Principal;
+    content_type : Text; // "video/mp4"
+    data : Blob;
+    created_at : Int;
+  };
+
   // ─────────────────────────────────────────────
   // STATE
   // ─────────────────────────────────────────────
@@ -346,6 +354,10 @@ actor {
   // Video clips
   let videoClips = Map.empty<Text, VideoClip>();
   var nextClipSeq : Nat = 1;
+
+  // Raw video blob storage — key: asset_id → VideoAsset
+  let videoAssets = Map.empty<Text, VideoAsset>();
+  var nextAssetSeq : Nat = 1;
 
   // ─────────────────────────────────────────────
   // SEED VIDEO CLIPS
@@ -505,25 +517,6 @@ actor {
   // HELPERS
   // ─────────────────────────────────────────────
 
-  func rollIsVideo(serialNumber : Nat, salt : Int) : Bool {
-    let saltNat : Nat = Int.abs(salt);
-    let seed : Nat = (saltNat + serialNumber * 7919) % 10;
-    seed == 0;
-  };
-
-  func countTypeForRelease(releaseId : Text, isVideo : Bool) : Nat {
-    var count = 0;
-    for (c in collectibles.values()) {
-      if (c.releaseId == releaseId) {
-        switch (c.mediaType) {
-          case (#video) { if (isVideo) { count += 1 } };
-          case (#photo) { if (not isVideo) { count += 1 } };
-        };
-      };
-    };
-    count;
-  };
-
   // Viral score: like_count*0.6 + last24h*0.25 + last6h*0.1 + lastHour*0.05
   func viralScore(clip : VideoClip) : Float {
     clip.like_count.toFloat() * 0.6
@@ -558,6 +551,14 @@ actor {
   // PACK FUNCTIONS
   // ─────────────────────────────────────────────
 
+  func countTypeForRelease(releaseId : Text) : Nat {
+    var count : Nat = 0;
+    for (c in collectibles.values()) {
+      if (c.releaseId == releaseId) { count += 1 };
+    };
+    count;
+  };
+
   public shared ({ caller = _ }) func addPack(input : AddPackInput) : async () {
     let pack : Pack = {
       id = input.id;
@@ -590,19 +591,11 @@ actor {
             let lockedPack : Pack = { pack with status = #opened; openedAt = ?now };
             packs.add(packId, lockedPack);
 
-            let isVideo = rollIsVideo(pack.serialNumber, now);
-            let typeCount = countTypeForRelease(pack.releaseId, isVideo);
-            let editionNumber = typeCount + 1;
-            let videoSupply = pack.packCount / 10;
-            let photoSupply = if (pack.packCount >= videoSupply) { pack.packCount - videoSupply } else { 0 };
-            let typeSupply = if (isVideo) { videoSupply } else { photoSupply };
+            let editionNumber = countTypeForRelease(pack.releaseId) + 1;
             let seqStr = nextCollectibleSeq.toText();
             nextCollectibleSeq += 1;
             let collectibleId = "col_" # packId # "_" # seqStr;
-            let mediaType : CollectibleMediaType = if (isVideo) { #video } else { #photo };
-            let rarity = if (isVideo) { "Rare" } else { "Common" };
-            let typeLabel = if (isVideo) { "Video" } else { "Photo" };
-            let title = typeLabel # " #" # editionNumber.toText() # " \u{2014} " # pack.setName;
+            let title = "Video #" # editionNumber.toText() # " \u{2014} " # pack.setName;
 
             let collectible : Collectible = {
               id = collectibleId;
@@ -610,11 +603,11 @@ actor {
               ownerPrincipal = caller;
               setName = pack.setName;
               releaseId = pack.releaseId;
-              mediaType = mediaType;
+              mediaType = #video;
               editionNumber = editionNumber;
               totalSupply = pack.totalSupply;
-              typeSupply = typeSupply;
-              rarity = rarity;
+              typeSupply = pack.totalSupply;
+              rarity = "Rare";
               imageUrl = pack.coverImageUrl;
               title = title;
               creator = "";
@@ -990,5 +983,57 @@ actor {
     tagCounts.toArray().sort(func(a : (Text, Nat), b : (Text, Nat)) : Order.Order {
       Nat.compare(b.1, a.1)
     });
+  };
+
+  // ─────────────────────────────────────────────
+  // VIDEO BLOB STORAGE
+  // Stores raw video bytes in canister state.
+  // Returns a stable asset_id used as the video_file_url / preview_loop_url
+  // when calling createClip().
+  // ─────────────────────────────────────────────
+
+  /// Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
+  public shared ({ caller }) func uploadVideoBlob(
+    data : Blob,
+    content_type : Text,
+  ) : async Text {
+    _ensureRegistered(caller);
+    let seqStr = nextAssetSeq.toText();
+    nextAssetSeq += 1;
+    let asset_id = "video_" # caller.toText() # "_" # seqStr;
+    let asset : VideoAsset = {
+      asset_id;
+      owner = caller;
+      content_type;
+      data;
+      created_at = Time.now();
+    };
+    videoAssets.add(asset_id, asset);
+    asset_id;
+  };
+
+  /// Upload a raw preview clip blob (short 2s muted mp4). Returns asset_id to use as preview_loop_url.
+  public shared ({ caller }) func uploadPreviewBlob(
+    data : Blob,
+    content_type : Text,
+  ) : async Text {
+    _ensureRegistered(caller);
+    let seqStr = nextAssetSeq.toText();
+    nextAssetSeq += 1;
+    let asset_id = "preview_" # caller.toText() # "_" # seqStr;
+    let asset : VideoAsset = {
+      asset_id;
+      owner = caller;
+      content_type;
+      data;
+      created_at = Time.now();
+    };
+    videoAssets.add(asset_id, asset);
+    asset_id;
+  };
+
+  /// Retrieve raw video/preview blob data by asset_id.
+  public query func getVideoBlob(asset_id : Text) : async ?VideoAsset {
+    videoAssets.get(asset_id);
   };
 };

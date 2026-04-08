@@ -5,6 +5,7 @@ import {
   type MomentDraft,
   useMomentDraft,
 } from "../context/MomentDraftContext";
+import { useVideoUpload } from "../hooks/useVideoUpload";
 
 interface CaptureMomentPageProps {
   onBack: () => void;
@@ -15,21 +16,28 @@ const PURPLE = "rgba(124,58,237,1)";
 const PURPLE_BORDER = "rgba(124,58,237,0.30)";
 const MAX_SECONDS = 15;
 
-type CaptureState = "recording" | "preview" | "setup";
+type CaptureState = "recording" | "preview" | "uploading" | "setup";
 
 export function CaptureMomentPage({
   onBack,
   onMintComplete,
 }: CaptureMomentPageProps) {
-  const { activeDraft, hasDraft, addVideo } = useMomentDraft();
+  const { activeDraft, hasDraft, setVideoBlobUrl, setPersistedUrls } =
+    useMomentDraft();
+  const {
+    uploadVideo,
+    uploading,
+    progress,
+    error: uploadError,
+  } = useVideoUpload();
 
-  // Determine initial state: if draft already has a video recorded, go to preview
   const [captureState, setCaptureState] = useState<CaptureState>(
-    activeDraft?.video ? "preview" : "recording",
+    activeDraft?.videoBlobUrl ? "preview" : "recording",
   );
-  const [pendingVideoUrl, setPendingVideoUrl] = useState<string | null>(
-    activeDraft?.video ?? null,
+  const [pendingBlobUrl, setPendingBlobUrl] = useState<string | null>(
+    activeDraft?.videoBlobUrl ?? null,
   );
+  const pendingBlobRef = useRef<Blob | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -52,7 +60,7 @@ export function CaptureMomentPage({
 
   // Inject animation styles once
   useEffect(() => {
-    const id = "capture-moment-styles-v2";
+    const id = "capture-moment-styles-v3";
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
@@ -106,8 +114,9 @@ export function CaptureMomentPage({
 
     mr.onstop = () => {
       const blob = new Blob(videoChunksRef.current, { type: "video/webm" });
+      pendingBlobRef.current = blob;
       const url = URL.createObjectURL(blob);
-      setPendingVideoUrl(url);
+      setPendingBlobUrl(url);
       setIsRecording(false);
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
@@ -153,17 +162,31 @@ export function CaptureMomentPage({
   }, []);
 
   const handleRetake = useCallback(() => {
-    if (pendingVideoUrl) URL.revokeObjectURL(pendingVideoUrl);
-    setPendingVideoUrl(null);
+    if (pendingBlobUrl) URL.revokeObjectURL(pendingBlobUrl);
+    setPendingBlobUrl(null);
+    pendingBlobRef.current = null;
     setRecordingSeconds(0);
     setCaptureState("recording");
-  }, [pendingVideoUrl]);
+  }, [pendingBlobUrl]);
 
-  const handleUseVideo = useCallback(() => {
-    if (!pendingVideoUrl) return;
-    addVideo(pendingVideoUrl);
-    setCaptureState("setup");
-  }, [pendingVideoUrl, addVideo]);
+  const handleUseVideo = useCallback(async () => {
+    if (!pendingBlobUrl || !pendingBlobRef.current) return;
+
+    // Store blob URL for immediate preview
+    setVideoBlobUrl(pendingBlobUrl);
+    setCaptureState("uploading");
+
+    try {
+      const { videoUrl, previewUrl } = await uploadVideo(
+        pendingBlobRef.current,
+      );
+      setPersistedUrls(videoUrl, previewUrl);
+      setCaptureState("setup");
+    } catch {
+      // Upload failed — stay in preview so user can retry
+      setCaptureState("preview");
+    }
+  }, [pendingBlobUrl, uploadVideo, setVideoBlobUrl, setPersistedUrls]);
 
   function handleSetupSubmit(draft: MomentDraft) {
     onMintComplete?.(draft);
@@ -184,7 +207,7 @@ export function CaptureMomentPage({
         position: "relative",
       }}
     >
-      {/* Top bar — shown in recording + preview states */}
+      {/* Top bar — shown in recording + preview + uploading states */}
       {captureState !== "setup" && (
         <div
           style={{
@@ -247,7 +270,11 @@ export function CaptureMomentPage({
                 letterSpacing: "-0.01em",
               }}
             >
-              {captureState === "recording" ? "Record Moment" : "Preview"}
+              {captureState === "recording"
+                ? "Record Moment"
+                : captureState === "uploading"
+                  ? "Uploading…"
+                  : "Preview"}
             </span>
           </div>
 
@@ -277,7 +304,7 @@ export function CaptureMomentPage({
       )}
 
       {/* Step indicator pill */}
-      {captureState !== "setup" && (
+      {captureState !== "setup" && captureState !== "uploading" && (
         <div
           style={{
             display: "flex",
@@ -296,27 +323,25 @@ export function CaptureMomentPage({
               padding: "5px 14px",
             }}
           >
-            {(["recording", "preview", "setup"] as CaptureState[]).map(
-              (s, _i) => (
-                <div
-                  key={s}
-                  style={{
-                    width: captureState === s ? 18 : 7,
-                    height: 7,
-                    borderRadius: 4,
-                    background:
-                      s === captureState
-                        ? PURPLE
-                        : ["recording", "preview", "setup"].indexOf(
-                              captureState,
-                            ) > ["recording", "preview", "setup"].indexOf(s)
-                          ? "rgba(124,58,237,0.50)"
-                          : "rgba(124,58,237,0.15)",
-                    transition: "width 0.2s ease, background 0.2s ease",
-                  }}
-                />
-              ),
-            )}
+            {(["recording", "preview", "setup"] as const).map((s) => (
+              <div
+                key={s}
+                style={{
+                  width: captureState === s ? 18 : 7,
+                  height: 7,
+                  borderRadius: 4,
+                  background:
+                    s === captureState
+                      ? PURPLE
+                      : ["recording", "preview", "setup"].indexOf(
+                            captureState,
+                          ) > ["recording", "preview", "setup"].indexOf(s)
+                        ? "rgba(124,58,237,0.50)"
+                        : "rgba(124,58,237,0.15)",
+                  transition: "width 0.2s ease, background 0.2s ease",
+                }}
+              />
+            ))}
             <span
               style={{
                 fontSize: "11px",
@@ -332,6 +357,98 @@ export function CaptureMomentPage({
         </div>
       )}
 
+      {/* ── UPLOADING STATE ── */}
+      {captureState === "uploading" && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "32px 24px",
+            gap: "20px",
+          }}
+        >
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 48 48"
+            fill="none"
+            style={{ animation: "spin 0.9s linear infinite" }}
+            aria-hidden="true"
+          >
+            <circle
+              cx="24"
+              cy="24"
+              r="18"
+              stroke="rgba(124,58,237,0.15)"
+              strokeWidth="3"
+            />
+            <path
+              d="M24 6a18 18 0 0 1 18 18"
+              stroke={PURPLE}
+              strokeWidth="3"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div style={{ textAlign: "center" }}>
+            <p
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#111",
+                margin: "0 0 6px",
+              }}
+            >
+              Uploading video…
+            </p>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "rgba(124,58,237,0.65)",
+                margin: 0,
+              }}
+            >
+              {progress > 0 ? `${progress}% complete` : "Preparing upload…"}
+            </p>
+          </div>
+          {/* Progress bar */}
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "280px",
+              height: 6,
+              borderRadius: 3,
+              background: "rgba(124,58,237,0.12)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${Math.max(10, progress)}%`,
+                background: `linear-gradient(90deg, ${PURPLE}, rgba(167,139,250,1))`,
+                borderRadius: 3,
+                transition: "width 0.4s ease",
+              }}
+            />
+          </div>
+          {uploadError && (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#ef4444",
+                textAlign: "center",
+                margin: 0,
+              }}
+            >
+              {uploadError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── RECORDING STATE ── */}
       {captureState === "recording" && (
         <div
@@ -344,7 +461,6 @@ export function CaptureMomentPage({
             gap: "0",
           }}
         >
-          {/* Camera unavailable */}
           {isSupported === false && (
             <div
               data-ocid="capture.error_state"
@@ -424,7 +540,6 @@ export function CaptureMomentPage({
             </div>
           )}
 
-          {/* Camera viewfinder */}
           {isSupported !== false && !error && (
             <>
               <div
@@ -455,7 +570,6 @@ export function CaptureMomentPage({
                   }}
                 />
 
-                {/* Loading overlay */}
                 {isLoading && (
                   <div
                     style={{
@@ -492,10 +606,8 @@ export function CaptureMomentPage({
                   </div>
                 )}
 
-                {/* Recording badge + countdown */}
                 {isRecording && (
                   <>
-                    {/* REC indicator */}
                     <div
                       style={{
                         position: "absolute",
@@ -525,7 +637,6 @@ export function CaptureMomentPage({
                       </span>
                     </div>
 
-                    {/* Large countdown in center-top */}
                     <div
                       style={{
                         position: "absolute",
@@ -563,7 +674,6 @@ export function CaptureMomentPage({
                   </>
                 )}
 
-                {/* Progress bar at bottom of viewfinder */}
                 {isRecording && (
                   <div
                     style={{
@@ -593,7 +703,6 @@ export function CaptureMomentPage({
 
               <canvas ref={canvasRef} style={{ display: "none" }} />
 
-              {/* Controls */}
               <div
                 style={{
                   display: "flex",
@@ -605,7 +714,6 @@ export function CaptureMomentPage({
                   maxWidth: "360px",
                 }}
               >
-                {/* Flip camera */}
                 <button
                   type="button"
                   data-ocid="capture.toggle"
@@ -657,7 +765,6 @@ export function CaptureMomentPage({
                   </svg>
                 </button>
 
-                {/* Record / Stop */}
                 {isRecording ? (
                   <button
                     type="button"
@@ -712,7 +819,6 @@ export function CaptureMomentPage({
                       transition: "background 0.2s, box-shadow 0.2s",
                     }}
                   >
-                    {/* Video camera icon */}
                     <svg
                       width="26"
                       height="26"
@@ -739,7 +845,6 @@ export function CaptureMomentPage({
                   </button>
                 )}
 
-                {/* Spacer */}
                 <div style={{ width: 48 }} />
               </div>
 
@@ -765,7 +870,7 @@ export function CaptureMomentPage({
       )}
 
       {/* ── PREVIEW STATE ── */}
-      {captureState === "preview" && pendingVideoUrl && (
+      {captureState === "preview" && pendingBlobUrl && (
         <div
           style={{
             flex: 1,
@@ -777,7 +882,7 @@ export function CaptureMomentPage({
           }}
         >
           <video
-            src={pendingVideoUrl}
+            src={pendingBlobUrl}
             autoPlay
             loop
             muted
@@ -805,7 +910,7 @@ export function CaptureMomentPage({
               margin: 0,
             }}
           >
-            Preview — looping muted · tap Use Video to continue
+            Preview — tap Use Video to upload and continue
           </p>
 
           <div
@@ -838,6 +943,7 @@ export function CaptureMomentPage({
               type="button"
               data-ocid="capture.primary_button"
               onClick={handleUseVideo}
+              disabled={uploading}
               style={{
                 flex: 2,
                 padding: "14px",
@@ -847,8 +953,9 @@ export function CaptureMomentPage({
                 color: "#fff",
                 fontSize: "15px",
                 fontWeight: 700,
-                cursor: "pointer",
+                cursor: uploading ? "not-allowed" : "pointer",
                 boxShadow: "0 2px 16px rgba(124,58,237,0.32)",
+                opacity: uploading ? 0.7 : 1,
               }}
             >
               Use Video →
@@ -861,8 +968,7 @@ export function CaptureMomentPage({
       {captureState === "setup" && (
         <FinalSetupScreen
           onBack={() => {
-            // Go back to preview if we have a video, otherwise back to recording
-            setCaptureState(pendingVideoUrl ? "preview" : "recording");
+            setCaptureState(pendingBlobUrl ? "preview" : "recording");
           }}
           onSubmit={handleSetupSubmit}
         />

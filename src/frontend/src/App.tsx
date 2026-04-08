@@ -1,6 +1,8 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import { InternetIdentityProvider } from "@caffeineai/core-infrastructure";
 import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
+import { createActor } from "./backend";
 import { BottomNav, type Tab } from "./components/BottomNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MintSetConfirmModal } from "./components/MintSetConfirmModal";
@@ -47,9 +49,12 @@ function AppContent() {
     null,
   );
   const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
   const { addClipToFeed } = useVideoFeed();
+  const { actor } = useActor(createActor);
 
   useEffect(() => {
     seedMockData();
@@ -76,27 +81,50 @@ function AppContent() {
     setView({ type: "tab", tab: "library" });
   }
 
-  function handleMintSetConfirm() {
+  async function handleMintSetConfirm() {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
     const now = Date.now();
     const totalPacks = 300;
     const priceUsd = 1;
 
+    const releaseTitle = draft.title?.trim() || "Mint Moment";
+    const releaseCaption = draft.caption?.trim() || "15-second moment";
+
+    // Use persistent storage URLs if available, fall back to blob URL for preview
+    const videoUrl = draft.videoUrl ?? draft.videoBlobUrl ?? "";
+    const previewUrl = draft.previewUrl ?? videoUrl;
+
+    setIsMinting(true);
+
+    // Call backend createClip with persistent URLs
+    let clipId: string | null = null;
+    if (actor && videoUrl) {
+      try {
+        clipId = await actor.createClip(
+          videoUrl,
+          previewUrl,
+          releaseTitle || null,
+          (draft.hashtags ?? []).map((h) => (h.startsWith("#") ? h : `#${h}`)),
+          draft.explicit ?? false,
+        );
+      } catch (err) {
+        console.error("[Mint] createClip failed:", err);
+        // Continue with optimistic local update even if backend call fails
+      }
+    }
+
     const packIds = Array.from(
       { length: totalPacks },
       (_, idx) => `pack_${draft.id}_${idx}`,
     );
-
-    const releaseTitle = draft.title?.trim() || "Mint Moment";
-    const releaseCaption = draft.caption?.trim() || "15-second moment";
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
       creatorName: "You",
       creatorId: "you",
       coverImageUrl: "/assets/generated/minty-pack-wrapper.png",
-      previewClipUrl: draft.video ?? undefined,
+      previewClipUrl: previewUrl || undefined,
       title: releaseTitle,
       caption: releaseCaption,
       setName: releaseTitle,
@@ -114,13 +142,12 @@ function AppContent() {
 
     addRelease(release);
 
-    // Bridge the mint to the Releases feed
-    const videoUrl = draft.video ?? "";
+    // Add to Releases feed — use the clip_id from backend if available
     if (videoUrl) {
       const clip: VideoClip = {
-        id: `clip_mint_${draft.id}`,
+        id: clipId ?? `clip_mint_${draft.id}`,
         videoUrl,
-        previewUrl: videoUrl,
+        previewUrl,
         creatorName: "You",
         creatorAvatar: null,
         creatorBio: "Creator",
@@ -136,8 +163,12 @@ function AppContent() {
       addClipToFeed(clip);
     }
 
+    setIsMinting(false);
     setPendingMintDraft(null);
     setShowMintSetConfirmModal(false);
+
+    // Navigate to Releases so user sees their clip immediately
+    setView({ type: "tab", tab: "releases" });
   }
 
   return (
@@ -147,8 +178,10 @@ function AppContent() {
       <MintSetConfirmModal
         open={showMintSetConfirmModal && pendingMintDraft !== null}
         onClose={() => {
-          setShowMintSetConfirmModal(false);
-          setPendingMintDraft(null);
+          if (!isMinting) {
+            setShowMintSetConfirmModal(false);
+            setPendingMintDraft(null);
+          }
         }}
         onConfirm={handleMintSetConfirm}
       />

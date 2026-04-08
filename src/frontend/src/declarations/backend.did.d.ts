@@ -181,6 +181,13 @@ export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface VideoAsset {
+  'owner' : Principal,
+  'data' : Uint8Array,
+  'content_type' : string,
+  'created_at' : bigint,
+  'asset_id' : string,
+}
 export interface VideoClip {
   'clip_id' : string,
   'like_timestamps' : Array<[Principal, bigint]>,
@@ -257,6 +264,10 @@ export interface _SERVICE {
   'getUserCollectibles' : ActorMethod<[Principal], Array<Collectible>>,
   'getUserPacks' : ActorMethod<[Principal], Array<Pack>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  /**
+   * / Retrieve raw video/preview blob data by asset_id.
+   */
+  'getVideoBlob' : ActorMethod<[string], [] | [VideoAsset]>,
   'isAdmin' : ActorMethod<[], boolean>,
   /**
    * / Like a clip. Each caller can only like once. Returns new like_count.
@@ -272,6 +283,14 @@ export interface _SERVICE {
   'updateCard' : ActorMethod<[UpdateTcgCardInput], TcgCard>,
   'updateCategory' : ActorMethod<[UpdateTcgCategoryInput], TcgCategory>,
   'updateSet' : ActorMethod<[UpdateTcgSetInput], TcgSet>,
+  /**
+   * / Upload a raw preview clip blob (short 2s muted mp4). Returns asset_id to use as preview_loop_url.
+   */
+  'uploadPreviewBlob' : ActorMethod<[Uint8Array, string], string>,
+  /**
+   * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
+   */
+  'uploadVideoBlob' : ActorMethod<[Uint8Array, string], string>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

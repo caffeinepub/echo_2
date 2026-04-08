@@ -271,9 +271,21 @@ function VideoCard({
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
+
     if (isActive) {
       vid.currentTime = 0;
-      vid.play().catch(() => {});
+      const doPlay = () => {
+        vid.play().catch((err) => {
+          console.warn("[VideoCard] play() failed:", err);
+        });
+      };
+      // If already ready to play, go immediately; otherwise wait for canplay
+      if (vid.readyState >= 3) {
+        doPlay();
+      } else {
+        vid.addEventListener("canplay", doPlay, { once: true });
+        return () => vid.removeEventListener("canplay", doPlay);
+      }
     } else {
       vid.pause();
     }
@@ -318,6 +330,10 @@ function VideoCard({
         muted={muted}
         playsInline
         preload="auto"
+        crossOrigin="anonymous"
+        onError={(e) => {
+          console.error("[VideoCard] video load error:", clip.videoUrl, e);
+        }}
         onClick={() => setMuted((m) => !m)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") setMuted((m) => !m);
@@ -725,11 +741,22 @@ function FilterRow() {
 // ─── ReleasesPage ──────────────────────────────────────────────────────────────
 
 export function ReleasesPage() {
-  const { filteredClips, clips } = useVideoFeed();
+  const { filteredClips, clips, isLoading } = useVideoFeed();
   const feedRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [profileClip, setProfileClip] = useState<VideoClip | null>(null);
   const [chartClip, setChartClip] = useState<VideoClip | null>(null);
+
+  // Inject spin keyframe once
+  useEffect(() => {
+    const id = "releases-spin-style";
+    if (document.getElementById(id)) return;
+    const s = document.createElement("style");
+    s.id = id;
+    s.textContent =
+      "@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
+    document.head.appendChild(s);
+  }, []);
 
   const handleCreatorTap = useCallback((clip: VideoClip) => {
     setProfileClip(clip);
@@ -739,29 +766,45 @@ export function ReleasesPage() {
     setChartClip(clip);
   }, []);
 
-  // IntersectionObserver — detect which card is centered
+  // IntersectionObserver — detect which card is centered.
+  // Re-run after each render so newly added cards are always observed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-observe after every clip list change
   useEffect(() => {
     const container = feedRef.current;
     if (!container) return;
 
-    const cards = container.querySelectorAll("[data-feed-card]");
-    if (!cards.length) return;
+    // Small rAF delay so React has flushed the new DOM nodes
+    const raf = requestAnimationFrame(() => {
+      const cards = container.querySelectorAll("[data-feed-card]");
+      if (!cards.length) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const idx = Number((entry.target as HTMLElement).dataset.feedCard);
-            if (!Number.isNaN(idx)) setActiveIndex(idx);
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const idx = Number(
+                (entry.target as HTMLElement).dataset.feedCard,
+              );
+              if (!Number.isNaN(idx)) setActiveIndex(idx);
+            }
           }
-        }
-      },
-      { root: container, threshold: 0.55 },
-    );
+        },
+        { root: container, threshold: 0.55 },
+      );
 
-    for (const card of cards) observer.observe(card);
-    return () => observer.disconnect();
-  }, []);
+      for (const card of cards) observer.observe(card);
+      type WithObserver = HTMLDivElement & { _obs?: IntersectionObserver };
+      (container as WithObserver)._obs?.disconnect();
+      (container as WithObserver)._obs = observer;
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      type WithObserver = HTMLDivElement & { _obs?: IntersectionObserver };
+      (feedRef.current as WithObserver | null)?._obs?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredClips]);
 
   if (profileClip) {
     return (
@@ -797,7 +840,54 @@ export function ReleasesPage() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        {filteredClips.length === 0 ? (
+        {isLoading ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              gap: 14,
+              padding: 24,
+            }}
+          >
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 40 40"
+              fill="none"
+              style={{
+                animation: "spin 0.9s linear infinite",
+              }}
+              aria-hidden="true"
+            >
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                stroke="var(--echo-border)"
+                strokeWidth="3"
+              />
+              <path
+                d="M20 4a16 16 0 0 1 16 16"
+                stroke="var(--cycle-accent)"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div
+              style={{
+                fontSize: 14,
+                color: "var(--echo-text-muted)",
+                textAlign: "center",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              Loading clips…
+            </div>
+          </div>
+        ) : filteredClips.length === 0 ? (
           <div
             style={{
               display: "flex",
@@ -818,7 +908,7 @@ export function ReleasesPage() {
                 fontFamily: "DM Sans, sans-serif",
               }}
             >
-              No clips here
+              No clips yet
             </div>
             <div
               style={{
@@ -827,7 +917,7 @@ export function ReleasesPage() {
                 textAlign: "center",
               }}
             >
-              Try a different filter or hashtag
+              Mint a moment to be the first in the feed!
             </div>
           </div>
         ) : (

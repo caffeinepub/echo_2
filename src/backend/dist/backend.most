@@ -103,6 +103,14 @@ type TcgSet__1065024180 =
 type Track__789517712 = {duration : Nat; title : Text};
 type UserProfile__491224006 = {name : Text};
 type UserRole__599675725 = {#admin; #guest; #user};
+type VideoAsset__248137946 =
+  {
+    asset_id : Text;
+    content_type : Text;
+    created_at : Int;
+    data : Blob;
+    owner : Principal
+  };
 type VideoClip__351680056 =
   {
     clip_id : Text;
@@ -137,6 +145,7 @@ actor {
       var root : Node__46230540<Nat, MarketListing__465293504>;
       var size : Nat__490723111
     };
+  stable var nextAssetSeq : Nat;
   stable var nextCardId : Nat;
   stable var nextCategoryId : Nat;
   stable var nextClipSeq : Nat;
@@ -175,6 +184,11 @@ actor {
   stable userProfiles :
     {
       var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable videoAssets :
+    {
+      var root : Node__46230540<Text, VideoAsset__248137946>;
       var size : Nat__490723111
     };
   stable videoClips :

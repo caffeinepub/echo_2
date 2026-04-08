@@ -23,6 +23,14 @@ type VideoClip =
    title: opt text;
    video_file_url: text;
  };
+type VideoAsset = 
+ record {
+   asset_id: text;
+   content_type: text;
+   created_at: int;
+   data: blob;
+   owner: principal;
+ };
 type UserRole = 
  variant {
    admin;
@@ -277,6 +285,8 @@ service : {
   getUserCollectibles: (user: principal) -> (vec Collectible) query;
   getUserPacks: (user: principal) -> (vec Pack) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;
+  /// Retrieve raw video/preview blob data by asset_id.
+  getVideoBlob: (asset_id: text) -> (opt VideoAsset) query;
   isAdmin: () -> (bool) query;
   /// Like a clip. Each caller can only like once. Returns new like_count.
   likeClip: (clip_id: text) -> (LikeResult);
@@ -290,4 +300,8 @@ service : {
   updateCard: (input: UpdateTcgCardInput) -> (TcgCard);
   updateCategory: (input: UpdateTcgCategoryInput) -> (TcgCategory);
   updateSet: (input: UpdateTcgSetInput) -> (TcgSet);
+  /// Upload a raw preview clip blob (short 2s muted mp4). Returns asset_id to use as preview_loop_url.
+  uploadPreviewBlob: (data: blob, content_type: text) -> (text);
+  /// Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
+  uploadVideoBlob: (data: blob, content_type: text) -> (text);
 }

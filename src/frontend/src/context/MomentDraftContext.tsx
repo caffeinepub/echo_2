@@ -6,24 +6,32 @@ import {
   useState,
 } from "react";
 
-const LS_KEY = "minty_active_draft_v2";
+const LS_KEY = "minty_active_draft_v3";
 
 export interface MomentDraft {
   id: string;
-  video: string | null;
+  /** Local blob URL for in-session preview only — not persisted across refresh */
+  videoBlobUrl: string | null;
+  /** Persistent object-storage URL for the main video — survives refresh */
+  videoUrl: string | null;
+  /** Persistent object-storage URL for the 2s preview loop — survives refresh */
+  previewUrl: string | null;
   completed: boolean;
   createdAt: number;
   title: string;
   caption: string;
   explicit: boolean;
-  hashtags: string[]; // max 3
+  hashtags: string[];
 }
 
 interface MomentDraftCtx {
   activeDraft: MomentDraft | null;
   hasDraft: boolean;
   startDraft: () => void;
-  addVideo: (dataUrl: string) => void;
+  /** Store the local blob URL (for in-session playback before upload completes) */
+  setVideoBlobUrl: (blobUrl: string) => void;
+  /** Store persistent storage URLs after upload completes */
+  setPersistedUrls: (videoUrl: string, previewUrl: string) => void;
   removeVideo: () => void;
   completeDraft: () => void;
   clearDraft: () => void;
@@ -37,16 +45,18 @@ const MomentDraftContext = createContext<MomentDraftCtx | null>(null);
 
 function loadFromStorage(): MomentDraft | null {
   try {
-    // Clear old photo-based draft keys if present
+    // Clear old draft keys
     localStorage.removeItem("minty_active_draft");
+    localStorage.removeItem("minty_active_draft_v2");
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as MomentDraft;
-    // Backfill missing fields
     if (parsed.title === undefined) parsed.title = "";
     if (parsed.caption === undefined) parsed.caption = "";
     if (parsed.explicit === undefined) parsed.explicit = false;
     if (!parsed.hashtags) parsed.hashtags = [];
+    // blob URLs don't survive page refresh — clear them
+    parsed.videoBlobUrl = null;
     return parsed;
   } catch {
     return null;
@@ -58,7 +68,9 @@ function saveToStorage(draft: MomentDraft | null) {
     if (draft === null) {
       localStorage.removeItem(LS_KEY);
     } else {
-      localStorage.setItem(LS_KEY, JSON.stringify(draft));
+      // Don't persist blob URLs — they're browser-local
+      const toSave: MomentDraft = { ...draft, videoBlobUrl: null };
+      localStorage.setItem(LS_KEY, JSON.stringify(toSave));
     }
   } catch {
     // ignore storage errors
@@ -81,9 +93,11 @@ export function MomentDraftProvider({
   const startDraft = useCallback(() => {
     setActiveDraft((prev) => {
       if (prev !== null && !prev.completed) return prev;
-      const draft: MomentDraft = {
+      return {
         id: `draft_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        video: null,
+        videoBlobUrl: null,
+        videoUrl: null,
+        previewUrl: null,
         completed: false,
         createdAt: Date.now(),
         title: "",
@@ -91,21 +105,35 @@ export function MomentDraftProvider({
         explicit: false,
         hashtags: [],
       };
-      return draft;
     });
   }, []);
 
-  const addVideo = useCallback((dataUrl: string) => {
+  const setVideoBlobUrl = useCallback((blobUrl: string) => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, video: dataUrl };
+      return { ...prev, videoBlobUrl: blobUrl };
     });
   }, []);
+
+  const setPersistedUrls = useCallback(
+    (videoUrl: string, previewUrl: string) => {
+      setActiveDraft((prev) => {
+        if (!prev || prev.completed) return prev;
+        return { ...prev, videoUrl, previewUrl };
+      });
+    },
+    [],
+  );
 
   const removeVideo = useCallback(() => {
     setActiveDraft((prev) => {
       if (!prev || prev.completed) return prev;
-      return { ...prev, video: null };
+      return {
+        ...prev,
+        videoBlobUrl: null,
+        videoUrl: null,
+        previewUrl: null,
+      };
     });
   }, []);
 
@@ -154,7 +182,8 @@ export function MomentDraftProvider({
         activeDraft,
         hasDraft,
         startDraft,
-        addVideo,
+        setVideoBlobUrl,
+        setPersistedUrls,
         removeVideo,
         completeDraft,
         clearDraft,

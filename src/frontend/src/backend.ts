@@ -89,14 +89,13 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface TcgCategory {
-    id: bigint;
-    sortOrder: bigint;
-    name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
-}
+export type PackOpenResult = {
+    __kind__: "ok";
+    ok: Collectible;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface Collectible {
     id: string;
     setName: string;
@@ -150,6 +149,13 @@ export interface VideoClip {
     explicit_flag: boolean;
     creator_principal_id: Principal;
     video_file_url: string;
+}
+export interface VideoAsset {
+    owner: Principal;
+    data: Uint8Array;
+    content_type: string;
+    created_at: bigint;
+    asset_id: string;
 }
 export interface UpdateTcgCardInput {
     id: bigint;
@@ -275,15 +281,16 @@ export type LikeResult = {
     __kind__: "notFound";
     notFound: null;
 };
-export type PackOpenResult = {
-    __kind__: "ok";
-    ok: Collectible;
-} | {
-    __kind__: "err";
-    err: string;
-};
 export interface UserProfile {
     name: string;
+}
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export enum CollectibleMediaType {
     video = "video",
@@ -358,6 +365,10 @@ export interface backendInterface {
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    /**
+     * / Retrieve raw video/preview blob data by asset_id.
+     */
+    getVideoBlob(asset_id: string): Promise<VideoAsset | null>;
     isAdmin(): Promise<boolean>;
     /**
      * / Like a clip. Each caller can only like once. Returns new like_count.
@@ -373,8 +384,16 @@ export interface backendInterface {
     updateCard(input: UpdateTcgCardInput): Promise<TcgCard>;
     updateCategory(input: UpdateTcgCategoryInput): Promise<TcgCategory>;
     updateSet(input: UpdateTcgSetInput): Promise<TcgSet>;
+    /**
+     * / Upload a raw preview clip blob (short 2s muted mp4). Returns asset_id to use as preview_loop_url.
+     */
+    uploadPreviewBlob(data: Uint8Array, content_type: string): Promise<string>;
+    /**
+     * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
+     */
+    uploadVideoBlob(data: Uint8Array, content_type: string): Promise<string>;
 }
-import type { Album as _Album, Collectible as _Collectible, CollectibleMediaType as _CollectibleMediaType, CreateTcgSetInput as _CreateTcgSetInput, LikeResult as _LikeResult, Pack as _Pack, PackOpenResult as _PackOpenResult, PackStatus as _PackStatus, TcgSet as _TcgSet, UpdateTcgSetInput as _UpdateTcgSetInput, UserProfile as _UserProfile, UserRole as _UserRole, VideoClip as _VideoClip, VideoClipSort as _VideoClipSort } from "./declarations/backend.did.d.ts";
+import type { Album as _Album, Collectible as _Collectible, CollectibleMediaType as _CollectibleMediaType, CreateTcgSetInput as _CreateTcgSetInput, LikeResult as _LikeResult, Pack as _Pack, PackOpenResult as _PackOpenResult, PackStatus as _PackStatus, TcgSet as _TcgSet, UpdateTcgSetInput as _UpdateTcgSetInput, UserProfile as _UserProfile, UserRole as _UserRole, VideoAsset as _VideoAsset, VideoClip as _VideoClip, VideoClipSort as _VideoClipSort } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async addAlbum(arg0: Album): Promise<void> {
@@ -909,6 +928,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getVideoBlob(arg0: string): Promise<VideoAsset | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getVideoBlob(arg0);
+                return from_candid_opt_n32(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getVideoBlob(arg0);
+            return from_candid_opt_n32(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async isAdmin(): Promise<boolean> {
         if (this.processError) {
             try {
@@ -927,28 +960,28 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.likeClip(arg0);
-                return from_candid_LikeResult_n32(this._uploadFile, this._downloadFile, result);
+                return from_candid_LikeResult_n33(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.likeClip(arg0);
-            return from_candid_LikeResult_n32(this._uploadFile, this._downloadFile, result);
+            return from_candid_LikeResult_n33(this._uploadFile, this._downloadFile, result);
         }
     }
     async openPack(arg0: string): Promise<PackOpenResult> {
         if (this.processError) {
             try {
                 const result = await this.actor.openPack(arg0);
-                return from_candid_PackOpenResult_n34(this._uploadFile, this._downloadFile, result);
+                return from_candid_PackOpenResult_n35(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.openPack(arg0);
-            return from_candid_PackOpenResult_n34(this._uploadFile, this._downloadFile, result);
+            return from_candid_PackOpenResult_n35(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
@@ -1066,15 +1099,43 @@ export class Backend implements backendInterface {
     async updateSet(arg0: UpdateTcgSetInput): Promise<TcgSet> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n36(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n37(this._uploadFile, this._downloadFile, arg0));
                 return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n36(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.updateSet(to_candid_UpdateTcgSetInput_n37(this._uploadFile, this._downloadFile, arg0));
             return from_candid_TcgSet_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async uploadPreviewBlob(arg0: Uint8Array, arg1: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.uploadPreviewBlob(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.uploadPreviewBlob(arg0, arg1);
+            return result;
+        }
+    }
+    async uploadVideoBlob(arg0: Uint8Array, arg1: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.uploadVideoBlob(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.uploadVideoBlob(arg0, arg1);
+            return result;
         }
     }
 }
@@ -1084,11 +1145,11 @@ function from_candid_CollectibleMediaType_n14(_uploadFile: (file: ExternalBlob) 
 function from_candid_Collectible_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Collectible): Collectible {
     return from_candid_record_n13(_uploadFile, _downloadFile, value);
 }
-function from_candid_LikeResult_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LikeResult): LikeResult {
-    return from_candid_variant_n33(_uploadFile, _downloadFile, value);
+function from_candid_LikeResult_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _LikeResult): LikeResult {
+    return from_candid_variant_n34(_uploadFile, _downloadFile, value);
 }
-function from_candid_PackOpenResult_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackOpenResult): PackOpenResult {
-    return from_candid_variant_n35(_uploadFile, _downloadFile, value);
+function from_candid_PackOpenResult_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackOpenResult): PackOpenResult {
+    return from_candid_variant_n36(_uploadFile, _downloadFile, value);
 }
 function from_candid_PackStatus_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PackStatus): PackStatus {
     return from_candid_variant_n20(_uploadFile, _downloadFile, value);
@@ -1116,6 +1177,9 @@ function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 }
 function from_candid_opt_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_TcgSet]): TcgSet | null {
     return value.length === 0 ? null : from_candid_TcgSet_n6(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_VideoAsset]): VideoAsset | null {
+    return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
@@ -1323,7 +1387,7 @@ function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: bigint;
 } | {
     alreadyLiked: null;
@@ -1350,7 +1414,7 @@ function from_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Ui
         notFound: value.notFound
     } : value;
 }
-function from_candid_variant_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     ok: _Collectible;
 } | {
     err: string;
@@ -1384,8 +1448,8 @@ function from_candid_vec_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function to_candid_CreateTcgSetInput_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: CreateTcgSetInput): _CreateTcgSetInput {
     return to_candid_record_n5(_uploadFile, _downloadFile, value);
 }
-function to_candid_UpdateTcgSetInput_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UpdateTcgSetInput): _UpdateTcgSetInput {
-    return to_candid_record_n37(_uploadFile, _downloadFile, value);
+function to_candid_UpdateTcgSetInput_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UpdateTcgSetInput): _UpdateTcgSetInput {
+    return to_candid_record_n38(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n2(_uploadFile, _downloadFile, value);
@@ -1396,7 +1460,7 @@ function to_candid_VideoClipSort_n24(_uploadFile: (file: ExternalBlob) => Promis
 function to_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     setCode: string;
     coverImageUrl: string;

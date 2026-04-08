@@ -7,14 +7,13 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface TcgCategory {
-    id: bigint;
-    sortOrder: bigint;
-    name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
-}
+export type PackOpenResult = {
+    __kind__: "ok";
+    ok: Collectible;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface Collectible {
     id: string;
     setName: string;
@@ -68,6 +67,13 @@ export interface VideoClip {
     explicit_flag: boolean;
     creator_principal_id: Principal;
     video_file_url: string;
+}
+export interface VideoAsset {
+    owner: Principal;
+    data: Uint8Array;
+    content_type: string;
+    created_at: bigint;
+    asset_id: string;
 }
 export interface UpdateTcgCardInput {
     id: bigint;
@@ -193,15 +199,16 @@ export type LikeResult = {
     __kind__: "notFound";
     notFound: null;
 };
-export type PackOpenResult = {
-    __kind__: "ok";
-    ok: Collectible;
-} | {
-    __kind__: "err";
-    err: string;
-};
 export interface UserProfile {
     name: string;
+}
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export enum CollectibleMediaType {
     video = "video",
@@ -276,6 +283,10 @@ export interface backendInterface {
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    /**
+     * / Retrieve raw video/preview blob data by asset_id.
+     */
+    getVideoBlob(asset_id: string): Promise<VideoAsset | null>;
     isAdmin(): Promise<boolean>;
     /**
      * / Like a clip. Each caller can only like once. Returns new like_count.
@@ -291,4 +302,12 @@ export interface backendInterface {
     updateCard(input: UpdateTcgCardInput): Promise<TcgCard>;
     updateCategory(input: UpdateTcgCategoryInput): Promise<TcgCategory>;
     updateSet(input: UpdateTcgSetInput): Promise<TcgSet>;
+    /**
+     * / Upload a raw preview clip blob (short 2s muted mp4). Returns asset_id to use as preview_loop_url.
+     */
+    uploadPreviewBlob(data: Uint8Array, content_type: string): Promise<string>;
+    /**
+     * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
+     */
+    uploadVideoBlob(data: Uint8Array, content_type: string): Promise<string>;
 }
