@@ -7,16 +7,11 @@ const MINT_BORDER = "rgba(52,168,132,0.3)";
 const MINT_BORDER_STRONG = "rgba(52,168,132,0.55)";
 
 interface FinalSetupScreenProps {
-  photos: string[];
-  onBack: () => void; // go back to video capture step
+  onBack: () => void;
   onSubmit: (draft: MomentDraft) => void;
 }
 
-export function FinalSetupScreen({
-  photos: _photos,
-  onBack,
-  onSubmit,
-}: FinalSetupScreenProps) {
+export function FinalSetupScreen({ onBack, onSubmit }: FinalSetupScreenProps) {
   const {
     activeDraft,
     setTitle,
@@ -37,7 +32,6 @@ export function FinalSetupScreen({
   const [hashtagInput, setHashtagInput] = useState("");
   const [titleTouched, setTitleTouched] = useState(false);
 
-  // Sync to draft context on every change
   useEffect(() => {
     setTitle(localTitle);
   }, [localTitle, setTitle]);
@@ -52,7 +46,6 @@ export function FinalSetupScreen({
   }, [localHashtags, setHashtags]);
 
   function normalizeHashtag(raw: string): string {
-    // Strip leading # symbols (including multiple), trim, lowercase
     return raw.replace(/^#+/, "").trim().toLowerCase();
   }
 
@@ -75,9 +68,7 @@ export function FinalSetupScreen({
       return;
     }
     if (!activeDraft) return;
-    // completeDraft marks it done so LibraryPage resets to idle
     completeDraft();
-    // Snapshot the draft with updated fields before it's cleared
     const snapshot: MomentDraft = {
       ...activeDraft,
       title: localTitle.trim(),
@@ -158,7 +149,7 @@ export function FinalSetupScreen({
         >
           Final Setup
         </h2>
-        {/* Step indicator */}
+        {/* Step indicator: 2/2 */}
         <span
           style={{
             fontSize: "11px",
@@ -168,7 +159,7 @@ export function FinalSetupScreen({
             color: "rgba(52,168,132,0.70)",
           }}
         >
-          11 / 11
+          2 / 2
         </span>
       </div>
 
@@ -185,7 +176,7 @@ export function FinalSetupScreen({
           alignSelf: "center",
         }}
       >
-        {/* ── Set Title ── */}
+        {/* Title */}
         <div>
           <label
             htmlFor="set-title"
@@ -199,12 +190,12 @@ export function FinalSetupScreen({
               marginBottom: "8px",
             }}
           >
-            Set Title <span style={{ color: "#ef4444" }}>*</span>
+            Title <span style={{ color: "#ef4444" }}>*</span>
           </label>
           <input
             id="set-title"
             type="text"
-            placeholder="Name your Mint Moment…"
+            placeholder="Name your Moment…"
             value={localTitle}
             onChange={(e) => {
               setLocalTitle(e.target.value);
@@ -218,9 +209,7 @@ export function FinalSetupScreen({
               borderRadius: "14px",
               border: showTitleError
                 ? "2px solid #ef4444"
-                : `1.5px solid ${
-                    localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"
-                  }`,
+                : `1.5px solid ${localTitle.trim() ? MINT_BORDER_STRONG : "rgba(0,0,0,0.10)"}`,
               background: "#fff",
               fontSize: "15px",
               fontWeight: 500,
@@ -241,7 +230,7 @@ export function FinalSetupScreen({
               <span
                 style={{ fontSize: "11px", color: "#ef4444", fontWeight: 500 }}
               >
-                Title is required to publish
+                Title is required
               </span>
             ) : (
               <span />
@@ -252,7 +241,7 @@ export function FinalSetupScreen({
           </div>
         </div>
 
-        {/* ── Caption ── */}
+        {/* Caption */}
         <div>
           <label
             htmlFor="set-caption"
@@ -322,7 +311,7 @@ export function FinalSetupScreen({
           </div>
         </div>
 
-        {/* ── Hashtags ── */}
+        {/* Hashtags */}
         <div>
           <label
             htmlFor="hashtag-input"
@@ -350,7 +339,6 @@ export function FinalSetupScreen({
             </span>
           </label>
 
-          {/* Pill chips */}
           {localHashtags.length > 0 && (
             <div
               style={{
@@ -370,7 +358,7 @@ export function FinalSetupScreen({
                     background: "rgba(52,168,132,0.10)",
                     border: "1.5px solid rgba(52,168,132,0.30)",
                     borderRadius: "20px",
-                    padding: "4px 10px 4px 10px",
+                    padding: "4px 10px",
                     fontSize: "12px",
                     fontWeight: 600,
                     color: MINT_GREEN,
@@ -401,7 +389,6 @@ export function FinalSetupScreen({
             </div>
           )}
 
-          {/* Input row */}
           {localHashtags.length < 3 && (
             <div style={{ display: "flex", gap: "8px" }}>
               <input
@@ -462,7 +449,6 @@ export function FinalSetupScreen({
               </button>
             </div>
           )}
-
           {localHashtags.length >= 3 && (
             <p
               style={{ fontSize: "11px", color: "#9ca3af", margin: "4px 0 0" }}
@@ -472,7 +458,7 @@ export function FinalSetupScreen({
           )}
         </div>
 
-        {/* ── Explicit Content Toggle ── */}
+        {/* Explicit toggle */}
         <div
           style={{
             background: "#fff",
@@ -501,7 +487,7 @@ export function FinalSetupScreen({
                   margin: "0 0 4px",
                 }}
               >
-                Mark this set as explicit
+                Mark as explicit
               </p>
               <p
                 style={{
@@ -511,12 +497,10 @@ export function FinalSetupScreen({
                   lineHeight: 1.5,
                 }}
               >
-                Explicit sets may be hidden for viewers with safe viewing
+                Explicit moments may be hidden for viewers with safe viewing
                 enabled.
               </p>
             </div>
-
-            {/* Toggle switch */}
             <button
               type="button"
               role="switch"
@@ -553,52 +537,9 @@ export function FinalSetupScreen({
               />
             </button>
           </div>
-
-          {/* Warning chip when explicit is ON */}
-          {localExplicit && (
-            <div
-              style={{
-                marginTop: "12px",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "rgba(245,158,11,0.08)",
-                borderRadius: "8px",
-                padding: "8px 10px",
-                border: "1px solid rgba(245,158,11,0.20)",
-              }}
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 13 13"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6.5 1.5L11.5 10H1.5L6.5 1.5z"
-                  stroke="#f59e0b"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M6.5 5v3"
-                  stroke="#f59e0b"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                />
-                <circle cx="6.5" cy="9.5" r="0.6" fill="#f59e0b" />
-              </svg>
-              <span
-                style={{ fontSize: "11px", color: "#92400e", fontWeight: 500 }}
-              >
-                This set will be hidden from viewers with safe viewing enabled.
-              </span>
-            </div>
-          )}
         </div>
 
-        {/* ── Summary ── */}
+        {/* Summary */}
         <div
           style={{
             background: "rgba(52,168,132,0.05)",
@@ -622,18 +563,9 @@ export function FinalSetupScreen({
           >
             Ready to publish
           </p>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "4px 12px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {[
-              "9 photos captured",
-              "1 video captured",
-              "100 packs will be minted",
+              "1 video recorded (15 sec max)",
               localExplicit ? "Marked as explicit" : "Standard content",
             ].map((item) => (
               <div
@@ -657,7 +589,7 @@ export function FinalSetupScreen({
           </div>
         </div>
 
-        {/* ── Submit Button ── */}
+        {/* Submit */}
         <button
           type="button"
           onClick={handleSubmit}
@@ -683,7 +615,7 @@ export function FinalSetupScreen({
           }}
           aria-disabled={titleEmpty}
         >
-          Continue to Set Price
+          Confirm &amp; Pay $1
         </button>
 
         {titleEmpty && titleTouched && (

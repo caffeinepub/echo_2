@@ -1,6 +1,7 @@
-import { Check, ChevronRight, Package, TrendingUp } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useRef, useState } from "react";
+import { BtcLogo } from "./BtcLogo";
 
 export interface MintSetConfirmModalProps {
   open: boolean;
@@ -122,7 +123,6 @@ function SlideToConfirm({ onComplete }: { onComplete: () => void }) {
           </span>
         </div>
       )}
-      {/* Completed label */}
       {completed && (
         <div
           style={{
@@ -225,49 +225,22 @@ export function MintSetConfirmModal({
           {/* Header */}
           <div
             style={{
-              padding: "28px 24px 0",
+              padding: "28px 24px 20px",
               borderBottom: "1px solid rgba(52,168,132,0.12)",
-              paddingBottom: "20px",
             }}
           >
-            <div
+            <h2
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                marginBottom: "10px",
+                fontSize: "26px",
+                fontWeight: 700,
+                color: "#111",
+                margin: "0 0 10px",
+                lineHeight: 1.1,
+                fontFamily: "DM Sans, sans-serif",
               }}
             >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "12px",
-                  background: "rgba(52,168,132,0.10)",
-                  border: "1.5px solid rgba(52,168,132,0.22)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <Package size={18} color={MINT_GREEN} />
-              </div>
-              <div>
-                <h2
-                  style={{
-                    fontSize: "26px",
-                    fontWeight: 700,
-                    color: "#111",
-                    margin: 0,
-                    lineHeight: 1.1,
-                    fontFamily: "DM Sans, sans-serif",
-                  }}
-                >
-                  Mint Set
-                </h2>
-              </div>
-            </div>
+              Confirm Mint
+            </h2>
             <p
               style={{
                 fontSize: "14px",
@@ -276,135 +249,24 @@ export function MintSetConfirmModal({
                 margin: 0,
               }}
             >
-              Minting a set costs{" "}
-              <strong style={{ color: "#111" }}>$100</strong>.
+              Minting costs{" "}
+              <strong
+                style={{
+                  color: "#111",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <BtcLogo size={14} style={{ verticalAlign: "middle" }} />
+                $1
+              </strong>{" "}
+              in BTC. Your 15-second clip will be posted to the Releases feed.
             </p>
           </div>
 
           {/* Body */}
           <div style={{ padding: "20px 24px 0" }}>
-            {/* Description */}
-            <div
-              style={{
-                background: "rgba(52,168,132,0.05)",
-                border: "1.5px solid rgba(52,168,132,0.15)",
-                borderRadius: "14px",
-                padding: "14px 16px",
-                marginBottom: "16px",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "13px",
-                  color: "#374151",
-                  lineHeight: 1.7,
-                  margin: 0,
-                }}
-              >
-                Your set will be published to the{" "}
-                <strong style={{ color: "#111" }}>Releases page</strong> as a
-                pack collection for collectors. Each set automatically generates{" "}
-                <strong style={{ color: "#111" }}>300 packs</strong>.
-              </p>
-            </div>
-
-            {/* Pack economics — informational */}
-            <p
-              style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                color: "#6b7280",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                margin: "0 0 10px",
-              }}
-            >
-              Pack Economics
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
-                marginBottom: "16px",
-              }}
-            >
-              {[
-                { icon: "📦", label: "Total Packs", value: "300" },
-                { icon: "💵", label: "Starting Price", value: "$10" },
-                { icon: "🎯", label: "Max Price", value: "$60" },
-                { icon: "📈", label: "Pricing Model", value: "Bonding Curve" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    background: "#fff",
-                    border: "1px solid rgba(0,0,0,0.07)",
-                    borderRadius: "12px",
-                    padding: "10px 12px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px",
-                  }}
-                >
-                  <span style={{ fontSize: "13px" }}>{item.icon}</span>
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      color: "#9ca3af",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {item.label}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "14px",
-                      fontWeight: 700,
-                      color: "#111",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Bonding curve note */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "8px",
-                marginBottom: "20px",
-                padding: "10px 12px",
-                background: "rgba(52,168,132,0.04)",
-                borderRadius: "10px",
-                border: "1px solid rgba(52,168,132,0.12)",
-              }}
-            >
-              <TrendingUp
-                size={14}
-                color={MINT_GREEN}
-                style={{ marginTop: "1px", flexShrink: 0 }}
-              />
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "#6b7280",
-                  lineHeight: 1.5,
-                  margin: 0,
-                }}
-              >
-                Price increases with each purchase — early collectors get the
-                best rate. Price formula:{" "}
-                <span style={{ fontFamily: "monospace", color: "#374151" }}>
-                  $10 + (sold/300)² × $50
-                </span>
-              </p>
-            </div>
-
             {/* What's included */}
             <p
               style={{
@@ -427,10 +289,9 @@ export function MintSetConfirmModal({
               }}
             >
               {[
-                "9 photos → Common collectibles",
-                "1 video → Rare collectible",
-                "Each pack contains 1 random collectible",
-                "90% photo packs · 10% video packs",
+                "1 video clip (15 sec max) → 1 NFT posted to Releases",
+                "Your clip immediately visible in the feed",
+                "Others can buy ownership copies via bonding curve",
               ].map((item) => (
                 <div
                   key={item}
@@ -485,16 +346,21 @@ export function MintSetConfirmModal({
               >
                 Minting fee
               </span>
-              <span
-                style={{
-                  fontSize: "20px",
-                  fontWeight: 800,
-                  color: MINT_GREEN,
-                  letterSpacing: "-0.02em",
-                }}
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
-                $100
-              </span>
+                <BtcLogo size={16} />
+                <span
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: 800,
+                    color: MINT_GREEN,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  $1
+                </span>
+              </div>
             </div>
 
             <SlideToConfirm onComplete={onConfirm} />

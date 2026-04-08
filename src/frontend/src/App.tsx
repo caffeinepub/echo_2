@@ -79,50 +79,21 @@ function AppContent() {
     const draft = pendingMintDraft;
     const now = Date.now();
     const totalPacks = 300;
-    const priceUsd = 10;
+    const priceUsd = 1;
 
-    console.log("[Minty] Minting fee: $100 deducted");
-
-    const videoCount = Math.max(1, Math.round(totalPacks * 0.1));
-    const photoCount = totalPacks - videoCount;
-
-    type SlotPhoto = { type: "photo"; num: number };
-    type SlotVideo = { type: "video"; num: number };
-    type Slot = SlotPhoto | SlotVideo;
-
-    const pool: Slot[] = [
-      ...Array.from({ length: photoCount }, (_, i) => ({
-        type: "photo" as const,
-        num: i + 1,
-      })),
-      ...Array.from({ length: videoCount }, (_, i) => ({
-        type: "video" as const,
-        num: i + 1,
-      })),
-    ];
-
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-
-    const coverImageUrl =
-      draft.photos.length > 0
-        ? draft.photos[0]
-        : "https://images.pokemontcg.io/sv1/025_hires.png";
-
-    const packIds = pool.map((_, idx) => `pack_${draft.id}_${idx}`);
+    const packIds = Array.from(
+      { length: totalPacks },
+      (_, idx) => `pack_${draft.id}_${idx}`,
+    );
 
     const releaseTitle = draft.title?.trim() || "Mint Moment";
-    const releaseCaption =
-      draft.caption?.trim() ||
-      `${photoCount} photos · ${videoCount} video · ${totalPacks} packs`;
+    const releaseCaption = draft.caption?.trim() || "15-second moment";
 
     const release: MarketRelease = {
       id: `release_mint_${draft.id}`,
       creatorName: "You",
       creatorId: "you",
-      coverImageUrl,
+      coverImageUrl: "/assets/generated/minty-pack-wrapper.png",
       previewClipUrl: draft.video ?? undefined,
       title: releaseTitle,
       caption: releaseCaption,
@@ -134,7 +105,7 @@ function AppContent() {
       listedAt: now,
       expiresAt: now + 365 * 24 * 3600000,
       status: "active",
-      collectibleType: "photo",
+      collectibleType: "video",
       explicit: draft.explicit ?? false,
       hashtags: draft.hashtags ?? [],
     };
