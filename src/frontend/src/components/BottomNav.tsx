@@ -1,4 +1,4 @@
-import { BookOpen, ShoppingBag, Sparkles, Tag } from "lucide-react";
+import { ShoppingBag, Sparkles, Tag, Video } from "lucide-react";
 import { usePackStyle } from "../context/PackStyleContext";
 
 export type Tab = "library" | "releases" | "collection" | "market";
@@ -9,7 +9,7 @@ interface BottomNavProps {
 }
 
 const tabs: { id: Tab; label: string; Icon: React.FC<{ size?: number }> }[] = [
-  { id: "library", label: "Library", Icon: BookOpen },
+  { id: "library", label: "Mint", Icon: Video },
   { id: "releases", label: "Releases", Icon: Sparkles },
   { id: "collection", label: "Collection", Icon: ShoppingBag },
   { id: "market", label: "Market", Icon: Tag },

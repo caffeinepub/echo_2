@@ -481,7 +481,7 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
-  'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
+  'getPaymentAddress' : IDL.Func([], [IDL.Text], []),
   'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
   'getPriceHistoryFull' : IDL.Func(
@@ -1062,7 +1062,7 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
-    'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
+    'getPaymentAddress' : IDL.Func([], [IDL.Text], []),
     'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
     'getPriceHistoryFull' : IDL.Func(

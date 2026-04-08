@@ -467,8 +467,9 @@ export interface backendInterface {
         err: string;
     }>;
     /**
-     * / Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
-     * / For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+     * / Check for new incoming UTXOs on the caller's BTC deposit address using ICP's Bitcoin API.
+     * / Credits balance for UTXOs with height > 0 (at least 1 confirmation).
+     * / Tracks seen UTXO outpoints to prevent double-crediting.
      */
     checkForNewDeposits(): Promise<{
         __kind__: "ok";
@@ -501,7 +502,8 @@ export interface backendInterface {
         err: string;
     }>;
     /**
-     * / Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+     * / Re-check pending deposits using the ICP Bitcoin API.
+     * / Confirms deposits whose UTXO now has >= 1 confirmation and credits balance.
      */
     confirmPendingDeposits(): Promise<{
         __kind__: "ok";
@@ -622,9 +624,8 @@ export interface backendInterface {
      */
     getOrCreateUserWallet(): Promise<UserWallet>;
     /**
-     * / Returns the caller's ICP principal as text.
-     * / The frontend uses this address to request ckBTC ICRC-2 approval before payment.
-     * / All error messages visible to the user refer to this as their "payment address".
+     * / Returns the caller's BTC deposit address as their payment address.
+     * / All payments are in BTC — no internal payment terminology exposed.
      */
     getPaymentAddress(): Promise<string>;
     getPokemonSets(): Promise<Array<TcgSet>>;
@@ -661,7 +662,8 @@ export interface backendInterface {
     getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     /**
-     * / Returns the caller's unique BTC deposit address.
+     * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
+     * / Derives the address on first call and caches it in the wallet.
      */
     getUserDepositAddress(): Promise<string>;
     /**
@@ -706,18 +708,18 @@ export interface backendInterface {
     }>;
     openPack(packId: string): Promise<PackOpenResult>;
     /**
-     * / Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+     * / Process a $1 mint fee deducted from creator's in-app balance → platform.
      * / Returns the internal transaction ID.
      */
     processClipMint(creatorPrincipal: Principal): Promise<bigint>;
     /**
-     * / Process a bonding curve copy sale. 95% to creator, 5% to platform.
-     * / Pulls total from buyer's approved allowance → distributes to creator and platform.
+     * / Process a bonding curve copy sale via in-app balance.
+     * / 95% to creator, 5% to platform — deducted from buyer's balance.
      */
     processCopySale(clipId: string, creatorPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     /**
-     * / Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
-     * / Pulls total from buyer's approved allowance → distributes to all parties.
+     * / Process a secondary trade via in-app balance.
+     * / 4% to original creator, 1% to platform, 95% to seller — deducted from buyer's balance.
      */
     processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     /**

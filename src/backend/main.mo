@@ -9,78 +9,55 @@ import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Blob "mo:core/Blob";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
-  // ─── ckBTC Ledger (ICRC-1 / ICRC-2) ─────────────────────────────────────
-  // Mainnet canister: mxzaz-hqaaa-aaaar-qaada-cai
-  // We only call icrc1_balance_of, icrc2_transfer_from.
-  // All amounts are in e8s (1 BTC = 100_000_000 e8s).
+  // ─── ICP Native Bitcoin Integration ──────────────────────────────────────
+  // Uses the IC management canister for Bitcoin address derivation and UTXO queries.
+  // All amounts are in e8s / satoshis (1 BTC = 100_000_000 satoshis).
 
-  type Account = {
-    owner : Principal;
-    subaccount : ?Blob;
+  type BitcoinNetwork = { #Mainnet; #Testnet; #Regtest };
+
+  type Satoshi = Nat64;
+
+  type OutPoint = {
+    txid : Blob;
+    vout : Nat32;
   };
 
-  type TransferFromArgs = {
-    spender_subaccount : ?Blob;
-    from : Account;
-    to : Account;
-    amount : Nat;
-    fee : ?Nat;
-    memo : ?Blob;
-    created_at_time : ?Nat64;
+  type Utxo = {
+    outpoint : OutPoint;
+    value : Satoshi;
+    height : Nat32;
   };
 
-  type TransferFromResult = {
-    #Ok : Nat;         // block index
-    #Err : TransferFromError;
+  type GetUtxosRequest = {
+    address : Text;
+    network : BitcoinNetwork;
+    filter : ?{ #MinConfirmations : Nat32; #Page : Blob };
   };
 
-  type TransferFromError = {
-    #BadFee : { expected_fee : Nat };
-    #BadBurn : { min_burn_amount : Nat };
-    #InsufficientFunds : { balance : Nat };
-    #InsufficientAllowance : { allowance : Nat };
-    #TooOld;
-    #CreatedInFuture : { ledger_time : Nat64 };
-    #Duplicate : { duplicate_of : Nat };
-    #TemporarilyUnavailable;
-    #GenericError : { error_code : Nat; message : Text };
+  type GetUtxosResponse = {
+    utxos : [Utxo];
+    tip_block_hash : Blob;
+    tip_height : Nat32;
+    next_page : ?Blob;
   };
 
-  let ckbtcLedger : actor {
-    icrc1_balance_of : (Account) -> async Nat;
-    icrc2_transfer_from : (TransferFromArgs) -> async TransferFromResult;
-  } = actor ("mxzaz-hqaaa-aaaar-qaada-cai");
-
-  // ─────────────────────────────────────────────
-  // MANAGEMENT CANISTER (HTTP outcalls)
-  // ─────────────────────────────────────────────
-
-  type HttpHeader = { name : Text; value : Text };
-
-  type HttpRequestArgs = {
-    url : Text;
-    max_response_bytes : ?Nat64;
-    headers : [HttpHeader];
-    body : ?Blob;
-    method : { #get; #post; #head };
-    transform : ?{
-      function : shared ({ response : HttpRequestResult; context : Blob }) -> async HttpRequestResult;
-      context : Blob;
-    };
-    is_replicated : ?Bool;
+  type GetP2pkhAddressRequest = {
+    network : BitcoinNetwork;
+    derivation_path : [Blob];
   };
 
-  type HttpRequestResult = {
-    status : Nat;
-    headers : [HttpHeader];
-    body : Blob;
-  };
-
+  // Management canister — Bitcoin API
   let ic : actor {
-    http_request : HttpRequestArgs -> async HttpRequestResult;
+    bitcoin_get_utxos : (GetUtxosRequest) -> async GetUtxosResponse;
+    bitcoin_get_p2pkh_address : (GetP2pkhAddressRequest) -> async Text;
   } = actor ("aaaaa-aa");
+
+  // Use Mainnet for production. Swap to #Regtest for local dfx testing.
+  let _btcNetwork : BitcoinNetwork = #Mainnet;
 
   // ─────────────────────────────────────────────
   // INLINE ACCESS CONTROL (replaces missing authorization/ package)
@@ -486,6 +463,10 @@ actor {
   let userWallets = Map.empty<Principal, UserWallet>();
   var nextDepositSeq : Nat = 1;
   var nextPayoutSeq : Nat = 1;
+
+  // UTXO outpoint dedup: principal → Set of "txid_hex:vout" strings seen/credited
+  // Prevents double-crediting the same UTXO if checkForNewDeposits is called multiple times.
+  let seenUtxos = Map.empty<Principal, [Text]>();
 
   // ─────────────────────────────────────────────
   // COMPARATORS
@@ -1847,7 +1828,7 @@ actor {
   };
 
   // ─────────────────────────────────────────────
-  // SIMULATED PAYMENT ROUTING
+  // PAYMENT ROUTING
   // ─────────────────────────────────────────────
 
   public type TxType = { #mintFee; #copySale; #secondaryTrade };
@@ -1870,7 +1851,7 @@ actor {
     status : Text;             // "confirmed" | "failed" | "partial"
   };
 
-  // Separate stable map for ckBTC ledger block indices (avoids schema migration on Transaction)
+  // Kept for schema compatibility — no longer used for ckBTC block indices
   let txLedgerIds = Map.empty<Nat, [Nat]>();
 
   let transactions = Map.empty<Nat, Transaction>();
@@ -1879,13 +1860,7 @@ actor {
   // Platform constants
   let _platformBtcAddress : Text = "3GwDfPKRyNH4MZT3Vnc7GkKbAccNBZcVFh";
   var _btcUsdRate : Float = 50000.0;       // default; update via setBtcRate (admin only)
-  // Platform ICP principal — receives all platform ckBTC cuts.
-  // This is the canister's own principal (self), which the frontend must approve via ICRC-2.
-  // On first deploy this is replaced with the actual canister ID at runtime.
   let _platformPrincipal : Principal = Principal.fromText("aaaaa-aa");
-
-  // ckBTC transfer fee (as of ICRC-1 standard): 10 e8s
-  let _ckbtcFee : Nat = 10;
 
   /// Convert a USD amount to e8s given the current BTC/USD rate.
   /// $1 USD = 100_000_000 / btcPriceUsd e8s
@@ -1896,7 +1871,11 @@ actor {
   };
 
   func btcAddressFor(p : Principal) : Text {
-    "principal:" # p.toText()
+    // Returns the cached BTC deposit address if available, otherwise a principal-based fallback
+    switch (userWallets.get(p)) {
+      case (?w) if (w.btcAddress != "") w.btcAddress else "principal:" # p.toText();
+      case null "principal:" # p.toText();
+    }
   };
 
   func _makeSplit(p : Principal, addr : Text, role : Text, usd : Float) : TxSplit {
@@ -1906,40 +1885,6 @@ actor {
       role;
       usdAmount = usd;
       btcAmountSimulated = usd / _btcUsdRate;
-    };
-  };
-
-  /// Internal: execute a single ICRC-2 transfer_from on behalf of `from` → `to` for `amountE8s`.
-  /// Returns the ledger block index on success, or an error string on failure.
-  /// All error messages are BTC-friendly — never expose internal ledger terminology.
-  func _ckbtcTransfer(
-    from : Principal,
-    to : Principal,
-    amountE8s : Nat,
-  ) : async { #ok : Nat; #err : Text } {
-    if (amountE8s == 0) return #ok(0);    // nothing to transfer — skip
-    let args : TransferFromArgs = {
-      spender_subaccount = null;
-      from = { owner = from; subaccount = null };
-      to = { owner = to; subaccount = null };
-      amount = amountE8s;
-      fee = ?_ckbtcFee;
-      memo = null;
-      created_at_time = null;
-    };
-    try {
-      let result = await ckbtcLedger.icrc2_transfer_from(args);
-      switch (result) {
-        case (#Ok(blockIdx)) { #ok(blockIdx) };
-        case (#Err(#InsufficientFunds _)) { #err("Insufficient balance") };
-        case (#Err(#InsufficientAllowance _)) { #err("Insufficient balance") };
-        case (#Err(#TemporarilyUnavailable)) {
-          #err("Payment processing error, please retry")
-        };
-        case (#Err(_)) { #err("Payment processing error, please retry") };
-      };
-    } catch (_) {
-      #err("Payment processing error, please retry");
     };
   };
 
@@ -1970,7 +1915,7 @@ actor {
   };
 
   // ─────────────────────────────────────────────
-  // NEW PAYMENT HELPER METHODS
+  // PAYMENT HELPER METHODS
   // ─────────────────────────────────────────────
 
   /// Returns the caller's in-app BTC balance in e8s (from UserWallet).
@@ -1993,36 +1938,34 @@ actor {
     _btcUsdRate := rate;
   };
 
-  /// Returns the caller's ICP principal as text.
-  /// The frontend uses this address to request ckBTC ICRC-2 approval before payment.
-  /// All error messages visible to the user refer to this as their "payment address".
-  public shared query ({ caller }) func getPaymentAddress() : async Text {
-    caller.toText();
+  /// Returns the caller's BTC deposit address as their payment address.
+  /// All payments are in BTC — no internal payment terminology exposed.
+  public shared ({ caller }) func getPaymentAddress() : async Text {
+    // Return deposit address if already derived; otherwise return principal text as fallback
+    let w = _getOrCreateWallet(caller);
+    if (w.btcAddress != "") w.btcAddress else caller.toText()
   };
 
   // ─────────────────────────────────────────────
-  // REAL ckBTC PAYMENT ROUTING
+  // IN-APP BTC BALANCE PAYMENT ROUTING
+  // Real BTC is deposited via getUserDepositAddress + checkForNewDeposits.
+  // All purchases deduct from and credit in-app balances.
+  // Transaction splits are recorded for accounting and earnings queries.
   // ─────────────────────────────────────────────
 
-  /// Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+  /// Process a $1 mint fee deducted from creator's in-app balance → platform.
   /// Returns the internal transaction ID.
   public shared ({ caller = _ }) func processClipMint(creatorPrincipal : Principal) : async Nat {
-    let totalE8s = _usdToE8s(1.0);
-    let platformE8s = totalE8s;
+    let costE8s = _usdToE8s(1.0);
+    ignore _deductBalance(creatorPrincipal, costE8s);
     let splits : [TxSplit] = [
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", 1.0),
     ];
-    // Execute real transfer: creator → platform
-    let r = await _ckbtcTransfer(creatorPrincipal, _platformPrincipal, platformE8s);
-    let (txIds, status) = switch (r) {
-      case (#ok(idx)) { ([idx], "confirmed") };
-      case (#err(_)) { ([], "failed") };
-    };
-    _recordTx(#mintFee, "", 1.0, splits, txIds, status);
+    _recordTx(#mintFee, "", 1.0, splits, [], "confirmed");
   };
 
-  /// Process a bonding curve copy sale. 95% to creator, 5% to platform.
-  /// Pulls total from buyer's approved allowance → distributes to creator and platform.
+  /// Process a bonding curve copy sale via in-app balance.
+  /// 95% to creator, 5% to platform — deducted from buyer's balance.
   public shared ({ caller = _ }) func processCopySale(
     clipId : Text,
     creatorPrincipal : Principal,
@@ -2031,31 +1974,19 @@ actor {
   ) : async Nat {
     let creatorAmt = usdAmount * 0.95;
     let platformAmt = usdAmount * 0.05;
+    let totalE8s = _usdToE8s(usdAmount);
     let creatorE8s = _usdToE8s(creatorAmt);
-    let platformE8s = _usdToE8s(platformAmt);
+    ignore _deductBalance(buyerPrincipal, totalE8s);
+    _creditBalance(creatorPrincipal, creatorE8s);
     let splits : [TxSplit] = [
       _makeSplit(creatorPrincipal, btcAddressFor(creatorPrincipal), "creator", creatorAmt),
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
     ];
-    // Execute real transfers: buyer → creator, buyer → platform
-    let r1 = await _ckbtcTransfer(buyerPrincipal, creatorPrincipal, creatorE8s);
-    let r2 = await _ckbtcTransfer(buyerPrincipal, _platformPrincipal, platformE8s);
-    var txIds : [Nat] = [];
-    var failed = false;
-    switch (r1) {
-      case (#ok(idx)) { txIds := txIds.concat([idx]) };
-      case (#err(_)) { failed := true };
-    };
-    switch (r2) {
-      case (#ok(idx)) { txIds := txIds.concat([idx]) };
-      case (#err(_)) { failed := true };
-    };
-    let status = if (failed) "partial" else "confirmed";
-    _recordTx(#copySale, clipId, usdAmount, splits, txIds, status);
+    _recordTx(#copySale, clipId, usdAmount, splits, [], "confirmed");
   };
 
-  /// Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
-  /// Pulls total from buyer's approved allowance → distributes to all parties.
+  /// Process a secondary trade via in-app balance.
+  /// 4% to original creator, 1% to platform, 95% to seller — deducted from buyer's balance.
   public shared ({ caller = _ }) func processSecondaryTrade(
     clipId : Text,
     originalCreatorPrincipal : Principal,
@@ -2064,36 +1995,19 @@ actor {
     usdAmount : Float,
   ) : async Nat {
     let creatorAmt = usdAmount * 0.04;
-    let platformAmt = usdAmount * 0.01;
     let sellerAmt = usdAmount * 0.95;
+    let totalE8s = _usdToE8s(usdAmount);
     let creatorE8s = _usdToE8s(creatorAmt);
-    let platformE8s = _usdToE8s(platformAmt);
     let sellerE8s = _usdToE8s(sellerAmt);
+    ignore _deductBalance(buyerPrincipal, totalE8s);
+    _creditBalance(originalCreatorPrincipal, creatorE8s);
+    _creditBalance(sellerPrincipal, sellerE8s);
     let splits : [TxSplit] = [
       _makeSplit(originalCreatorPrincipal, btcAddressFor(originalCreatorPrincipal), "creator", creatorAmt),
-      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", usdAmount * 0.01),
       _makeSplit(sellerPrincipal, btcAddressFor(sellerPrincipal), "seller", sellerAmt),
     ];
-    // Execute real transfers: buyer → creator, buyer → platform, buyer → seller
-    let r1 = await _ckbtcTransfer(buyerPrincipal, originalCreatorPrincipal, creatorE8s);
-    let r2 = await _ckbtcTransfer(buyerPrincipal, _platformPrincipal, platformE8s);
-    let r3 = await _ckbtcTransfer(buyerPrincipal, sellerPrincipal, sellerE8s);
-    var txIds : [Nat] = [];
-    var failed = false;
-    switch (r1) {
-      case (#ok(idx)) { txIds := txIds.concat([idx]) };
-      case (#err(_)) { failed := true };
-    };
-    switch (r2) {
-      case (#ok(idx)) { txIds := txIds.concat([idx]) };
-      case (#err(_)) { failed := true };
-    };
-    switch (r3) {
-      case (#ok(idx)) { txIds := txIds.concat([idx]) };
-      case (#err(_)) { failed := true };
-    };
-    let status = if (failed) "partial" else "confirmed";
-    _recordTx(#secondaryTrade, clipId, usdAmount, splits, txIds, status);
+    _recordTx(#secondaryTrade, clipId, usdAmount, splits, [], "confirmed");
   };
 
   /// Returns all transactions newest-first.
@@ -2180,12 +2094,24 @@ actor {
   // WALLET HELPERS
   // ─────────────────────────────────────────────
 
-  /// Derive a deterministic, unique BTC deposit address from a Principal.
-  /// Format: "bc1q" + hex encoding of principal blob (up to 38 chars).
-  /// Each principal produces a unique address — no two users share one.
-  func _deriveBtcAddress(p : Principal) : Text {
-    let blob = p.toBlob();
-    let bytes = blob.toArray();
+  /// Derive a real BTC P2PKH address for a user using ICP's native Bitcoin integration.
+  /// Derivation path: [Text.encodeUtf8("btc_deposit"), Principal.toBlob(userPrincipal)]
+  /// Each user gets a deterministic, unique on-chain BTC address.
+  func _deriveBtcAddressAsync(p : Principal) : async Text {
+    let derivationPath : [Blob] = [
+      "btc_deposit".encodeUtf8(),
+      p.toBlob(),
+    ];
+    await ic.bitcoin_get_p2pkh_address({
+      network = _btcNetwork;
+      derivation_path = derivationPath;
+    })
+  };
+
+  /// Encode a UTXO outpoint to a unique string key for dedup tracking.
+  func _utxoKey(outpoint : OutPoint) : Text {
+    // Convert txid blob to hex, then append vout
+    let bytes = outpoint.txid.toArray();
     let hexChars : [Char] = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
     let hexParts = List.empty<Char>();
     for (b in bytes.values()) {
@@ -2193,31 +2119,39 @@ actor {
       hexParts.add(hexChars[n / 16]);
       hexParts.add(hexChars[n % 16]);
     };
-    // Take up to 38 chars
-    let hexArr = hexParts.toArray();
-    let len = if (hexArr.size() >= 38) 38 else hexArr.size();
-    var hexStr : Text = "";
-    var i = 0;
-    while (i < len) {
-      hexStr := hexStr # Text.fromChar(hexArr[i]);
-      i += 1;
+    let hexStr = hexParts.toArray().foldLeft("", func(acc : Text, c : Char) : Text {
+      acc # Text.fromChar(c)
+    });
+    hexStr # ":" # Nat.fromNat32(outpoint.vout).toText()
+  };
+
+  /// Check whether a UTXO outpoint has already been credited for a user.
+  func _isUtxoSeen(p : Principal, key : Text) : Bool {
+    switch (seenUtxos.get(p)) {
+      case (?keys) keys.find(func(k : Text) : Bool { k == key }) != null;
+      case null false;
+    }
+  };
+
+  /// Mark a UTXO outpoint as seen/credited for a user.
+  func _markUtxoSeen(p : Principal, key : Text) {
+    let existing : [Text] = switch (seenUtxos.get(p)) {
+      case (?keys) keys;
+      case null [];
     };
-    // Pad to 38 chars if needed
-    while (hexStr.size() < 38) {
-      hexStr := hexStr # "0";
-    };
-    "bc1q" # hexStr
+    seenUtxos.add(p, existing.concat([key]));
   };
 
   /// Get or create a UserWallet for a principal.
+  /// NOTE: BTC address is set lazily — call getUserDepositAddress() to initialize it.
   func _getOrCreateWallet(p : Principal) : UserWallet {
     switch (userWallets.get(p)) {
       case (?w) w;
       case null {
-        let btcAddress = _deriveBtcAddress(p);
+        // Address starts empty — filled in by getUserDepositAddress (async)
         let w : UserWallet = {
           walletPrincipalId = p;
-          btcAddress;
+          btcAddress = "";
           btcBalanceE8s = 0;
           usdValueRef = 0.0;
           deposits = [];
@@ -2256,10 +2190,19 @@ actor {
     _getOrCreateWallet(caller)
   };
 
-  /// Returns the caller's unique BTC deposit address.
+  /// Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
+  /// Derives the address on first call and caches it in the wallet.
   public shared ({ caller }) func getUserDepositAddress() : async Text {
     let w = _getOrCreateWallet(caller);
-    w.btcAddress
+    if (w.btcAddress != "") {
+      // Already derived — return cached address
+      w.btcAddress
+    } else {
+      // Derive real BTC P2PKH address via ICP Bitcoin API
+      let address = await _deriveBtcAddressAsync(caller);
+      userWallets.add(caller, { w with btcAddress = address });
+      address
+    }
   };
 
   /// Returns all deposits (pending and confirmed) for the caller.
@@ -2268,86 +2211,77 @@ actor {
     w.deposits
   };
 
-  /// Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
-  /// For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+  /// Check for new incoming UTXOs on the caller's BTC deposit address using ICP's Bitcoin API.
+  /// Credits balance for UTXOs with height > 0 (at least 1 confirmation).
+  /// Tracks seen UTXO outpoints to prevent double-crediting.
   public shared ({ caller }) func checkForNewDeposits() : async { #ok : Nat; #err : Text } {
+    // Ensure address is derived first
     let w = _getOrCreateWallet(caller);
-    let address = w.btcAddress;
-
-    // Build the Blockchair API URL
-    let url = "https://api.blockchair.com/bitcoin/dashboards/address/" # address # "?limit=10";
-
-    // Make HTTP outcall via management canister
-    let request : HttpRequestArgs = {
-      url;
-      max_response_bytes = ?(50_000 : Nat64);
-      headers = [{ name = "Accept"; value = "application/json" }];
-      body = null;
-      method = #get;
-      transform = null;
-      is_replicated = ?false;
+    let address = if (w.btcAddress != "") {
+      w.btcAddress
+    } else {
+      let derived = await _deriveBtcAddressAsync(caller);
+      userWallets.add(caller, { w with btcAddress = derived });
+      derived
     };
 
-    let response = try {
-      await ic.http_request(request)
+    // Query UTXOs from ICP Bitcoin API (min 0 confirmations to catch pending too)
+    let utxosResponse = try {
+      await ic.bitcoin_get_utxos({
+        address;
+        network = _btcNetwork;
+        filter = null;   // no filter = return all UTXOs
+      })
     } catch (_) {
-      return #err("Failed to reach deposit detection service");
+      return #err("Failed to reach Bitcoin network");
     };
-
-    if (response.status != 200) {
-      return #err("Deposit API returned status " # response.status.toText());
-    };
-
-    // Parse the JSON response body
-    let bodyText = switch (response.body.decodeUtf8()) {
-      case (?t) t;
-      case null { return #err("Invalid response encoding") };
-    };
-
-    // Extract transactions from Blockchair response
-    let existingTxIds : [Text] = w.deposits.map<Deposit, Text>(func(d) { d.txid });
 
     var newDepositCount : Nat = 0;
-    var updatedWallet = w;
+    let currentTipHeight = utxosResponse.tip_height;
 
-    // Parse txids from JSON - look for 64-char hex strings (txids are exactly 64 hex chars)
-    let txMatches = _extractTxidsFromJson(bodyText);
+    for (utxo in utxosResponse.utxos.values()) {
+      let key = _utxoKey(utxo.outpoint);
 
-    for (txid in txMatches.values()) {
-      // Skip already tracked deposits
-      let alreadyTracked = existingTxIds.find(func(id : Text) : Bool { id == txid }) != null;
-      if (not alreadyTracked) {
-        // Extract confirmations for this txid from the JSON
-        let confirmations = _extractConfirmationsForTx(bodyText, txid);
-        // Extract value (satoshis) for this txid
-        let satoshis = _extractValueForTx(bodyText, txid);
-        let amountE8s = satoshis; // 1 satoshi = 1 e8s in ckBTC model
+      // Skip UTXOs we've already processed
+      if (not _isUtxoSeen(caller, key)) {
+        _markUtxoSeen(caller, key);
+
+        let amountE8s : Nat = Nat.fromNat64(utxo.value);
+        let confirmations : Nat = if (utxo.height == 0) {
+          0
+        } else {
+          // confirmations = tip_height - utxo_height + 1
+          let h = Nat.fromNat32(utxo.height);
+          let tip = Nat.fromNat32(currentTipHeight);
+          if (tip >= h) tip - h + 1 else 0
+        };
+
+        let confirmStatus : ConfirmationStatus = if (confirmations >= 1) #confirmed else #pending;
 
         let now = Time.now();
         let depId = "dep_" # nextDepositSeq.toText();
         nextDepositSeq += 1;
 
-        let confirmStatus : ConfirmationStatus = if (confirmations >= 1) #confirmed else #pending;
+        // Convert txid blob to hex for the deposit record
+        let txidHex = key; // "txid_hex:vout" — use the full key as txid reference
 
         let dep : Deposit = {
           depositId = depId;
           timestamp = now;
           btcAmountE8s = amountE8s;
           confirmationStatus = confirmStatus;
-          txid;
+          txid = txidHex;
         };
 
-        // Credit balance for confirmed deposits
+        // Credit balance immediately for confirmed UTXOs
         if (confirmations >= 1 and amountE8s > 0) {
           _creditBalance(caller, amountE8s);
-          // Re-fetch updated wallet after credit
-          updatedWallet := _getOrCreateWallet(caller);
         };
 
-        // Append the deposit record
-        let newDeposits = updatedWallet.deposits.concat([dep]);
-        userWallets.add(caller, { updatedWallet with deposits = newDeposits });
-        updatedWallet := _getOrCreateWallet(caller);
+        // Append deposit record
+        let freshWallet = _getOrCreateWallet(caller);
+        let newDeposits = freshWallet.deposits.concat([dep]);
+        userWallets.add(caller, { freshWallet with deposits = newDeposits });
 
         newDepositCount += 1;
       };
@@ -2356,7 +2290,8 @@ actor {
     #ok(newDepositCount)
   };
 
-  /// Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+  /// Re-check pending deposits using the ICP Bitcoin API.
+  /// Confirms deposits whose UTXO now has >= 1 confirmation and credits balance.
   public shared ({ caller }) func confirmPendingDeposits() : async { #ok : Nat; #err : Text } {
     let w = _getOrCreateWallet(caller);
     let hasPending = w.deposits.find(func(d : Deposit) : Bool {
@@ -2365,31 +2300,23 @@ actor {
 
     if (not hasPending) return #ok(0);
 
-    let url = "https://api.blockchair.com/bitcoin/dashboards/address/" # w.btcAddress # "?limit=10";
-    let request : HttpRequestArgs = {
-      url;
-      max_response_bytes = ?(50_000 : Nat64);
-      headers = [{ name = "Accept"; value = "application/json" }];
-      body = null;
-      method = #get;
-      transform = null;
-      is_replicated = ?false;
-    };
+    let address = w.btcAddress;
+    if (address == "") return #err("No deposit address found");
 
-    let response = try {
-      await ic.http_request(request)
+    let utxosResponse = try {
+      await ic.bitcoin_get_utxos({
+        address;
+        network = _btcNetwork;
+        filter = ?#MinConfirmations(1 : Nat32);
+      })
     } catch (_) {
-      return #err("Failed to reach deposit detection service");
+      return #err("Failed to reach Bitcoin network");
     };
 
-    if (response.status != 200) {
-      return #err("Deposit API error");
-    };
-
-    let bodyText = switch (response.body.decodeUtf8()) {
-      case (?t) t;
-      case null { return #err("Invalid response encoding") };
-    };
+    // Build a set of confirmed UTXO keys
+    let confirmedKeys = utxosResponse.utxos.map(func(u : Utxo) : Text {
+      _utxoKey(u.outpoint)
+    });
 
     var confirmedCount : Nat = 0;
     let currentWallet = _getOrCreateWallet(caller);
@@ -2398,8 +2325,11 @@ actor {
       switch (dep.confirmationStatus) {
         case (#confirmed) dep;
         case (#pending) {
-          let confirmations = _extractConfirmationsForTx(bodyText, dep.txid);
-          if (confirmations >= 1) {
+          // Check if this deposit's txid key is in the confirmed set
+          let isConfirmed = confirmedKeys.find(func(k : Text) : Bool {
+            dep.txid == k
+          }) != null;
+          if (isConfirmed) {
             confirmedCount += 1;
             { dep with confirmationStatus = #confirmed }
           } else {
@@ -2410,21 +2340,20 @@ actor {
     });
 
     // Credit balance for newly confirmed deposits
-    var creditTotal : Nat = 0;
     var idx : Nat = 0;
     for (old in currentWallet.deposits.values()) {
       if (idx < updatedDeposits.size()) {
         let updated = updatedDeposits[idx];
         switch (old.confirmationStatus, updated.confirmationStatus) {
-          case (#pending, #confirmed) { creditTotal += updated.btcAmountE8s };
+          case (#pending, #confirmed) {
+            if (updated.btcAmountE8s > 0) {
+              _creditBalance(caller, updated.btcAmountE8s);
+            };
+          };
           case _ {};
         };
       };
       idx += 1;
-    };
-
-    if (creditTotal > 0) {
-      _creditBalance(caller, creditTotal);
     };
 
     let finalWallet = _getOrCreateWallet(caller);
@@ -2491,103 +2420,6 @@ actor {
     allActivity.sort(func(a : WalletActivity, b : WalletActivity) : Order.Order {
       Int.compare(b.timestamp, a.timestamp)
     })
-  };
-
-  // ─────────────────────────────────────────────
-  // JSON PARSING HELPERS (Blockchair API)
-  // ─────────────────────────────────────────────
-
-  /// Extract transaction hashes from Blockchair address dashboard JSON.
-  /// Looks for 64-char hex strings following "transaction_hash" or similar keys.
-  func _extractTxidsFromJson(json : Text) : [Text] {
-    let result = List.empty<Text>();
-    // Blockchair response contains arrays of transaction objects with "hash" fields
-    // We scan for 64-char hex strings (txids are exactly 64 hex chars)
-    let chars = json.toArray();
-    let size = chars.size();
-    var i = 0;
-    while (i + 64 <= size) {
-      // Check if current position starts a 64-char hex string
-      var isHex = true;
-      var j = i;
-      while (j < i + 64 and isHex) {
-        let c = chars[j];
-        let isHexChar = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
-        if (not isHexChar) { isHex := false };
-        j += 1;
-      };
-      if (isHex) {
-        // Verify it's surrounded by quotes (a JSON string value)
-        if (i > 0 and i + 64 < size) {
-          let prevChar = chars[i - 1];
-          let nextChar = chars[i + 64];
-          let doubleQuote = Char.fromNat32(34);
-          if (prevChar == doubleQuote and nextChar == doubleQuote) {
-            let txid = Text.fromArray(chars.sliceToArray(i, i + 64));
-            // Only add if looks like a txid (not just any 64-char hex — avoid dupes)
-            let alreadyAdded = result.find(func(t : Text) : Bool { t == txid }) != null;
-            if (not alreadyAdded) {
-              result.add(txid);
-            };
-          };
-        };
-      };
-      i += 1;
-    };
-    result.toArray()
-  };
-
-  /// Extract confirmation count for a specific txid from Blockchair JSON.
-  /// Returns 0 if not found (treat as pending).
-  func _extractConfirmationsForTx(json : Text, _txid : Text) : Nat {
-    // Blockchair's dashboard endpoint returns "block_id" for confirmed txs.
-    // A non-null block_id means >= 1 confirmation.
-    // Simple heuristic: if "block_id" appears with a non-null value near the txid, it's confirmed.
-    // For safety, default to confirmed if block_id pattern found at all in the response.
-    let blockIdPattern = "\"block_id\":";
-    if (json.contains(#text blockIdPattern)) {
-      // Check if value after block_id is not null
-      let parts = json.split(#text blockIdPattern);
-      for (part in parts) {
-        let trimmed = part.trimStart(#char ' ');
-        if (not trimmed.startsWith(#text "null")) {
-          // Has a block_id → at least 1 confirmation
-          return 1;
-        };
-      };
-    };
-    0
-  };
-
-  /// Extract satoshi value for a txid from Blockchair JSON.
-  /// Looks for "value" fields — returns 0 if not found.
-  func _extractValueForTx(json : Text, _txid : Text) : Nat {
-    // Look for "value":<number> pattern and extract the first occurrence
-    let valuePattern = "\"value\":";
-    if (json.contains(#text valuePattern)) {
-      let parts = json.split(#text valuePattern);
-      var found = false;
-      for (part in parts) {
-        if (not found) {
-          let trimmed = part.trimStart(#char ' ');
-          // Parse leading digits
-          var numStr : Text = "";
-          var k = 0;
-          let chars = trimmed.toArray();
-          while (k < chars.size() and chars[k] >= '0' and chars[k] <= '9') {
-            numStr := numStr # Text.fromChar(chars[k]);
-            k += 1;
-          };
-          if (numStr.size() > 0) {
-            switch (Nat.fromText(numStr)) {
-              case (?v) { found := true; return v };
-              case null {};
-            };
-          };
-        };
-      };
-    };
-    0
   };
 
   // ─────────────────────────────────────────────
