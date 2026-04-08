@@ -12,10 +12,12 @@ function VideoCard({
   clip,
   isActive,
   onChartTap,
+  rank,
 }: {
   clip: VideoClip;
   isActive: boolean;
   onChartTap: () => void;
+  rank?: number;
 }) {
   const { likedIds, toggleLike } = useVideoFeed();
   const { activeStyle } = usePackStyle();
@@ -193,6 +195,59 @@ function VideoCard({
           pointerEvents: "none",
         }}
       />
+
+      {/* Rank badge — shown only in Top filter for positions 1-10 */}
+      {rank !== undefined &&
+        rank <= 10 &&
+        (() => {
+          const rankBg =
+            rank === 1
+              ? "#FFD700"
+              : rank === 2
+                ? "#C0C0C0"
+                : rank === 3
+                  ? "#CD7F32"
+                  : "rgba(60,20,90,0.72)";
+          const rankGlow =
+            rank === 1
+              ? "0 0 10px rgba(255,215,0,0.70), 0 2px 6px rgba(0,0,0,0.35)"
+              : rank === 2
+                ? "0 0 10px rgba(192,192,192,0.65), 0 2px 6px rgba(0,0,0,0.35)"
+                : rank === 3
+                  ? "0 0 10px rgba(205,127,50,0.65), 0 2px 6px rgba(0,0,0,0.35)"
+                  : "none";
+          return (
+            <div
+              data-ocid="releases.feed.rank_badge"
+              style={{
+                position: "absolute",
+                top: 12,
+                left: 12,
+                background: rankBg,
+                boxShadow: rankGlow,
+                backdropFilter: rank > 3 ? "blur(6px)" : undefined,
+                WebkitBackdropFilter: rank > 3 ? "blur(6px)" : undefined,
+                borderRadius: 10,
+                padding: rank <= 3 ? "5px 10px" : "4px 9px",
+                pointerEvents: "none",
+                zIndex: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: rank <= 3 ? 14 : 12,
+                  fontWeight: 800,
+                  color: "#fff",
+                  fontFamily: "DM Sans, sans-serif",
+                  letterSpacing: "0.01em",
+                  textShadow: rank <= 3 ? "0 1px 3px rgba(0,0,0,0.4)" : "none",
+                }}
+              >
+                #{rank}
+              </span>
+            </div>
+          );
+        })()}
 
       {/* Top-right controls row: mute + chart */}
       <div
@@ -554,7 +609,7 @@ function FilterRow() {
 // ─── ReleasesPage ──────────────────────────────────────────────────────────────
 
 export function ReleasesPage() {
-  const { filteredClips, isLoading } = useVideoFeed();
+  const { filteredClips, isLoading, activeSort } = useVideoFeed();
   const feedRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [chartClip, setChartClip] = useState<VideoClip | null>(null);
@@ -732,6 +787,7 @@ export function ReleasesPage() {
                   clip={clip}
                   isActive={activeIndex === idx}
                   onChartTap={() => handleChartTap(clip)}
+                  rank={activeSort === "top" ? idx + 1 : undefined}
                 />
                 {/* Bonding curve module below each video */}
                 <BondingCurveModule clip={clip} />

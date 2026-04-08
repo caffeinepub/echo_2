@@ -1,4 +1,4 @@
-import { Volume2, VolumeX } from "lucide-react";
+import { Play, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCamera } from "../camera/useCamera";
 import { FinalSetupScreen } from "../components/FinalSetupScreen";
@@ -46,11 +46,13 @@ export function CaptureMomentPage({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [previewMuted, setPreviewMuted] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const videoChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const camera = useCamera({ facingMode: "environment" });
+  const camera = useCamera({ facingMode: "user" });
   const {
     videoRef,
     canvasRef,
@@ -61,6 +63,7 @@ export function CaptureMomentPage({
     isLoading,
     isSupported,
     error,
+    currentFacingMode,
   } = camera;
 
   // Inject animation styles once
@@ -174,6 +177,29 @@ export function CaptureMomentPage({
     setUploadFallbackMsg(null);
     setCaptureState("recording");
   }, [pendingBlobUrl]);
+
+  // Imperatively drive preview video playback to avoid blob URL + autoPlay pitfalls
+  useEffect(() => {
+    if (
+      captureState !== "preview" ||
+      !pendingBlobUrl ||
+      !previewVideoRef.current
+    )
+      return;
+    const video = previewVideoRef.current;
+    setPreviewPlaying(false);
+    video.src = pendingBlobUrl;
+    video.load();
+    video
+      .play()
+      .then(() => {
+        setPreviewPlaying(true);
+      })
+      .catch(() => {
+        // Autoplay blocked — show tap-to-play overlay
+        setPreviewPlaying(false);
+      });
+  }, [captureState, pendingBlobUrl]);
 
   // Keep pendingBlobRef in sync with pendingBlobUrl so the ref is always
   // available even if it was lost on a component remount.
@@ -617,6 +643,9 @@ export function CaptureMomentPage({
                     height: "100%",
                     objectFit: "cover",
                     display: "block",
+                    // Mirror only when using front-facing camera (selfie mode)
+                    transform:
+                      currentFacingMode === "user" ? "scaleX(-1)" : "none",
                   }}
                 />
 
@@ -938,12 +967,43 @@ export function CaptureMomentPage({
               maxWidth: "360px",
             }}
           >
+            {/* Preview video — imperative playback via useEffect, NOT mirrored */}
             <video
-              src={pendingBlobUrl}
-              autoPlay
+              ref={previewVideoRef}
               loop
               muted={previewMuted}
               playsInline
+              controls={false}
+              onClick={() => {
+                const vid = previewVideoRef.current;
+                if (!vid) return;
+                if (vid.paused) {
+                  vid
+                    .play()
+                    .then(() => setPreviewPlaying(true))
+                    .catch(() => {});
+                } else {
+                  vid.pause();
+                  setPreviewPlaying(false);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  const vid = previewVideoRef.current;
+                  if (!vid) return;
+                  if (vid.paused) {
+                    vid
+                      .play()
+                      .then(() => setPreviewPlaying(true))
+                      .catch(() => {});
+                  } else {
+                    vid.pause();
+                    setPreviewPlaying(false);
+                  }
+                }
+              }}
+              onPlay={() => setPreviewPlaying(true)}
+              onPause={() => setPreviewPlaying(false)}
               style={{
                 width: "100%",
                 aspectRatio: "9/16",
@@ -953,10 +1013,64 @@ export function CaptureMomentPage({
                 boxShadow: "0 4px 32px rgba(124,58,237,0.18)",
                 display: "block",
                 background: "#000",
+                cursor: "pointer",
               }}
             >
               <track kind="captions" />
             </video>
+
+            {/* Tap-to-play overlay — shown when autoplay is blocked */}
+            {!previewPlaying && (
+              <button
+                type="button"
+                aria-label="Play preview"
+                onClick={() => {
+                  const vid = previewVideoRef.current;
+                  if (!vid) return;
+                  vid
+                    .play()
+                    .then(() => setPreviewPlaying(true))
+                    .catch(() => {});
+                }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  background: "rgba(0,0,0,0.45)",
+                  borderRadius: "20px",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <div
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: "50%",
+                    background: PURPLE,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 4px 20px rgba(124,58,237,0.5)",
+                  }}
+                >
+                  <Play size={26} color="#fff" fill="#fff" />
+                </div>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.85)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Tap to play
+                </span>
+              </button>
+            )}
 
             {/* Sound toggle button */}
             <button

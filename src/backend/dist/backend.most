@@ -1,4 +1,12 @@
 // Version: 1.0.0
+type AccountRateLimit__453341643 =
+  {
+    accountCreatedAt : Int;
+    likeTimestamps : [Int];
+    mintTimestamps : [Int];
+    principal : Principal;
+    videoHashesUsed : [Text]
+  };
 type Album__109360601 =
   {
     artist : Text;
@@ -8,6 +16,17 @@ type Album__109360601 =
     title : Text;
     totalSupply : Nat;
     tracklist : [Track__789517712]
+  };
+type BondingCurveState__1013285728 =
+  {
+    clipId : Text;
+    copiesMinted : Nat;
+    currentPrice : Float;
+    nextPrice : Float;
+    priceIncrementFactor : Float;
+    soldOut : Bool;
+    startingPrice : Float;
+    totalSupply : Nat
   };
 type CollectibleMediaType__146897638 = {#photo; #video};
 type Collectible__765459835 =
@@ -79,6 +98,17 @@ type Pack__364476570 =
   };
 type PricePoint__36380829 =
   {editionNumber : Nat; salePrice : Float; timestamp : Int};
+type PurchaseRecord__521260126 =
+  {
+    buyerPrincipal : Principal;
+    clipId : Text;
+    editionNumber : Nat;
+    pricePaid : Float;
+    purchaseId : Text;
+    purchasedAt : Int;
+    status : PurchaseStatus__775736070
+  };
+type PurchaseStatus__775736070 = {#minted; #pending};
 type Release__39174606 =
   {
     album : Album__109360601;
@@ -174,7 +204,12 @@ actor {
   stable _btcUsdRate : Float;
   stable _platformBtcAddress : Text;
   stable _platformPrincipal : Principal;
-  stable _seedBase : Int;
+  stable var _seedBase : Int;
+  stable accountRateLimits :
+    {
+      var root : Node__46230540<Principal, AccountRateLimit__453341643>;
+      var size : Nat__490723111
+    };
   stable albums :
     {
       var root : Node__46230540<Text, Album__109360601>;
@@ -182,6 +217,11 @@ actor {
     };
   stable bondingCurvePriceIncrement : Float;
   stable bondingCurveStartPrice : Float;
+  stable bondingCurveStates :
+    {
+      var root : Node__46230540<Text, BondingCurveState__1013285728>;
+      var size : Nat__490723111
+    };
   stable collectibles :
     {
       var root : Node__46230540<Text, Collectible__765459835>;
@@ -206,6 +246,7 @@ actor {
   stable var nextCategoryId : Nat;
   stable var nextClipSeq : Nat;
   stable var nextCollectibleSeq : Nat;
+  stable var nextPurchaseSeq : Nat;
   stable var nextTcgSetId : Nat;
   stable var nextTxId : Nat;
   stable var offerCounter : Nat;
@@ -222,6 +263,11 @@ actor {
   stable priceHistory :
     {
       var root : Node__46230540<Text, [PricePoint__36380829]>;
+      var size : Nat__490723111
+    };
+  stable purchaseRecords :
+    {
+      var root : Node__46230540<Text, PurchaseRecord__521260126>;
       var size : Nat__490723111
     };
   stable releases :

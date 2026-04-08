@@ -14,6 +14,9 @@ actor {
   // INLINE ACCESS CONTROL (replaces missing authorization/ package)
   // ─────────────────────────────────────────────
 
+  // Preserved for stable state compatibility (previously used for seed clips).
+  var _seedBase : Int = 0;
+
   type UserRole = { #admin; #user; #guest };
 
   // role storage: principal → role
@@ -359,126 +362,6 @@ actor {
   // Raw video blob storage — key: asset_id → VideoAsset
   let videoAssets = Map.empty<Text, VideoAsset>();
   var nextAssetSeq : Nat = 1;
-
-  // ─────────────────────────────────────────────
-  // SEED VIDEO CLIPS
-  // Times are approximate nanoseconds relative to a recent reference point.
-  // Using Int literals offset from a base to simulate clips within last 7 days.
-  // Base ≈ 2026-04-07T00:00:00 UTC in nanoseconds: 1744070400000000000
-  // ─────────────────────────────────────────────
-  let _seedBase : Int = 1_744_070_400_000_000_000; // 2026-04-07 00:00 UTC
-
-  videoClips.add("clip_001", {
-    clip_id = "clip_001";
-    creator_principal_id = Principal.fromText("2vxsx-fae"); // anonymous placeholder
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    timestamp = _seedBase - 518_400_000_000_000; // 6 days ago
-    title = ?"Golden Hour Vibes";
-    hashtags = ["goldenhour", "sunset", "vibes"];
-    explicit_flag = false;
-    like_count = 1842;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_002", {
-    clip_id = "clip_002";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
-    timestamp = _seedBase - 432_000_000_000_000; // 5 days ago
-    title = ?"City Lights After Midnight";
-    hashtags = ["citylights", "nightlife", "urban"];
-    explicit_flag = false;
-    like_count = 3210;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_003", {
-    clip_id = "clip_003";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-    timestamp = _seedBase - 345_600_000_000_000; // 4 days ago
-    title = ?"Coastal Drift";
-    hashtags = ["coastaldrift", "ocean", "summer"];
-    explicit_flag = false;
-    like_count = 987;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_004", {
-    clip_id = "clip_004";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
-    timestamp = _seedBase - 259_200_000_000_000; // 3 days ago
-    title = ?"Mountain Echo";
-    hashtags = ["mountains", "nature", "hiking"];
-    explicit_flag = false;
-    like_count = 2554;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_005", {
-    clip_id = "clip_005";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
-    timestamp = _seedBase - 172_800_000_000_000; // 2 days ago
-    title = ?"Street Art Dispatch";
-    hashtags = ["streetart", "graffiti", "culture"];
-    explicit_flag = false;
-    like_count = 4102;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_006", {
-    clip_id = "clip_006";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
-    timestamp = _seedBase - 86_400_000_000_000; // 1 day ago
-    title = ?"Neon Rain";
-    hashtags = ["neon", "rain", "nightcity"];
-    explicit_flag = false;
-    like_count = 1530;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
-
-  videoClips.add("clip_007", {
-    clip_id = "clip_007";
-    creator_principal_id = Principal.fromText("2vxsx-fae");
-    video_file_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
-    preview_loop_url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4";
-    timestamp = _seedBase - 28_800_000_000_000; // 8 hours ago
-    title = ?"Desert Dawn";
-    hashtags = ["desert", "dawn", "travel"];
-    explicit_flag = false;
-    like_count = 720;
-    like_timestamps = [];
-    likes_last_hour = 0;
-    likes_last_6_hours = 0;
-    likes_last_24_hours = 0;
-  });
 
   // ─────────────────────────────────────────────
   // COMPARATORS
@@ -849,6 +732,23 @@ actor {
     explicit_flag : Bool,
   ) : async Text {
     _ensureRegistered(caller);
+
+    // --- Mint rate limit check (inline) ---
+    let rl = _getOrCreateRateLimit(caller);
+    let now = Time.now();
+    let tenMinNs : Int = 600_000_000_000;
+    let recentMints = rl.mintTimestamps.filter(func(ts : Int) : Bool {
+      now - ts <= tenMinNs
+    });
+    if (recentMints.size() >= 10) {
+      Runtime.trap("Mint limit reached. Try again shortly.");
+    };
+    // Record this mint timestamp
+    let updatedRl : AccountRateLimit = { rl with
+      mintTimestamps = recentMints.concat([now]);
+    };
+    accountRateLimits.add(caller, updatedRl);
+
     let seq = nextClipSeq.toText();
     nextClipSeq += 1;
     let clip_id = "clip_" # seq;
@@ -857,7 +757,7 @@ actor {
       creator_principal_id = caller;
       video_file_url;
       preview_loop_url;
-      timestamp = Time.now();
+      timestamp = now;
       title;
       hashtags;
       explicit_flag;
@@ -868,6 +768,10 @@ actor {
       likes_last_24_hours = 0;
     };
     videoClips.add(clip_id, clip);
+
+    // Auto-initialize bonding curve for the new clip
+    _initBondingCurveInternal(clip_id);
+
     clip_id;
   };
 
@@ -896,24 +800,48 @@ actor {
     };
   };
 
-  /// Like a clip. Each caller can only like once. Returns new like_count.
-  public shared ({ caller }) func likeClip(clip_id : Text) : async LikeResult {
+  /// Like a clip. Returns new like_count on success.
+  /// Returns #err with a message on rate-limit, duplicate like, or account-too-new.
+  public shared ({ caller }) func likeClip(clip_id : Text) : async { #ok : Nat; #err : Text } {
+    // --- Rate limit check (inline) ---
+    let rl = _getOrCreateRateLimit(caller);
+    let now = Time.now();
+    let sixtySecNs : Int = 60_000_000_000;
+    if (now - rl.accountCreatedAt < sixtySecNs) {
+      return #err("Account too new to like");
+    };
+    let recentLikes = rl.likeTimestamps.filter(func(ts : Int) : Bool {
+      now - ts <= sixtySecNs
+    });
+    if (recentLikes.size() >= 30) {
+      return #err("Like limit reached. Try again in a moment.");
+    };
+
     switch (videoClips.get(clip_id)) {
-      case (null) { #notFound };
+      case (null) { #err("Clip not found") };
       case (?clip) {
         // Check duplicate
         let alreadyLiked = clip.like_timestamps.find(func(entry : (Principal, Int)) : Bool {
           Principal.equal(entry.0, caller)
         }) != null;
-        if (alreadyLiked) return #alreadyLiked;
+        if (alreadyLiked) return #err("Already liked");
 
-        let now = Time.now();
         let newTimestamps = clip.like_timestamps.concat([(caller, now)]);
         let updated : VideoClip = { clip with
           like_count = clip.like_count + 1;
           like_timestamps = newTimestamps;
         };
         videoClips.add(clip_id, updated);
+
+        // Record this like timestamp in rate limit tracker
+        let trimmedLikes = rl.likeTimestamps.filter(func(ts : Int) : Bool {
+          now - ts <= sixtySecNs
+        });
+        let updatedRl : AccountRateLimit = { rl with
+          likeTimestamps = trimmedLikes.concat([now]);
+        };
+        accountRateLimits.add(caller, updatedRl);
+
         #ok(updated.like_count);
       };
     };
@@ -1450,6 +1378,302 @@ actor {
   };
 
   // ─────────────────────────────────────────────
+  // BONDING CURVE STATE TYPE
+  // ─────────────────────────────────────────────
+
+  public type BondingCurveState = {
+    clipId : Text;
+    totalSupply : Nat;       // fixed at 1000
+    copiesMinted : Nat;
+    startingPrice : Float;   // 1.00 USD
+    priceIncrementFactor : Float; // 0.01 USD per copy sold
+    currentPrice : Float;
+    nextPrice : Float;
+    soldOut : Bool;
+  };
+
+  // ─────────────────────────────────────────────
+  // PURCHASE RECORD TYPE
+  // ─────────────────────────────────────────────
+
+  public type PurchaseStatus = { #pending; #minted };
+
+  public type PurchaseRecord = {
+    purchaseId : Text;
+    clipId : Text;
+    buyerPrincipal : Principal;
+    editionNumber : Nat;       // 1-based, assigned at purchase time
+    pricePaid : Float;
+    status : PurchaseStatus;
+    purchasedAt : Int;         // nanoseconds
+  };
+
+  // ─────────────────────────────────────────────
+  // ANTI-SPAM / RATE LIMIT TYPE
+  // ─────────────────────────────────────────────
+
+  public type AccountRateLimit = {
+    principal : Principal;
+    mintTimestamps : [Int];    // last 10 mint timestamps (ns)
+    likeTimestamps : [Int];    // last 60 like timestamps (ns)
+    accountCreatedAt : Int;    // ns
+    videoHashesUsed : [Text];  // SHA-256 hashes of uploaded videos for dedup
+  };
+
+  // ─────────────────────────────────────────────
+  // BONDING CURVE STATE + PURCHASE STATE
+  // ─────────────────────────────────────────────
+
+  // clipId → BondingCurveState
+  let bondingCurveStates = Map.empty<Text, BondingCurveState>();
+
+  // purchaseId → PurchaseRecord
+  let purchaseRecords = Map.empty<Text, PurchaseRecord>();
+  var nextPurchaseSeq : Nat = 1;
+
+  // principal → AccountRateLimit
+  let accountRateLimits = Map.empty<Principal, AccountRateLimit>();
+
+  // ─────────────────────────────────────────────
+  // BONDING CURVE METHODS
+  // ─────────────────────────────────────────────
+
+  // Internal: initialize bonding curve for a clip (no auth check — called after clip creation).
+  func _initBondingCurveInternal(clipId : Text) {
+    switch (bondingCurveStates.get(clipId)) {
+      case (?_) {}; // already initialized
+      case null {
+        let state : BondingCurveState = {
+          clipId;
+          totalSupply = 1000;
+          copiesMinted = 0;
+          startingPrice = 1.0;
+          priceIncrementFactor = 0.01;
+          currentPrice = 1.0;
+          nextPrice = 1.01;
+          soldOut = false;
+        };
+        bondingCurveStates.add(clipId, state);
+      };
+    };
+  };
+
+  /// Initialize bonding curve state for a newly created clip.
+  /// Only callable by the clip's creator.
+  public shared ({ caller }) func initBondingCurve(clipId : Text) : async { #ok : BondingCurveState; #err : Text } {
+    switch (videoClips.get(clipId)) {
+      case null { #err("Clip not found") };
+      case (?clip) {
+        if (not Principal.equal(clip.creator_principal_id, caller)) {
+          return #err("Unauthorized: only the clip creator can initialize bonding curve");
+        };
+        switch (bondingCurveStates.get(clipId)) {
+          case (?_) { #err("Already initialized") };
+          case null {
+            let state : BondingCurveState = {
+              clipId;
+              totalSupply = 1000;
+              copiesMinted = 0;
+              startingPrice = 1.0;
+              priceIncrementFactor = 0.01;
+              currentPrice = 1.0;
+              nextPrice = 1.01;
+              soldOut = false;
+            };
+            bondingCurveStates.add(clipId, state);
+            #ok(state);
+          };
+        };
+      };
+    };
+  };
+
+  /// Get the bonding curve state for a single clip.
+  public query func getBondingCurveState(clipId : Text) : async ?BondingCurveState {
+    bondingCurveStates.get(clipId);
+  };
+
+  /// Batch-fetch bonding curve states for multiple clips (for feed rendering).
+  public query func getBondingCurveStates(clipIds : [Text]) : async [BondingCurveState] {
+    clipIds.filterMap<Text, BondingCurveState>(func(id) { bondingCurveStates.get(id) });
+  };
+
+  /// Get all clips together with their bonding curve state in one call.
+  public query func getClipsWithCurveState() : async [(VideoClip, ?BondingCurveState)] {
+    let all = videoClips.values().toArray().sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp)
+    });
+    all.map<VideoClip, (VideoClip, ?BondingCurveState)>(func(clip) {
+      (clip, bondingCurveStates.get(clip.clip_id))
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // PURCHASE METHODS
+  // ─────────────────────────────────────────────
+
+  /// Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
+  /// and promotes all purchases to #minted when all 1000 copies are sold.
+  public shared ({ caller }) func recordPurchase(clipId : Text, pricePaid : Float) : async { #ok : PurchaseRecord; #err : Text } {
+    switch (videoClips.get(clipId)) {
+      case null { return #err("Clip not found") };
+      case (?clip) {
+        switch (bondingCurveStates.get(clipId)) {
+          case null { return #err("Bonding curve not initialized for this clip") };
+          case (?state) {
+            if (state.soldOut) return #err("All copies sold out");
+            if (state.copiesMinted >= 1000) return #err("All copies sold out");
+
+            let newMinted = state.copiesMinted + 1;
+            let editionNumber = newMinted; // 1-based: first buyer gets 1
+            let newCurrentPrice = state.startingPrice + (state.priceIncrementFactor * newMinted.toFloat());
+            let newNextPrice = state.startingPrice + (state.priceIncrementFactor * (newMinted + 1).toFloat());
+            let isSoldOut = newMinted >= 1000;
+
+            let updatedState : BondingCurveState = { state with
+              copiesMinted = newMinted;
+              currentPrice = newCurrentPrice;
+              nextPrice = newNextPrice;
+              soldOut = isSoldOut;
+            };
+            bondingCurveStates.add(clipId, updatedState);
+
+            // Assign a unique purchaseId
+            let purchaseId = clipId # "-" # editionNumber.toText();
+            let record : PurchaseRecord = {
+              purchaseId;
+              clipId;
+              buyerPrincipal = caller;
+              editionNumber;
+              pricePaid;
+              status = if (isSoldOut) #minted else #pending;
+              purchasedAt = Time.now();
+            };
+            purchaseRecords.add(purchaseId, record);
+            nextPurchaseSeq += 1;
+
+            // If just sold out, promote ALL pending purchases for this clip to #minted
+            if (isSoldOut) {
+              for ((pid, pr) in purchaseRecords.entries()) {
+                if (pr.clipId == clipId) {
+                  switch (pr.status) {
+                    case (#pending) {
+                      purchaseRecords.add(pid, { pr with status = #minted });
+                    };
+                    case (#minted) {};
+                  };
+                };
+              };
+            };
+
+            // Record price history point
+            _recordSale(clipId, editionNumber, pricePaid);
+
+            // Record simulated payment split (95% creator, 5% platform)
+            ignore await processCopySale(clipId, clip.creator_principal_id, caller, pricePaid);
+
+            #ok(record);
+          };
+        };
+      };
+    };
+  };
+
+  /// Returns all purchases made by the calling principal.
+  public query ({ caller }) func getMyPurchases() : async [PurchaseRecord] {
+    purchaseRecords.values().toArray().filter(func(pr : PurchaseRecord) : Bool {
+      Principal.equal(pr.buyerPrincipal, caller)
+    }).sort(func(a : PurchaseRecord, b : PurchaseRecord) : Order.Order {
+      Int.compare(b.purchasedAt, a.purchasedAt)
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // ANTI-SPAM METHODS
+  // ─────────────────────────────────────────────
+
+  // ─────────────────────────────────────────────
+  // ANTI-SPAM HELPERS
+  // ─────────────────────────────────────────────
+
+  // Get or create AccountRateLimit for a principal
+  func _getOrCreateRateLimit(p : Principal) : AccountRateLimit {
+    switch (accountRateLimits.get(p)) {
+      case (?rl) rl;
+      case null {
+        let rl : AccountRateLimit = {
+          principal = p;
+          mintTimestamps = [];
+          likeTimestamps = [];
+          accountCreatedAt = Time.now();
+          videoHashesUsed = [];
+        };
+        accountRateLimits.add(p, rl);
+        rl;
+      };
+    };
+  };
+
+  /// Check whether the caller is allowed to mint (max 10 mints per 10 minutes).
+  /// Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+  public shared ({ caller }) func checkMintRateLimit() : async { #ok : Bool; #err : Text } {
+    let rl = _getOrCreateRateLimit(caller);
+    let now = Time.now();
+    let tenMinNs : Int = 600_000_000_000;
+    let recent = rl.mintTimestamps.filter(func(ts : Int) : Bool {
+      now - ts <= tenMinNs
+    });
+    if (recent.size() >= 10) {
+      #err("Mint limit reached. Try again shortly.")
+    } else {
+      #ok(true)
+    };
+  };
+
+  /// Check whether the caller is allowed to like (max 30 likes per minute;
+  /// also blocks accounts created within the last 60 seconds).
+  /// Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+  public shared ({ caller }) func checkLikeRateLimit() : async { #ok : Bool; #err : Text } {
+    let rl = _getOrCreateRateLimit(caller);
+    let now = Time.now();
+    let sixtySecNs : Int = 60_000_000_000;
+    // Block accounts created < 60 seconds ago
+    if (now - rl.accountCreatedAt < sixtySecNs) {
+      return #err("Account too new to like");
+    };
+    let recent = rl.likeTimestamps.filter(func(ts : Int) : Bool {
+      now - ts <= sixtySecNs
+    });
+    if (recent.size() >= 30) {
+      #err("Like limit reached. Try again in a moment.")
+    } else {
+      #ok(true)
+    };
+  };
+
+  /// Record a video hash for the caller. Returns #err("duplicate") if the hash
+  /// was already submitted by any user, otherwise records it and returns #ok(true).
+  public shared ({ caller }) func recordVideoHash(hash : Text) : async { #ok : Bool; #err : Text } {
+    let rl = _getOrCreateRateLimit(caller);
+    // Check globally — scan all accounts for this hash
+    var isDuplicate = false;
+    for ((_p, acct) in accountRateLimits.entries()) {
+      if (acct.videoHashesUsed.find(func(h : Text) : Bool { h == hash }) != null) {
+        isDuplicate := true;
+      };
+    };
+    if (isDuplicate) {
+      #err("Duplicate video detected")
+    } else {
+      let updated : AccountRateLimit = { rl with
+        videoHashesUsed = rl.videoHashesUsed.concat([hash]);
+      };
+      accountRateLimits.add(caller, updated);
+      #ok(true)
+    };
+  };
+
+  // ─────────────────────────────────────────────
   // SIMULATED PAYMENT ROUTING
   // ─────────────────────────────────────────────
 
@@ -1511,7 +1735,7 @@ actor {
   };
 
   /// Record a $1 mint fee. 100% to platform wallet.
-  public shared func processClipMint(creatorPrincipal : Principal) : async Nat {
+  public shared func processClipMint(_creatorPrincipal : Principal) : async Nat {
     let splits : [TxSplit] = [
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", 1.0),
     ];
@@ -1522,7 +1746,7 @@ actor {
   public shared func processCopySale(
     clipId : Text,
     creatorPrincipal : Principal,
-    buyerPrincipal : Principal,
+    _buyerPrincipal : Principal,
     usdAmount : Float,
   ) : async Nat {
     let creatorAmt = usdAmount * 0.95;
@@ -1539,7 +1763,7 @@ actor {
     clipId : Text,
     originalCreatorPrincipal : Principal,
     sellerPrincipal : Principal,
-    buyerPrincipal : Principal,
+    _buyerPrincipal : Principal,
     usdAmount : Float,
   ) : async Nat {
     let creatorAmt = usdAmount * 0.04;

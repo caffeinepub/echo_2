@@ -147,6 +147,21 @@ type Release =
    mintedCount: nat;
    ownersCount: nat;
  };
+type PurchaseStatus = 
+ variant {
+   minted;
+   pending;
+ };
+type PurchaseRecord = 
+ record {
+   buyerPrincipal: principal;
+   clipId: text;
+   editionNumber: nat;
+   pricePaid: float64;
+   purchaseId: text;
+   purchasedAt: int;
+   status: PurchaseStatus;
+ };
 type PricePoint = 
  record {
    editionNumber: nat;
@@ -228,12 +243,6 @@ type Listing =
    status: ListingStatus;
    totalEditions: nat;
  };
-type LikeResult = 
- variant {
-   alreadyLiked;
-   notFound;
-   ok: nat;
- };
 type EarningsSummary = 
  record {
    fromAuctionWins: float64;
@@ -298,6 +307,17 @@ type Collectible =
    totalSupply: nat;
    typeSupply: nat;
  };
+type BondingCurveState = 
+ record {
+   clipId: text;
+   copiesMinted: nat;
+   currentPrice: float64;
+   nextPrice: float64;
+   priceIncrementFactor: float64;
+   soldOut: bool;
+   startingPrice: float64;
+   totalSupply: nat;
+ };
 type Album = 
  record {
    artist: text;
@@ -332,6 +352,19 @@ service : {
                                         err: text;
                                         ok: bool;
                                       });
+  /// Check whether the caller is allowed to like (max 30 likes per minute;
+  /// also blocks accounts created within the last 60 seconds).
+  /// Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+  checkLikeRateLimit: () -> (variant {
+                               err: text;
+                               ok: bool;
+                             });
+  /// Check whether the caller is allowed to mint (max 10 mints per 10 minutes).
+  /// Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+  checkMintRateLimit: () -> (variant {
+                               err: text;
+                               ok: bool;
+                             });
   createCard: (input: CreateTcgCardInput) -> (TcgCard);
   createCategory: (input: CreateTcgCategoryInput) -> (TcgCategory);
   /// Create a new video clip post. Returns the generated clip_id.
@@ -355,6 +388,10 @@ service : {
   getAllCardsAdmin: () -> (vec TcgCard) query;
   getAllCategoriesAdmin: () -> (vec TcgCategory) query;
   getAllSetsAdmin: () -> (vec TcgSet) query;
+  /// Get the bonding curve state for a single clip.
+  getBondingCurveState: (clipId: text) -> (opt BondingCurveState) query;
+  /// Batch-fetch bonding curve states for multiple clips (for feed rendering).
+  getBondingCurveStates: (clipIds: vec text) -> (vec BondingCurveState) query;
   getCallerCollectibles: () -> (vec Collectible) query;
   getCallerPacks: () -> (vec Pack) query;
   getCallerUserProfile: () -> (opt UserProfile) query;
@@ -370,6 +407,12 @@ service : {
   /// Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
   getClipsForHashtag: (hashtag: text, sortBy: VideoClipSort, safeView:
    bool) -> (vec VideoClip) query;
+  /// Get all clips together with their bonding curve state in one call.
+  getClipsWithCurveState: () ->
+   (vec record {
+          VideoClip;
+          opt BondingCurveState;
+        }) query;
   /// Get all clips created by a specific principal.
   getCreatorClips: (creator: principal) -> (vec VideoClip) query;
   getCurrentPrice: (clipId: text) -> (float64) query;
@@ -381,6 +424,8 @@ service : {
   /// Returns an earnings summary for the calling principal.
   /// Sums splits where role == "creator" or role == "seller".
   getMyEarnings: () -> (EarningsSummary) query;
+  /// Returns all purchases made by the calling principal.
+  getMyPurchases: () -> (vec PurchaseRecord) query;
   getMyRole: () -> (UserRole) query;
   /// Returns transactions where p appears in any split's principal.
   getMyTransactions: (p: principal) -> (vec Transaction) query;
@@ -417,9 +462,20 @@ service : {
   getUserProfile: (user: principal) -> (opt UserProfile) query;
   /// Retrieve raw video/preview blob data by asset_id.
   getVideoBlob: (asset_id: text) -> (opt VideoAsset) query;
+  /// Initialize bonding curve state for a newly created clip.
+  /// Only callable by the clip's creator.
+  initBondingCurve: (clipId: text) ->
+   (variant {
+      err: text;
+      ok: BondingCurveState;
+    });
   isAdmin: () -> (bool) query;
-  /// Like a clip. Each caller can only like once. Returns new like_count.
-  likeClip: (clip_id: text) -> (LikeResult);
+  /// Like a clip. Returns new like_count on success.
+  /// Returns #err with a message on rate-limit, duplicate like, or account-too-new.
+  likeClip: (clip_id: text) -> (variant {
+                                  err: text;
+                                  ok: nat;
+                                });
   makeOffer: (listingId: nat, offerPriceUsd: float64) ->
    (variant {
       err: text;
@@ -427,14 +483,27 @@ service : {
     });
   openPack: (packId: text) -> (PackOpenResult);
   /// Record a $1 mint fee. 100% to platform wallet.
-  processClipMint: (creatorPrincipal: principal) -> (nat);
+  processClipMint: (_creatorPrincipal: principal) -> (nat);
   /// Record a bonding curve copy sale. 95% to creator, 5% to platform.
   processCopySale: (clipId: text, creatorPrincipal: principal,
-   buyerPrincipal: principal, usdAmount: float64) -> (nat);
+   _buyerPrincipal: principal, usdAmount: float64) -> (nat);
   /// Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
   processSecondaryTrade: (clipId: text, originalCreatorPrincipal: principal,
-   sellerPrincipal: principal, buyerPrincipal: principal, usdAmount:
+   sellerPrincipal: principal, _buyerPrincipal: principal, usdAmount:
    float64) -> (nat);
+  /// Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
+  /// and promotes all purchases to #minted when all 1000 copies are sold.
+  recordPurchase: (clipId: text, pricePaid: float64) ->
+   (variant {
+      err: text;
+      ok: PurchaseRecord;
+    });
+  /// Record a video hash for the caller. Returns #err("duplicate") if the hash
+  /// was already submitted by any user, otherwise records it and returns #ok(true).
+  recordVideoHash: (hash: text) -> (variant {
+                                      err: text;
+                                      ok: bool;
+                                    });
   saveCallerUserProfile: (profile: UserProfile) -> ();
   searchSetsByName: (searchTerm: text) -> (vec TcgSet) query;
   toggleCardActive: (id: nat) -> ();

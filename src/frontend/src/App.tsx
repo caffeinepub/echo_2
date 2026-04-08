@@ -54,6 +54,17 @@ async function fetchBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(buf);
 }
 
+/** Compute SHA-256 hex hash of a byte array using Web Crypto */
+async function sha256Hex(data: Uint8Array): Promise<string> {
+  const buffer = data.buffer.slice(
+    data.byteOffset,
+    data.byteOffset + data.byteLength,
+  ) as ArrayBuffer;
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
   const [showSplash, setShowSplash] = useState(true);
@@ -108,8 +119,24 @@ function AppContent() {
 
     let finalVideoUrl = draft.videoUrl ?? draft.videoBlobUrl ?? "";
     let finalPreviewUrl = draft.previewUrl ?? finalVideoUrl;
+    let videoBytes: Uint8Array | null = null;
 
-    // ── Step 1: Upload video blob to backend storage ──────────────────────────
+    // ── Step 1: Rate limit check ──────────────────────────────────────────────
+    if (actor) {
+      try {
+        const rateResult = await actor.checkMintRateLimit();
+        if (rateResult.__kind__ === "err") {
+          setUploadError(rateResult.err);
+          setIsMinting(false);
+          setUploadStatus(null);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Mint] checkMintRateLimit failed (non-fatal):", err);
+      }
+    }
+
+    // ── Step 2: Upload video blob to backend storage ──────────────────────────
     if (actor) {
       const blobUrl = draft.videoBlobUrl ?? draft.videoUrl;
       const previewBlobUrl = draft.previewUrl ?? blobUrl;
@@ -117,14 +144,14 @@ function AppContent() {
       if (blobUrl) {
         try {
           setUploadStatus("Uploading video…");
-          const videoBytes = await fetchBytes(blobUrl);
+          videoBytes = await fetchBytes(blobUrl);
           finalVideoUrl = await actor.uploadVideoBlob(videoBytes, "video/mp4");
         } catch (err) {
           console.error("[Mint] uploadVideoBlob failed:", err);
           setUploadError("Video upload failed. Please try again.");
           setIsMinting(false);
           setUploadStatus(null);
-          return; // Stay on confirm modal so user can retry
+          return;
         }
       }
 
@@ -137,16 +164,36 @@ function AppContent() {
             "video/mp4",
           );
         } catch (err) {
-          // Preview upload failing is non-fatal — fall back to main video URL
           console.warn("[Mint] uploadPreviewBlob failed (non-fatal):", err);
           finalPreviewUrl = finalVideoUrl;
         }
       }
     }
 
+    // ── Step 3: Duplicate video hash check ────────────────────────────────────
+    if (actor && videoBytes) {
+      try {
+        setUploadStatus("Verifying video…");
+        const hexHash = await sha256Hex(videoBytes);
+        const hashResult = await actor.recordVideoHash(hexHash);
+        if (hashResult.__kind__ === "err") {
+          setUploadError(
+            hashResult.err === "duplicate"
+              ? "Duplicate video detected. This clip has already been minted."
+              : hashResult.err,
+          );
+          setIsMinting(false);
+          setUploadStatus(null);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Mint] recordVideoHash failed (non-fatal):", err);
+      }
+    }
+
     setUploadStatus("Minting NFT…");
 
-    // ── Step 2: Call createClip with persistent URLs ───────────────────────────
+    // ── Step 4: Call createClip with persistent URLs ───────────────────────────
     let clipId: string | null = null;
     if (actor && finalVideoUrl) {
       try {
@@ -163,7 +210,16 @@ function AppContent() {
       }
     }
 
-    // ── Step 3: Record $1 mint fee (non-blocking) ─────────────────────────────
+    // ── Step 5: Init bonding curve for new clip ────────────────────────────────
+    if (actor && clipId) {
+      try {
+        await actor.initBondingCurve(clipId);
+      } catch (err) {
+        console.warn("[Mint] initBondingCurve failed (non-fatal):", err);
+      }
+    }
+
+    // ── Step 6: Record $1 mint fee (non-blocking) ─────────────────────────────
     if (identity) {
       const creatorPrincipal = identity.getPrincipal();
       recordMintFee(creatorPrincipal).catch((err) =>
@@ -200,7 +256,7 @@ function AppContent() {
 
     addRelease(release);
 
-    // ── Step 4: Add optimistically to Releases feed ───────────────────────────
+    // ── Step 7: Add optimistically to Releases feed ───────────────────────────
     if (finalVideoUrl) {
       const clip: VideoClip = {
         id: clipId ?? `clip_mint_${draft.id}`,

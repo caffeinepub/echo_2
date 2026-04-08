@@ -77,7 +77,7 @@ function MiniVideoCard({
       >
         <video
           ref={videoRef}
-          src={record.videoUrl}
+          src={record.videoUrl || undefined}
           muted
           loop
           playsInline
@@ -204,7 +204,7 @@ function MiniVideoCard({
                 gap: 4,
               }}
             >
-              <BtcLogo size={14} />${(record.pricePaid / 100).toFixed(2)}
+              <BtcLogo size={14} />${record.pricePaid.toFixed(2)}
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -270,7 +270,7 @@ function PendingCard({
         }}
       >
         <video
-          src={record.videoUrl}
+          src={record.videoUrl || undefined}
           muted
           loop
           playsInline
@@ -417,8 +417,12 @@ function PendingCard({
 }
 
 export function CollectionPage({ onGoToLibrary }: CollectionPageProps) {
-  const { getMintedPurchases, getPendingPurchases, getCurveState } =
-    useBondingCurve();
+  const {
+    getMintedPurchases,
+    getPendingPurchases,
+    getCurveState,
+    isLoadingCurves,
+  } = useBondingCurve();
   const { activeStyle } = usePackStyle();
   const accentR = activeStyle.accentR;
   const accentG = activeStyle.accentG;
@@ -433,57 +437,85 @@ export function CollectionPage({ onGoToLibrary }: CollectionPageProps) {
   const [selectedRecord, setSelectedRecord] = useState<PurchaseRecord | null>(
     null,
   );
-  const [listedClipIds, setListedClipIds] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem("minty_purchases_v1");
-      if (!raw) return new Set();
-      const records = JSON.parse(raw) as (PurchaseRecord & {
-        listed?: boolean;
-      })[];
-      return new Set(
-        records
-          .filter((r) => r.listed === true)
-          .map((r) => `${r.clipId}_${r.purchasedAt}`),
-      );
-    } catch {
-      return new Set();
-    }
-  });
+  // Track listed clip IDs locally — key = `${clipId}_${editionNumber}`
+  const [listedKeys, setListedKeys] = useState<Set<string>>(new Set());
+
+  const listedKeyFor = (r: PurchaseRecord) => `${r.clipId}_${r.editionNumber}`;
 
   // Filter out listed records from minted
   const visibleMinted = mintedPurchases.filter(
-    (r) => !listedClipIds.has(`${r.clipId}_${r.purchasedAt}`),
+    (r) => !listedKeys.has(listedKeyFor(r)),
   );
 
   function handleListed(clipId: string) {
     if (selectedRecord && selectedRecord.clipId === clipId) {
-      // Reload from localStorage to pick up the `listed: true` flag set by NftDetailModal
-      try {
-        const raw = localStorage.getItem("minty_purchases_v1");
-        if (raw) {
-          const records = JSON.parse(raw) as (PurchaseRecord & {
-            listed?: boolean;
-          })[];
-          setListedClipIds(
-            new Set(
-              records
-                .filter((r) => r.listed === true)
-                .map((r) => `${r.clipId}_${r.purchasedAt}`),
-            ),
-          );
-        }
-      } catch {
-        // ignore
-      }
-      setListedClipIds((prev) => {
+      setListedKeys((prev) => {
         const next = new Set(prev);
-        next.add(`${clipId}_${selectedRecord.purchasedAt}`);
+        next.add(listedKeyFor(selectedRecord));
         return next;
       });
     }
   }
 
   const hasAny = visibleMinted.length > 0 || pendingPurchases.length > 0;
+
+  // Loading skeleton
+  if (isLoadingCurves && !hasAny) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100%",
+          background: "var(--echo-bg)",
+        }}
+      >
+        <div
+          style={{
+            padding: "20px 16px 12px",
+            borderBottom: "1px solid var(--echo-border)",
+            background: "var(--echo-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <ShoppingBag size={18} color={accentSolid} />
+            <h1
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: "var(--echo-text)",
+                fontFamily: "DM Sans, sans-serif",
+                margin: 0,
+              }}
+            >
+              My Collection
+            </h1>
+          </div>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            padding: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                borderRadius: 16,
+                background: accentBg,
+                height: 180,
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -658,14 +690,12 @@ export function CollectionPage({ onGoToLibrary }: CollectionPageProps) {
                 >
                   {visibleMinted.map((record) => (
                     <MiniVideoCard
-                      key={`${record.clipId}-${record.purchasedAt}`}
+                      key={`${record.clipId}-${record.editionNumber}`}
                       record={record}
                       accentR={accentR}
                       accentG={accentG}
                       accentB={accentB}
-                      isListed={listedClipIds.has(
-                        `${record.clipId}_${record.purchasedAt}`,
-                      )}
+                      isListed={listedKeys.has(listedKeyFor(record))}
                       onClick={() => setSelectedRecord(record)}
                     />
                   ))}
@@ -738,7 +768,7 @@ export function CollectionPage({ onGoToLibrary }: CollectionPageProps) {
                     const state = getCurveState(record.clipId);
                     return (
                       <PendingCard
-                        key={`${record.clipId}-${record.purchasedAt}`}
+                        key={`${record.clipId}-${record.editionNumber}`}
                         record={record}
                         copiesMinted={
                           state?.copiesMinted ?? record.editionNumber

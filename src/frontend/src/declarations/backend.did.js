@@ -103,6 +103,16 @@ export const TcgSet = IDL.Record({
   'cardCount' : IDL.Opt(IDL.Nat),
   'releaseYear' : IDL.Nat,
 });
+export const BondingCurveState = IDL.Record({
+  'startingPrice' : IDL.Float64,
+  'clipId' : IDL.Text,
+  'currentPrice' : IDL.Float64,
+  'totalSupply' : IDL.Nat,
+  'nextPrice' : IDL.Float64,
+  'soldOut' : IDL.Bool,
+  'priceIncrementFactor' : IDL.Float64,
+  'copiesMinted' : IDL.Nat,
+});
 export const CollectibleMediaType = IDL.Variant({
   'video' : IDL.Null,
   'photo' : IDL.Null,
@@ -202,6 +212,19 @@ export const EarningsSummary = IDL.Record({
   'fromTradeRoyalties' : IDL.Float64,
   'transactionCount' : IDL.Nat,
 });
+export const PurchaseStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'minted' : IDL.Null,
+});
+export const PurchaseRecord = IDL.Record({
+  'status' : PurchaseStatus,
+  'clipId' : IDL.Text,
+  'editionNumber' : IDL.Nat,
+  'purchasedAt' : IDL.Int,
+  'buyerPrincipal' : IDL.Principal,
+  'pricePaid' : IDL.Float64,
+  'purchaseId' : IDL.Text,
+});
 export const TxType = IDL.Variant({
   'mintFee' : IDL.Null,
   'secondaryTrade' : IDL.Null,
@@ -247,11 +270,6 @@ export const VideoAsset = IDL.Record({
   'content_type' : IDL.Text,
   'created_at' : IDL.Int,
   'asset_id' : IDL.Text,
-});
-export const LikeResult = IDL.Variant({
-  'ok' : IDL.Nat,
-  'alreadyLiked' : IDL.Null,
-  'notFound' : IDL.Null,
 });
 export const PackOpenResult = IDL.Variant({
   'ok' : Collectible,
@@ -305,6 +323,16 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
       [],
     ),
+  'checkLikeRateLimit' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
+  'checkMintRateLimit' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
   'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
   'createCategory' : IDL.Func([CreateTcgCategoryInput], [TcgCategory], []),
   'createClip' : IDL.Func(
@@ -331,6 +359,16 @@ export const idlService = IDL.Service({
   'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
   'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
   'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getBondingCurveState' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(BondingCurveState)],
+      ['query'],
+    ),
+  'getBondingCurveStates' : IDL.Func(
+      [IDL.Vec(IDL.Text)],
+      [IDL.Vec(BondingCurveState)],
+      ['query'],
+    ),
   'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
   'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -348,6 +386,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(VideoClip)],
       ['query'],
     ),
+  'getClipsWithCurveState' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(VideoClip, IDL.Opt(BondingCurveState)))],
+      ['query'],
+    ),
   'getCreatorClips' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(VideoClip)],
@@ -360,6 +403,7 @@ export const idlService = IDL.Service({
   'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
   'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
+  'getMyPurchases' : IDL.Func([], [IDL.Vec(PurchaseRecord)], ['query']),
   'getMyRole' : IDL.Func([], [UserRole], ['query']),
   'getMyTransactions' : IDL.Func(
       [IDL.Principal],
@@ -403,8 +447,17 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getVideoBlob' : IDL.Func([IDL.Text], [IDL.Opt(VideoAsset)], ['query']),
+  'initBondingCurve' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : BondingCurveState, 'err' : IDL.Text })],
+      [],
+    ),
   'isAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'likeClip' : IDL.Func([IDL.Text], [LikeResult], []),
+  'likeClip' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+      [],
+    ),
   'makeOffer' : IDL.Func(
       [IDL.Nat, IDL.Float64],
       [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
@@ -420,6 +473,16 @@ export const idlService = IDL.Service({
   'processSecondaryTrade' : IDL.Func(
       [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
       [IDL.Nat],
+      [],
+    ),
+  'recordPurchase' : IDL.Func(
+      [IDL.Text, IDL.Float64],
+      [IDL.Variant({ 'ok' : PurchaseRecord, 'err' : IDL.Text })],
+      [],
+    ),
+  'recordVideoHash' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -533,6 +596,16 @@ export const idlFactory = ({ IDL }) => {
     'cardCount' : IDL.Opt(IDL.Nat),
     'releaseYear' : IDL.Nat,
   });
+  const BondingCurveState = IDL.Record({
+    'startingPrice' : IDL.Float64,
+    'clipId' : IDL.Text,
+    'currentPrice' : IDL.Float64,
+    'totalSupply' : IDL.Nat,
+    'nextPrice' : IDL.Float64,
+    'soldOut' : IDL.Bool,
+    'priceIncrementFactor' : IDL.Float64,
+    'copiesMinted' : IDL.Nat,
+  });
   const CollectibleMediaType = IDL.Variant({
     'video' : IDL.Null,
     'photo' : IDL.Null,
@@ -629,6 +702,19 @@ export const idlFactory = ({ IDL }) => {
     'fromTradeRoyalties' : IDL.Float64,
     'transactionCount' : IDL.Nat,
   });
+  const PurchaseStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'minted' : IDL.Null,
+  });
+  const PurchaseRecord = IDL.Record({
+    'status' : PurchaseStatus,
+    'clipId' : IDL.Text,
+    'editionNumber' : IDL.Nat,
+    'purchasedAt' : IDL.Int,
+    'buyerPrincipal' : IDL.Principal,
+    'pricePaid' : IDL.Float64,
+    'purchaseId' : IDL.Text,
+  });
   const TxType = IDL.Variant({
     'mintFee' : IDL.Null,
     'secondaryTrade' : IDL.Null,
@@ -674,11 +760,6 @@ export const idlFactory = ({ IDL }) => {
     'content_type' : IDL.Text,
     'created_at' : IDL.Int,
     'asset_id' : IDL.Text,
-  });
-  const LikeResult = IDL.Variant({
-    'ok' : IDL.Nat,
-    'alreadyLiked' : IDL.Null,
-    'notFound' : IDL.Null,
   });
   const PackOpenResult = IDL.Variant({ 'ok' : Collectible, 'err' : IDL.Text });
   const UpdateTcgCardInput = IDL.Record({
@@ -729,6 +810,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
         [],
       ),
+    'checkLikeRateLimit' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
+    'checkMintRateLimit' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
     'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
     'createCategory' : IDL.Func([CreateTcgCategoryInput], [TcgCategory], []),
     'createClip' : IDL.Func(
@@ -755,6 +846,16 @@ export const idlFactory = ({ IDL }) => {
     'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
     'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
     'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getBondingCurveState' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(BondingCurveState)],
+        ['query'],
+      ),
+    'getBondingCurveStates' : IDL.Func(
+        [IDL.Vec(IDL.Text)],
+        [IDL.Vec(BondingCurveState)],
+        ['query'],
+      ),
     'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
     'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -772,6 +873,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(VideoClip)],
         ['query'],
       ),
+    'getClipsWithCurveState' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(VideoClip, IDL.Opt(BondingCurveState)))],
+        ['query'],
+      ),
     'getCreatorClips' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(VideoClip)],
@@ -784,6 +890,7 @@ export const idlFactory = ({ IDL }) => {
     'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
     'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
+    'getMyPurchases' : IDL.Func([], [IDL.Vec(PurchaseRecord)], ['query']),
     'getMyRole' : IDL.Func([], [UserRole], ['query']),
     'getMyTransactions' : IDL.Func(
         [IDL.Principal],
@@ -827,8 +934,17 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getVideoBlob' : IDL.Func([IDL.Text], [IDL.Opt(VideoAsset)], ['query']),
+    'initBondingCurve' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : BondingCurveState, 'err' : IDL.Text })],
+        [],
+      ),
     'isAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'likeClip' : IDL.Func([IDL.Text], [LikeResult], []),
+    'likeClip' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+        [],
+      ),
     'makeOffer' : IDL.Func(
         [IDL.Nat, IDL.Float64],
         [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
@@ -844,6 +960,16 @@ export const idlFactory = ({ IDL }) => {
     'processSecondaryTrade' : IDL.Func(
         [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
         [IDL.Nat],
+        [],
+      ),
+    'recordPurchase' : IDL.Func(
+        [IDL.Text, IDL.Float64],
+        [IDL.Variant({ 'ok' : PurchaseRecord, 'err' : IDL.Text })],
+        [],
+      ),
+    'recordVideoHash' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),

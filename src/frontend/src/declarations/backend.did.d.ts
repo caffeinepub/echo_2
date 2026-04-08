@@ -29,6 +29,16 @@ export interface Album {
   'artist' : string,
   'collectionName' : string,
 }
+export interface BondingCurveState {
+  'startingPrice' : number,
+  'clipId' : string,
+  'currentPrice' : number,
+  'totalSupply' : bigint,
+  'nextPrice' : number,
+  'soldOut' : boolean,
+  'priceIncrementFactor' : number,
+  'copiesMinted' : bigint,
+}
 export interface Collectible {
   'id' : string,
   'setName' : string,
@@ -85,9 +95,6 @@ export interface EarningsSummary {
   'fromTradeRoyalties' : number,
   'transactionCount' : bigint,
 }
-export type LikeResult = { 'ok' : bigint } |
-  { 'alreadyLiked' : null } |
-  { 'notFound' : null };
 export interface Listing {
   'id' : bigint,
   'status' : ListingStatus,
@@ -151,6 +158,17 @@ export interface PricePoint {
   'timestamp' : bigint,
   'salePrice' : number,
 }
+export interface PurchaseRecord {
+  'status' : PurchaseStatus,
+  'clipId' : string,
+  'editionNumber' : bigint,
+  'purchasedAt' : bigint,
+  'buyerPrincipal' : Principal,
+  'pricePaid' : number,
+  'purchaseId' : string,
+}
+export type PurchaseStatus = { 'pending' : null } |
+  { 'minted' : null };
 export interface Release {
   'album' : Album,
   'floorPrice' : bigint,
@@ -288,6 +306,25 @@ export interface _SERVICE {
     { 'ok' : boolean } |
       { 'err' : string }
   >,
+  /**
+   * / Check whether the caller is allowed to like (max 30 likes per minute;
+   * / also blocks accounts created within the last 60 seconds).
+   * / Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+   */
+  'checkLikeRateLimit' : ActorMethod<
+    [],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
+  /**
+   * / Check whether the caller is allowed to mint (max 10 mints per 10 minutes).
+   * / Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+   */
+  'checkMintRateLimit' : ActorMethod<
+    [],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
   'createCard' : ActorMethod<[CreateTcgCardInput], TcgCard>,
   'createCategory' : ActorMethod<[CreateTcgCategoryInput], TcgCategory>,
   /**
@@ -316,6 +353,17 @@ export interface _SERVICE {
   'getAllCardsAdmin' : ActorMethod<[], Array<TcgCard>>,
   'getAllCategoriesAdmin' : ActorMethod<[], Array<TcgCategory>>,
   'getAllSetsAdmin' : ActorMethod<[], Array<TcgSet>>,
+  /**
+   * / Get the bonding curve state for a single clip.
+   */
+  'getBondingCurveState' : ActorMethod<[string], [] | [BondingCurveState]>,
+  /**
+   * / Batch-fetch bonding curve states for multiple clips (for feed rendering).
+   */
+  'getBondingCurveStates' : ActorMethod<
+    [Array<string>],
+    Array<BondingCurveState>
+  >,
   'getCallerCollectibles' : ActorMethod<[], Array<Collectible>>,
   'getCallerPacks' : ActorMethod<[], Array<Pack>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
@@ -340,6 +388,13 @@ export interface _SERVICE {
     Array<VideoClip>
   >,
   /**
+   * / Get all clips together with their bonding curve state in one call.
+   */
+  'getClipsWithCurveState' : ActorMethod<
+    [],
+    Array<[VideoClip, [] | [BondingCurveState]]>
+  >,
+  /**
    * / Get all clips created by a specific principal.
    */
   'getCreatorClips' : ActorMethod<[Principal], Array<VideoClip>>,
@@ -354,6 +409,10 @@ export interface _SERVICE {
    * / Sums splits where role == "creator" or role == "seller".
    */
   'getMyEarnings' : ActorMethod<[], EarningsSummary>,
+  /**
+   * / Returns all purchases made by the calling principal.
+   */
+  'getMyPurchases' : ActorMethod<[], Array<PurchaseRecord>>,
   'getMyRole' : ActorMethod<[], UserRole>,
   /**
    * / Returns transactions where p appears in any split's principal.
@@ -397,11 +456,21 @@ export interface _SERVICE {
    * / Retrieve raw video/preview blob data by asset_id.
    */
   'getVideoBlob' : ActorMethod<[string], [] | [VideoAsset]>,
+  /**
+   * / Initialize bonding curve state for a newly created clip.
+   * / Only callable by the clip's creator.
+   */
+  'initBondingCurve' : ActorMethod<
+    [string],
+    { 'ok' : BondingCurveState } |
+      { 'err' : string }
+  >,
   'isAdmin' : ActorMethod<[], boolean>,
   /**
-   * / Like a clip. Each caller can only like once. Returns new like_count.
+   * / Like a clip. Returns new like_count on success.
+   * / Returns #err with a message on rate-limit, duplicate like, or account-too-new.
    */
-  'likeClip' : ActorMethod<[string], LikeResult>,
+  'likeClip' : ActorMethod<[string], { 'ok' : bigint } | { 'err' : string }>,
   'makeOffer' : ActorMethod<
     [bigint, number],
     { 'ok' : bigint } |
@@ -425,6 +494,24 @@ export interface _SERVICE {
   'processSecondaryTrade' : ActorMethod<
     [string, Principal, Principal, Principal, number],
     bigint
+  >,
+  /**
+   * / Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
+   * / and promotes all purchases to #minted when all 1000 copies are sold.
+   */
+  'recordPurchase' : ActorMethod<
+    [string, number],
+    { 'ok' : PurchaseRecord } |
+      { 'err' : string }
+  >,
+  /**
+   * / Record a video hash for the caller. Returns #err("duplicate") if the hash
+   * / was already submitted by any user, otherwise records it and returns #ok(true).
+   */
+  'recordVideoHash' : ActorMethod<
+    [string],
+    { 'ok' : boolean } |
+      { 'err' : string }
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,

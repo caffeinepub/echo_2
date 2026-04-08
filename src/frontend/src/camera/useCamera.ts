@@ -15,7 +15,7 @@ export interface CameraError {
 
 export const useCamera = (config: CameraConfig = {}) => {
   const {
-    facingMode = "environment",
+    facingMode = "user",
     width = 1920,
     height = 1080,
     quality = 0.8,

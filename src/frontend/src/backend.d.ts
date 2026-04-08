@@ -127,16 +127,6 @@ export interface PricePoint {
     timestamp: bigint;
     salePrice: number;
 }
-export type LikeResult = {
-    __kind__: "ok";
-    ok: bigint;
-} | {
-    __kind__: "alreadyLiked";
-    alreadyLiked: null;
-} | {
-    __kind__: "notFound";
-    notFound: null;
-};
 export interface Track {
     title: string;
     duration: bigint;
@@ -182,6 +172,16 @@ export interface UpdateTcgCardInput {
     cardNumber: string;
     isSupported: boolean;
 }
+export interface BondingCurveState {
+    startingPrice: number;
+    clipId: string;
+    currentPrice: number;
+    totalSupply: bigint;
+    nextPrice: number;
+    soldOut: boolean;
+    priceIncrementFactor: number;
+    copiesMinted: bigint;
+}
 export interface CreateTcgCategoryInput {
     sortOrder: bigint;
     name: string;
@@ -220,6 +220,15 @@ export interface TcgCard {
     rarity: string;
     cardNumber: string;
     isSupported: boolean;
+}
+export interface PurchaseRecord {
+    status: PurchaseStatus;
+    clipId: string;
+    editionNumber: bigint;
+    purchasedAt: bigint;
+    buyerPrincipal: Principal;
+    pricePaid: number;
+    purchaseId: string;
 }
 export interface Offer {
     id: bigint;
@@ -286,6 +295,10 @@ export enum PackStatus {
     opened = "opened",
     sealed = "sealed"
 }
+export enum PurchaseStatus {
+    pending = "pending",
+    minted = "minted"
+}
 export enum TxType {
     mintFee = "mintFee",
     secondaryTrade = "secondaryTrade",
@@ -314,6 +327,29 @@ export interface backendInterface {
     addRelease(release: Release): Promise<void>;
     assignRole(user: Principal, role: UserRole): Promise<void>;
     cancelListing(listingId: bigint): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Check whether the caller is allowed to like (max 30 likes per minute;
+     * / also blocks accounts created within the last 60 seconds).
+     * / Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+     */
+    checkLikeRateLimit(): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Check whether the caller is allowed to mint (max 10 mints per 10 minutes).
+     * / Returns #ok(true) when allowed, #err with a human-readable message when blocked.
+     */
+    checkMintRateLimit(): Promise<{
         __kind__: "ok";
         ok: boolean;
     } | {
@@ -349,6 +385,14 @@ export interface backendInterface {
     getAllCardsAdmin(): Promise<Array<TcgCard>>;
     getAllCategoriesAdmin(): Promise<Array<TcgCategory>>;
     getAllSetsAdmin(): Promise<Array<TcgSet>>;
+    /**
+     * / Get the bonding curve state for a single clip.
+     */
+    getBondingCurveState(clipId: string): Promise<BondingCurveState | null>;
+    /**
+     * / Batch-fetch bonding curve states for multiple clips (for feed rendering).
+     */
+    getBondingCurveStates(clipIds: Array<string>): Promise<Array<BondingCurveState>>;
     getCallerCollectibles(): Promise<Array<Collectible>>;
     getCallerPacks(): Promise<Array<Pack>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -370,6 +414,10 @@ export interface backendInterface {
      */
     getClipsForHashtag(hashtag: string, sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
     /**
+     * / Get all clips together with their bonding curve state in one call.
+     */
+    getClipsWithCurveState(): Promise<Array<[VideoClip, BondingCurveState | null]>>;
+    /**
      * / Get all clips created by a specific principal.
      */
     getCreatorClips(creator: Principal): Promise<Array<VideoClip>>;
@@ -384,6 +432,10 @@ export interface backendInterface {
      * / Sums splits where role == "creator" or role == "seller".
      */
     getMyEarnings(): Promise<EarningsSummary>;
+    /**
+     * / Returns all purchases made by the calling principal.
+     */
+    getMyPurchases(): Promise<Array<PurchaseRecord>>;
     getMyRole(): Promise<UserRole>;
     /**
      * / Returns transactions where p appears in any split's principal.
@@ -426,11 +478,29 @@ export interface backendInterface {
      * / Retrieve raw video/preview blob data by asset_id.
      */
     getVideoBlob(asset_id: string): Promise<VideoAsset | null>;
+    /**
+     * / Initialize bonding curve state for a newly created clip.
+     * / Only callable by the clip's creator.
+     */
+    initBondingCurve(clipId: string): Promise<{
+        __kind__: "ok";
+        ok: BondingCurveState;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     isAdmin(): Promise<boolean>;
     /**
-     * / Like a clip. Each caller can only like once. Returns new like_count.
+     * / Like a clip. Returns new like_count on success.
+     * / Returns #err with a message on rate-limit, duplicate like, or account-too-new.
      */
-    likeClip(clip_id: string): Promise<LikeResult>;
+    likeClip(clip_id: string): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     makeOffer(listingId: bigint, offerPriceUsd: number): Promise<{
         __kind__: "ok";
         ok: bigint;
@@ -442,15 +512,37 @@ export interface backendInterface {
     /**
      * / Record a $1 mint fee. 100% to platform wallet.
      */
-    processClipMint(creatorPrincipal: Principal): Promise<bigint>;
+    processClipMint(_creatorPrincipal: Principal): Promise<bigint>;
     /**
      * / Record a bonding curve copy sale. 95% to creator, 5% to platform.
      */
-    processCopySale(clipId: string, creatorPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    processCopySale(clipId: string, creatorPrincipal: Principal, _buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     /**
      * / Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
      */
-    processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, _buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    /**
+     * / Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
+     * / and promotes all purchases to #minted when all 1000 copies are sold.
+     */
+    recordPurchase(clipId: string, pricePaid: number): Promise<{
+        __kind__: "ok";
+        ok: PurchaseRecord;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Record a video hash for the caller. Returns #err("duplicate") if the hash
+     * / was already submitted by any user, otherwise records it and returns #ok(true).
+     */
+    recordVideoHash(hash: string): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
     toggleCardActive(id: bigint): Promise<void>;

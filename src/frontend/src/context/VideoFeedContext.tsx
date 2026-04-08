@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { VideoClipSort, createActor } from "../backend";
 import type { VideoClip as BackendVideoClip } from "../backend";
 import { useTrendingHashtags } from "../hooks/useTrendingHashtags";
@@ -187,21 +188,63 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
 
       // Sync to backend (only like, not unlike — backend enforces one like)
       if (!wasLiked && actor) {
-        actor.likeClip(id).catch((err) => {
-          console.warn("[VideoFeed] likeClip failed:", err);
-          // Revert optimistic update
-          setLikedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            saveLiked(next);
-            return next;
+        actor
+          .likeClip(id)
+          .then((result) => {
+            if (result.__kind__ === "ok") {
+              // Update with authoritative count from backend
+              const newCount = Number(result.ok);
+              setClips((prev) =>
+                prev.map((c) =>
+                  c.id === id ? { ...c, likeCount: newCount } : c,
+                ),
+              );
+            } else {
+              // Backend rejected the like (rate limit, duplicate, etc.)
+              const errMsg = String(result.err ?? "");
+              if (
+                errMsg.toLowerCase().includes("rate") ||
+                errMsg.toLowerCase().includes("limit")
+              ) {
+                toast.error("Too many likes — slow down for a moment.");
+              } else if (
+                errMsg.toLowerCase().includes("already") ||
+                errMsg.toLowerCase().includes("duplicate")
+              ) {
+                toast("You've already liked this clip.");
+              } else {
+                toast.error("Couldn't like this clip right now.");
+              }
+              console.warn("[VideoFeed] likeClip rejected:", result.err);
+              // Revert optimistic update
+              setLikedIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                saveLiked(next);
+                return next;
+              });
+              setClips((prev) =>
+                prev.map((c) =>
+                  c.id === id ? { ...c, likeCount: c.likeCount - 1 } : c,
+                ),
+              );
+            }
+          })
+          .catch((err) => {
+            console.warn("[VideoFeed] likeClip failed:", err);
+            // Revert optimistic update on network error
+            setLikedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(id);
+              saveLiked(next);
+              return next;
+            });
+            setClips((prev) =>
+              prev.map((c) =>
+                c.id === id ? { ...c, likeCount: c.likeCount - 1 } : c,
+              ),
+            );
           });
-          setClips((prev) =>
-            prev.map((c) =>
-              c.id === id ? { ...c, likeCount: c.likeCount - 1 } : c,
-            ),
-          );
-        });
       }
     },
     [actor],
@@ -227,9 +270,8 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     let list = clips.filter((c) => !safeView || !c.explicitFlag);
     if (activeSort === "newest") {
       list = [...list].sort((a, b) => b.timestamp - a.timestamp);
-    } else if (activeSort === "trending") {
-      list = [...list].sort((a, b) => b.likeCount - a.likeCount);
     } else {
+      // trending and top both sort by plain likeCount
       list = [...list].sort((a, b) => b.likeCount - a.likeCount);
     }
     return list;

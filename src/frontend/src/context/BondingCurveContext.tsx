@@ -1,201 +1,120 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
+import { VideoClipSort, createActor } from "../backend";
+import type {
+  BondingCurveState as BackendCurveState,
+  PurchaseRecord as BackendPurchaseRecord,
+  PurchaseStatus,
+} from "../backend";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Frontend representation of a bonding curve state (cents for prices) */
 export interface CurveState {
   clipId: string;
   totalSupply: number;
   copiesMinted: number;
-  startingPriceCents: number; // 100 = $1.00
-  priceIncrementCents: number; // 1 = +$0.01 per copy
+  startingPriceCents: number;
+  priceIncrementCents: number;
+  soldOut: boolean;
+  currentPriceCents: number;
+  nextPriceCents: number;
 }
 
 export interface PurchaseRecord {
+  purchaseId: string;
   clipId: string;
   clipTitle: string;
-  editionNumber: number; // 1-based sequential copy order (1 = first buyer)
-  totalSupply: number; // always 1000
-  pricePaid: number; // in cents
-  purchasedAt: number; // timestamp ms
+  editionNumber: number;
+  totalSupply: number;
+  pricePaid: number; // USD dollars
+  purchasedAt: number; // ms timestamp
   videoUrl: string;
   creatorName: string;
-  status: "pending" | "minted"; // pending = waiting for sell-out; minted = all 1000 sold
+  status: "pending" | "minted";
 }
 
 export interface PricePoint {
-  timestamp: number; // ms
-  price: number; // in cents
-  marketCap: number; // USD cents × totalSupply / 100 → USD
+  timestamp: number;
+  price: number; // cents
+  marketCap: number;
   copiesMinted: number;
 }
 
 export interface OfferRecord {
   id: string;
   clipId: string;
-  listingId: string; // the MarketListing id being offered on
+  listingId: string;
   editionNumber: number;
   offerPriceUsd: number;
-  offererUsername: string; // "You" for the current user
+  offererUsername: string;
   status: "pending" | "accepted" | "declined";
-  createdAt: number; // timestamp ms
+  createdAt: number;
 }
 
-function currentPriceCents(state: CurveState): number {
-  return (
-    state.startingPriceCents + state.copiesMinted * state.priceIncrementCents
-  );
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function backendCurveToFrontend(bc: BackendCurveState): CurveState {
+  const copiesMinted = Number(bc.copiesMinted);
+  const totalSupply = Number(bc.totalSupply);
+  return {
+    clipId: bc.clipId,
+    totalSupply,
+    copiesMinted,
+    startingPriceCents: Math.round(bc.startingPrice * 100),
+    priceIncrementCents: Math.round(bc.priceIncrementFactor * 100),
+    soldOut: bc.soldOut,
+    currentPriceCents: Math.round(bc.currentPrice * 100),
+    nextPriceCents: Math.round(bc.nextPrice * 100),
+  };
 }
 
-function nextPriceCents(state: CurveState): number {
-  return (
-    state.startingPriceCents +
-    (state.copiesMinted + 1) * state.priceIncrementCents
-  );
+function isPurchaseStatusPending(s: PurchaseStatus): boolean {
+  return (s as unknown as string) === "pending";
 }
 
-function computeMarketCap(state: CurveState): number {
-  return (currentPriceCents(state) / 100) * state.totalSupply;
+function backendPurchaseToFrontend(
+  bp: BackendPurchaseRecord,
+  clipTitle: string,
+  videoUrl: string,
+  creatorName: string,
+): PurchaseRecord {
+  return {
+    purchaseId: bp.purchaseId,
+    clipId: bp.clipId,
+    clipTitle,
+    editionNumber: Number(bp.editionNumber),
+    totalSupply: 1000,
+    pricePaid: bp.pricePaid, // already USD
+    purchasedAt: Number(bp.purchasedAt) / 1_000_000, // backend ns → ms
+    videoUrl,
+    creatorName,
+    status: isPurchaseStatusPending(bp.status) ? "pending" : "minted",
+  };
 }
 
-// Build default curve states for seed clips
-const SEED_STATES: CurveState[] = [
-  {
-    clipId: "clip_1",
-    totalSupply: 1000,
-    copiesMinted: 127,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_2",
-    totalSupply: 1000,
-    copiesMinted: 53,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_3",
-    totalSupply: 1000,
-    copiesMinted: 341,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_4",
-    totalSupply: 1000,
-    copiesMinted: 78,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_5",
-    totalSupply: 1000,
-    copiesMinted: 512,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_6",
-    totalSupply: 1000,
-    copiesMinted: 9,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_7",
-    totalSupply: 1000,
-    copiesMinted: 205,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-  {
-    clipId: "clip_8",
-    totalSupply: 1000,
-    copiesMinted: 88,
-    startingPriceCents: 100,
-    priceIncrementCents: 1,
-  },
-];
+// LocalStorage fallback for clip metadata (title/video url) since PurchaseRecord
+// from backend doesn't carry these display fields.
+const LS_CLIP_META_KEY = "minty_clip_meta_v1";
 
-const LS_CURVE_KEY = "minty_curve_states_v1";
-const LS_PURCHASES_KEY = "minty_purchases_v1";
-const LS_PRICE_HISTORY_KEY = "minty_price_history_v1";
-
-function loadCurveStates(): Map<string, CurveState> {
-  const map = new Map<string, CurveState>();
-  for (const s of SEED_STATES) map.set(s.clipId, s);
+function loadClipMeta(): Map<
+  string,
+  { title: string; videoUrl: string; creatorName: string }
+> {
   try {
-    const raw = localStorage.getItem(LS_CURVE_KEY);
+    const raw = localStorage.getItem(LS_CLIP_META_KEY);
     if (raw) {
-      const saved = JSON.parse(raw) as CurveState[];
-      for (const s of saved) map.set(s.clipId, s);
-    }
-  } catch {
-    /* ignore */
-  }
-  return map;
-}
-
-function saveCurveStates(map: Map<string, CurveState>) {
-  try {
-    localStorage.setItem(LS_CURVE_KEY, JSON.stringify([...map.values()]));
-  } catch {
-    /* ignore */
-  }
-}
-
-/** Migrate legacy purchase records that lack a `status` field, and auto-mint
- *  any purchases where the curve is already sold out. */
-function migratePurchases(
-  records: PurchaseRecord[],
-  curveMap: Map<string, CurveState>,
-): PurchaseRecord[] {
-  return records.map((r) => {
-    const withStatus = r.status ? r : { ...r, status: "pending" as const };
-    // If curve is already sold out, promote pending → minted
-    const state = curveMap.get(withStatus.clipId);
-    if (
-      withStatus.status === "pending" &&
-      state &&
-      state.copiesMinted >= state.totalSupply
-    ) {
-      return { ...withStatus, status: "minted" as const };
-    }
-    return withStatus;
-  });
-}
-
-function loadPurchases(curveMap: Map<string, CurveState>): PurchaseRecord[] {
-  try {
-    const raw = localStorage.getItem(LS_PURCHASES_KEY);
-    const records: PurchaseRecord[] = raw
-      ? (JSON.parse(raw) as PurchaseRecord[])
-      : [];
-    return migratePurchases(records, curveMap);
-  } catch {
-    return [];
-  }
-}
-
-function savePurchases(records: PurchaseRecord[]) {
-  try {
-    localStorage.setItem(LS_PURCHASES_KEY, JSON.stringify(records));
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadPriceHistory(): Map<string, PricePoint[]> {
-  try {
-    const raw = localStorage.getItem(LS_PRICE_HISTORY_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Record<string, PricePoint[]>;
+      const parsed = JSON.parse(raw) as Record<
+        string,
+        { title: string; videoUrl: string; creatorName: string }
+      >;
       return new Map(Object.entries(parsed));
     }
   } catch {
@@ -204,53 +123,19 @@ function loadPriceHistory(): Map<string, PricePoint[]> {
   return new Map();
 }
 
-function savePriceHistory(map: Map<string, PricePoint[]>) {
+function saveClipMeta(
+  map: Map<string, { title: string; videoUrl: string; creatorName: string }>,
+) {
   try {
-    const obj: Record<string, PricePoint[]> = {};
+    const obj: Record<
+      string,
+      { title: string; videoUrl: string; creatorName: string }
+    > = {};
     for (const [k, v] of map.entries()) obj[k] = v;
-    localStorage.setItem(LS_PRICE_HISTORY_KEY, JSON.stringify(obj));
+    localStorage.setItem(LS_CLIP_META_KEY, JSON.stringify(obj));
   } catch {
     /* ignore */
   }
-}
-
-/** Initialise price history for seed states if none exists yet */
-function initSeedHistory(
-  curveMap: Map<string, CurveState>,
-  historyMap: Map<string, PricePoint[]>,
-): Map<string, PricePoint[]> {
-  let dirty = false;
-  const now = Date.now();
-  for (const state of curveMap.values()) {
-    if (!historyMap.has(state.clipId)) {
-      const points: PricePoint[] = [];
-      const step = Math.max(1, Math.ceil(state.copiesMinted / 8));
-      const baseTime = now - state.copiesMinted * 60_000 * 5;
-      for (let k = 0; k <= state.copiesMinted; k += step) {
-        const priceCents =
-          state.startingPriceCents + k * state.priceIncrementCents;
-        points.push({
-          timestamp: baseTime + k * 60_000 * 5,
-          price: priceCents,
-          marketCap: (priceCents / 100) * state.totalSupply,
-          copiesMinted: k,
-        });
-      }
-      const finalPrice = currentPriceCents(state);
-      if (points[points.length - 1]?.copiesMinted !== state.copiesMinted) {
-        points.push({
-          timestamp: now,
-          price: finalPrice,
-          marketCap: (finalPrice / 100) * state.totalSupply,
-          copiesMinted: state.copiesMinted,
-        });
-      }
-      historyMap.set(state.clipId, points);
-      dirty = true;
-    }
-  }
-  if (dirty) savePriceHistory(historyMap);
-  return historyMap;
 }
 
 // ─── Context Value ─────────────────────────────────────────────────────────────
@@ -279,6 +164,7 @@ interface BondingCurveContextValue {
   getPriceHistory: (clipId: string) => PricePoint[];
   getPendingPurchases: () => PurchaseRecord[];
   getMintedPurchases: () => PurchaseRecord[];
+  isLoadingCurves: boolean;
   /** Incremented every 8s so subscribers can re-render */
   ticker: number;
 }
@@ -288,31 +174,111 @@ const BondingCurveCtx = createContext<BondingCurveContextValue | null>(null);
 export function BondingCurveProvider({
   children,
 }: { children: React.ReactNode }) {
-  const initialCurveMap = loadCurveStates();
-  const [curveMap, setCurveMap] =
-    useState<Map<string, CurveState>>(initialCurveMap);
-  const [purchases, setPurchases] = useState<PurchaseRecord[]>(() =>
-    loadPurchases(initialCurveMap),
-  );
+  const { actor, isFetching } = useActor(createActor);
+
+  const [curveMap, setCurveMap] = useState<Map<string, CurveState>>(new Map());
+  const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [priceHistoryMap, setPriceHistoryMap] = useState<
     Map<string, PricePoint[]>
-  >(() => {
-    const base = loadPriceHistory();
-    return initSeedHistory(loadCurveStates(), base);
-  });
+  >(new Map());
+  const [isLoadingCurves, setIsLoadingCurves] = useState(true);
   const [ticker, setTicker] = useState(0);
+  const clipMetaRef = useRef<
+    Map<string, { title: string; videoUrl: string; creatorName: string }>
+  >(loadClipMeta());
 
-  // 8-second polling: re-read from localStorage, refresh ticker
+  // Load curve states and purchases when actor is ready
   useEffect(() => {
-    const id = setInterval(() => {
-      const fresh = loadCurveStates();
-      setCurveMap(fresh);
-      const freshHistory = loadPriceHistory();
-      setPriceHistoryMap(new Map(freshHistory));
+    if (!actor || isFetching) return;
+
+    let cancelled = false;
+
+    async function loadAll() {
+      if (!actor) return;
+      setIsLoadingCurves(true);
+      try {
+        // Load clips+curves in one call
+        const clipsWithCurves = await actor.getClipsWithCurveState();
+        if (cancelled) return;
+
+        const newCurveMap = new Map<string, CurveState>();
+        for (const [clip, maybeCurve] of clipsWithCurves) {
+          if (maybeCurve !== null) {
+            newCurveMap.set(clip.clip_id, backendCurveToFrontend(maybeCurve));
+          }
+          // Store clip metadata for display in Collection page
+          if (!clipMetaRef.current.has(clip.clip_id)) {
+            clipMetaRef.current.set(clip.clip_id, {
+              title: clip.title ?? "",
+              videoUrl: clip.video_file_url,
+              creatorName: clip.creator_principal_id.toString().slice(0, 8),
+            });
+          }
+        }
+        saveClipMeta(clipMetaRef.current);
+        setCurveMap(newCurveMap);
+
+        // Load purchases
+        const backendPurchases = await actor.getMyPurchases();
+        if (cancelled) return;
+
+        const mapped = backendPurchases.map((bp) => {
+          const meta = clipMetaRef.current.get(bp.clipId) ?? {
+            title: "",
+            videoUrl: "",
+            creatorName: "",
+          };
+          return backendPurchaseToFrontend(
+            bp,
+            meta.title,
+            meta.videoUrl,
+            meta.creatorName,
+          );
+        });
+        setPurchases(mapped);
+      } catch (err) {
+        console.error("[BondingCurve] load failed:", err);
+      } finally {
+        if (!cancelled) setIsLoadingCurves(false);
+      }
+    }
+
+    loadAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, isFetching]);
+
+  // 8-second polling ticker + curve refresh
+  useEffect(() => {
+    if (!actor || isFetching) return;
+
+    const id = setInterval(async () => {
+      try {
+        const clipsWithCurves = await actor.getClipsWithCurveState();
+        const newCurveMap = new Map<string, CurveState>();
+        for (const [clip, maybeCurve] of clipsWithCurves) {
+          if (maybeCurve !== null) {
+            newCurveMap.set(clip.clip_id, backendCurveToFrontend(maybeCurve));
+          }
+          if (!clipMetaRef.current.has(clip.clip_id)) {
+            clipMetaRef.current.set(clip.clip_id, {
+              title: clip.title ?? "",
+              videoUrl: clip.video_file_url,
+              creatorName: clip.creator_principal_id.toString().slice(0, 8),
+            });
+          }
+        }
+        saveClipMeta(clipMetaRef.current);
+        setCurveMap(newCurveMap);
+      } catch {
+        /* ignore polling errors */
+      }
       setTicker((t) => t + 1);
     }, 8000);
+
     return () => clearInterval(id);
-  }, []);
+  }, [actor, isFetching]);
 
   const getCurveState = useCallback(
     (clipId: string): CurveState | null => {
@@ -325,20 +291,17 @@ export function BondingCurveProvider({
     (clipId: string): CurveState => {
       const existing = curveMap.get(clipId);
       if (existing) return existing;
-      const fresh: CurveState = {
+      // Return a default while backend init is pending
+      return {
         clipId,
         totalSupply: 1000,
         copiesMinted: 0,
         startingPriceCents: 100,
         priceIncrementCents: 1,
+        soldOut: false,
+        currentPriceCents: 100,
+        nextPriceCents: 101,
       };
-      setCurveMap((prev) => {
-        const next = new Map(prev);
-        next.set(clipId, fresh);
-        saveCurveStates(next);
-        return next;
-      });
-      return fresh;
     },
     [curveMap],
   );
@@ -354,48 +317,81 @@ export function BondingCurveProvider({
       totalSupply: number;
       isSoldOut: boolean;
     }> => {
+      if (!actor) throw new Error("Connect wallet to purchase");
+
       const state = curveMap.get(clipId);
-      if (!state) throw new Error("Curve state not found");
-      if (state.copiesMinted >= state.totalSupply) throw new Error("Sold out");
+      const pricePaid = state ? state.currentPriceCents / 100 : 1.0;
 
-      const pricePaid = currentPriceCents(state);
-      const editionNumber = state.copiesMinted + 1;
-      const totalSupply = state.totalSupply;
-      const newMintedCount = state.copiesMinted + 1;
-      const sellsOut = newMintedCount >= totalSupply;
+      const result = await actor.recordPurchase(clipId, pricePaid);
+      if (result.__kind__ === "err") {
+        throw new Error(result.err);
+      }
 
-      await new Promise((r) => setTimeout(r, 600));
+      const bp = result.ok;
+      const editionNumber = Number(bp.editionNumber);
+      const totalSupply = 1000;
+      const isSoldOut = !isPurchaseStatusPending(bp.status);
 
-      setCurveMap((prev) => {
-        const next = new Map(prev);
-        const cur = prev.get(clipId);
-        if (!cur) return prev;
-        const updated = { ...cur, copiesMinted: cur.copiesMinted + 1 };
-        next.set(clipId, updated);
-        saveCurveStates(next);
-
-        // Append price point
-        const newPriceCents = currentPriceCents(updated);
-        const newPoint: PricePoint = {
-          timestamp: Date.now(),
-          price: newPriceCents,
-          marketCap: (newPriceCents / 100) * updated.totalSupply,
-          copiesMinted: updated.copiesMinted,
-        };
-        setPriceHistoryMap((prevH) => {
-          const nextH = new Map(prevH);
-          const existing = nextH.get(clipId) ?? [];
-          const appended = [...existing, newPoint];
-          nextH.set(clipId, appended);
-          savePriceHistory(nextH);
-          return nextH;
+      // Store clip metadata for display
+      if (!clipMetaRef.current.has(clipId)) {
+        clipMetaRef.current.set(clipId, {
+          title: clipTitle,
+          videoUrl,
+          creatorName,
         });
+        saveClipMeta(clipMetaRef.current);
+      }
 
-        return next;
-      });
+      // Refresh curve state for this clip
+      try {
+        const freshCurve = await actor.getBondingCurveState(clipId);
+        if (freshCurve !== null) {
+          setCurveMap((prev) => {
+            const next = new Map(prev);
+            next.set(clipId, backendCurveToFrontend(freshCurve));
+            return next;
+          });
 
-      setPurchases((prev) => {
+          // Append price history point
+          const newPriceCents = Math.round(freshCurve.currentPrice * 100);
+          const newPoint: PricePoint = {
+            timestamp: Date.now(),
+            price: newPriceCents,
+            marketCap: (newPriceCents / 100) * Number(freshCurve.totalSupply),
+            copiesMinted: Number(freshCurve.copiesMinted),
+          };
+          setPriceHistoryMap((prev) => {
+            const next = new Map(prev);
+            const existing = next.get(clipId) ?? [];
+            next.set(clipId, [...existing, newPoint]);
+            return next;
+          });
+        }
+      } catch {
+        /* non-fatal */
+      }
+
+      // Refresh purchases
+      try {
+        const backendPurchases = await actor.getMyPurchases();
+        const mapped = backendPurchases.map((bp2) => {
+          const meta = clipMetaRef.current.get(bp2.clipId) ?? {
+            title: "",
+            videoUrl: "",
+            creatorName: "",
+          };
+          return backendPurchaseToFrontend(
+            bp2,
+            meta.title,
+            meta.videoUrl,
+            meta.creatorName,
+          );
+        });
+        setPurchases(mapped);
+      } catch {
+        // Fall back to optimistic update
         const record: PurchaseRecord = {
+          purchaseId: bp.purchaseId,
           clipId,
           clipTitle,
           editionNumber,
@@ -404,27 +400,14 @@ export function BondingCurveProvider({
           purchasedAt: Date.now(),
           videoUrl,
           creatorName,
-          status: "pending", // always starts pending
+          status: isSoldOut ? "minted" : "pending",
         };
+        setPurchases((prev) => [record, ...prev]);
+      }
 
-        let next = [record, ...prev];
-
-        // Sell-out trigger: if all copies sold, mint ALL pending records for this clip
-        if (sellsOut) {
-          next = next.map((r) =>
-            r.clipId === clipId && r.status === "pending"
-              ? { ...r, status: "minted" as const }
-              : r,
-          );
-        }
-
-        savePurchases(next);
-        return next;
-      });
-
-      return { editionNumber, totalSupply, isSoldOut: sellsOut };
+      return { editionNumber, totalSupply, isSoldOut };
     },
-    [curveMap],
+    [actor, curveMap],
   );
 
   const hasPurchased = useCallback(
@@ -438,7 +421,7 @@ export function BondingCurveProvider({
     (clipId: string): number => {
       const s = curveMap.get(clipId);
       if (!s) return 100;
-      return currentPriceCents(s);
+      return s.currentPriceCents;
     },
     [curveMap],
   );
@@ -447,7 +430,7 @@ export function BondingCurveProvider({
     (clipId: string): number => {
       const s = curveMap.get(clipId);
       if (!s) return 101;
-      return nextPriceCents(s);
+      return s.nextPriceCents;
     },
     [curveMap],
   );
@@ -474,7 +457,7 @@ export function BondingCurveProvider({
     (clipId: string): number => {
       const s = curveMap.get(clipId);
       if (!s) return 0;
-      return computeMarketCap(s);
+      return (s.currentPriceCents / 100) * s.totalSupply;
     },
     [curveMap],
   );
@@ -489,6 +472,44 @@ export function BondingCurveProvider({
     },
     [priceHistoryMap],
   );
+
+  // Also load price history from backend when actor is ready
+  useEffect(() => {
+    if (!actor || isFetching) return;
+
+    async function loadHistory() {
+      if (!actor) return;
+      const clips = await actor
+        .getClips(VideoClipSort.newest, false)
+        .catch(() => []);
+
+      const newHistoryMap = new Map<string, PricePoint[]>();
+      await Promise.all(
+        clips.map(async (clip) => {
+          try {
+            const history = await actor.getPriceHistory(clip.clip_id);
+            const points: PricePoint[] = history.map((ph) => ({
+              timestamp: Number(ph.timestamp) / 1_000_000,
+              price: Math.round(ph.salePrice * 100),
+              marketCap: ph.salePrice * 1000,
+              copiesMinted: Number(ph.editionNumber),
+            }));
+            if (points.length > 0) {
+              newHistoryMap.set(clip.clip_id, points);
+            }
+          } catch {
+            /* non-fatal */
+          }
+        }),
+      );
+
+      if (newHistoryMap.size > 0) {
+        setPriceHistoryMap(newHistoryMap);
+      }
+    }
+
+    loadHistory();
+  }, [actor, isFetching]);
 
   const getPendingPurchases = useCallback((): PurchaseRecord[] => {
     return purchases.filter((p) => p.status === "pending");
@@ -515,6 +536,7 @@ export function BondingCurveProvider({
         getPriceHistory,
         getPendingPurchases,
         getMintedPurchases,
+        isLoadingCurves,
         ticker,
       }}
     >

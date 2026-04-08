@@ -222,6 +222,9 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const copiesMinted = curveState?.copiesMinted ?? 0;
   const totalSupply = curveState?.totalSupply ?? 1000;
 
+  // No actor = not logged in
+  const hasWallet = !!identity;
+
   // Lock body scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -241,6 +244,12 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   }, [onClose]);
 
   async function handleConfirm() {
+    if (!hasWallet) {
+      setErrorMsg("Connect your wallet to purchase.");
+      setStatus("error");
+      return;
+    }
+
     setStatus("loading");
     try {
       const result = await purchase(
@@ -254,7 +263,6 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
 
       // Record the copy sale split — non-blocking
       const priceUsd = currentPrice(clip.id) / 100;
-      // Use a placeholder principal for creator since VideoClip only stores name
       const creatorPrincipal = Principal.anonymous();
       const buyerPrincipal = identity
         ? identity.getPrincipal()
@@ -441,7 +449,8 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                     lineHeight: 1.5,
                   }}
                 >
-                  Mints to your Collection when all 1,000 copies sell.
+                  Pending — mints to your Collection when all 1,000 copies sell
+                  out.
                 </p>
 
                 {/* Progress toward sell-out */}
@@ -516,6 +525,25 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
             >
               by @{clip.creatorName}
             </p>
+
+            {/* No wallet warning */}
+            {!hasWallet && (
+              <div
+                style={{
+                  background: "rgba(239,68,68,0.07)",
+                  border: "1px solid rgba(239,68,68,0.20)",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#dc2626",
+                  fontFamily: "DM Sans, sans-serif",
+                  textAlign: "center",
+                }}
+              >
+                Connect wallet to purchase
+              </div>
+            )}
 
             {/* Price breakdown */}
             <div
@@ -630,11 +658,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
             </div>
 
             {/* Sell-out progress */}
-            <div
-              style={{
-                marginBottom: 16,
-              }}
-            >
+            <div style={{ marginBottom: 16 }}>
               <div
                 style={{
                   display: "flex",
@@ -692,7 +716,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
             {/* Slide to confirm */}
             <SlideToConfirm
               onConfirm={handleConfirm}
-              disabled={status === "loading"}
+              disabled={status === "loading" || !hasWallet}
               accentR={accentR}
               accentG={accentG}
               accentB={accentB}
