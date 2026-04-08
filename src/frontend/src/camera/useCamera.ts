@@ -71,6 +71,7 @@ export const useCamera = (config: CameraConfig = {}) => {
             width: { ideal: width },
             height: { ideal: height },
           },
+          audio: true,
         };
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);

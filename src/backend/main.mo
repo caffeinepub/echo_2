@@ -1036,4 +1036,362 @@ actor {
   public query func getVideoBlob(asset_id : Text) : async ?VideoAsset {
     videoAssets.get(asset_id);
   };
+
+  // ─────────────────────────────────────────────
+  // MARKETPLACE TYPES
+  // ─────────────────────────────────────────────
+
+  public type ListingStatus = { #active; #sold; #cancelled };
+
+  public type Listing = {
+    id : Nat;
+    clipId : Text;
+    editionNumber : Nat;
+    totalEditions : Nat;
+    sellerPrincipal : Principal;
+    listPriceUsd : Float;
+    listedAt : Int;
+    status : ListingStatus;
+  };
+
+  public type OfferStatus = { #pending; #accepted; #declined };
+
+  public type Offer = {
+    id : Nat;
+    listingId : Nat;
+    buyerPrincipal : Principal;
+    offerPriceUsd : Float;
+    createdAt : Int;
+    status : OfferStatus;
+  };
+
+  public type PricePoint = {
+    editionNumber : Nat;
+    salePrice : Float;
+    timestamp : Int;
+  };
+
+  public type MarketCapEntry = {
+    clipId : Text;
+    title : Text;
+    videoUrl : Text;
+    previewUrl : Text;
+    creatorName : Text;
+    currentPriceUsd : Float;
+    totalSupply : Nat;
+    copiesSold : Nat;
+    marketCapUsd : Float;
+  };
+
+  // ─────────────────────────────────────────────
+  // MARKETPLACE STATE
+  // ─────────────────────────────────────────────
+
+  let listings = Map.empty<Nat, Listing>();
+  let offers = Map.empty<Nat, Offer>();
+  // priceHistory: clipId → up to 10 most recent PricePoints (newest first)
+  let priceHistory = Map.empty<Text, [PricePoint]>();
+  // copiesSold: clipId → number of copies sold via acceptOffer
+  let marketCopiesSold = Map.empty<Text, Nat>();
+
+  var listingCounter : Nat = 0;
+  var offerCounter : Nat = 0;
+
+  // Bonding curve constants
+  let bondingCurveStartPrice : Float = 1.0;
+  let bondingCurvePriceIncrement : Float = 0.01;
+
+  // ─────────────────────────────────────────────
+  // MARKETPLACE HELPERS
+  // ─────────────────────────────────────────────
+
+  func _getSoldCount(clipId : Text) : Nat {
+    switch (marketCopiesSold.get(clipId)) {
+      case (?n) n;
+      case null 0;
+    };
+  };
+
+  func _computeCurrentPrice(clipId : Text) : Float {
+    // Use last sale price from history if available, else bonding curve
+    switch (priceHistory.get(clipId)) {
+      case (?points) {
+        if (points.size() > 0) {
+          points[0].salePrice
+        } else {
+          bondingCurveStartPrice + (bondingCurvePriceIncrement * _getSoldCount(clipId).toFloat())
+        }
+      };
+      case null {
+        bondingCurveStartPrice + (bondingCurvePriceIncrement * _getSoldCount(clipId).toFloat())
+      };
+    };
+  };
+
+  // Internal: record a confirmed sale
+  func _recordSale(clipId : Text, editionNumber : Nat, salePrice : Float) {
+    let now = Time.now();
+    let newPoint : PricePoint = { editionNumber; salePrice; timestamp = now };
+
+    let existing : [PricePoint] = switch (priceHistory.get(clipId)) {
+      case (?pts) pts;
+      case null [];
+    };
+
+    // Prepend new point and keep only last 10
+    let combined = [newPoint].concat(existing);
+    let trimmed = if (combined.size() > 10) {
+      combined.sliceToArray(0, 10)
+    } else {
+      combined
+    };
+    priceHistory.add(clipId, trimmed);
+
+    // Increment copies sold
+    let prev = _getSoldCount(clipId);
+    marketCopiesSold.add(clipId, prev + 1);
+  };
+
+  // ─────────────────────────────────────────────
+  // LISTING MANAGEMENT
+  // ─────────────────────────────────────────────
+
+  public shared ({ caller }) func createListing(
+    clipId : Text,
+    editionNumber : Nat,
+    listPriceUsd : Float,
+  ) : async { #ok : Nat; #err : Text } {
+    if (editionNumber == 0 or editionNumber > 1000) {
+      return #err("editionNumber must be between 1 and 1000");
+    };
+    if (listPriceUsd <= 0.0) {
+      return #err("listPriceUsd must be greater than 0");
+    };
+    listingCounter += 1;
+    let listingId = listingCounter;
+    let listing : Listing = {
+      id = listingId;
+      clipId;
+      editionNumber;
+      totalEditions = 1000;
+      sellerPrincipal = caller;
+      listPriceUsd;
+      listedAt = Time.now();
+      status = #active;
+    };
+    listings.add(listingId, listing);
+    #ok(listingId);
+  };
+
+  public shared ({ caller }) func cancelListing(listingId : Nat) : async { #ok : Bool; #err : Text } {
+    switch (listings.get(listingId)) {
+      case (null) { #err("Listing not found") };
+      case (?listing) {
+        if (not Principal.equal(listing.sellerPrincipal, caller)) {
+          return #err("Unauthorized: only the seller can cancel this listing");
+        };
+        listings.add(listingId, { listing with status = #cancelled });
+        #ok(true);
+      };
+    };
+  };
+
+  public query func getListings() : async [Listing] {
+    let active = listings.values().toArray().filter(func(l : Listing) : Bool {
+      switch (l.status) { case (#active) true; case _ false }
+    });
+    active.sort(func(a : Listing, b : Listing) : Order.Order {
+      Int.compare(b.listedAt, a.listedAt)
+    });
+  };
+
+  public query func getListingsByClip(clipId : Text) : async [Listing] {
+    listings.values().toArray().filter(func(l : Listing) : Bool {
+      l.clipId == clipId and (switch (l.status) { case (#active) true; case _ false })
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // OFFER SYSTEM
+  // ─────────────────────────────────────────────
+
+  public shared ({ caller }) func makeOffer(
+    listingId : Nat,
+    offerPriceUsd : Float,
+  ) : async { #ok : Nat; #err : Text } {
+    switch (listings.get(listingId)) {
+      case (null) { #err("Listing not found") };
+      case (?listing) {
+        switch (listing.status) {
+          case (#active) {};
+          case _ { return #err("Listing is not active") };
+        };
+        if (Principal.equal(listing.sellerPrincipal, caller)) {
+          return #err("Seller cannot make an offer on their own listing");
+        };
+        if (offerPriceUsd <= 0.0) {
+          return #err("offerPriceUsd must be greater than 0");
+        };
+        offerCounter += 1;
+        let offerId = offerCounter;
+        let offer : Offer = {
+          id = offerId;
+          listingId;
+          buyerPrincipal = caller;
+          offerPriceUsd;
+          createdAt = Time.now();
+          status = #pending;
+        };
+        offers.add(offerId, offer);
+        #ok(offerId);
+      };
+    };
+  };
+
+  public shared ({ caller }) func acceptOffer(offerId : Nat) : async { #ok : Bool; #err : Text } {
+    switch (offers.get(offerId)) {
+      case (null) { #err("Offer not found") };
+      case (?offer) {
+        switch (offer.status) {
+          case (#pending) {};
+          case _ { return #err("Offer is not pending") };
+        };
+        switch (listings.get(offer.listingId)) {
+          case (null) { #err("Listing not found") };
+          case (?listing) {
+            if (not Principal.equal(listing.sellerPrincipal, caller)) {
+              return #err("Unauthorized: only the seller can accept offers");
+            };
+            switch (listing.status) {
+              case (#active) {};
+              case _ { return #err("Listing is no longer active") };
+            };
+
+            // Accept this offer
+            offers.add(offerId, { offer with status = #accepted });
+
+            // Mark listing as sold
+            listings.add(offer.listingId, { listing with status = #sold });
+
+            // Decline all other pending offers on this listing
+            for ((oid, o) in offers.entries()) {
+              if (o.listingId == offer.listingId and oid != offerId) {
+                switch (o.status) {
+                  case (#pending) {
+                    offers.add(oid, { o with status = #declined });
+                  };
+                  case _ {};
+                };
+              };
+            };
+
+            // Record the sale
+            _recordSale(listing.clipId, listing.editionNumber, offer.offerPriceUsd);
+            #ok(true);
+          };
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func declineOffer(offerId : Nat) : async { #ok : Bool; #err : Text } {
+    switch (offers.get(offerId)) {
+      case (null) { #err("Offer not found") };
+      case (?offer) {
+        switch (listings.get(offer.listingId)) {
+          case (null) { #err("Listing not found") };
+          case (?listing) {
+            if (not Principal.equal(listing.sellerPrincipal, caller)) {
+              return #err("Unauthorized: only the seller can decline offers");
+            };
+            offers.add(offerId, { offer with status = #declined });
+            #ok(true);
+          };
+        };
+      };
+    };
+  };
+
+  public query ({ caller }) func getOffers(listingId : Nat) : async { #ok : [Offer]; #err : Text } {
+    switch (listings.get(listingId)) {
+      case (null) { #err("Listing not found") };
+      case (?listing) {
+        if (not Principal.equal(listing.sellerPrincipal, caller)) {
+          return #err("Unauthorized: only the seller can view offers");
+        };
+        let result = offers.values().toArray().filter(func(o : Offer) : Bool {
+          o.listingId == listingId
+        });
+        #ok(result);
+      };
+    };
+  };
+
+  public query func getOfferHistory(listingId : Nat) : async [Offer] {
+    offers.values().toArray().filter(func(o : Offer) : Bool {
+      o.listingId == listingId and (switch (o.status) {
+        case (#pending) false;
+        case _ true;
+      })
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // PRICE HISTORY & CHARTS
+  // ─────────────────────────────────────────────
+
+  public query func getPriceHistory(clipId : Text) : async [PricePoint] {
+    switch (priceHistory.get(clipId)) {
+      case (?pts) pts; // already stored newest first
+      case null [];
+    };
+  };
+
+  public query func getCurrentPrice(clipId : Text) : async Float {
+    _computeCurrentPrice(clipId);
+  };
+
+  // ─────────────────────────────────────────────
+  // MARKET CAP & TOP 10
+  // ─────────────────────────────────────────────
+
+  func _buildMarketCapEntry(clip : VideoClip) : MarketCapEntry {
+    let currentPrice = _computeCurrentPrice(clip.clip_id);
+    let sold = _getSoldCount(clip.clip_id);
+    let marketCap = currentPrice * 1000.0;
+    let titleText = switch (clip.title) {
+      case (?t) t;
+      case null clip.clip_id;
+    };
+    {
+      clipId = clip.clip_id;
+      title = titleText;
+      videoUrl = clip.video_file_url;
+      previewUrl = clip.preview_loop_url;
+      creatorName = clip.creator_principal_id.toText();
+      currentPriceUsd = currentPrice;
+      totalSupply = 1000;
+      copiesSold = sold;
+      marketCapUsd = marketCap;
+    };
+  };
+
+  public query func getMarketCap(clipId : Text) : async ?MarketCapEntry {
+    switch (videoClips.get(clipId)) {
+      case (null) null;
+      case (?clip) ?_buildMarketCapEntry(clip);
+    };
+  };
+
+  public query func getTop10ByMarketCap() : async [MarketCapEntry] {
+    let entries = videoClips.values().toArray().map(
+      func(clip) { _buildMarketCapEntry(clip) }
+    );
+    let sorted = entries.sort(func(a : MarketCapEntry, b : MarketCapEntry) : Order.Order {
+      if (b.marketCapUsd > a.marketCapUsd) #less
+      else if (b.marketCapUsd < a.marketCapUsd) #greater
+      else #equal
+    });
+    sorted.sliceToArray(0, if (sorted.size() < 10) sorted.size() else 10);
+  };
 };

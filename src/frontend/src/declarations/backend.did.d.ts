@@ -80,11 +80,46 @@ export interface CreateTcgSetInput {
 export type LikeResult = { 'ok' : bigint } |
   { 'alreadyLiked' : null } |
   { 'notFound' : null };
+export interface Listing {
+  'id' : bigint,
+  'status' : ListingStatus,
+  'clipId' : string,
+  'totalEditions' : bigint,
+  'sellerPrincipal' : Principal,
+  'listPriceUsd' : number,
+  'editionNumber' : bigint,
+  'listedAt' : bigint,
+}
+export type ListingStatus = { 'active' : null } |
+  { 'cancelled' : null } |
+  { 'sold' : null };
+export interface MarketCapEntry {
+  'clipId' : string,
+  'title' : string,
+  'previewUrl' : string,
+  'totalSupply' : bigint,
+  'creatorName' : string,
+  'currentPriceUsd' : number,
+  'copiesSold' : bigint,
+  'videoUrl' : string,
+  'marketCapUsd' : number,
+}
 export interface MarketListing {
   'seller' : Principal,
   'editionId' : bigint,
   'price' : bigint,
 }
+export interface Offer {
+  'id' : bigint,
+  'status' : OfferStatus,
+  'offerPriceUsd' : number,
+  'listingId' : bigint,
+  'createdAt' : bigint,
+  'buyerPrincipal' : Principal,
+}
+export type OfferStatus = { 'pending' : null } |
+  { 'accepted' : null } |
+  { 'declined' : null };
 export interface Pack {
   'id' : string,
   'status' : PackStatus,
@@ -103,6 +138,11 @@ export type PackOpenResult = { 'ok' : Collectible } |
   { 'err' : string };
 export type PackStatus = { 'opened' : null } |
   { 'sealed' : null };
+export interface PricePoint {
+  'editionNumber' : bigint,
+  'timestamp' : bigint,
+  'salePrice' : number,
+}
 export interface Release {
   'album' : Album,
   'floorPrice' : bigint,
@@ -207,10 +247,20 @@ export type VideoClipSort = { 'top' : null } |
   { 'trending' : null } |
   { 'newest' : null };
 export interface _SERVICE {
+  'acceptOffer' : ActorMethod<
+    [bigint],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
   'addAlbum' : ActorMethod<[Album], undefined>,
   'addPack' : ActorMethod<[AddPackInput], undefined>,
   'addRelease' : ActorMethod<[Release], undefined>,
   'assignRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'cancelListing' : ActorMethod<
+    [bigint],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
   'createCard' : ActorMethod<[CreateTcgCardInput], TcgCard>,
   'createCategory' : ActorMethod<[CreateTcgCategoryInput], TcgCategory>,
   /**
@@ -220,7 +270,17 @@ export interface _SERVICE {
     [string, string, [] | [string], Array<string>, boolean],
     string
   >,
+  'createListing' : ActorMethod<
+    [string, bigint, number],
+    { 'ok' : bigint } |
+      { 'err' : string }
+  >,
   'createSet' : ActorMethod<[CreateTcgSetInput], TcgSet>,
+  'declineOffer' : ActorMethod<
+    [bigint],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
   'deleteCard' : ActorMethod<[bigint], undefined>,
   'deleteCategory' : ActorMethod<[bigint], undefined>,
   'deleteSet' : ActorMethod<[bigint], undefined>,
@@ -248,15 +308,27 @@ export interface _SERVICE {
    * / Get all clips created by a specific principal.
    */
   'getCreatorClips' : ActorMethod<[Principal], Array<VideoClip>>,
+  'getCurrentPrice' : ActorMethod<[string], number>,
   'getFeaturedSets' : ActorMethod<[], Array<TcgSet>>,
+  'getListings' : ActorMethod<[], Array<Listing>>,
+  'getListingsByClip' : ActorMethod<[string], Array<Listing>>,
+  'getMarketCap' : ActorMethod<[string], [] | [MarketCapEntry]>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
   'getMyRole' : ActorMethod<[], UserRole>,
+  'getOfferHistory' : ActorMethod<[bigint], Array<Offer>>,
+  'getOffers' : ActorMethod<
+    [bigint],
+    { 'ok' : Array<Offer> } |
+      { 'err' : string }
+  >,
   'getPokemonSets' : ActorMethod<[], Array<TcgSet>>,
+  'getPriceHistory' : ActorMethod<[string], Array<PricePoint>>,
   'getReleases' : ActorMethod<[], Array<Release>>,
   'getSetById' : ActorMethod<[bigint], [] | [TcgSet]>,
   'getSetBySlug' : ActorMethod<[string], [] | [TcgSet]>,
   'getSets' : ActorMethod<[], Array<TcgSet>>,
   'getSetsByCategory' : ActorMethod<[string], Array<TcgSet>>,
+  'getTop10ByMarketCap' : ActorMethod<[], Array<MarketCapEntry>>,
   /**
    * / Get trending hashtags with their post counts, sorted by count descending.
    */
@@ -273,6 +345,11 @@ export interface _SERVICE {
    * / Like a clip. Each caller can only like once. Returns new like_count.
    */
   'likeClip' : ActorMethod<[string], LikeResult>,
+  'makeOffer' : ActorMethod<
+    [bigint, number],
+    { 'ok' : bigint } |
+      { 'err' : string }
+  >,
   'openPack' : ActorMethod<[string], PackOpenResult>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,

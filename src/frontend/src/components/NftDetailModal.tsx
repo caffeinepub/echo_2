@@ -11,27 +11,9 @@ import {
 } from "recharts";
 import type { PurchaseRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
-import type { MarketListing } from "../pages/MarketPage";
+import type { MarketListing } from "../types/localMarket";
+import { loadListings, saveListings } from "../types/localMarket";
 import { BtcLogo } from "./BtcLogo";
-
-const LS_LISTINGS_KEY = "minty_market_listings";
-
-function loadListings(): MarketListing[] {
-  try {
-    const raw = localStorage.getItem(LS_LISTINGS_KEY);
-    return raw ? (JSON.parse(raw) as MarketListing[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveListings(listings: MarketListing[]) {
-  try {
-    localStorage.setItem(LS_LISTINGS_KEY, JSON.stringify(listings));
-  } catch {
-    // ignore
-  }
-}
 
 const ACCENT_R = 192;
 const ACCENT_G = 160;

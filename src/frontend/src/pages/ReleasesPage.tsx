@@ -260,6 +260,7 @@ function VideoCard({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [likeAnim, setLikeAnim] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const isLiked = likedIds.has(clip.id);
 
   const accentR = activeStyle.accentR;
@@ -333,8 +334,12 @@ function VideoCard({
         crossOrigin="anonymous"
         onError={(e) => {
           console.error("[VideoCard] video load error:", clip.videoUrl, e);
+          setVideoError(true);
         }}
-        onClick={() => setMuted((m) => !m)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setMuted((m) => !m);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") setMuted((m) => !m);
         }}
@@ -346,6 +351,41 @@ function VideoCard({
           cursor: "pointer",
         }}
       />
+
+      {/* Video error overlay */}
+      {videoError && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 8,
+            pointerEvents: "none",
+          }}
+        >
+          <span style={{ fontSize: 24 }}>🎬</span>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "rgba(255,255,255,0.85)",
+              fontFamily: "DM Sans, sans-serif",
+              background: "rgba(0,0,0,0.55)",
+              borderRadius: 20,
+              padding: "6px 14px",
+              letterSpacing: "0.03em",
+            }}
+          >
+            Video unavailable
+          </span>
+        </div>
+      )}
 
       {/* Explicit blur overlay */}
       {clip.explicitFlag && (
@@ -403,33 +443,69 @@ function VideoCard({
           flexDirection: "column",
           gap: 8,
           pointerEvents: "auto",
+          alignItems: "center",
         }}
       >
-        {/* Mute toggle */}
+        {/* Mute toggle — visible with "tap for sound" hint on first render */}
         <button
           type="button"
-          onClick={() => setMuted((m) => !m)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMuted((m) => !m);
+          }}
           aria-label={muted ? "Unmute" : "Mute"}
           style={{
-            background: "rgba(0,0,0,0.40)",
+            background: muted
+              ? "rgba(0,0,0,0.55)"
+              : `rgba(${accentR},${accentG},${accentB},0.75)`,
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
-            border: "none",
+            border: muted
+              ? "1px solid rgba(255,255,255,0.12)"
+              : `1px solid rgba(${accentR},${accentG},${accentB},0.5)`,
             borderRadius: "50%",
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
+            transition: "background 0.2s, border 0.2s",
           }}
         >
           {muted ? (
-            <VolumeX size={14} color="rgba(255,255,255,0.75)" />
+            <VolumeX size={15} color="rgba(255,255,255,0.80)" />
           ) : (
-            <Volume2 size={14} color="rgba(255,255,255,0.9)" />
+            <Volume2 size={15} color="#fff" />
           )}
         </button>
+
+        {/* "Tap for sound" hint — only shown while muted */}
+        {muted && (
+          <div
+            style={{
+              background: "rgba(0,0,0,0.55)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              borderRadius: 8,
+              padding: "3px 7px",
+              pointerEvents: "none",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.75)",
+                fontFamily: "DM Sans, sans-serif",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.03em",
+              }}
+            >
+              tap for sound
+            </span>
+          </div>
+        )}
 
         {/* Chart icon */}
         <button

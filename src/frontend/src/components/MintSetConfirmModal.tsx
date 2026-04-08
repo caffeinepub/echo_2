@@ -7,6 +7,10 @@ export interface MintSetConfirmModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  /** Optional upload progress message shown during minting */
+  uploadStatus?: string | null;
+  /** Optional error message if upload failed — user can retry */
+  uploadError?: string | null;
 }
 
 const MINT_GREEN = "rgba(52,168,132,1)";
@@ -186,8 +190,12 @@ export function MintSetConfirmModal({
   open,
   onClose,
   onConfirm,
+  uploadStatus,
+  uploadError,
 }: MintSetConfirmModalProps) {
   if (!open) return null;
+
+  const isUploading = !!uploadStatus;
 
   return (
     <AnimatePresence>
@@ -328,6 +336,59 @@ export function MintSetConfirmModal({
               paddingTop: "16px",
             }}
           >
+            {/* Upload error banner */}
+            {uploadError && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 14px",
+                  background: "rgba(220,38,38,0.08)",
+                  border: "1.5px solid rgba(220,38,38,0.25)",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: "#dc2626",
+                  fontFamily: "DM Sans, sans-serif",
+                  fontWeight: 500,
+                }}
+              >
+                ⚠️ {uploadError}
+              </div>
+            )}
+
+            {/* Upload progress banner */}
+            {isUploading && (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 14px",
+                  background: "rgba(52,168,132,0.08)",
+                  border: "1.5px solid rgba(52,168,132,0.20)",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  color: MINT_GREEN,
+                  fontFamily: "DM Sans, sans-serif",
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 14,
+                    height: 14,
+                    border: "2px solid rgba(52,168,132,0.25)",
+                    borderTopColor: MINT_GREEN,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    flexShrink: 0,
+                  }}
+                />
+                {uploadStatus}
+              </div>
+            )}
+
             {/* Fee summary */}
             <div
               style={{
@@ -363,12 +424,34 @@ export function MintSetConfirmModal({
               </div>
             </div>
 
-            <SlideToConfirm onComplete={onConfirm} />
+            {/* Show spinner overlay while uploading, otherwise show slider */}
+            {isUploading ? (
+              <div
+                style={{
+                  height: THUMB_DIAMETER + 4,
+                  borderRadius: (THUMB_DIAMETER + 4) / 2,
+                  background: MINT_TRACK_BG,
+                  border: `1.5px solid ${MINT_TRACK_BORDER}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: MINT_LABEL,
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                {uploadStatus}…
+              </div>
+            ) : (
+              <SlideToConfirm onComplete={onConfirm} />
+            )}
 
             <button
               type="button"
               data-ocid="mint_set.cancel_button"
               onClick={onClose}
+              disabled={isUploading}
               style={{
                 width: "100%",
                 marginTop: "10px",
@@ -376,8 +459,8 @@ export function MintSetConfirmModal({
                 background: "transparent",
                 border: "none",
                 fontSize: "13px",
-                color: "#9ca3af",
-                cursor: "pointer",
+                color: isUploading ? "#d1d5db" : "#9ca3af",
+                cursor: isUploading ? "not-allowed" : "pointer",
                 fontWeight: 500,
               }}
             >

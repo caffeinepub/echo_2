@@ -2,7 +2,7 @@ import { CheckCircle, X } from "lucide-react";
 import { useRef, useState } from "react";
 import type { OfferRecord } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
-import type { MarketListing } from "../pages/MarketPage";
+import type { MarketListing } from "../types/localMarket";
 import { BtcLogo } from "./BtcLogo";
 
 export type { OfferRecord };

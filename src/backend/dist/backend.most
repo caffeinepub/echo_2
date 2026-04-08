@@ -33,12 +33,34 @@ type Data__791452850<K, V> =
 type Internal__8484328<K, V> =
   {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
 type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type ListingStatus__169420352 = {#active; #cancelled; #sold};
+type Listing__1058943596 =
+  {
+    clipId : Text;
+    editionNumber : Nat;
+    id : Nat;
+    listPriceUsd : Float;
+    listedAt : Int;
+    sellerPrincipal : Principal;
+    status : ListingStatus__169420352;
+    totalEditions : Nat
+  };
 type MarketListing__465293504 =
   {editionId : Nat; price : Nat; seller : Principal};
 type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type OfferStatus__366374790 = {#accepted; #declined; #pending};
+type Offer__296166603 =
+  {
+    buyerPrincipal : Principal;
+    createdAt : Int;
+    id : Nat;
+    listingId : Nat;
+    offerPriceUsd : Float;
+    status : OfferStatus__366374790
+  };
 type PackStatus__442425532 = {#opened; #sealed};
 type Pack__364476570 =
   {
@@ -55,6 +77,8 @@ type Pack__364476570 =
     status : PackStatus__442425532;
     totalSupply : Nat
   };
+type PricePoint__36380829 =
+  {editionNumber : Nat; salePrice : Float; timestamp : Int};
 type Release__39174606 =
   {
     album : Album__109360601;
@@ -134,12 +158,22 @@ actor {
       var root : Node__46230540<Text, Album__109360601>;
       var size : Nat__490723111
     };
+  stable bondingCurvePriceIncrement : Float;
+  stable bondingCurveStartPrice : Float;
   stable collectibles :
     {
       var root : Node__46230540<Text, Collectible__765459835>;
       var size : Nat__490723111
     };
   stable var firstAdminSet : Bool;
+  stable var listingCounter : Nat;
+  stable listings :
+    {
+      var root : Node__46230540<Nat, Listing__1058943596>;
+      var size : Nat__490723111
+    };
+  stable marketCopiesSold :
+    {var root : Node__46230540<Text, Nat>; var size : Nat__490723111};
   stable marketListings :
     {
       var root : Node__46230540<Nat, MarketListing__465293504>;
@@ -151,9 +185,20 @@ actor {
   stable var nextClipSeq : Nat;
   stable var nextCollectibleSeq : Nat;
   stable var nextTcgSetId : Nat;
+  stable var offerCounter : Nat;
+  stable offers :
+    {
+      var root : Node__46230540<Nat, Offer__296166603>;
+      var size : Nat__490723111
+    };
   stable packs :
     {
       var root : Node__46230540<Text, Pack__364476570>;
+      var size : Nat__490723111
+    };
+  stable priceHistory :
+    {
+      var root : Node__46230540<Text, [PricePoint__36380829]>;
       var size : Nat__490723111
     };
   stable releases :

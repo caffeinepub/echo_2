@@ -13,20 +13,10 @@ import type { OfferRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { VideoClip } from "../context/VideoFeedContext";
-import type { MarketListing } from "../pages/MarketPage";
+import type { MarketListing } from "../types/localMarket";
+import { loadListings } from "../types/localMarket";
 import { BtcLogo } from "./BtcLogo";
 import { OfferModal, loadOffers, saveOffers } from "./OfferModal";
-
-const LS_LISTINGS_KEY = "minty_market_listings";
-
-function loadListings(): MarketListing[] {
-  try {
-    const raw = localStorage.getItem(LS_LISTINGS_KEY);
-    return raw ? (JSON.parse(raw) as MarketListing[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 interface Props {
   clip: VideoClip;

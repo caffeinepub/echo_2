@@ -123,6 +123,12 @@ type Release =
    mintedCount: nat;
    ownersCount: nat;
  };
+type PricePoint = 
+ record {
+   editionNumber: nat;
+   salePrice: float64;
+   timestamp: int;
+ };
 type PackStatus = 
  variant {
    opened;
@@ -148,11 +154,55 @@ type Pack =
    status: PackStatus;
    totalSupply: nat;
  };
+type OfferStatus = 
+ variant {
+   accepted;
+   declined;
+   pending;
+ };
+type Offer = 
+ record {
+   buyerPrincipal: principal;
+   createdAt: int;
+   id: nat;
+   listingId: nat;
+   offerPriceUsd: float64;
+   status: OfferStatus;
+ };
 type MarketListing = 
  record {
    editionId: nat;
    price: nat;
    seller: principal;
+ };
+type MarketCapEntry = 
+ record {
+   clipId: text;
+   copiesSold: nat;
+   creatorName: text;
+   currentPriceUsd: float64;
+   marketCapUsd: float64;
+   previewUrl: text;
+   title: text;
+   totalSupply: nat;
+   videoUrl: text;
+ };
+type ListingStatus = 
+ variant {
+   active;
+   cancelled;
+   sold;
+ };
+type Listing = 
+ record {
+   clipId: text;
+   editionNumber: nat;
+   id: nat;
+   listPriceUsd: float64;
+   listedAt: int;
+   sellerPrincipal: principal;
+   status: ListingStatus;
+   totalEditions: nat;
  };
 type LikeResult = 
  variant {
@@ -237,16 +287,33 @@ type AddPackInput =
    totalSupply: nat;
  };
 service : {
+  acceptOffer: (offerId: nat) -> (variant {
+                                    err: text;
+                                    ok: bool;
+                                  });
   addAlbum: (album: Album) -> ();
   addPack: (input: AddPackInput) -> ();
   addRelease: (release: Release) -> ();
   assignRole: (user: principal, role: UserRole) -> ();
+  cancelListing: (listingId: nat) -> (variant {
+                                        err: text;
+                                        ok: bool;
+                                      });
   createCard: (input: CreateTcgCardInput) -> (TcgCard);
   createCategory: (input: CreateTcgCategoryInput) -> (TcgCategory);
   /// Create a new video clip post. Returns the generated clip_id.
   createClip: (video_file_url: text, preview_loop_url: text, title: opt text,
    hashtags: vec text, explicit_flag: bool) -> (text);
+  createListing: (clipId: text, editionNumber: nat, listPriceUsd: float64) ->
+   (variant {
+      err: text;
+      ok: nat;
+    });
   createSet: (input: CreateTcgSetInput) -> (TcgSet);
+  declineOffer: (offerId: nat) -> (variant {
+                                     err: text;
+                                     ok: bool;
+                                   });
   deleteCard: (id: nat) -> ();
   deleteCategory: (id: nat) -> ();
   deleteSet: (id: nat) -> ();
@@ -268,15 +335,26 @@ service : {
   getClipsByHashtag: (hashtag: text) -> (vec VideoClip) query;
   /// Get all clips created by a specific principal.
   getCreatorClips: (creator: principal) -> (vec VideoClip) query;
+  getCurrentPrice: (clipId: text) -> (float64) query;
   getFeaturedSets: () -> (vec TcgSet) query;
+  getListings: () -> (vec Listing) query;
+  getListingsByClip: (clipId: text) -> (vec Listing) query;
+  getMarketCap: (clipId: text) -> (opt MarketCapEntry) query;
   getMarketListings: () -> (vec MarketListing) query;
   getMyRole: () -> (UserRole) query;
+  getOfferHistory: (listingId: nat) -> (vec Offer) query;
+  getOffers: (listingId: nat) -> (variant {
+                                    err: text;
+                                    ok: vec Offer;
+                                  }) query;
   getPokemonSets: () -> (vec TcgSet) query;
+  getPriceHistory: (clipId: text) -> (vec PricePoint) query;
   getReleases: () -> (vec Release) query;
   getSetById: (id: nat) -> (opt TcgSet) query;
   getSetBySlug: (slug: text) -> (opt TcgSet) query;
   getSets: () -> (vec TcgSet) query;
   getSetsByCategory: (categorySlug: text) -> (vec TcgSet) query;
+  getTop10ByMarketCap: () -> (vec MarketCapEntry) query;
   /// Get trending hashtags with their post counts, sorted by count descending.
   getTrendingHashtags: () -> (vec record {
                                     text;
@@ -290,6 +368,11 @@ service : {
   isAdmin: () -> (bool) query;
   /// Like a clip. Each caller can only like once. Returns new like_count.
   likeClip: (clip_id: text) -> (LikeResult);
+  makeOffer: (listingId: nat, offerPriceUsd: float64) ->
+   (variant {
+      err: text;
+      ok: nat;
+    });
   openPack: (packId: text) -> (PackOpenResult);
   saveCallerUserProfile: (profile: UserProfile) -> ();
   searchSetsByName: (searchTerm: text) -> (vec TcgSet) query;

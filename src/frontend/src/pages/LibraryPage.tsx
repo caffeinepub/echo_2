@@ -28,6 +28,8 @@ const BUTTON_BASE = {
 } as const;
 
 const WRAPPER_IMG = "/assets/generated/minty-pack-wrapper.png";
+const HERO_IMG =
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&st=zsxhvzxf&dl=1";
 
 function PackCard({
   accentRgb: _accentRgb,
@@ -115,13 +117,17 @@ function PackCard({
           }}
         >
           <img
-            src={WRAPPER_IMG}
+            src={HERO_IMG}
             alt="Minty Pack"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = WRAPPER_IMG;
+            }}
             style={{
               maxHeight: "190px",
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
+              borderRadius: "12px",
               filter:
                 "drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.10))",
             }}

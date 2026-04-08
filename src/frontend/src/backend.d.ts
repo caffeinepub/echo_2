@@ -7,13 +7,14 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export type PackOpenResult = {
-    __kind__: "ok";
-    ok: Collectible;
-} | {
-    __kind__: "err";
-    err: string;
-};
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
+}
 export interface Collectible {
     id: string;
     setName: string;
@@ -31,10 +32,6 @@ export interface Collectible {
     packId: string;
     openedAt: bigint;
 }
-export interface Track {
-    title: string;
-    duration: bigint;
-}
 export interface TcgSet {
     id: bigint;
     setCode: string;
@@ -48,25 +45,16 @@ export interface TcgSet {
     cardCount?: bigint;
     releaseYear: bigint;
 }
-export interface MarketListing {
-    seller: Principal;
-    editionId: bigint;
-    price: bigint;
-}
-export interface VideoClip {
-    clip_id: string;
-    like_timestamps: Array<[Principal, bigint]>;
-    title?: string;
-    hashtags: Array<string>;
-    preview_loop_url: string;
-    like_count: bigint;
-    likes_last_6_hours: bigint;
-    likes_last_24_hours: bigint;
-    timestamp: bigint;
-    likes_last_hour: bigint;
-    explicit_flag: boolean;
-    creator_principal_id: Principal;
-    video_file_url: string;
+export interface MarketCapEntry {
+    clipId: string;
+    title: string;
+    previewUrl: string;
+    totalSupply: bigint;
+    creatorName: string;
+    currentPriceUsd: number;
+    copiesSold: bigint;
+    videoUrl: string;
+    marketCapUsd: number;
 }
 export interface VideoAsset {
     owner: Principal;
@@ -74,17 +62,6 @@ export interface VideoAsset {
     content_type: string;
     created_at: bigint;
     asset_id: string;
-}
-export interface UpdateTcgCardInput {
-    id: bigint;
-    cardName: string;
-    sortOrder: bigint;
-    isActive: boolean;
-    setId: bigint;
-    imageUrl: string;
-    rarity: string;
-    cardNumber: string;
-    isSupported: boolean;
 }
 export interface CreateTcgSetInput {
     setCode: string;
@@ -108,13 +85,6 @@ export interface CreateTcgCardInput {
     cardNumber: string;
     isSupported: boolean;
 }
-export interface CreateTcgCategoryInput {
-    sortOrder: bigint;
-    name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
-}
 export interface Release {
     album: Album;
     floorPrice: bigint;
@@ -123,6 +93,82 @@ export interface Release {
     mintedCount: bigint;
     ownersCount: bigint;
     mintOpenTime: bigint;
+}
+export interface Album {
+    id: string;
+    coverImageUrl: string;
+    title: string;
+    tracklist: Array<Track>;
+    totalSupply: bigint;
+    artist: string;
+    collectionName: string;
+}
+export interface PricePoint {
+    editionNumber: bigint;
+    timestamp: bigint;
+    salePrice: number;
+}
+export type LikeResult = {
+    __kind__: "ok";
+    ok: bigint;
+} | {
+    __kind__: "alreadyLiked";
+    alreadyLiked: null;
+} | {
+    __kind__: "notFound";
+    notFound: null;
+};
+export interface Track {
+    title: string;
+    duration: bigint;
+}
+export interface MarketListing {
+    seller: Principal;
+    editionId: bigint;
+    price: bigint;
+}
+export interface Listing {
+    id: bigint;
+    status: ListingStatus;
+    clipId: string;
+    totalEditions: bigint;
+    sellerPrincipal: Principal;
+    listPriceUsd: number;
+    editionNumber: bigint;
+    listedAt: bigint;
+}
+export interface VideoClip {
+    clip_id: string;
+    like_timestamps: Array<[Principal, bigint]>;
+    title?: string;
+    hashtags: Array<string>;
+    preview_loop_url: string;
+    like_count: bigint;
+    likes_last_6_hours: bigint;
+    likes_last_24_hours: bigint;
+    timestamp: bigint;
+    likes_last_hour: bigint;
+    explicit_flag: boolean;
+    creator_principal_id: Principal;
+    video_file_url: string;
+}
+export interface UpdateTcgCardInput {
+    id: bigint;
+    cardName: string;
+    sortOrder: bigint;
+    isActive: boolean;
+    setId: bigint;
+    imageUrl: string;
+    rarity: string;
+    cardNumber: string;
+    isSupported: boolean;
+}
+export interface CreateTcgCategoryInput {
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export interface UpdateTcgCategoryInput {
     id: bigint;
@@ -156,14 +202,13 @@ export interface TcgCard {
     cardNumber: string;
     isSupported: boolean;
 }
-export interface Album {
-    id: string;
-    coverImageUrl: string;
-    title: string;
-    tracklist: Array<Track>;
-    totalSupply: bigint;
-    artist: string;
-    collectionName: string;
+export interface Offer {
+    id: bigint;
+    status: OfferStatus;
+    offerPriceUsd: number;
+    listingId: bigint;
+    createdAt: bigint;
+    buyerPrincipal: Principal;
 }
 export interface Pack {
     id: string;
@@ -189,30 +234,29 @@ export interface AddPackInput {
     serialNumber: bigint;
     packCount: bigint;
 }
-export type LikeResult = {
+export type PackOpenResult = {
     __kind__: "ok";
-    ok: bigint;
+    ok: Collectible;
 } | {
-    __kind__: "alreadyLiked";
-    alreadyLiked: null;
-} | {
-    __kind__: "notFound";
-    notFound: null;
+    __kind__: "err";
+    err: string;
 };
 export interface UserProfile {
     name: string;
 }
-export interface TcgCategory {
-    id: bigint;
-    sortOrder: bigint;
-    name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
-}
 export enum CollectibleMediaType {
     video = "video",
     photo = "photo"
+}
+export enum ListingStatus {
+    active = "active",
+    cancelled = "cancelled",
+    sold = "sold"
+}
+export enum OfferStatus {
+    pending = "pending",
+    accepted = "accepted",
+    declined = "declined"
 }
 export enum PackStatus {
     opened = "opened",
@@ -229,17 +273,45 @@ export enum VideoClipSort {
     newest = "newest"
 }
 export interface backendInterface {
+    acceptOffer(offerId: bigint): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     addAlbum(album: Album): Promise<void>;
     addPack(input: AddPackInput): Promise<void>;
     addRelease(release: Release): Promise<void>;
     assignRole(user: Principal, role: UserRole): Promise<void>;
+    cancelListing(listingId: bigint): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     createCard(input: CreateTcgCardInput): Promise<TcgCard>;
     createCategory(input: CreateTcgCategoryInput): Promise<TcgCategory>;
     /**
      * / Create a new video clip post. Returns the generated clip_id.
      */
     createClip(video_file_url: string, preview_loop_url: string, title: string | null, hashtags: Array<string>, explicit_flag: boolean): Promise<string>;
+    createListing(clipId: string, editionNumber: bigint, listPriceUsd: number): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     createSet(input: CreateTcgSetInput): Promise<TcgSet>;
+    declineOffer(offerId: bigint): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     deleteCard(id: bigint): Promise<void>;
     deleteCategory(id: bigint): Promise<void>;
     deleteSet(id: bigint): Promise<void>;
@@ -267,15 +339,29 @@ export interface backendInterface {
      * / Get all clips created by a specific principal.
      */
     getCreatorClips(creator: Principal): Promise<Array<VideoClip>>;
+    getCurrentPrice(clipId: string): Promise<number>;
     getFeaturedSets(): Promise<Array<TcgSet>>;
+    getListings(): Promise<Array<Listing>>;
+    getListingsByClip(clipId: string): Promise<Array<Listing>>;
+    getMarketCap(clipId: string): Promise<MarketCapEntry | null>;
     getMarketListings(): Promise<Array<MarketListing>>;
     getMyRole(): Promise<UserRole>;
+    getOfferHistory(listingId: bigint): Promise<Array<Offer>>;
+    getOffers(listingId: bigint): Promise<{
+        __kind__: "ok";
+        ok: Array<Offer>;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     getPokemonSets(): Promise<Array<TcgSet>>;
+    getPriceHistory(clipId: string): Promise<Array<PricePoint>>;
     getReleases(): Promise<Array<Release>>;
     getSetById(id: bigint): Promise<TcgSet | null>;
     getSetBySlug(slug: string): Promise<TcgSet | null>;
     getSets(): Promise<Array<TcgSet>>;
     getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
+    getTop10ByMarketCap(): Promise<Array<MarketCapEntry>>;
     /**
      * / Get trending hashtags with their post counts, sorted by count descending.
      */
@@ -292,6 +378,13 @@ export interface backendInterface {
      * / Like a clip. Each caller can only like once. Returns new like_count.
      */
     likeClip(clip_id: string): Promise<LikeResult>;
+    makeOffer(listingId: bigint, offerPriceUsd: number): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     openPack(packId: string): Promise<PackOpenResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;

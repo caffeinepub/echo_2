@@ -34,13 +34,19 @@ import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReleasesPage } from "./pages/ReleasesPage";
 import { UploadPage } from "./pages/UploadPage";
-import { seedMockData } from "./store/seedMockData";
 
 type View =
   | { type: "tab"; tab: Tab }
   | { type: "upload" }
   | { type: "capture-moment" }
   | { type: "profile" };
+
+/** Fetch bytes from a blob URL or regular URL */
+async function fetchBytes(url: string): Promise<Uint8Array> {
+  const res = await fetch(url);
+  const buf = await res.arrayBuffer();
+  return new Uint8Array(buf);
+}
 
 function AppContent() {
   const [view, setView] = useState<View>({ type: "tab", tab: "library" });
@@ -50,15 +56,13 @@ function AppContent() {
   );
   const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
   const [isMinting, setIsMinting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
   const { addClipToFeed } = useVideoFeed();
   const { actor } = useActor(createActor);
-
-  useEffect(() => {
-    seedMockData();
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
@@ -77,6 +81,7 @@ function AppContent() {
 
   function handleMintComplete(draft: MomentDraft) {
     setPendingMintDraft(draft);
+    setUploadError(null);
     setShowMintSetConfirmModal(true);
     setView({ type: "tab", tab: "library" });
   }
@@ -85,35 +90,72 @@ function AppContent() {
     if (!pendingMintDraft) return;
     const draft = pendingMintDraft;
     const now = Date.now();
-    const totalPacks = 300;
     const priceUsd = 1;
 
     const releaseTitle = draft.title?.trim() || "Mint Moment";
     const releaseCaption = draft.caption?.trim() || "15-second moment";
 
-    // Use persistent storage URLs if available, fall back to blob URL for preview
-    const videoUrl = draft.videoUrl ?? draft.videoBlobUrl ?? "";
-    const previewUrl = draft.previewUrl ?? videoUrl;
-
     setIsMinting(true);
+    setUploadError(null);
 
-    // Call backend createClip with persistent URLs
+    let finalVideoUrl = draft.videoUrl ?? draft.videoBlobUrl ?? "";
+    let finalPreviewUrl = draft.previewUrl ?? finalVideoUrl;
+
+    // ── Step 1: Upload video blob to backend storage ──────────────────────────
+    if (actor) {
+      const blobUrl = draft.videoBlobUrl ?? draft.videoUrl;
+      const previewBlobUrl = draft.previewUrl ?? blobUrl;
+
+      if (blobUrl) {
+        try {
+          setUploadStatus("Uploading video…");
+          const videoBytes = await fetchBytes(blobUrl);
+          finalVideoUrl = await actor.uploadVideoBlob(videoBytes, "video/mp4");
+        } catch (err) {
+          console.error("[Mint] uploadVideoBlob failed:", err);
+          setUploadError("Video upload failed. Please try again.");
+          setIsMinting(false);
+          setUploadStatus(null);
+          return; // Stay on confirm modal so user can retry
+        }
+      }
+
+      if (previewBlobUrl) {
+        try {
+          setUploadStatus("Uploading preview…");
+          const previewBytes = await fetchBytes(previewBlobUrl);
+          finalPreviewUrl = await actor.uploadPreviewBlob(
+            previewBytes,
+            "video/mp4",
+          );
+        } catch (err) {
+          // Preview upload failing is non-fatal — fall back to main video URL
+          console.warn("[Mint] uploadPreviewBlob failed (non-fatal):", err);
+          finalPreviewUrl = finalVideoUrl;
+        }
+      }
+    }
+
+    setUploadStatus("Minting NFT…");
+
+    // ── Step 2: Call createClip with persistent URLs ───────────────────────────
     let clipId: string | null = null;
-    if (actor && videoUrl) {
+    if (actor && finalVideoUrl) {
       try {
         clipId = await actor.createClip(
-          videoUrl,
-          previewUrl,
+          finalVideoUrl,
+          finalPreviewUrl,
           releaseTitle || null,
           (draft.hashtags ?? []).map((h) => (h.startsWith("#") ? h : `#${h}`)),
           draft.explicit ?? false,
         );
       } catch (err) {
         console.error("[Mint] createClip failed:", err);
-        // Continue with optimistic local update even if backend call fails
+        // Continue with optimistic local update — clip still visible in feed this session
       }
     }
 
+    const totalPacks = 300;
     const packIds = Array.from(
       { length: totalPacks },
       (_, idx) => `pack_${draft.id}_${idx}`,
@@ -124,7 +166,7 @@ function AppContent() {
       creatorName: "You",
       creatorId: "you",
       coverImageUrl: "/assets/generated/minty-pack-wrapper.png",
-      previewClipUrl: previewUrl || undefined,
+      previewClipUrl: finalPreviewUrl || undefined,
       title: releaseTitle,
       caption: releaseCaption,
       setName: releaseTitle,
@@ -142,12 +184,12 @@ function AppContent() {
 
     addRelease(release);
 
-    // Add to Releases feed — use the clip_id from backend if available
-    if (videoUrl) {
+    // ── Step 3: Add optimistically to Releases feed ───────────────────────────
+    if (finalVideoUrl) {
       const clip: VideoClip = {
         id: clipId ?? `clip_mint_${draft.id}`,
-        videoUrl,
-        previewUrl,
+        videoUrl: finalVideoUrl,
+        previewUrl: finalPreviewUrl,
         creatorName: "You",
         creatorAvatar: null,
         creatorBio: "Creator",
@@ -164,6 +206,7 @@ function AppContent() {
     }
 
     setIsMinting(false);
+    setUploadStatus(null);
     setPendingMintDraft(null);
     setShowMintSetConfirmModal(false);
 
@@ -181,9 +224,13 @@ function AppContent() {
           if (!isMinting) {
             setShowMintSetConfirmModal(false);
             setPendingMintDraft(null);
+            setUploadError(null);
+            setUploadStatus(null);
           }
         }}
         onConfirm={handleMintSetConfirm}
+        uploadStatus={uploadStatus}
+        uploadError={uploadError}
       />
 
       <TopBar onProfileClick={() => setView({ type: "profile" })} />

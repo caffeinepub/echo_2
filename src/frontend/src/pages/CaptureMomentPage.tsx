@@ -1,3 +1,4 @@
+import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCamera } from "../camera/useCamera";
 import { FinalSetupScreen } from "../components/FinalSetupScreen";
@@ -44,6 +45,7 @@ export function CaptureMomentPage({
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [previewMuted, setPreviewMuted] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const videoChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -929,26 +931,62 @@ export function CaptureMomentPage({
             gap: "16px",
           }}
         >
-          <video
-            src={pendingBlobUrl}
-            autoPlay
-            loop
-            muted
-            playsInline
+          <div
             style={{
+              position: "relative",
               width: "100%",
               maxWidth: "360px",
-              aspectRatio: "9/16",
-              objectFit: "cover",
-              borderRadius: "20px",
-              border: `1.5px solid ${PURPLE_BORDER}`,
-              boxShadow: "0 4px 32px rgba(124,58,237,0.18)",
-              display: "block",
-              background: "#000",
             }}
           >
-            <track kind="captions" />
-          </video>
+            <video
+              src={pendingBlobUrl}
+              autoPlay
+              loop
+              muted={previewMuted}
+              playsInline
+              style={{
+                width: "100%",
+                aspectRatio: "9/16",
+                objectFit: "cover",
+                borderRadius: "20px",
+                border: `1.5px solid ${PURPLE_BORDER}`,
+                boxShadow: "0 4px 32px rgba(124,58,237,0.18)",
+                display: "block",
+                background: "#000",
+              }}
+            >
+              <track kind="captions" />
+            </video>
+
+            {/* Sound toggle button */}
+            <button
+              type="button"
+              onClick={() => setPreviewMuted((m) => !m)}
+              aria-label={previewMuted ? "Unmute preview" : "Mute preview"}
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                background: "rgba(0,0,0,0.50)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                border: "none",
+                borderRadius: "50%",
+                width: 36,
+                height: 36,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              {previewMuted ? (
+                <VolumeX size={16} color="rgba(255,255,255,0.80)" />
+              ) : (
+                <Volume2 size={16} color="rgba(255,255,255,0.95)" />
+              )}
+            </button>
+          </div>
 
           <p
             style={{
@@ -958,7 +996,9 @@ export function CaptureMomentPage({
               margin: 0,
             }}
           >
-            Preview — tap Use Video to upload and continue
+            {previewMuted
+              ? "🔇 Muted — tap 🔊 to hear audio"
+              : "🔊 Audio on — your recording includes sound"}
           </p>
 
           {uploadFallbackMsg && (
