@@ -3,6 +3,7 @@ type WalletActivityType =
    auctionPayout;
    deposit;
    mintCost;
+   withdrawal;
  };
 type WalletActivity = 
  record {
@@ -620,6 +621,14 @@ service : {
    (variant {
       err: text;
       ok: nat;
+    });
+  /// Process a BTC withdrawal from the caller's in-app balance to an external BTC address.
+  /// Deducts balance immediately to prevent double-spend; refunds on failure.
+  /// Returns #ok("sent") on success, #err(reason) on failure.
+  processWithdrawal: (amountE8s: nat, recipientAddress: text) ->
+   (variant {
+      err: text;
+      ok: text;
     });
   /// Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
   /// and promotes all purchases to #minted when all 1000 copies are sold.

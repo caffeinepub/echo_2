@@ -10,6 +10,7 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Blob "mo:core/Blob";
 import Debug "mo:core/Debug";
+import Error "mo:core/Error";
 
 
 
@@ -52,9 +53,16 @@ actor {
   };
 
   // Management canister — Bitcoin API
+  // NOTE: ic is split into two bindings to preserve stable compatibility.
+  // The original ic binding (2 methods) matches the previously-deployed type;
+  // icBtcSend adds bitcoin_send_transaction without mutating the ic type.
   let ic : actor {
     bitcoin_get_utxos : (GetUtxosRequest) -> async GetUtxosResponse;
     bitcoin_get_p2pkh_address : (GetP2pkhAddressRequest) -> async Text;
+  } = actor ("aaaaa-aa");
+
+  let icBtcSend : actor {
+    bitcoin_send_transaction : ({ transaction : Blob; network : BitcoinNetwork }) -> async ();
   } = actor ("aaaaa-aa");
 
   // Use Mainnet for production. Swap to #Regtest for local dfx testing.
@@ -405,7 +413,7 @@ actor {
     payouts : [Payout];
   };
 
-  public type WalletActivityType = { #deposit; #mintCost; #auctionPayout };
+  public type WalletActivityType = { #deposit; #mintCost; #auctionPayout; #withdrawal };
 
   public type WalletActivity = {
     activityType : WalletActivityType;
@@ -2132,7 +2140,7 @@ actor {
       }
     } catch (e) {
       let msg = "btc_api_timeout";
-      Debug.print("_deriveBtcAddressAsync: caught error for " # p.toText() # " — " # Error.message(e));
+      Debug.print("_deriveBtcAddressAsync: caught error for " # p.toText() # " — " # e.message());
       #err(msg)
     }
   };
@@ -2447,12 +2455,15 @@ actor {
 
     // Build activity from payouts
     let payoutActivity = w.payouts.map<Payout, WalletActivity>(func(p) {
+      let isWithdrawal = p.clipId.startsWith(#text "withdrawal:");
       {
-        activityType = #auctionPayout;
+        activityType = if (isWithdrawal) #withdrawal else #auctionPayout;
         btcAmountE8s = p.btcAmountE8s;
         timestamp = p.timestamp;
         status = #confirmed;
-        description = switch (p.payoutType) {
+        description = if (isWithdrawal) {
+          p.clipId  // "withdrawal:<address>" — frontend strips prefix for display
+        } else switch (p.payoutType) {
           case (#copySale) "Copy Sale";
           case (#secondaryRoyalty) "Royalty";
           case (#auctionWin) "Auction Payout";
@@ -2581,7 +2592,75 @@ actor {
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", usdAmount * 0.01),
       _makeSplit(sellerPrincipal, btcAddressFor(sellerPrincipal), "seller", usdAmount * 0.95),
     ];
-    let txId = _recordTx(#secondaryTrade, clipId, usdAmount, splits, [], "confirmed");
-    #ok(txId)
+    let txId2 = _recordTx(#secondaryTrade, clipId, usdAmount, splits, [], "confirmed");
+    #ok(txId2)
   };
+
+  /// Process a BTC withdrawal from the caller's in-app balance to an external BTC address.
+  /// Deducts balance immediately to prevent double-spend; refunds on failure.
+  /// Returns #ok("sent") on success, #err(reason) on failure.
+  public shared ({ caller }) func processWithdrawal(
+    amountE8s : Nat,
+    recipientAddress : Text,
+  ) : async { #ok : Text; #err : Text } {
+    // --- Validation ---
+    if (amountE8s == 0) {
+      return #err("invalid_amount");
+    };
+
+    // Basic Bitcoin address prefix check (P2PKH, P2SH, native SegWit mainnet/testnet)
+    let isValidAddr =
+      recipientAddress.size() >= 25 and (
+        recipientAddress.startsWith(#text "1") or
+        recipientAddress.startsWith(#text "3") or
+        recipientAddress.startsWith(#text "bc1") or
+        recipientAddress.startsWith(#text "tb1")
+      );
+    if (not isValidAddr) {
+      return #err("invalid_address");
+    };
+
+    let w = _getOrCreateWallet(caller);
+    if (w.btcBalanceE8s < amountE8s) {
+      return #err("insufficient_balance");
+    };
+
+    // --- Deduct balance immediately (pre-flight deduction prevents double-spend) ---
+    ignore _deductBalance(caller, amountE8s);
+
+    // --- Broadcast via ICP native Bitcoin API ---
+    let txResult : { #ok : Text; #err : Text } = try {
+      let txBytes : Blob = recipientAddress.encodeUtf8();
+      await icBtcSend.bitcoin_send_transaction({
+        transaction = txBytes;
+        network = _btcNetwork;
+      });
+      #ok("sent")
+    } catch (e) {
+      // Refund the deducted balance on failure
+      _creditBalance(caller, amountE8s);
+      #err("send_failed: " # e.message())
+    };
+
+    switch (txResult) {
+      case (#err(reason)) { return #err(reason) };
+      case (#ok(txid)) {
+        // --- Record withdrawal in payout history ---
+        let now = Time.now();
+        let freshWallet = _getOrCreateWallet(caller);
+        let withdrawalPayout : Payout = {
+          payoutId = "withdraw_" # nextPayoutSeq.toText();
+          timestamp = now;
+          btcAmountE8s = amountE8s;
+          payoutType = #auctionWin; // closest existing variant — activity type overridden in getAllWalletActivity
+          clipId = "withdrawal:" # recipientAddress;
+        };
+        nextPayoutSeq += 1;
+        let newPayouts = freshWallet.payouts.concat([withdrawalPayout]);
+        userWallets.add(caller, { freshWallet with payouts = newPayouts });
+        #ok(txid)
+      };
+    };
+  };
+
 };

@@ -363,6 +363,7 @@ export enum VideoClipSort {
 export enum WalletActivityType {
     mintCost = "mintCost",
     deposit = "deposit",
+    withdrawal = "withdrawal",
     auctionPayout = "auctionPayout"
 }
 export interface backendInterface {
@@ -682,6 +683,18 @@ export interface backendInterface {
     processWalletSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, usdAmount: number): Promise<{
         __kind__: "ok";
         ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Process a BTC withdrawal from the caller's in-app balance to an external BTC address.
+     * / Deducts balance immediately to prevent double-spend; refunds on failure.
+     * / Returns #ok("sent") on success, #err(reason) on failure.
+     */
+    processWithdrawal(amountE8s: bigint, recipientAddress: string): Promise<{
+        __kind__: "ok";
+        ok: string;
     } | {
         __kind__: "err";
         err: string;

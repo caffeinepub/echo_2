@@ -445,6 +445,7 @@ export enum VideoClipSort {
 export enum WalletActivityType {
     mintCost = "mintCost",
     deposit = "deposit",
+    withdrawal = "withdrawal",
     auctionPayout = "auctionPayout"
 }
 export interface backendInterface {
@@ -764,6 +765,18 @@ export interface backendInterface {
     processWalletSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, usdAmount: number): Promise<{
         __kind__: "ok";
         ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Process a BTC withdrawal from the caller's in-app balance to an external BTC address.
+     * / Deducts balance immediately to prevent double-spend; refunds on failure.
+     * / Returns #ok("sent") on success, #err(reason) on failure.
+     */
+    processWithdrawal(amountE8s: bigint, recipientAddress: string): Promise<{
+        __kind__: "ok";
+        ok: string;
     } | {
         __kind__: "err";
         err: string;
@@ -2093,6 +2106,26 @@ export class Backend implements backendInterface {
             return from_candid_variant_n4(this._uploadFile, this._downloadFile, result);
         }
     }
+    async processWithdrawal(arg0: bigint, arg1: string): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.processWithdrawal(arg0, arg1);
+                return from_candid_variant_n75(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.processWithdrawal(arg0, arg1);
+            return from_candid_variant_n75(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async recordPurchase(arg0: string, arg1: number): Promise<{
         __kind__: "ok";
         ok: PurchaseRecord;
@@ -2838,9 +2871,11 @@ function from_candid_variant_n18(_uploadFile: (file: ExternalBlob) => Promise<Ui
 } | {
     deposit: null;
 } | {
+    withdrawal: null;
+} | {
     auctionPayout: null;
 }): WalletActivityType {
-    return "mintCost" in value ? WalletActivityType.mintCost : "deposit" in value ? WalletActivityType.deposit : "auctionPayout" in value ? WalletActivityType.auctionPayout : value;
+    return "mintCost" in value ? WalletActivityType.mintCost : "deposit" in value ? WalletActivityType.deposit : "withdrawal" in value ? WalletActivityType.withdrawal : "auctionPayout" in value ? WalletActivityType.auctionPayout : value;
 }
 function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     video: null;

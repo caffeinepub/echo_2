@@ -151,6 +151,13 @@ const ACTIVITY_META: Record<
     bg: "rgba(245,158,11,0.08)",
     border: "rgba(245,158,11,0.20)",
   },
+  [WalletActivityType.withdrawal]: {
+    label: "Withdrawal",
+    icon: "↑",
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.08)",
+    border: "rgba(124,58,237,0.20)",
+  },
 };
 
 function formatBtc(btc: number): string {

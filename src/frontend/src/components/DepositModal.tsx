@@ -5,6 +5,7 @@ import {
   Clock,
   Copy,
   RefreshCw,
+  Send,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -138,6 +139,7 @@ function activityLabel(type: WalletActivityType): string {
   if (type === WalletActivityType.deposit) return "Deposit";
   if (type === WalletActivityType.mintCost) return "Mint Cost";
   if (type === WalletActivityType.auctionPayout) return "Auction Payout";
+  if (type === WalletActivityType.withdrawal) return "Withdrawal";
   return "Activity";
 }
 
@@ -146,6 +148,8 @@ function activityIcon(type: WalletActivityType) {
     return <ArrowDownToLine size={13} style={{ color: "#10b981" }} />;
   if (type === WalletActivityType.mintCost)
     return <span style={{ fontSize: 13 }}>🔥</span>;
+  if (type === WalletActivityType.withdrawal)
+    return <Send size={13} style={{ color: "#7C3AED" }} />;
   return <span style={{ fontSize: 13 }}>⭐</span>;
 }
 
@@ -820,13 +824,15 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                         color:
                           act.activityType === WalletActivityType.deposit
                             ? "#059669"
-                            : "#7C3AED",
+                            : act.activityType === WalletActivityType.withdrawal
+                              ? "#7C3AED"
+                              : "#7C3AED",
                         fontFamily: "DM Sans, sans-serif",
                       }}
                     >
                       {act.activityType === WalletActivityType.deposit
                         ? "+"
-                        : "-"}
+                        : "−"}
                       {e8sToBtc(act.btcAmountE8s)} BTC
                     </div>
                     {act.status === Variant_pending_confirmed.pending && (

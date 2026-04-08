@@ -106,6 +106,7 @@ export const TcgSet = IDL.Record({
 export const WalletActivityType = IDL.Variant({
   'mintCost' : IDL.Null,
   'deposit' : IDL.Null,
+  'withdrawal' : IDL.Null,
   'auctionPayout' : IDL.Null,
 });
 export const WalletActivity = IDL.Record({
@@ -576,6 +577,11 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
       [],
     ),
+  'processWithdrawal' : IDL.Func(
+      [IDL.Nat, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'recordPurchase' : IDL.Func(
       [IDL.Text, IDL.Float64],
       [IDL.Variant({ 'ok' : PurchaseRecord, 'err' : IDL.Text })],
@@ -701,6 +707,7 @@ export const idlFactory = ({ IDL }) => {
   const WalletActivityType = IDL.Variant({
     'mintCost' : IDL.Null,
     'deposit' : IDL.Null,
+    'withdrawal' : IDL.Null,
     'auctionPayout' : IDL.Null,
   });
   const WalletActivity = IDL.Record({
@@ -1163,6 +1170,11 @@ export const idlFactory = ({ IDL }) => {
     'processWalletSecondaryTrade' : IDL.Func(
         [IDL.Text, IDL.Principal, IDL.Principal, IDL.Float64],
         [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+        [],
+      ),
+    'processWithdrawal' : IDL.Func(
+        [IDL.Nat, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
         [],
       ),
     'recordPurchase' : IDL.Func(

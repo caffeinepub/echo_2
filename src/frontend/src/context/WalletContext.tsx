@@ -31,12 +31,14 @@ interface WalletContextValue {
   addressError: string | null;
   /** All deposits (pending + confirmed) for this user. */
   deposits: Deposit[];
-  /** All wallet activity (deposits, mint costs, auction payouts). */
+  /** All wallet activity (deposits, mint costs, auction payouts, withdrawals). */
   walletActivity: WalletActivity[];
   /** The user's principal string (payment address). */
   paymentAddress: string | null;
   refreshBalance: () => Promise<void>;
   refreshDeposits: () => Promise<void>;
+  /** Refreshes wallet activity list from backend. */
+  refreshWalletActivity: () => Promise<void>;
   /** Re-attempts address fetch after a failure. */
   retryAddressFetch: () => Promise<void>;
   /** Polls backend for new deposits and refreshes balance after. */
@@ -177,6 +179,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [actor, isFetching, refreshBalance, refreshDeposits]);
 
+  // Refresh wallet activity from backend
+  const refreshWalletActivity = useCallback(async () => {
+    if (!actor || isFetching) return;
+    try {
+      const activity = await actor.getAllWalletActivity();
+      setWalletActivity(activity);
+    } catch (err) {
+      console.error("[WalletContext] refreshWalletActivity failed:", err);
+    }
+  }, [actor, isFetching]);
+
   // Hydrate wallet on login
   useEffect(() => {
     if (identity && actor && !isFetching) {
@@ -228,6 +241,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         paymentAddress,
         refreshBalance,
         refreshDeposits,
+        refreshWalletActivity,
         retryAddressFetch,
         checkDeposits,
         walletAddress,

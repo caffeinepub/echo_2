@@ -336,6 +336,7 @@ export interface WalletActivity {
 }
 export type WalletActivityType = { 'mintCost' : null } |
   { 'deposit' : null } |
+  { 'withdrawal' : null } |
   { 'auctionPayout' : null };
 export interface _SERVICE {
   'acceptOffer' : ActorMethod<
@@ -635,6 +636,16 @@ export interface _SERVICE {
   'processWalletSecondaryTrade' : ActorMethod<
     [string, Principal, Principal, number],
     { 'ok' : bigint } |
+      { 'err' : string }
+  >,
+  /**
+   * / Process a BTC withdrawal from the caller's in-app balance to an external BTC address.
+   * / Deducts balance immediately to prevent double-spend; refunds on failure.
+   * / Returns #ok("sent") on success, #err(reason) on failure.
+   */
+  'processWithdrawal' : ActorMethod<
+    [bigint, string],
+    { 'ok' : string } |
       { 'err' : string }
   >,
   /**

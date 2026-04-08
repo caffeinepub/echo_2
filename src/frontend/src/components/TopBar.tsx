@@ -1,9 +1,10 @@
-import { useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   ArrowDownToLine,
   ArrowLeft,
   Copy,
   Info,
+  Loader2,
   Send,
   ShieldCheck,
   UserCircle,
@@ -11,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createActor } from "../backend";
 import { usePackStyle } from "../context/PackStyleContext";
 import { useWalletContext } from "../context/WalletContext";
 import { DepositModal } from "./DepositModal";
@@ -294,11 +296,19 @@ function WalletModal({
   const [sendAddress, setSendAddress] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Send form state
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendSuccess, setSendSuccess] = useState(false);
+
   const { price: btcPrice, change24h, loading: priceLoading } = useBtcPrice();
-  const { btcBalance, depositAddress } = useWalletContext();
+  const { btcBalance, depositAddress, refreshBalance, refreshWalletActivity } =
+    useWalletContext();
+  const { actor } = useActor(createActor);
+
+  const E8S_PER_BTC = 100_000_000;
 
   // Auto-refresh balance every 30s while open
-  const { refreshBalance } = useWalletContext();
   useEffect(() => {
     if (!open) return;
     const id = setInterval(() => refreshBalance(), 30_000);
@@ -315,12 +325,100 @@ function WalletModal({
     setSendAmount("");
     setSendAddress("");
     setCopied(false);
+    setSendError(null);
+    setSendSuccess(false);
   }
 
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function validateSend(): string | null {
+    if (
+      !sendAmount.trim() ||
+      Number.isNaN(Number.parseFloat(sendAmount)) ||
+      Number.parseFloat(sendAmount) <= 0
+    ) {
+      return "Enter a valid amount";
+    }
+    const btcAmt = Number.parseFloat(sendAmount);
+    if (btcBalance !== null && btcAmt > btcBalance) {
+      return "Insufficient balance";
+    }
+    const addr = sendAddress.trim();
+    if (
+      !addr.startsWith("1") &&
+      !addr.startsWith("3") &&
+      !addr.startsWith("bc1") &&
+      !addr.startsWith("tb1")
+    ) {
+      return "Invalid BTC address";
+    }
+    return null;
+  }
+
+  async function handleConfirmSend() {
+    const validationError = validateSend();
+    if (validationError) {
+      setSendError(validationError);
+      return;
+    }
+    if (!actor) {
+      setSendError("Wallet not connected. Please try again.");
+      return;
+    }
+
+    setSendLoading(true);
+    setSendError(null);
+
+    const amountE8s = Math.round(Number.parseFloat(sendAmount) * E8S_PER_BTC);
+
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 30_000),
+      );
+
+      const result = await Promise.race([
+        actor.processWithdrawal(BigInt(amountE8s), sendAddress.trim()),
+        timeoutPromise,
+      ]);
+
+      if (result.__kind__ === "err") {
+        const raw = result.err;
+        let msg = "Send failed. Please try again.";
+        if (raw === "insufficient_balance") msg = "Insufficient balance";
+        else if (raw === "invalid_address") msg = "Invalid BTC address";
+        else if (raw.startsWith("send_failed"))
+          msg = "Send failed. Please try again.";
+        setSendError(msg);
+        setSendLoading(false);
+        return;
+      }
+
+      // Success
+      setSendSuccess(true);
+      setSendLoading(false);
+      await refreshBalance();
+      await refreshWalletActivity();
+
+      setTimeout(() => {
+        setSendAmount("");
+        setSendAddress("");
+        setSendError(null);
+        setSendSuccess(false);
+        setView("list");
+      }, 2000);
+    } catch (err) {
+      const isTimeout = err instanceof Error && err.message === "timeout";
+      setSendError(
+        isTimeout
+          ? "Request timed out. Please try again."
+          : "Send failed. Please try again.",
+      );
+      setSendLoading(false);
+    }
   }
 
   const panelStyle: React.CSSProperties = {
@@ -560,20 +658,23 @@ function WalletModal({
       </>
     );
   } else if (view === "send") {
-    const canSend = sendAmount.trim() !== "" && sendAddress.trim() !== "";
+    const canSend =
+      !sendLoading && sendAmount.trim() !== "" && sendAddress.trim() !== "";
     content = (
       <>
         <button
           type="button"
           onClick={goBack}
+          disabled={sendLoading}
           className="flex items-center gap-1.5 mb-5"
           style={{
             fontSize: "13px",
             color: "var(--cycle-accent)",
             background: "none",
             border: "none",
-            cursor: "pointer",
+            cursor: sendLoading ? "not-allowed" : "pointer",
             padding: 0,
+            opacity: sendLoading ? 0.5 : 1,
           }}
         >
           <ArrowLeft size={14} /> Back
@@ -591,79 +692,155 @@ function WalletModal({
           Send BTC
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <label
-              style={{
-                fontSize: "12px",
-                color: labelColor,
-                display: "block",
-                marginBottom: 5,
-              }}
-              htmlFor="send-amount"
-            >
-              Amount
-            </label>
-            <input
-              id="send-amount"
-              type="number"
-              data-ocid="wallet.send.amount_input"
-              placeholder="0.00 BTC"
-              value={sendAmount}
-              onChange={(e) => setSendAmount(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label
-              style={{
-                fontSize: "12px",
-                color: labelColor,
-                display: "block",
-                marginBottom: 5,
-              }}
-              htmlFor="send-address"
-            >
-              Recipient Address
-            </label>
-            <input
-              id="send-address"
-              type="text"
-              data-ocid="wallet.send.recipient_input"
-              placeholder="Enter address\u2026"
-              value={sendAddress}
-              onChange={(e) => setSendAddress(e.target.value)}
-              style={{
-                ...inputStyle,
-                fontFamily: "monospace",
-                fontSize: "12px",
-              }}
-            />
-          </div>
-
-          <button
-            type="button"
-            data-ocid="wallet.send.confirm_button"
-            disabled={!canSend}
-            className="w-full rounded-xl font-semibold transition-all duration-150"
+        {sendSuccess ? (
+          <div
+            data-ocid="wallet.send.success_message"
             style={{
-              padding: "12px",
-              fontSize: "14px",
-              marginTop: 4,
-              background: canSend
-                ? "rgba(var(--cycle-accent-rgb),0.12)"
-                : "rgba(0,0,0,0.04)",
-              color: canSend ? "var(--cycle-accent)" : "#aaa",
-              border: canSend
-                ? "1px solid rgba(var(--cycle-accent-rgb),0.35)"
-                : "1px solid rgba(0,0,0,0.08)",
-              cursor: canSend ? "pointer" : "not-allowed",
-              opacity: canSend ? 1 : 0.6,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+              padding: "24px 16px",
+              borderRadius: 14,
+              background: "rgba(16,185,129,0.07)",
+              border: "1px solid rgba(16,185,129,0.22)",
             }}
           >
-            Confirm Send
-          </button>
-        </div>
+            <div style={{ fontSize: 32 }}>✓</div>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#059669",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              Withdrawal sent!
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              Returning to wallet…
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label
+                style={{
+                  fontSize: "12px",
+                  color: labelColor,
+                  display: "block",
+                  marginBottom: 5,
+                }}
+                htmlFor="send-amount"
+              >
+                Amount
+              </label>
+              <input
+                id="send-amount"
+                type="number"
+                data-ocid="wallet.send.amount_input"
+                placeholder="0.00 BTC"
+                value={sendAmount}
+                disabled={sendLoading}
+                onChange={(e) => {
+                  setSendAmount(e.target.value);
+                  setSendError(null);
+                }}
+                style={{
+                  ...inputStyle,
+                  opacity: sendLoading ? 0.6 : 1,
+                  cursor: sendLoading ? "not-allowed" : "text",
+                }}
+              />
+            </div>
+            <div>
+              <label
+                style={{
+                  fontSize: "12px",
+                  color: labelColor,
+                  display: "block",
+                  marginBottom: 5,
+                }}
+                htmlFor="send-address"
+              >
+                Recipient Address
+              </label>
+              <input
+                id="send-address"
+                type="text"
+                data-ocid="wallet.send.recipient_input"
+                placeholder="Enter address…"
+                value={sendAddress}
+                disabled={sendLoading}
+                onChange={(e) => {
+                  setSendAddress(e.target.value);
+                  setSendError(null);
+                }}
+                style={{
+                  ...inputStyle,
+                  fontFamily: "monospace",
+                  fontSize: "12px",
+                  opacity: sendLoading ? 0.6 : 1,
+                  cursor: sendLoading ? "not-allowed" : "text",
+                }}
+              />
+            </div>
+
+            {sendError && (
+              <div
+                data-ocid="wallet.send.error_message"
+                style={{
+                  fontSize: "12px",
+                  color: "#ef4444",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: "rgba(239,68,68,0.06)",
+                  border: "1px solid rgba(239,68,68,0.20)",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                {sendError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              data-ocid="wallet.send.confirm_button"
+              disabled={!canSend}
+              onClick={handleConfirmSend}
+              className="w-full rounded-xl font-semibold transition-all duration-150 flex items-center justify-center gap-2"
+              style={{
+                padding: "12px",
+                fontSize: "14px",
+                marginTop: 4,
+                background: canSend
+                  ? "rgba(var(--cycle-accent-rgb),0.12)"
+                  : "rgba(0,0,0,0.04)",
+                color: canSend ? "var(--cycle-accent)" : "#aaa",
+                border: canSend
+                  ? "1px solid rgba(var(--cycle-accent-rgb),0.35)"
+                  : "1px solid rgba(0,0,0,0.08)",
+                cursor: canSend ? "pointer" : "not-allowed",
+                opacity: canSend ? 1 : 0.6,
+              }}
+            >
+              {sendLoading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                "Confirm Send"
+              )}
+            </button>
+          </div>
+        )}
       </>
     );
   } else {

@@ -288,6 +288,12 @@ actor {
         shared GetUtxosRequest__554507833 ->
           async GetUtxosResponse__958632024
     };
+  stable icBtcSend :
+    actor {
+      bitcoin_send_transaction :
+        shared {network : BitcoinNetwork__264724723; transaction : Blob} ->
+          async ()
+    };
   stable var listingCounter : Nat;
   stable listings :
     {
