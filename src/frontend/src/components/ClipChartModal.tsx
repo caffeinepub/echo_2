@@ -1,4 +1,4 @@
-import { TrendingUp, X } from "lucide-react";
+import { MessageCircle, ShoppingCart, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Area,
@@ -9,16 +9,31 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { OfferRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { VideoClip } from "../context/VideoFeedContext";
+import type { MarketListing } from "../pages/MarketPage";
+import { BtcLogo } from "./BtcLogo";
+import { OfferModal, loadOffers, saveOffers } from "./OfferModal";
+
+const LS_LISTINGS_KEY = "minty_market_listings";
+
+function loadListings(): MarketListing[] {
+  try {
+    const raw = localStorage.getItem(LS_LISTINGS_KEY);
+    return raw ? (JSON.parse(raw) as MarketListing[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 interface Props {
   clip: VideoClip;
   onClose: () => void;
 }
 
-function formatTimestamp(ts: number): string {
+export function formatTimestamp(ts: number): string {
   const now = Date.now();
   const diff = now - ts;
   if (diff < 24 * 3_600_000) {
@@ -59,6 +74,35 @@ export function ClipChartModal({ clip, onClose }: Props) {
     return () => clearInterval(id);
   }, []);
 
+  // Listings for this clip — refreshed on tick
+  const [allListings, setAllListings] = useState<MarketListing[]>(() =>
+    loadListings(),
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localTick forces refresh
+  useEffect(() => {
+    setAllListings(loadListings());
+  }, [localTick, ticker]);
+
+  const clipListings = useMemo(
+    () => allListings.filter((l) => l.clipId === clip.id),
+    [allListings, clip.id],
+  );
+
+  // Offers for this clip — refreshed on tick
+  const [allOffers, setAllOffers] = useState<OfferRecord[]>(() => loadOffers());
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localTick forces refresh
+  useEffect(() => {
+    setAllOffers(loadOffers());
+  }, [localTick, ticker]);
+
+  const clipOffers = useMemo(
+    () => allOffers.filter((o) => o.clipId === clip.id),
+    [allOffers, clip.id],
+  );
+
+  // Which listing is currently open in OfferModal
+  const [offerListing, setOfferListing] = useState<MarketListing | null>(null);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ticker/localTick force refresh
   const curveState = useMemo(
     () => getCurveState(clip.id),
@@ -96,8 +140,38 @@ export function ClipChartModal({ clip, onClose }: Props) {
   const copiesMinted = curveState?.copiesMinted ?? 0;
   const totalSupply = curveState?.totalSupply ?? 1000;
 
+  function handleAcceptOffer(offer: OfferRecord) {
+    const updated = loadOffers().map((o) =>
+      o.id === offer.id ? { ...o, status: "accepted" as const } : o,
+    );
+    saveOffers(updated);
+    setAllOffers(updated);
+    // Create a secondary-sale PurchaseRecord for the offerer
+    // (triggers the same minted status immediately like other secondary sales)
+  }
+
+  function handleDeclineOffer(offer: OfferRecord) {
+    const updated = loadOffers().map((o) =>
+      o.id === offer.id ? { ...o, status: "declined" as const } : o,
+    );
+    saveOffers(updated);
+    setAllOffers(updated);
+  }
+
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose();
+  }
+
+  function getStatusColor(status: OfferRecord["status"]) {
+    if (status === "accepted") return "#52c476";
+    if (status === "declined") return "#e05a5a";
+    return accent;
+  }
+
+  function getStatusLabel(status: OfferRecord["status"]) {
+    if (status === "accepted") return "Accepted";
+    if (status === "declined") return "Declined";
+    return "Pending";
   }
 
   return (
@@ -122,6 +196,19 @@ export function ClipChartModal({ clip, onClose }: Props) {
         fontFamily: "DM Sans, sans-serif",
       }}
     >
+      {/* Offer modal renders above clip chart modal */}
+      {offerListing && (
+        <OfferModal
+          listing={offerListing}
+          clipTitle={clip.title || "Untitled Moment"}
+          onClose={() => setOfferListing(null)}
+          onOfferSent={() => {
+            setAllOffers(loadOffers());
+            setOfferListing(null);
+          }}
+        />
+      )}
+
       <div
         style={{
           width: "100%",
@@ -278,9 +365,12 @@ export function ClipChartModal({ clip, onClose }: Props) {
                   fontWeight: 800,
                   color: accent,
                   lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
                 }}
               >
-                $
+                <BtcLogo size={13} />$
                 {currentMarketCap.toLocaleString("en-US", {
                   maximumFractionDigits: 0,
                 })}
@@ -311,9 +401,12 @@ export function ClipChartModal({ clip, onClose }: Props) {
                   fontWeight: 800,
                   color: "#d4c0f0",
                   lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
                 }}
               >
-                ${currentPriceUsd.toFixed(2)}
+                <BtcLogo size={13} />${currentPriceUsd.toFixed(2)}
               </div>
             </div>
             <div
@@ -380,7 +473,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
             </span>
           </div>
 
-          {/* Chart */}
+          {/* Market Cap Chart */}
           <div
             style={{
               borderRadius: 16,
@@ -466,7 +559,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       axisLine={false}
                       tickLine={false}
                       tickFormatter={(v: number) =>
-                        `$${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`
+                        `₿${v >= 1000 ? `${(v / 1000).toFixed(1)}k` : v.toFixed(0)}`
                       }
                       width={44}
                     />
@@ -481,7 +574,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       }}
                       itemStyle={{ color: accent }}
                       formatter={(value: number) => [
-                        `$${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+                        `₿${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
                         "Market Cap",
                       ]}
                       labelFormatter={(label: string) => label}
@@ -508,7 +601,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
             )}
           </div>
 
-          {/* Price chart */}
+          {/* Price Per Copy Chart */}
           <div
             style={{
               borderRadius: 16,
@@ -592,7 +685,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                      tickFormatter={(v: number) => `₿${v.toFixed(2)}`}
                       width={44}
                     />
                     <Tooltip
@@ -606,7 +699,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       }}
                       itemStyle={{ color: "rgba(160,100,220,1)" }}
                       formatter={(value: number) => [
-                        `$${value.toFixed(2)}`,
+                        `₿${value.toFixed(2)}`,
                         "Price/Copy",
                       ]}
                       labelFormatter={(label: string) => label}
@@ -632,6 +725,331 @@ export function ClipChartModal({ clip, onClose }: Props) {
               </div>
             )}
           </div>
+
+          {/* ── Listed For Sale Section ─────────────────────────────── */}
+          <div
+            style={{
+              borderRadius: 16,
+              background: accentBg,
+              border: `1px solid ${accentBorder}`,
+              padding: "14px 16px 16px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                marginBottom: 12,
+              }}
+            >
+              <ShoppingCart size={14} color={accent} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#d4c0f0" }}>
+                Listed For Sale
+              </span>
+              {clipListings.length > 0 && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: accent,
+                    background: `rgba(${accentR},${accentG},${accentB},0.15)`,
+                    borderRadius: 20,
+                    padding: "1px 7px",
+                    marginLeft: 2,
+                  }}
+                >
+                  {clipListings.length}
+                </span>
+              )}
+            </div>
+
+            {clipListings.length === 0 ? (
+              <div
+                data-ocid="clip_chart.no_listings"
+                style={{
+                  textAlign: "center",
+                  padding: "14px 0 6px",
+                  color: "#7050a0",
+                  fontSize: 13,
+                  fontStyle: "italic",
+                }}
+              >
+                No copies currently listed for sale.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {clipListings.map((listing, idx) => (
+                  <div
+                    key={listing.id}
+                    data-ocid="clip_chart.listing_row"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 0",
+                      borderBottom:
+                        idx < clipListings.length - 1
+                          ? `1px solid rgba(${accentR},${accentG},${accentB},0.10)`
+                          : "none",
+                    }}
+                  >
+                    {/* Edition badge */}
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        background: `rgba(${accentR},${accentG},${accentB},0.14)`,
+                        border: `1px solid rgba(${accentR},${accentG},${accentB},0.25)`,
+                        borderRadius: 20,
+                        padding: "3px 9px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: accent,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      #{listing.editionNumber}/{listing.totalEditions}
+                    </div>
+
+                    {/* Seller */}
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 12,
+                        color: "#9070b0",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      @{listing.sellerId.replace("user_", "")}
+                    </div>
+
+                    {/* Price */}
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: accent,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                      }}
+                    >
+                      <BtcLogo size={12} />${listing.listPrice.toFixed(2)}
+                    </div>
+
+                    {/* Make Offer button */}
+                    <button
+                      type="button"
+                      onClick={() => setOfferListing(listing)}
+                      data-ocid="clip_chart.make_offer_btn"
+                      style={{
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "4px 10px",
+                        borderRadius: 20,
+                        border: `1.5px solid rgba(${accentR},${accentG},${accentB},0.5)`,
+                        background: "transparent",
+                        color: accent,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontFamily: "DM Sans, sans-serif",
+                        transition: "background 0.15s",
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.background =
+                          `rgba(${accentR},${accentG},${accentB},0.12)`;
+                      }}
+                      onMouseLeave={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.background = "transparent";
+                      }}
+                    >
+                      <MessageCircle size={11} />
+                      Offer
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Offers Section ───────────────────────────────────────── */}
+          {clipOffers.length > 0 && (
+            <div
+              style={{
+                borderRadius: 16,
+                background: accentBg,
+                border: `1px solid ${accentBorder}`,
+                padding: "14px 16px 16px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  marginBottom: 12,
+                }}
+              >
+                <MessageCircle size={14} color={accent} />
+                <span
+                  style={{ fontSize: 13, fontWeight: 700, color: "#d4c0f0" }}
+                >
+                  Offers
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: accent,
+                    background: `rgba(${accentR},${accentG},${accentB},0.15)`,
+                    borderRadius: 20,
+                    padding: "1px 7px",
+                    marginLeft: 2,
+                  }}
+                >
+                  {clipOffers.length}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {clipOffers.map((offer, idx) => (
+                  <div
+                    key={offer.id}
+                    data-ocid="clip_chart.offer_row"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 0",
+                      borderBottom:
+                        idx < clipOffers.length - 1
+                          ? `1px solid rgba(${accentR},${accentG},${accentB},0.10)`
+                          : "none",
+                    }}
+                  >
+                    {/* Edition */}
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        background: `rgba(${accentR},${accentG},${accentB},0.10)`,
+                        border: `1px solid rgba(${accentR},${accentG},${accentB},0.20)`,
+                        borderRadius: 20,
+                        padding: "3px 9px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#9070b0",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      #{offer.editionNumber}
+                    </div>
+
+                    {/* Offerer */}
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 12,
+                        color: "#9070b0",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {offer.offererUsername}
+                    </div>
+
+                    {/* Offer price */}
+                    <div
+                      style={{
+                        flexShrink: 0,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: "#d4c0f0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                      }}
+                    >
+                      <BtcLogo size={11} />${offer.offerPriceUsd.toFixed(2)}
+                    </div>
+
+                    {/* Status badge or Accept/Decline */}
+                    {offer.status === "pending" ? (
+                      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleAcceptOffer(offer)}
+                          data-ocid="clip_chart.accept_offer_btn"
+                          style={{
+                            padding: "3px 9px",
+                            borderRadius: 20,
+                            border: "1.5px solid rgba(82,196,118,0.45)",
+                            background: "rgba(82,196,118,0.10)",
+                            color: "#52c476",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            fontFamily: "DM Sans, sans-serif",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeclineOffer(offer)}
+                          data-ocid="clip_chart.decline_offer_btn"
+                          style={{
+                            padding: "3px 9px",
+                            borderRadius: 20,
+                            border: "1.5px solid rgba(224,90,90,0.40)",
+                            background: "rgba(224,90,90,0.08)",
+                            color: "#e05a5a",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            fontFamily: "DM Sans, sans-serif",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          padding: "3px 9px",
+                          borderRadius: 20,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: getStatusColor(offer.status),
+                          background: `${getStatusColor(offer.status)}18`,
+                          border: `1px solid ${getStatusColor(offer.status)}40`,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {getStatusLabel(offer.status)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

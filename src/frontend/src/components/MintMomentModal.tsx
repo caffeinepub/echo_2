@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useAnimationControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMomentDraft } from "../context/MomentDraftContext";
 import { usePackStyle } from "../context/PackStyleContext";
+import { BtcLogo } from "./BtcLogo";
 
 interface MintMomentModalProps {
   open: boolean;
@@ -684,6 +685,7 @@ export function MintMomentModal({
                         gap: "6px",
                       }}
                     >
+                      <BtcLogo size={20} style={{ marginBottom: 2 }} />
                       <span
                         style={{
                           fontSize: "24px",
@@ -804,9 +806,13 @@ export function MintMomentModal({
                           fontWeight: 700,
                           color: `rgba(${accentRgb},0.90)`,
                           fontFamily: "var(--font-ui)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 2,
+                          justifyContent: "center",
                         }}
                       >
-                        ${price.toFixed(2)}
+                        <BtcLogo size={11} />${price.toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -1004,9 +1010,12 @@ export function MintMomentModal({
                               fontWeight: 700,
                               color: "rgba(255,255,255,0.85)",
                               fontFamily: "var(--font-ui)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 3,
                             }}
                           >
-                            ≈ ${usd.toFixed(0)}
+                            <BtcLogo size={12} />≈ ${usd.toFixed(0)}
                           </div>
                           <div
                             style={{

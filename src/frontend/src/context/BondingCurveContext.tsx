@@ -25,6 +25,7 @@ export interface PurchaseRecord {
   purchasedAt: number; // timestamp ms
   videoUrl: string;
   creatorName: string;
+  status: "pending" | "minted"; // pending = waiting for sell-out; minted = all 1000 sold
 }
 
 export interface PricePoint {
@@ -32,6 +33,17 @@ export interface PricePoint {
   price: number; // in cents
   marketCap: number; // USD cents × totalSupply / 100 → USD
   copiesMinted: number;
+}
+
+export interface OfferRecord {
+  id: string;
+  clipId: string;
+  listingId: string; // the MarketListing id being offered on
+  editionNumber: number;
+  offerPriceUsd: number;
+  offererUsername: string; // "You" for the current user
+  status: "pending" | "accepted" | "declined";
+  createdAt: number; // timestamp ms
 }
 
 function currentPriceCents(state: CurveState): number {
@@ -48,7 +60,6 @@ function nextPriceCents(state: CurveState): number {
 }
 
 function computeMarketCap(state: CurveState): number {
-  // marketCap in USD = currentPrice(USD) × totalSupply
   return (currentPriceCents(state) / 100) * state.totalSupply;
 }
 
@@ -139,10 +150,34 @@ function saveCurveStates(map: Map<string, CurveState>) {
   }
 }
 
-function loadPurchases(): PurchaseRecord[] {
+/** Migrate legacy purchase records that lack a `status` field, and auto-mint
+ *  any purchases where the curve is already sold out. */
+function migratePurchases(
+  records: PurchaseRecord[],
+  curveMap: Map<string, CurveState>,
+): PurchaseRecord[] {
+  return records.map((r) => {
+    const withStatus = r.status ? r : { ...r, status: "pending" as const };
+    // If curve is already sold out, promote pending → minted
+    const state = curveMap.get(withStatus.clipId);
+    if (
+      withStatus.status === "pending" &&
+      state &&
+      state.copiesMinted >= state.totalSupply
+    ) {
+      return { ...withStatus, status: "minted" as const };
+    }
+    return withStatus;
+  });
+}
+
+function loadPurchases(curveMap: Map<string, CurveState>): PurchaseRecord[] {
   try {
     const raw = localStorage.getItem(LS_PURCHASES_KEY);
-    return raw ? (JSON.parse(raw) as PurchaseRecord[]) : [];
+    const records: PurchaseRecord[] = raw
+      ? (JSON.parse(raw) as PurchaseRecord[])
+      : [];
+    return migratePurchases(records, curveMap);
   } catch {
     return [];
   }
@@ -188,10 +223,9 @@ function initSeedHistory(
   const now = Date.now();
   for (const state of curveMap.values()) {
     if (!historyMap.has(state.clipId)) {
-      // Derive sparse history from current minted count
       const points: PricePoint[] = [];
       const step = Math.max(1, Math.ceil(state.copiesMinted / 8));
-      const baseTime = now - state.copiesMinted * 60_000 * 5; // ~5 min per copy
+      const baseTime = now - state.copiesMinted * 60_000 * 5;
       for (let k = 0; k <= state.copiesMinted; k += step) {
         const priceCents =
           state.startingPriceCents + k * state.priceIncrementCents;
@@ -202,7 +236,6 @@ function initSeedHistory(
           copiesMinted: k,
         });
       }
-      // Always include current state as final point
       const finalPrice = currentPriceCents(state);
       if (points[points.length - 1]?.copiesMinted !== state.copiesMinted) {
         points.push({
@@ -230,7 +263,11 @@ interface BondingCurveContextValue {
     clipTitle: string,
     videoUrl: string,
     creatorName: string,
-  ) => Promise<{ editionNumber: number; totalSupply: number }>;
+  ) => Promise<{
+    editionNumber: number;
+    totalSupply: number;
+    isSoldOut: boolean;
+  }>;
   purchases: PurchaseRecord[];
   hasPurchased: (clipId: string) => boolean;
   currentPrice: (clipId: string) => number; // returns cents
@@ -240,6 +277,8 @@ interface BondingCurveContextValue {
   marketCap: (clipId: string) => number; // returns USD
   getAllCurveStates: () => CurveState[];
   getPriceHistory: (clipId: string) => PricePoint[];
+  getPendingPurchases: () => PurchaseRecord[];
+  getMintedPurchases: () => PurchaseRecord[];
   /** Incremented every 8s so subscribers can re-render */
   ticker: number;
 }
@@ -249,9 +288,12 @@ const BondingCurveCtx = createContext<BondingCurveContextValue | null>(null);
 export function BondingCurveProvider({
   children,
 }: { children: React.ReactNode }) {
+  const initialCurveMap = loadCurveStates();
   const [curveMap, setCurveMap] =
-    useState<Map<string, CurveState>>(loadCurveStates);
-  const [purchases, setPurchases] = useState<PurchaseRecord[]>(loadPurchases);
+    useState<Map<string, CurveState>>(initialCurveMap);
+  const [purchases, setPurchases] = useState<PurchaseRecord[]>(() =>
+    loadPurchases(initialCurveMap),
+  );
   const [priceHistoryMap, setPriceHistoryMap] = useState<
     Map<string, PricePoint[]>
   >(() => {
@@ -263,10 +305,8 @@ export function BondingCurveProvider({
   // 8-second polling: re-read from localStorage, refresh ticker
   useEffect(() => {
     const id = setInterval(() => {
-      // Re-sync curve states from localStorage (other tabs / future backend writes)
       const fresh = loadCurveStates();
       setCurveMap(fresh);
-      // Re-sync history
       const freshHistory = loadPriceHistory();
       setPriceHistoryMap(new Map(freshHistory));
       setTicker((t) => t + 1);
@@ -309,7 +349,11 @@ export function BondingCurveProvider({
       clipTitle: string,
       videoUrl: string,
       creatorName: string,
-    ): Promise<{ editionNumber: number; totalSupply: number }> => {
+    ): Promise<{
+      editionNumber: number;
+      totalSupply: number;
+      isSoldOut: boolean;
+    }> => {
       const state = curveMap.get(clipId);
       if (!state) throw new Error("Curve state not found");
       if (state.copiesMinted >= state.totalSupply) throw new Error("Sold out");
@@ -317,6 +361,8 @@ export function BondingCurveProvider({
       const pricePaid = currentPriceCents(state);
       const editionNumber = state.copiesMinted + 1;
       const totalSupply = state.totalSupply;
+      const newMintedCount = state.copiesMinted + 1;
+      const sellsOut = newMintedCount >= totalSupply;
 
       await new Promise((r) => setTimeout(r, 600));
 
@@ -328,7 +374,7 @@ export function BondingCurveProvider({
         next.set(clipId, updated);
         saveCurveStates(next);
 
-        // Append a new price point to history immediately after purchase
+        // Append price point
         const newPriceCents = currentPriceCents(updated);
         const newPoint: PricePoint = {
           timestamp: Date.now(),
@@ -358,13 +404,25 @@ export function BondingCurveProvider({
           purchasedAt: Date.now(),
           videoUrl,
           creatorName,
+          status: "pending", // always starts pending
         };
-        const next = [record, ...prev];
+
+        let next = [record, ...prev];
+
+        // Sell-out trigger: if all copies sold, mint ALL pending records for this clip
+        if (sellsOut) {
+          next = next.map((r) =>
+            r.clipId === clipId && r.status === "pending"
+              ? { ...r, status: "minted" as const }
+              : r,
+          );
+        }
+
         savePurchases(next);
         return next;
       });
 
-      return { editionNumber, totalSupply };
+      return { editionNumber, totalSupply, isSoldOut: sellsOut };
     },
     [curveMap],
   );
@@ -432,6 +490,14 @@ export function BondingCurveProvider({
     [priceHistoryMap],
   );
 
+  const getPendingPurchases = useCallback((): PurchaseRecord[] => {
+    return purchases.filter((p) => p.status === "pending");
+  }, [purchases]);
+
+  const getMintedPurchases = useCallback((): PurchaseRecord[] => {
+    return purchases.filter((p) => p.status === "minted");
+  }, [purchases]);
+
   return (
     <BondingCurveCtx.Provider
       value={{
@@ -447,6 +513,8 @@ export function BondingCurveProvider({
         marketCap,
         getAllCurveStates,
         getPriceHistory,
+        getPendingPurchases,
+        getMintedPurchases,
         ticker,
       }}
     >

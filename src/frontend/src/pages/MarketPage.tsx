@@ -1,6 +1,8 @@
 import { Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BtcLogo } from "../components/BtcLogo";
 import { ClipChartModal } from "../components/ClipChartModal";
+import type { PurchaseRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import { useReleasesMarket } from "../context/ReleasesMarketContext";
@@ -287,8 +289,17 @@ function BuyConfirmModal({
               Copy #{listing.editionNumber} / {listing.totalEditions}
             </div>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: accent }}>
-            ${listing.listPrice.toFixed(2)}
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: accent,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <BtcLogo size={16} />${listing.listPrice.toFixed(2)}
           </div>
         </div>
 
@@ -333,9 +344,16 @@ function BuyConfirmModal({
               transition: "all 0.2s ease",
             }}
           >
-            {confirmed
-              ? "✓ Purchased!"
-              : `Buy for $${listing.listPrice.toFixed(2)}`}
+            {confirmed ? (
+              "✓ Purchased!"
+            ) : (
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+              >
+                <BtcLogo size={14} style={{ filter: "brightness(10)" }} />
+                Buy for ${listing.listPrice.toFixed(2)}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -482,9 +500,12 @@ function ListingRow({
             fontWeight: 800,
             color: accent,
             fontFamily: "DM Sans, sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
           }}
         >
-          ${listing.listPrice.toFixed(2)}
+          <BtcLogo size={14} />${listing.listPrice.toFixed(2)}
         </div>
         <button
           type="button"
@@ -690,9 +711,12 @@ function TopMarketCard({
               fontWeight: 800,
               color: accent,
               fontFamily: "DM Sans, sans-serif",
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
             }}
           >
-            $
+            <BtcLogo size={large ? 13 : 11} />$
             {entry.marketCap.toLocaleString("en-US", {
               maximumFractionDigits: 0,
             })}
@@ -774,9 +798,38 @@ export function MarketPage() {
 
   function handleBuyConfirm() {
     if (!buyTarget) return;
+
+    // Remove listing
     const next = listings.filter((l) => l.id !== buyTarget.id);
     setListings(next);
     saveListings(next);
+
+    // Create a new PurchaseRecord for the buyer (secondary sale → minted immediately)
+    try {
+      const raw = localStorage.getItem("minty_purchases_v1");
+      const records: (PurchaseRecord & { listed?: boolean })[] = raw
+        ? JSON.parse(raw)
+        : [];
+      const newRecord: PurchaseRecord & { listed?: boolean } = {
+        clipId: buyTarget.clipId,
+        clipTitle: buyTarget.clipTitle,
+        editionNumber: buyTarget.editionNumber,
+        totalSupply: buyTarget.totalEditions,
+        pricePaid: Math.round(buyTarget.listPrice * 100),
+        purchasedAt: Date.now(),
+        videoUrl: buyTarget.videoUrl ?? buyTarget.imageUrl,
+        creatorName: buyTarget.creatorUsername,
+        status: "minted",
+        listed: false,
+      };
+      localStorage.setItem(
+        "minty_purchases_v1",
+        JSON.stringify([newRecord, ...records]),
+      );
+    } catch {
+      // ignore
+    }
+
     setBuyTarget(null);
   }
 
@@ -979,9 +1032,12 @@ export function MarketPage() {
                       fontWeight: 800,
                       color: accent,
                       fontFamily: "DM Sans, sans-serif",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
                     }}
                   >
-                    $
+                    <BtcLogo size={12} />$
                     {entry.marketCap.toLocaleString("en-US", {
                       maximumFractionDigits: 0,
                     })}

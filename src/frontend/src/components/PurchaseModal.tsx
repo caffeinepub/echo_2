@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { VideoClip } from "../context/VideoFeedContext";
+import { BtcLogo } from "./BtcLogo";
 
 interface PurchaseModalProps {
   clip: VideoClip;
@@ -144,7 +145,7 @@ function SlideToConfirm({
           }}
         >
           <ChevronRight size={14} color={accentText} />
-          Slide to confirm purchase
+          Slide to reserve copy
         </span>
       </div>
 
@@ -187,7 +188,8 @@ function SlideToConfirm({
 
 export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const { activeStyle } = usePackStyle();
-  const { purchase, currentPrice, nextPrice } = useBondingCurve();
+  const { purchase, currentPrice, nextPrice, progressPct, getCurveState } =
+    useBondingCurve();
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -195,6 +197,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const [editionInfo, setEditionInfo] = useState<{
     editionNumber: number;
     totalSupply: number;
+    isSoldOut: boolean;
   } | null>(null);
 
   const accentR = activeStyle.accentR;
@@ -203,9 +206,16 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const accentSolid = `rgb(${accentR},${accentG},${accentB})`;
   const accentBg = `rgba(${accentR},${accentG},${accentB},0.08)`;
   const accentBorder = `rgba(${accentR},${accentG},${accentB},0.20)`;
+  const amberColor = "#f59e0b";
+  const amberBg = "rgba(245,158,11,0.10)";
+  const amberBorder = "rgba(245,158,11,0.25)";
 
   const price = currentPrice(clip.id);
   const next = nextPrice(clip.id);
+  const pct = progressPct(clip.id);
+  const curveState = getCurveState(clip.id);
+  const copiesMinted = curveState?.copiesMinted ?? 0;
+  const totalSupply = curveState?.totalSupply ?? 1000;
 
   // Lock body scroll
   useEffect(() => {
@@ -236,7 +246,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
       );
       setEditionInfo(result);
       setStatus("success");
-      setTimeout(onClose, 2400);
+      setTimeout(onClose, 3200);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Purchase failed");
       setStatus("error");
@@ -321,7 +331,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
           <X size={16} color="#374151" />
         </button>
 
-        {status === "success" ? (
+        {status === "success" && editionInfo ? (
           /* Success state */
           <div
             data-ocid="releases.purchase_modal.success"
@@ -332,71 +342,137 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                 width: 64,
                 height: 64,
                 borderRadius: "50%",
-                background: `linear-gradient(135deg, rgb(${accentR},${accentG},${accentB}), rgba(${Math.round(accentR * 0.78)},${Math.round(accentG * 0.78)},${Math.round(accentB * 0.78)},1))`,
+                background: editionInfo.isSoldOut
+                  ? `linear-gradient(135deg, rgb(${accentR},${accentG},${accentB}), rgba(${Math.round(accentR * 0.78)},${Math.round(accentG * 0.78)},${Math.round(accentB * 0.78)},1))`
+                  : amberBg,
+                border: editionInfo.isSoldOut
+                  ? "none"
+                  : `2px solid ${amberBorder}`,
                 margin: "0 auto 16px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 0 0 8px rgba(${accentR},${accentG},${accentB},0.15)`,
+                boxShadow: editionInfo.isSoldOut
+                  ? `0 0 0 8px rgba(${accentR},${accentG},${accentB},0.15)`
+                  : `0 0 0 8px ${amberBg}`,
               }}
             >
-              <Check size={28} color="#fff" strokeWidth={2.5} />
+              {editionInfo.isSoldOut ? (
+                <Check size={28} color="#fff" strokeWidth={2.5} />
+              ) : (
+                <span style={{ fontSize: 28 }}>⏳</span>
+              )}
             </div>
+
             <p
               style={{
                 fontSize: 18,
                 fontWeight: 700,
                 color: "#111",
-                margin: "0 0 8px",
+                margin: "0 0 6px",
                 fontFamily: "DM Sans, sans-serif",
               }}
             >
-              You own this moment!
+              {editionInfo.isSoldOut
+                ? "Minted to your Collection!"
+                : "Copy Reserved!"}
             </p>
-            {editionInfo && (
-              <div
+
+            {/* Edition badge */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                background: editionInfo.isSoldOut ? accentBg : amberBg,
+                border: `1px solid ${editionInfo.isSoldOut ? accentBorder : amberBorder}`,
+                borderRadius: 20,
+                padding: "5px 14px",
+                marginBottom: 10,
+              }}
+            >
+              <span
                 style={{
-                  display: "inline-block",
-                  background: accentBg,
-                  border: `1px solid ${accentBorder}`,
-                  borderRadius: 20,
-                  padding: "5px 14px",
-                  marginBottom: 8,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: editionInfo.isSoldOut ? accentSolid : amberColor,
+                  fontFamily: "DM Sans, sans-serif",
+                  letterSpacing: "0.01em",
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: accentSolid,
-                    fontFamily: "DM Sans, sans-serif",
-                    letterSpacing: "0.01em",
-                  }}
-                >
-                  Copy #{editionInfo.editionNumber}
-                </span>
-                <span
+                Copy #{editionInfo.editionNumber}
+              </span>
+              <span
+                style={{
+                  fontSize: 13,
+                  color: "#6b7280",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                / {editionInfo.totalSupply.toLocaleString()}
+              </span>
+            </div>
+
+            {!editionInfo.isSoldOut && (
+              <>
+                <p
                   style={{
                     fontSize: 13,
-                    color: "#6b7280",
+                    color: "#374151",
                     fontFamily: "DM Sans, sans-serif",
+                    margin: "0 0 12px",
+                    lineHeight: 1.5,
                   }}
                 >
-                  {" "}
-                  / {editionInfo.totalSupply.toLocaleString()}
-                </span>
-              </div>
+                  Mints to your Collection when all 1,000 copies sell.
+                </p>
+
+                {/* Progress toward sell-out */}
+                <div
+                  style={{
+                    background: "rgba(0,0,0,0.04)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    marginBottom: 4,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 6,
+                      fontSize: 12,
+                      color: "#6b7280",
+                      fontFamily: "DM Sans, sans-serif",
+                    }}
+                  >
+                    <span>Sell-out progress</span>
+                    <span style={{ fontWeight: 600, color: amberColor }}>
+                      {editionInfo.editionNumber} /{" "}
+                      {editionInfo.totalSupply.toLocaleString()} sold
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      height: 6,
+                      borderRadius: 3,
+                      background: "rgba(0,0,0,0.07)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${(editionInfo.editionNumber / editionInfo.totalSupply) * 100}%`,
+                        borderRadius: 3,
+                        background: `linear-gradient(90deg, ${amberColor}, rgba(245,158,11,0.7))`,
+                        transition: "width 0.4s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
             )}
-            <p
-              style={{
-                fontSize: 13,
-                color: "#6b7280",
-                fontFamily: "DM Sans, sans-serif",
-                margin: 0,
-              }}
-            >
-              Added to your Collection tab
-            </p>
           </div>
         ) : (
           <>
@@ -431,7 +507,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                 border: `1px solid ${accentBorder}`,
                 borderRadius: 14,
                 padding: "14px 16px",
-                marginBottom: 16,
+                marginBottom: 12,
               }}
             >
               <div
@@ -457,9 +533,12 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                     fontWeight: 800,
                     color: accentSolid,
                     fontFamily: "DM Sans, sans-serif",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  ${(price / 100).toFixed(2)}
+                  <BtcLogo size={16} />${(price / 100).toFixed(2)}
                 </span>
               </div>
               <div
@@ -483,26 +562,97 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                     fontSize: 13,
                     color: "#6b7280",
                     fontFamily: "DM Sans, sans-serif",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
                   }}
                 >
-                  ${(next / 100).toFixed(2)}
+                  <BtcLogo size={13} />${(next / 100).toFixed(2)}
                 </span>
               </div>
             </div>
 
-            {/* Linear curve note */}
-            <p
+            {/* Sell-out mechanic notice */}
+            <div
               style={{
-                fontSize: 12,
-                color: "#9ca3af",
-                marginBottom: 20,
-                lineHeight: 1.5,
-                fontFamily: "DM Sans, sans-serif",
+                background: amberBg,
+                border: `1px solid ${amberBorder}`,
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 16,
+                display: "flex",
+                gap: 8,
+                alignItems: "flex-start",
               }}
             >
-              Linear bonding curve — price increases +$0.01 per copy sold. 1,000
-              total copies available.
-            </p>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>⏳</span>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: amberColor,
+                    fontFamily: "DM Sans, sans-serif",
+                    marginBottom: 2,
+                  }}
+                >
+                  Mints when sold out
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#6b7280",
+                    fontFamily: "DM Sans, sans-serif",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Your copy is reserved now. It moves to your Collection only
+                  when all 1,000 copies sell.
+                </div>
+              </div>
+            </div>
+
+            {/* Sell-out progress */}
+            <div
+              style={{
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 5,
+                  fontSize: 11,
+                  color: "var(--echo-text-muted)",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                <span>Sell-out progress</span>
+                <span>
+                  {copiesMinted.toLocaleString()} /{" "}
+                  {totalSupply.toLocaleString()} copies sold
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 4,
+                  borderRadius: 2,
+                  background: "rgba(0,0,0,0.07)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${pct}%`,
+                    borderRadius: 2,
+                    background: `linear-gradient(90deg, ${accentSolid}, rgba(${accentR},${accentG},${accentB},0.7))`,
+                    transition: "width 0.4s ease",
+                  }}
+                />
+              </div>
+            </div>
 
             {/* Error */}
             {status === "error" && (
@@ -541,7 +691,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >
-                Processing purchase…
+                Reserving your copy…
               </p>
             )}
           </>

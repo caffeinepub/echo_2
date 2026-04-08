@@ -9,10 +9,29 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useAuctions } from "../context/AuctionContext";
 import type { PurchaseRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
-import type { CollectionNFT } from "../context/CollectionContext";
+import type { MarketListing } from "../pages/MarketPage";
+import { BtcLogo } from "./BtcLogo";
+
+const LS_LISTINGS_KEY = "minty_market_listings";
+
+function loadListings(): MarketListing[] {
+  try {
+    const raw = localStorage.getItem(LS_LISTINGS_KEY);
+    return raw ? (JSON.parse(raw) as MarketListing[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveListings(listings: MarketListing[]) {
+  try {
+    localStorage.setItem(LS_LISTINGS_KEY, JSON.stringify(listings));
+  } catch {
+    // ignore
+  }
+}
 
 const ACCENT_R = 192;
 const ACCENT_G = 160;
@@ -35,7 +54,7 @@ interface Props {
   onListed: (clipId: string) => void;
 }
 
-function buildPriceHistory(
+export function buildPriceHistory(
   copiesMinted: number,
   startingPriceCents: number,
   priceIncrementCents: number,
@@ -52,7 +71,6 @@ function buildPriceHistory(
       ),
     });
   }
-  // Always include the last minted copy
   const last = copiesMinted;
   if (points[points.length - 1]?.copy !== last) {
     points.push({
@@ -69,11 +87,11 @@ function buildPriceHistory(
 
 export function NftDetailModal({ record, onClose, onListed }: Props) {
   const { getCurveState, getOrCreateCurve } = useBondingCurve();
-  const { createAuction } = useAuctions();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showListing, setShowListing] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState(DURATIONS[1]);
   const [listed, setListed] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   // Ensure curve state exists
   useEffect(() => {
@@ -110,33 +128,39 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
     { month: "short", day: "numeric", year: "numeric" },
   );
 
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }
+
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose();
   }
 
   function handleConfirmListing() {
-    const nft: CollectionNFT = {
-      id: `bonding_${record.clipId}_${record.purchasedAt}`,
-      title: record.clipTitle,
-      setName: "Bonding Curve Moment",
-      editionNumber: record.editionNumber ?? 1,
-      totalSupply: record.totalSupply,
-      mediaType: "video",
-      imageUrl: record.videoUrl,
-      rarity: "Common",
-      mintDate: new Date(record.purchasedAt).toISOString(),
-      creator: record.creatorName,
-      owners: ["you"],
-      views: 0,
-      isLeader: false,
-      hasOwnershipHistory: true,
-      addedAt: record.purchasedAt,
-      purchasePrice: record.pricePaid / 100,
-      previewClipUrl: record.videoUrl,
-    };
-    createAuction(nft);
+    const listPriceNum = Number.parseFloat(priceInput);
+    if (!listPriceNum || listPriceNum <= 0) return;
 
-    // Mark as listed in localStorage
+    // Build a new MarketListing entry
+    const newListing: MarketListing = {
+      id: `listing_${record.clipId}_${record.purchasedAt}_${Date.now()}`,
+      clipId: record.clipId,
+      clipTitle: record.clipTitle,
+      creatorUsername: record.creatorName,
+      imageUrl: record.videoUrl,
+      videoUrl: record.videoUrl,
+      listPrice: listPriceNum,
+      editionNumber: record.editionNumber ?? 1,
+      totalEditions: record.totalSupply ?? 1000,
+      listedAt: Date.now(),
+      sellerId: `user_${record.creatorName.replace(/\s/g, "_")}`,
+    };
+
+    // Push to minty_market_listings
+    const existing = loadListings();
+    saveListings([newListing, ...existing]);
+
+    // Mark purchase record as listed in minty_purchases_v1
     try {
       const raw = localStorage.getItem("minty_purchases_v1");
       const records: (PurchaseRecord & { listed?: boolean })[] = raw
@@ -153,10 +177,12 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
     }
 
     setListed(true);
+    showToast("Listed for sale! 🎉");
+
     setTimeout(() => {
       onListed(record.clipId);
       onClose();
-    }, 1200);
+    }, 1400);
   }
 
   return (
@@ -181,6 +207,32 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
         fontFamily: "DM Sans, sans-serif",
       }}
     >
+      {/* Toast notification */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 90,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 500,
+            background: `linear-gradient(135deg, rgba(${ACCENT_R},${ACCENT_G},${ACCENT_B},0.95) 0%, rgba(160,100,220,0.95) 100%)`,
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 700,
+            fontFamily: "DM Sans, sans-serif",
+            padding: "12px 22px",
+            borderRadius: 30,
+            boxShadow: `0 4px 20px ${ACCENT_GLOW}`,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            animation: "fadeInUp 0.25s ease",
+          }}
+        >
+          {toast}
+        </div>
+      )}
+
       <div
         style={{
           width: "100%",
@@ -333,8 +385,17 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
               >
                 Price Paid
               </div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: ACCENT }}>
-                ${(record.pricePaid / 100).toFixed(2)}
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: ACCENT,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <BtcLogo size={15} />${(record.pricePaid / 100).toFixed(2)}
               </div>
             </div>
             <div
@@ -448,7 +509,7 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                           }}
                           axisLine={false}
                           tickLine={false}
-                          tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                          tickFormatter={(v: number) => `₿${v.toFixed(2)}`}
                           width={46}
                         />
                         <Tooltip
@@ -462,7 +523,7 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                           }}
                           itemStyle={{ color: ACCENT }}
                           formatter={(value: number) => [
-                            `$${value.toFixed(2)}`,
+                            `₿${value.toFixed(2)}`,
                             "Price",
                           ]}
                           labelFormatter={(label: number) => `Copy #${label}`}
@@ -541,7 +602,7 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                     marginBottom: 6,
                   }}
                 >
-                  Listing Price (USD)
+                  Listing Price (USD in BTC)
                 </label>
                 <div style={{ position: "relative" }}>
                   <span
@@ -553,9 +614,12 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                       fontSize: 15,
                       fontWeight: 700,
                       color: ACCENT,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
                     }}
                   >
-                    $
+                    <BtcLogo size={14} />$
                   </span>
                   <input
                     id="listing-price"
