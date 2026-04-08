@@ -29,6 +29,10 @@ interface WalletContextValue {
   addressLoading: boolean;
   /** Non-null when address fetch failed or timed out. */
   addressError: string | null;
+  /** Current auto-retry attempt number (0 = first attempt, 1 = retry 1, etc.) */
+  addressRetryAttempt: number;
+  /** Max auto-retries before showing manual error UI */
+  addressMaxRetries: number;
   /** All deposits (pending + confirmed) for this user. */
   deposits: Deposit[];
   /** All wallet activity (deposits, mint costs, auction payouts, withdrawals). */
@@ -39,7 +43,7 @@ interface WalletContextValue {
   refreshDeposits: () => Promise<void>;
   /** Refreshes wallet activity list from backend. */
   refreshWalletActivity: () => Promise<void>;
-  /** Re-attempts address fetch after a failure. */
+  /** Re-attempts address fetch after a failure (manual retry with backoff). */
   retryAddressFetch: () => Promise<void>;
   /** Polls backend for new deposits and refreshes balance after. */
   checkDeposits: () => Promise<void>;
@@ -60,7 +64,18 @@ interface WalletContextValue {
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 const E8S_PER_BTC = 100_000_000;
-const ADDRESS_FETCH_TIMEOUT_MS = 15_000;
+// Increased from 15s to 45s — ICP Bitcoin API can take 20-30s on mainnet
+const ADDRESS_FETCH_TIMEOUT_MS = 45_000;
+// Quick cache-check timeout (5s) used on retry before full 45s attempt
+const ADDRESS_CACHE_CHECK_TIMEOUT_MS = 5_000;
+// Max auto-retries before surfacing the manual error UI
+const ADDRESS_MAX_AUTO_RETRIES = 2;
+// Backoff delays: retry 1 = 2s, retry 2 = 4s, retry 3 = 8s
+const RETRY_BACKOFF_MS = [2_000, 4_000, 8_000];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { actor, isFetching } = useActor(createActor);
@@ -72,8 +87,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
   const [addressLoading, setAddressLoading] = useState(false);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressRetryAttempt, setAddressRetryAttempt] = useState(0);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [walletActivity, setWalletActivity] = useState<WalletActivity[]>([]);
+
+  // Ref to abort in-flight address fetches when a new one starts
+  const addressFetchAbortRef = useRef<{ aborted: boolean }>({ aborted: false });
 
   const isConnected = !!identity && !identity.getPrincipal().isAnonymous();
   const walletAddress = identity ? identity.getPrincipal().toText() : null;
@@ -105,49 +124,111 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [actor, isFetching, identity]);
 
-  // Fetch deposit address + deposits + wallet activity
-  const refreshDeposits = useCallback(async () => {
-    if (!actor || isFetching) return;
-
-    // Address fetch with timeout
-    setAddressLoading(true);
-    setAddressError(null);
-
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("timeout")),
-          ADDRESS_FETCH_TIMEOUT_MS,
-        ),
-      );
-
-      const addrResult = await Promise.race([
-        actor.getUserDepositAddress(),
-        timeoutPromise,
-      ]);
-
-      if (addrResult.__kind__ === "ok") {
-        setDepositAddress(addrResult.ok);
-        setAddressError(null);
-      } else {
+  /**
+   * Attempt to fetch the deposit address with a given timeout.
+   * Returns the address string on success, null on failure/timeout.
+   */
+  const attemptAddressFetch = useCallback(
+    async (timeoutMs: number): Promise<string | null> => {
+      if (!actor || isFetching) return null;
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), timeoutMs),
+        );
+        const addrResult = await Promise.race([
+          actor.getUserDepositAddress(),
+          timeoutPromise,
+        ]);
+        if (addrResult.__kind__ === "ok") {
+          return addrResult.ok;
+        }
         console.error(
           "[WalletContext] getUserDepositAddress error:",
           addrResult.err,
         );
-        setDepositAddress(null);
-        setAddressError(
-          "Could not load your deposit address. Tap retry to try again.",
-        );
+        return null;
+      } catch (err) {
+        console.error("[WalletContext] getUserDepositAddress failed:", err);
+        return null;
       }
-    } catch (err) {
-      console.error("[WalletContext] getUserDepositAddress failed:", err);
+    },
+    [actor, isFetching],
+  );
+
+  /**
+   * Fetch deposit address with auto-retry and exponential backoff.
+   * - Attempt 0: full 45s timeout
+   * - On failure: auto-retry up to ADDRESS_MAX_AUTO_RETRIES times with backoff
+   * - Each retry first does a quick 5s cache check, then falls back to full 45s
+   * - Only surfaces error UI after all auto-retries are exhausted
+   */
+  const fetchAddressWithRetry = useCallback(
+    async (abortSignal: { aborted: boolean }) => {
+      setAddressLoading(true);
+      setAddressError(null);
+      setAddressRetryAttempt(0);
+
+      // Attempt 0: full timeout
+      let address = await attemptAddressFetch(ADDRESS_FETCH_TIMEOUT_MS);
+      if (abortSignal.aborted) return;
+
+      if (address) {
+        setDepositAddress(address);
+        setAddressError(null);
+        setAddressLoading(false);
+        return;
+      }
+
+      // Auto-retry loop
+      for (let attempt = 1; attempt <= ADDRESS_MAX_AUTO_RETRIES; attempt++) {
+        if (abortSignal.aborted) return;
+
+        const backoff = RETRY_BACKOFF_MS[attempt - 1] ?? 8_000;
+        setAddressRetryAttempt(attempt);
+
+        // Wait with backoff
+        await delay(backoff);
+        if (abortSignal.aborted) return;
+
+        // First try a quick cache check (5s)
+        address = await attemptAddressFetch(ADDRESS_CACHE_CHECK_TIMEOUT_MS);
+        if (abortSignal.aborted) return;
+
+        if (!address) {
+          // Cache miss — do full attempt
+          address = await attemptAddressFetch(ADDRESS_FETCH_TIMEOUT_MS);
+          if (abortSignal.aborted) return;
+        }
+
+        if (address) {
+          setDepositAddress(address);
+          setAddressError(null);
+          setAddressLoading(false);
+          return;
+        }
+      }
+
+      // All auto-retries exhausted — surface error to user
       setDepositAddress(null);
       setAddressError(
         "Could not load your deposit address. Tap retry to try again.",
       );
-    } finally {
       setAddressLoading(false);
-    }
+    },
+    [attemptAddressFetch],
+  );
+
+  // Fetch deposit address + deposits + wallet activity
+  const refreshDeposits = useCallback(async () => {
+    if (!actor || isFetching) return;
+
+    // Abort any in-flight fetch
+    addressFetchAbortRef.current.aborted = true;
+    const abortSignal = { aborted: false };
+    addressFetchAbortRef.current = abortSignal;
+
+    // Start address fetch with auto-retry
+    fetchAddressWithRetry(abortSignal);
 
     // Deposits + activity can fail independently without blocking address display
     try {
@@ -160,12 +241,54 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("[WalletContext] refreshDeposits (activity) failed:", err);
     }
-  }, [actor, isFetching]);
+  }, [actor, isFetching, fetchAddressWithRetry]);
 
-  // Retry address fetch (called from DepositModal)
+  // Manual retry — called from DepositModal after all auto-retries fail
+  // Uses exponential backoff based on how many manual retries have been attempted
+  const manualRetryCountRef = useRef(0);
   const retryAddressFetch = useCallback(async () => {
-    await refreshDeposits();
-  }, [refreshDeposits]);
+    if (!actor || isFetching) return;
+
+    // Abort any in-flight fetch
+    addressFetchAbortRef.current.aborted = true;
+    const abortSignal = { aborted: false };
+    addressFetchAbortRef.current = abortSignal;
+
+    const manualAttempt = manualRetryCountRef.current;
+    manualRetryCountRef.current += 1;
+
+    const backoff = RETRY_BACKOFF_MS[manualAttempt] ?? 8_000;
+
+    setAddressLoading(true);
+    setAddressError(null);
+    setAddressRetryAttempt(0);
+
+    // Brief backoff before retry
+    await delay(backoff);
+    if (abortSignal.aborted) return;
+
+    // Quick cache check first
+    let address = await attemptAddressFetch(ADDRESS_CACHE_CHECK_TIMEOUT_MS);
+    if (abortSignal.aborted) return;
+
+    if (!address) {
+      // Full attempt
+      address = await attemptAddressFetch(ADDRESS_FETCH_TIMEOUT_MS);
+      if (abortSignal.aborted) return;
+    }
+
+    if (address) {
+      setDepositAddress(address);
+      setAddressError(null);
+      setAddressLoading(false);
+    } else {
+      setDepositAddress(null);
+      setAddressError(
+        "Could not load your deposit address. Tap retry to try again.",
+      );
+      setAddressLoading(false);
+    }
+  }, [actor, isFetching, attemptAddressFetch]);
 
   // Poll backend for new deposits, then refresh balance
   const checkDeposits = useCallback(async () => {
@@ -193,16 +316,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // Hydrate wallet on login
   useEffect(() => {
     if (identity && actor && !isFetching) {
+      manualRetryCountRef.current = 0;
       refreshBalance();
       refreshDeposits();
     }
     if (!identity) {
+      // Abort any in-flight fetch
+      addressFetchAbortRef.current.aborted = true;
+      manualRetryCountRef.current = 0;
       setBtcBalance(null);
       setBalanceStatus("idle");
       setPaymentAddress(null);
       setDepositAddress(null);
       setAddressLoading(false);
       setAddressError(null);
+      setAddressRetryAttempt(0);
       setDeposits([]);
       setWalletActivity([]);
     }
@@ -236,6 +364,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         depositAddress,
         addressLoading,
         addressError,
+        addressRetryAttempt,
+        addressMaxRetries: ADDRESS_MAX_AUTO_RETRIES,
         deposits,
         walletActivity,
         paymentAddress,

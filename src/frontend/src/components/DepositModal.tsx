@@ -166,6 +166,8 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
     depositAddress,
     addressLoading,
     addressError,
+    addressRetryAttempt,
+    addressMaxRetries,
     retryAddressFetch,
     deposits,
     walletActivity,
@@ -375,9 +377,29 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 borderRadius: 12,
                 background: "rgba(124,58,237,0.06)",
                 border: "2px solid rgba(124,58,237,0.18)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 animation: "pulse 1.4s ease-in-out infinite",
               }}
-            />
+            >
+              {addressRetryAttempt > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(124,58,237,0.55)",
+                    fontFamily: "DM Sans, sans-serif",
+                    textAlign: "center",
+                    padding: "0 8px",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Attempt {addressRetryAttempt + 1}/{addressMaxRetries + 1}
+                </span>
+              )}
+            </div>
           )}
           {isAddressError && (
             <div
@@ -436,24 +458,40 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
             <div
               data-ocid="deposit.address_loading"
               style={{
-                height: 40,
                 borderRadius: 12,
                 background: "rgba(124,58,237,0.04)",
                 border: "1px solid rgba(124,58,237,0.15)",
-                animation: "pulse 1.4s ease-in-out infinite",
+                padding: "10px 14px",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 4,
               }}
             >
               <span
                 style={{
                   fontSize: 12,
-                  color: "rgba(124,58,237,0.5)",
+                  color: "rgba(124,58,237,0.7)",
                   fontFamily: "DM Sans, sans-serif",
+                  fontWeight: 600,
+                  textAlign: "center",
                 }}
               >
-                Generating your deposit address…
+                {addressRetryAttempt === 0
+                  ? "Generating your BTC address…"
+                  : `Retrying… (attempt ${addressRetryAttempt + 1} of ${addressMaxRetries + 1})`}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "rgba(124,58,237,0.45)",
+                  fontFamily: "DM Sans, sans-serif",
+                  textAlign: "center",
+                }}
+              >
+                {addressRetryAttempt === 0
+                  ? "This may take up to 30 seconds"
+                  : "Checking for your address…"}
               </span>
             </div>
           )}
