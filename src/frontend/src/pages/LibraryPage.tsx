@@ -29,7 +29,7 @@ const BUTTON_BASE = {
 
 const WRAPPER_IMG = "/assets/generated/minty-pack-wrapper.png";
 const HERO_IMG =
-  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&st=zsxhvzxf&dl=1";
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=s417fm3ac3e5otzpsbtfpgd36&dl=1";
 
 function PackCard({
   accentRgb: _accentRgb,
@@ -119,6 +119,7 @@ function PackCard({
           <img
             src={HERO_IMG}
             alt="Minty Pack"
+            crossOrigin="anonymous"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = WRAPPER_IMG;
             }}
