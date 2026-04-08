@@ -15,12 +15,14 @@ function MiniVideoCard({
   accentR,
   accentG,
   accentB,
+  isListed,
   onClick,
 }: {
   record: PurchaseRecord;
   accentR: number;
   accentG: number;
   accentB: number;
+  isListed?: boolean;
   onClick: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -123,6 +125,27 @@ function MiniVideoCard({
         >
           Tap to view
         </div>
+        {/* Listed badge */}
+        {isListed && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              background: "rgba(192,160,230,0.75)",
+              backdropFilter: "blur(4px)",
+              borderRadius: 20,
+              padding: "2px 9px",
+              fontSize: 10,
+              fontWeight: 700,
+              color: "#fff",
+              fontFamily: "DM Sans, sans-serif",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Listed
+          </div>
+        )}
       </div>
 
       {/* Info */}
@@ -640,6 +663,9 @@ export function CollectionPage({ onGoToLibrary }: CollectionPageProps) {
                       accentR={accentR}
                       accentG={accentG}
                       accentB={accentB}
+                      isListed={listedClipIds.has(
+                        `${record.clipId}_${record.purchasedAt}`,
+                      )}
                       onClick={() => setSelectedRecord(record)}
                     />
                   ))}

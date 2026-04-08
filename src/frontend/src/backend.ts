@@ -140,6 +140,14 @@ export interface VideoAsset {
     created_at: bigint;
     asset_id: string;
 }
+export interface EarningsSummary {
+    fromAuctionWins: number;
+    fromCopySales: number;
+    totalBtc: number;
+    totalUsd: number;
+    fromTradeRoyalties: number;
+    transactionCount: bigint;
+}
 export interface CreateTcgSetInput {
     setCode: string;
     coverImageUrl: string;
@@ -453,6 +461,11 @@ export interface backendInterface {
     getListingsByClip(clipId: string): Promise<Array<Listing>>;
     getMarketCap(clipId: string): Promise<MarketCapEntry | null>;
     getMarketListings(): Promise<Array<MarketListing>>;
+    /**
+     * / Returns an earnings summary for the calling principal.
+     * / Sums splits where role == "creator" or role == "seller".
+     */
+    getMyEarnings(): Promise<EarningsSummary>;
     getMyRole(): Promise<UserRole>;
     /**
      * / Returns transactions where p appears in any split's principal.
@@ -479,13 +492,13 @@ export interface backendInterface {
      */
     getTransactionHistory(): Promise<Array<Transaction>>;
     /**
-     * / Get trending hashtags sorted by viral score descending.
+     * / Get trending hashtags sorted by like score descending.
      * / Returns (tag, post_count) pairs.
      */
     getTrendingHashtags(): Promise<Array<[string, bigint]>>;
     /**
      * / Get trending hashtags with a hot flag.
-     * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+     * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by like score.
      */
     getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
@@ -1066,6 +1079,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getMarketListings();
+            return result;
+        }
+    }
+    async getMyEarnings(): Promise<EarningsSummary> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyEarnings();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyEarnings();
             return result;
         }
     }

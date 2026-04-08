@@ -216,7 +216,6 @@ function AppContent() {
         explicitFlag: draft.explicit ?? false,
         likeCount: 0,
         timestamp: now,
-        viralScore: 0,
       };
       addClipToFeed(clip);
     }

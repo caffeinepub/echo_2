@@ -353,45 +353,7 @@ header.fixed {
   color: oklch(0.72 0.1 228);
 }
 
-/* ── Neon logo (light only) ── */
-.echo-logo-neon {
-  animation: echo-neon-breathe-light 3.8s ease-in-out infinite;
-  will-change: filter;
-}
-
-[data-theme="light"] .echo-logo-neon {
-  animation: echo-neon-breathe-light 3.8s ease-in-out infinite !important;
-}
-
-@keyframes echo-neon-breathe {
-  0%,
-  100% {
-    filter: brightness(1.0)
-      drop-shadow(0 0 2px rgba(var(--cycle-accent-rgb), 0.6))
-      drop-shadow(0 0 8px rgba(var(--cycle-accent-rgb), 0.25))
-      drop-shadow(0 0 18px rgba(var(--cycle-accent-rgb), 0.12));
-  }
-  50% {
-    filter: brightness(1.05)
-      drop-shadow(0 0 3px rgba(var(--cycle-accent-rgb), 0.75))
-      drop-shadow(0 0 12px rgba(var(--cycle-accent-rgb), 0.35))
-      drop-shadow(0 0 24px rgba(var(--cycle-accent-rgb), 0.18));
-  }
-}
-
-@keyframes echo-neon-breathe-light {
-  0%,
-  100% {
-    filter: brightness(0.92)
-      drop-shadow(0 0 1px rgba(var(--cycle-accent-rgb), 0.22))
-      drop-shadow(0 0 3px rgba(var(--cycle-accent-rgb), 0.12));
-  }
-  50% {
-    filter: brightness(0.96)
-      drop-shadow(0 0 2px rgba(var(--cycle-accent-rgb), 0.3))
-      drop-shadow(0 0 6px rgba(var(--cycle-accent-rgb), 0.16));
-  }
-}
+/* ── Neon logo animations removed — logo displays as-is ── */
 
 /* ── Light mode transparent-white overlay overrides ── */
 [data-theme="light"] .bg-white\/\[0\.06\],

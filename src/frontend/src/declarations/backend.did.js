@@ -194,6 +194,14 @@ export const MarketListing = IDL.Record({
   'editionId' : IDL.Nat,
   'price' : IDL.Nat,
 });
+export const EarningsSummary = IDL.Record({
+  'fromAuctionWins' : IDL.Float64,
+  'fromCopySales' : IDL.Float64,
+  'totalBtc' : IDL.Float64,
+  'totalUsd' : IDL.Float64,
+  'fromTradeRoyalties' : IDL.Float64,
+  'transactionCount' : IDL.Nat,
+});
 export const TxType = IDL.Variant({
   'mintFee' : IDL.Null,
   'secondaryTrade' : IDL.Null,
@@ -351,6 +359,7 @@ export const idlService = IDL.Service({
   'getListingsByClip' : IDL.Func([IDL.Text], [IDL.Vec(Listing)], ['query']),
   'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+  'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
   'getMyRole' : IDL.Func([], [UserRole], ['query']),
   'getMyTransactions' : IDL.Func(
       [IDL.Principal],
@@ -612,6 +621,14 @@ export const idlFactory = ({ IDL }) => {
     'editionId' : IDL.Nat,
     'price' : IDL.Nat,
   });
+  const EarningsSummary = IDL.Record({
+    'fromAuctionWins' : IDL.Float64,
+    'fromCopySales' : IDL.Float64,
+    'totalBtc' : IDL.Float64,
+    'totalUsd' : IDL.Float64,
+    'fromTradeRoyalties' : IDL.Float64,
+    'transactionCount' : IDL.Nat,
+  });
   const TxType = IDL.Variant({
     'mintFee' : IDL.Null,
     'secondaryTrade' : IDL.Null,
@@ -766,6 +783,7 @@ export const idlFactory = ({ IDL }) => {
     'getListingsByClip' : IDL.Func([IDL.Text], [IDL.Vec(Listing)], ['query']),
     'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+    'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
     'getMyRole' : IDL.Func([], [UserRole], ['query']),
     'getMyTransactions' : IDL.Func(
         [IDL.Principal],

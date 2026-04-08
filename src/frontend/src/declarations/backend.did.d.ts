@@ -77,6 +77,14 @@ export interface CreateTcgSetInput {
   'cardCount' : [] | [bigint],
   'releaseYear' : bigint,
 }
+export interface EarningsSummary {
+  'fromAuctionWins' : number,
+  'fromCopySales' : number,
+  'totalBtc' : number,
+  'totalUsd' : number,
+  'fromTradeRoyalties' : number,
+  'transactionCount' : bigint,
+}
 export type LikeResult = { 'ok' : bigint } |
   { 'alreadyLiked' : null } |
   { 'notFound' : null };
@@ -341,6 +349,11 @@ export interface _SERVICE {
   'getListingsByClip' : ActorMethod<[string], Array<Listing>>,
   'getMarketCap' : ActorMethod<[string], [] | [MarketCapEntry]>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
+  /**
+   * / Returns an earnings summary for the calling principal.
+   * / Sums splits where role == "creator" or role == "seller".
+   */
+  'getMyEarnings' : ActorMethod<[], EarningsSummary>,
   'getMyRole' : ActorMethod<[], UserRole>,
   /**
    * / Returns transactions where p appears in any split's principal.
@@ -365,13 +378,13 @@ export interface _SERVICE {
    */
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   /**
-   * / Get trending hashtags sorted by viral score descending.
+   * / Get trending hashtags sorted by like score descending.
    * / Returns (tag, post_count) pairs.
    */
   'getTrendingHashtags' : ActorMethod<[], Array<[string, bigint]>>,
   /**
    * / Get trending hashtags with a hot flag.
-   * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+   * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by like score.
    */
   'getTrendingHashtagsWithHotFlag' : ActorMethod<
     [],

@@ -1071,25 +1071,44 @@ export function MarketPage() {
   const [clipDetail, setClipDetail] = useState<ClipDetailState | null>(null);
   const [offerTarget, setOfferTarget] = useState<Listing | null>(null);
 
-  // Load listings and top 10 from backend
+  // Load listings and top 10 from backend with polling
   useEffect(() => {
     if (!actor || isFetching) return;
 
-    setIsLoadingListings(true);
-    actor
-      .getListings()
-      .then((data) => setListings(data))
-      .catch((err) => console.error("[Market] getListings failed:", err))
-      .finally(() => setIsLoadingListings(false));
+    function fetchListings() {
+      if (!actor) return;
+      actor
+        .getListings()
+        .then((data) => setListings(data))
+        .catch((err) => console.error("[Market] getListings failed:", err))
+        .finally(() => setIsLoadingListings(false));
+    }
 
+    function fetchTop10() {
+      if (!actor) return;
+      actor
+        .getTop10ByMarketCap()
+        .then((data) => setTop10(data))
+        .catch((err) =>
+          console.error("[Market] getTop10ByMarketCap failed:", err),
+        )
+        .finally(() => setIsLoadingTop10(false));
+    }
+
+    // Initial fetch
+    setIsLoadingListings(true);
     setIsLoadingTop10(true);
-    actor
-      .getTop10ByMarketCap()
-      .then((data) => setTop10(data))
-      .catch((err) =>
-        console.error("[Market] getTop10ByMarketCap failed:", err),
-      )
-      .finally(() => setIsLoadingTop10(false));
+    fetchListings();
+    fetchTop10();
+
+    // Poll every 5s for listings, every 10s for top10
+    const listingsInterval = setInterval(fetchListings, 5000);
+    const top10Interval = setInterval(fetchTop10, 10000);
+
+    return () => {
+      clearInterval(listingsInterval);
+      clearInterval(top10Interval);
+    };
   }, [actor, isFetching]);
 
   // Open detail view for a clip — load listings + price history

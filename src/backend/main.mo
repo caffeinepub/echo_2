@@ -303,10 +303,11 @@ actor {
     hashtags : [Text];
     explicit_flag : Bool;
     like_count : Nat;
+    like_timestamps : [(Principal, Int)];
+    // Retained for schema compatibility (previously used in viral score computation)
     likes_last_hour : Nat;
     likes_last_6_hours : Nat;
     likes_last_24_hours : Nat;
-    like_timestamps : [(Principal, Int)];
   };
 
   // Stored video blob metadata
@@ -377,10 +378,10 @@ actor {
     hashtags = ["goldenhour", "sunset", "vibes"];
     explicit_flag = false;
     like_count = 1842;
-    likes_last_hour = 12;
-    likes_last_6_hours = 87;
-    likes_last_24_hours = 340;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_002", {
@@ -393,10 +394,10 @@ actor {
     hashtags = ["citylights", "nightlife", "urban"];
     explicit_flag = false;
     like_count = 3210;
-    likes_last_hour = 45;
-    likes_last_6_hours = 210;
-    likes_last_24_hours = 870;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_003", {
@@ -409,10 +410,10 @@ actor {
     hashtags = ["coastaldrift", "ocean", "summer"];
     explicit_flag = false;
     like_count = 987;
-    likes_last_hour = 5;
-    likes_last_6_hours = 32;
-    likes_last_24_hours = 150;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_004", {
@@ -425,10 +426,10 @@ actor {
     hashtags = ["mountains", "nature", "hiking"];
     explicit_flag = false;
     like_count = 2554;
-    likes_last_hour = 30;
-    likes_last_6_hours = 145;
-    likes_last_24_hours = 620;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_005", {
@@ -441,10 +442,10 @@ actor {
     hashtags = ["streetart", "graffiti", "culture"];
     explicit_flag = false;
     like_count = 4102;
-    likes_last_hour = 78;
-    likes_last_6_hours = 380;
-    likes_last_24_hours = 1200;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_006", {
@@ -457,10 +458,10 @@ actor {
     hashtags = ["neon", "rain", "nightcity"];
     explicit_flag = false;
     like_count = 1530;
-    likes_last_hour = 20;
-    likes_last_6_hours = 95;
-    likes_last_24_hours = 450;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   videoClips.add("clip_007", {
@@ -473,10 +474,10 @@ actor {
     hashtags = ["desert", "dawn", "travel"];
     explicit_flag = false;
     like_count = 720;
-    likes_last_hour = 60;
-    likes_last_6_hours = 200;
-    likes_last_24_hours = 720;
     like_timestamps = [];
+    likes_last_hour = 0;
+    likes_last_6_hours = 0;
+    likes_last_24_hours = 0;
   });
 
   // ─────────────────────────────────────────────
@@ -516,36 +517,6 @@ actor {
   // ─────────────────────────────────────────────
   // HELPERS
   // ─────────────────────────────────────────────
-
-  // Viral score: like_count*0.6 + last24h*0.25 + last6h*0.1 + lastHour*0.05
-  func viralScore(clip : VideoClip) : Float {
-    clip.like_count.toFloat() * 0.6
-    + clip.likes_last_24_hours.toFloat() * 0.25
-    + clip.likes_last_6_hours.toFloat() * 0.1
-    + clip.likes_last_hour.toFloat() * 0.05;
-  };
-
-  // Recompute rolling like windows from stored timestamps
-  func recomputeWindows(clip : VideoClip) : VideoClip {
-    let now = Time.now();
-    let oneHour : Int = 3_600_000_000_000;
-    let sixHours : Int = 6 * oneHour;
-    let oneDay : Int = 24 * oneHour;
-
-    var h : Nat = 0;
-    var s : Nat = 0;
-    var d : Nat = 0;
-
-    for (entry in clip.like_timestamps.values()) {
-      let ts = entry.1;
-      let age = now - ts;
-      if (age <= oneHour) { h += 1 };
-      if (age <= sixHours) { s += 1 };
-      if (age <= oneDay) { d += 1 };
-    };
-
-    { clip with likes_last_hour = h; likes_last_6_hours = s; likes_last_24_hours = d };
-  };
 
   // ─────────────────────────────────────────────
   // PACK FUNCTIONS
@@ -891,10 +862,10 @@ actor {
       hashtags;
       explicit_flag;
       like_count = 0;
+      like_timestamps = [];
       likes_last_hour = 0;
       likes_last_6_hours = 0;
       likes_last_24_hours = 0;
-      like_timestamps = [];
     };
     videoClips.add(clip_id, clip);
     clip_id;
@@ -914,11 +885,7 @@ actor {
       };
       case (#trending) {
         all.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
-          let sa = viralScore(a);
-          let sb = viralScore(b);
-          if (sb > sa) #less
-          else if (sb < sa) #greater
-          else #equal
+          Nat.compare(b.like_count, a.like_count)
         });
       };
       case (#top) {
@@ -946,10 +913,8 @@ actor {
           like_count = clip.like_count + 1;
           like_timestamps = newTimestamps;
         };
-        // Recompute rolling windows with the new timestamp included
-        let withWindows = recomputeWindows(updated);
-        videoClips.add(clip_id, withWindows);
-        #ok(withWindows.like_count);
+        videoClips.add(clip_id, updated);
+        #ok(updated.like_count);
       };
     };
   };
@@ -961,23 +926,23 @@ actor {
     });
   };
 
-  // Compute the viral score for a hashtag by summing across all clips with that tag.
-  func hashtagViralScore(tag : Text) : Float {
-    var score : Float = 0.0;
+  // Compute the total like count for a hashtag by summing across all clips with that tag.
+  func hashtagLikeScore(tag : Text) : Nat {
+    var score : Nat = 0;
     let lowerTag = tag.toLower();
     for (clip in videoClips.values()) {
       let hasTag = clip.hashtags.find(func(h : Text) : Bool {
         h.toLower() == lowerTag
       }) != null;
       if (hasTag) {
-        score += viralScore(clip);
+        score += clip.like_count;
       };
     };
     score;
   };
 
-  // Internal helper: build (tag, postCount, viralScore) triples for all tags.
-  func _buildTagStats() : [(Text, Nat, Float)] {
+  // Internal helper: build (tag, postCount, likeScore) triples for all tags.
+  func _buildTagStats() : [(Text, Nat, Nat)] {
     let tagCounts = Map.empty<Text, Nat>();
     for (clip in videoClips.values()) {
       for (tag in clip.hashtags.values()) {
@@ -989,36 +954,32 @@ actor {
         tagCounts.add(lowerTag, current + 1);
       };
     };
-    // Build triples with viral scores
-    tagCounts.toArray().map<(Text, Nat), (Text, Nat, Float)>(
+    // Build triples with like scores
+    tagCounts.toArray().map<(Text, Nat), (Text, Nat, Nat)>(
       func((tag, count)) {
-        (tag, count, hashtagViralScore(tag))
+        (tag, count, hashtagLikeScore(tag))
       }
     );
   };
 
-  /// Get trending hashtags sorted by viral score descending.
+  /// Get trending hashtags sorted by like score descending.
   /// Returns (tag, post_count) pairs.
   public query func getTrendingHashtags() : async [(Text, Nat)] {
     let stats = _buildTagStats();
-    let sorted = stats.sort(func(a : (Text, Nat, Float), b : (Text, Nat, Float)) : Order.Order {
-      if (b.2 > a.2) #less
-      else if (b.2 < a.2) #greater
-      else #equal
+    let sorted = stats.sort(func(a : (Text, Nat, Nat), b : (Text, Nat, Nat)) : Order.Order {
+      Nat.compare(b.2, a.2)
     });
-    sorted.map<(Text, Nat, Float), (Text, Nat)>(func((tag, count, _score)) { (tag, count) });
+    sorted.map<(Text, Nat, Nat), (Text, Nat)>(func((tag, count, _score)) { (tag, count) });
   };
 
   /// Get trending hashtags with a hot flag.
-  /// Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+  /// Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by like score.
   public query func getTrendingHashtagsWithHotFlag() : async [(Text, Nat, Bool)] {
     let stats = _buildTagStats();
-    let sorted = stats.sort(func(a : (Text, Nat, Float), b : (Text, Nat, Float)) : Order.Order {
-      if (b.2 > a.2) #less
-      else if (b.2 < a.2) #greater
-      else #equal
+    let sorted = stats.sort(func(a : (Text, Nat, Nat), b : (Text, Nat, Nat)) : Order.Order {
+      Nat.compare(b.2, a.2)
     });
-    sorted.mapEntries<(Text, Nat, Float), (Text, Nat, Bool)>(
+    sorted.mapEntries<(Text, Nat, Nat), (Text, Nat, Bool)>(
       func((tag, count, _score), idx) {
         (tag, count, idx < 3)
       }
@@ -1043,11 +1004,7 @@ actor {
       };
       case (#trending) {
         filtered.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
-          let sa = viralScore(a);
-          let sb = viralScore(b);
-          if (sb > sa) #less
-          else if (sb < sa) #greater
-          else #equal
+          Nat.compare(b.like_count, a.like_count)
         });
       };
       case (#top) {
@@ -1612,5 +1569,67 @@ actor {
     }).sort(func(a : Transaction, b : Transaction) : Order.Order {
       Int.compare(b.timestamp, a.timestamp)
     });
+  };
+
+  public type EarningsSummary = {
+    totalUsd : Float;
+    totalBtc : Float;
+    fromCopySales : Float;
+    fromTradeRoyalties : Float;
+    fromAuctionWins : Float;
+    transactionCount : Nat;
+  };
+
+  /// Returns an earnings summary for the calling principal.
+  /// Sums splits where role == "creator" or role == "seller".
+  public shared query ({ caller }) func getMyEarnings() : async EarningsSummary {
+    var totalUsd : Float = 0.0;
+    var totalBtc : Float = 0.0;
+    var fromCopySales : Float = 0.0;
+    var fromTradeRoyalties : Float = 0.0;
+    var fromAuctionWins : Float = 0.0;
+    var transactionCount : Nat = 0;
+
+    for (tx in transactions.values()) {
+      // Check if caller appears in any split of this transaction
+      let callerInTx = tx.splits.find(func(s : TxSplit) : Bool {
+        Principal.equal(s.principal, caller)
+      }) != null;
+
+      if (callerInTx) {
+        transactionCount += 1;
+        // Sum only the splits belonging to caller with role "creator" or "seller"
+        for (split in tx.splits.values()) {
+          if (
+            Principal.equal(split.principal, caller) and
+            (split.role == "creator" or split.role == "seller")
+          ) {
+            totalUsd += split.usdAmount;
+            totalBtc += split.btcAmountSimulated;
+            switch (tx.txType) {
+              case (#copySale) { fromCopySales += split.usdAmount };
+              case (#secondaryTrade) {
+                if (split.role == "creator") {
+                  fromTradeRoyalties += split.usdAmount
+                } else {
+                  // role == "seller"
+                  fromAuctionWins += split.usdAmount
+                }
+              };
+              case (#mintFee) {};
+            };
+          };
+        };
+      };
+    };
+
+    {
+      totalUsd;
+      totalBtc;
+      fromCopySales;
+      fromTradeRoyalties;
+      fromAuctionWins;
+      transactionCount;
+    };
   };
 };

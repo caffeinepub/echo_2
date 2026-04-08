@@ -1,23 +1,11 @@
 import { ArrowLeft, UserCircle } from "lucide-react";
 import { usePackStyle } from "../context/PackStyleContext";
+import { useEarnings } from "../hooks/useEarnings";
 
 // ─── Mock Data ─────────────────────────────────────────────────────────────────
 const MOCK_PROFILE = {
   displayName: "Collector",
 };
-
-const MOCK_REVENUE = {
-  totalEarned: 1240.55,
-  fromPackSales: 1050.2,
-  fromTradingFees: 190.35,
-};
-
-function fmt(n: number) {
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 // ─── ProfilePage ───────────────────────────────────────────────────────────────
 interface ProfilePageProps {
@@ -27,6 +15,7 @@ interface ProfilePageProps {
 export function ProfilePage({ onBack }: ProfilePageProps) {
   const { activeStyle } = usePackStyle();
   const accentColor = `rgb(${activeStyle.accentR},${activeStyle.accentG},${activeStyle.accentB})`;
+  const earnings = useEarnings();
 
   return (
     <div
@@ -145,10 +134,38 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                 letterSpacing: "-0.03em",
                 lineHeight: 1,
                 fontFamily: "'DM Sans', sans-serif",
-                marginBottom: 28,
+                marginBottom: earnings.loading ? 4 : 6,
               }}
             >
-              ${fmt(MOCK_REVENUE.totalEarned)}
+              {earnings.loading ? (
+                <span style={{ color: "#ccc" }}>--</span>
+              ) : (
+                <span>
+                  <span
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 700,
+                      color: "#f7931a",
+                      marginRight: 2,
+                    }}
+                  >
+                    ₿
+                  </span>
+                  ${earnings.totalUsd}
+                </span>
+              )}
+            </div>
+
+            {/* BTC subtext */}
+            <div
+              style={{
+                fontSize: 12,
+                color: "#aaa",
+                fontFamily: "'DM Sans', sans-serif",
+                marginBottom: 24,
+              }}
+            >
+              {earnings.loading ? "" : `≈ ${earnings.totalBtc} BTC`}
             </div>
 
             {/* Divider */}
@@ -162,7 +179,7 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
 
             {/* Breakdown */}
             <div className="flex flex-col" style={{ gap: 16 }}>
-              {/* From pack sales */}
+              {/* From copy sales */}
               <div className="flex items-center justify-between">
                 <span
                   style={{
@@ -172,21 +189,21 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                     fontWeight: 400,
                   }}
                 >
-                  From pack sales
+                  From copy sales
                 </span>
                 <span
                   style={{
                     fontSize: 15,
                     fontWeight: 600,
-                    color: "#111",
+                    color: earnings.loading ? "#ccc" : "#111",
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  ${fmt(MOCK_REVENUE.fromPackSales)}
+                  {earnings.loading ? "--" : `$${earnings.fromCopySales}`}
                 </span>
               </div>
 
-              {/* From trading fees */}
+              {/* From trade royalties */}
               <div className="flex items-center justify-between">
                 <span
                   style={{
@@ -196,17 +213,41 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                     fontWeight: 400,
                   }}
                 >
-                  From trading fees
+                  From trade royalties
                 </span>
                 <span
                   style={{
                     fontSize: 15,
                     fontWeight: 600,
-                    color: "#111",
+                    color: earnings.loading ? "#ccc" : "#111",
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  ${fmt(MOCK_REVENUE.fromTradingFees)}
+                  {earnings.loading ? "--" : `$${earnings.fromTradeRoyalties}`}
+                </span>
+              </div>
+
+              {/* From auction wins */}
+              <div className="flex items-center justify-between">
+                <span
+                  style={{
+                    fontSize: 14,
+                    color: "#666",
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontWeight: 400,
+                  }}
+                >
+                  From auction wins
+                </span>
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: earnings.loading ? "#ccc" : "#111",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  {earnings.loading ? "--" : `$${earnings.fromAuctionWins}`}
                 </span>
               </div>
             </div>

@@ -36,7 +36,7 @@ export const PACK_STYLES: Record<PackStyleId, PackStyle> = {
     accentB: 230,
     glowDark: "rgba(192,160,230,",
     glowLight: "rgba(160,120,200,",
-    logoFilter: "hue-rotate(140deg) saturate(0.85)",
+    logoFilter: "none",
   },
 };
 

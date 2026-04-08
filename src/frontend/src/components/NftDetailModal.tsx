@@ -1,3 +1,4 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import { Clock, Tag, TrendingUp, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { createActor } from "../backend";
 import type { PurchaseRecord } from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import type { MarketListing } from "../types/localMarket";
@@ -69,10 +71,12 @@ export function buildPriceHistory(
 
 export function NftDetailModal({ record, onClose, onListed }: Props) {
   const { getCurveState, getOrCreateCurve } = useBondingCurve();
+  const { actor } = useActor(createActor);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showListing, setShowListing] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState(DURATIONS[1]);
   const [listed, setListed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // Ensure curve state exists
@@ -119,52 +123,74 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
     if (e.target === e.currentTarget) onClose();
   }
 
-  function handleConfirmListing() {
+  async function handleConfirmListing() {
     const listPriceNum = Number.parseFloat(priceInput);
     if (!listPriceNum || listPriceNum <= 0) return;
-
-    // Build a new MarketListing entry
-    const newListing: MarketListing = {
-      id: `listing_${record.clipId}_${record.purchasedAt}_${Date.now()}`,
-      clipId: record.clipId,
-      clipTitle: record.clipTitle,
-      creatorUsername: record.creatorName,
-      imageUrl: record.videoUrl,
-      videoUrl: record.videoUrl,
-      listPrice: listPriceNum,
-      editionNumber: record.editionNumber ?? 1,
-      totalEditions: record.totalSupply ?? 1000,
-      listedAt: Date.now(),
-      sellerId: `user_${record.creatorName.replace(/\s/g, "_")}`,
-    };
-
-    // Push to minty_market_listings
-    const existing = loadListings();
-    saveListings([newListing, ...existing]);
-
-    // Mark purchase record as listed in minty_purchases_v1
-    try {
-      const raw = localStorage.getItem("minty_purchases_v1");
-      const records: (PurchaseRecord & { listed?: boolean })[] = raw
-        ? JSON.parse(raw)
-        : [];
-      const updated = records.map((r) =>
-        r.clipId === record.clipId && r.purchasedAt === record.purchasedAt
-          ? { ...r, listed: true }
-          : r,
-      );
-      localStorage.setItem("minty_purchases_v1", JSON.stringify(updated));
-    } catch {
-      // ignore
+    if (!actor) {
+      showToast("Not connected. Please try again.");
+      return;
     }
 
-    setListed(true);
-    showToast("Listed for sale! 🎉");
+    setSubmitting(true);
+    try {
+      const result = await actor.createListing(
+        record.clipId,
+        BigInt(record.editionNumber ?? 1),
+        listPriceNum,
+      );
 
-    setTimeout(() => {
-      onListed(record.clipId);
-      onClose();
-    }, 1400);
+      if (result.__kind__ === "err") {
+        showToast(`Error: ${result.err}`);
+        return;
+      }
+
+      // Optional localStorage backup after successful backend call
+      const newListing: MarketListing = {
+        id: `listing_${record.clipId}_${record.purchasedAt}_${Date.now()}`,
+        clipId: record.clipId,
+        clipTitle: record.clipTitle,
+        creatorUsername: record.creatorName,
+        imageUrl: record.videoUrl,
+        videoUrl: record.videoUrl,
+        listPrice: listPriceNum,
+        editionNumber: record.editionNumber ?? 1,
+        totalEditions: record.totalSupply ?? 1000,
+        listedAt: Date.now(),
+        sellerId: `user_${record.creatorName.replace(/\s/g, "_")}`,
+      };
+      try {
+        saveListings([newListing, ...loadListings()]);
+      } catch {
+        // ignore backup failure
+      }
+
+      // Mark purchase record as listed in minty_purchases_v1
+      try {
+        const raw = localStorage.getItem("minty_purchases_v1");
+        const records: (PurchaseRecord & { listed?: boolean })[] = raw
+          ? JSON.parse(raw)
+          : [];
+        const updated = records.map((r) =>
+          r.clipId === record.clipId && r.purchasedAt === record.purchasedAt
+            ? { ...r, listed: true }
+            : r,
+        );
+        localStorage.setItem("minty_purchases_v1", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+
+      setListed(true);
+      showToast("Listed! 🎉");
+      setTimeout(() => {
+        onListed?.(record.clipId);
+        onClose();
+      }, 1200);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Failed to create listing");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -700,23 +726,34 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                   type="button"
                   data-ocid="nft_detail.confirm_listing_button"
                   onClick={handleConfirmListing}
-                  disabled={listed}
+                  disabled={listed || submitting}
                   style={{
                     flex: 2,
                     height: 46,
                     borderRadius: 12,
                     border: "none",
-                    background: listed ? "rgba(100,80,140,0.5)" : ACCENT_GRAD,
+                    background:
+                      listed || submitting
+                        ? "rgba(100,80,140,0.5)"
+                        : ACCENT_GRAD,
                     color: "#fff",
                     fontSize: 14,
                     fontWeight: 700,
                     fontFamily: "DM Sans, sans-serif",
-                    cursor: listed ? "default" : "pointer",
-                    boxShadow: listed ? "none" : `0 4px 16px ${ACCENT_GLOW}`,
+                    cursor: listed || submitting ? "default" : "pointer",
+                    boxShadow:
+                      listed || submitting
+                        ? "none"
+                        : `0 4px 16px ${ACCENT_GLOW}`,
+                    opacity: submitting ? 0.6 : 1,
                     transition: "all 0.2s ease",
                   }}
                 >
-                  {listed ? "✓ Listed!" : "Confirm Listing"}
+                  {listed
+                    ? "✓ Listed!"
+                    : submitting
+                      ? "Creating listing…"
+                      : "Confirm Listing"}
                 </button>
               </div>
             </div>

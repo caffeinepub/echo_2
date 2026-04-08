@@ -25,7 +25,6 @@ export interface VideoClip {
   explicitFlag: boolean;
   likeCount: number;
   timestamp: number;
-  viralScore: number;
 }
 
 export type FeedSort = "newest" | "trending" | "top";
@@ -49,20 +48,6 @@ interface VideoFeedContextValue {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const NOW = Date.now();
-const H = 3_600_000;
-
-function computeViralScore(c: {
-  likeCount: number;
-  timestamp: number;
-}): number {
-  const age = NOW - c.timestamp;
-  const lastHour = age < H ? c.likeCount * 0.05 : 0;
-  const last6h = age < 6 * H ? c.likeCount * 0.1 : 0;
-  const last24h = age < 24 * H ? c.likeCount * 0.25 : 0;
-  return c.likeCount * 0.6 + last24h + last6h + lastHour;
-}
-
 function mapBackendClip(bc: BackendVideoClip): VideoClip {
   const likeCount = Number(bc.like_count);
   const timestamp = Number(bc.timestamp);
@@ -78,7 +63,6 @@ function mapBackendClip(bc: BackendVideoClip): VideoClip {
     explicitFlag: bc.explicit_flag,
     likeCount,
     timestamp,
-    viralScore: computeViralScore({ likeCount, timestamp }),
   };
 }
 
@@ -244,7 +228,7 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     if (activeSort === "newest") {
       list = [...list].sort((a, b) => b.timestamp - a.timestamp);
     } else if (activeSort === "trending") {
-      list = [...list].sort((a, b) => b.viralScore - a.viralScore);
+      list = [...list].sort((a, b) => b.likeCount - a.likeCount);
     } else {
       list = [...list].sort((a, b) => b.likeCount - a.likeCount);
     }

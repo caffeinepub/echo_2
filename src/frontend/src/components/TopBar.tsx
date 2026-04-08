@@ -17,7 +17,7 @@ const isLight = true;
 
 let neonStyleEl: HTMLStyleElement | null = null;
 
-function injectNeonStyles(r: number, g: number, b: number, filter: string) {
+function injectNeonStyles(r: number, g: number, b: number, _filter?: string) {
   if (!neonStyleEl) {
     neonStyleEl = document.createElement("style");
     document.head.appendChild(neonStyleEl);
@@ -25,8 +25,8 @@ function injectNeonStyles(r: number, g: number, b: number, filter: string) {
 
   neonStyleEl.textContent = `
 @keyframes echo-neon-breathe-light {
-  0%,100% { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.92) drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
-  50%     { filter: ${filter !== "none" ? `${filter} ` : ""}brightness(0.96) drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
+  0%,100% { filter: drop-shadow(0 0 1px rgba(${r},${g},${b},0.22)) drop-shadow(0 0 3px rgba(${r},${g},${b},0.12)); }
+  50%     { filter: drop-shadow(0 0 2px rgba(${r},${g},${b},0.3))  drop-shadow(0 0 6px rgba(${r},${g},${b},0.16)); }
 }
 
 .echo-logo-neon {
@@ -1227,7 +1227,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
   const MINTY_LOGO =
-    "https://dl.dropboxusercontent.com/scl/fi/xvqgzclmz0guu1k2rt8w5/Photo-Apr-07-2026-11-27-28-PM.png?rlkey=zh48w4urma16ow195gnihyvcj&dl=1";
+    "https://dl.dropboxusercontent.com/scl/fi/xvqgzclmz0guu1k2rt8w5/Photo-Apr-07-2026-11-27-28-PM.png?rlkey=zh48w4urma16ow195gnihyvcj&dl=0";
   const [logoError, setLogoError] = useState(false);
 
   // Reinject neon styles whenever cycle changes
@@ -1290,19 +1290,17 @@ export function TopBar({ onProfileClick }: TopBarProps) {
             <img
               src={MINTY_LOGO}
               alt="Minty"
-              className="echo-logo-neon select-none"
+              className="select-none"
               onError={() => setLogoError(true)}
               style={{
-                height: "88px",
-                maxHeight: "88px",
+                height: "140px",
+                maxHeight: "140px",
                 width: "auto",
-                maxWidth: "min(260px, 55vw)",
+                maxWidth: "min(340px, 70vw)",
                 objectFit: "contain",
                 imageRendering: "auto",
                 display: "block",
                 background: "transparent",
-                filter:
-                  "sepia(0.3) hue-rotate(260deg) saturate(3) brightness(0.7) contrast(1.3)",
               }}
               draggable={false}
             />
