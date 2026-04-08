@@ -38,6 +38,9 @@ export function CaptureMomentPage({
     activeDraft?.videoBlobUrl ?? null,
   );
   const pendingBlobRef = useRef<Blob | null>(null);
+  const [uploadFallbackMsg, setUploadFallbackMsg] = useState<string | null>(
+    null,
+  );
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -166,25 +169,70 @@ export function CaptureMomentPage({
     setPendingBlobUrl(null);
     pendingBlobRef.current = null;
     setRecordingSeconds(0);
+    setUploadFallbackMsg(null);
     setCaptureState("recording");
   }, [pendingBlobUrl]);
 
+  // Keep pendingBlobRef in sync with pendingBlobUrl so the ref is always
+  // available even if it was lost on a component remount.
+  useEffect(() => {
+    if (pendingBlobUrl && !pendingBlobRef.current) {
+      fetch(pendingBlobUrl)
+        .then((r) => r.blob())
+        .then((b) => {
+          pendingBlobRef.current = b;
+        })
+        .catch(() => {
+          // Non-fatal — handleUseVideo will re-fetch if needed
+        });
+    }
+  }, [pendingBlobUrl]);
+
   const handleUseVideo = useCallback(async () => {
-    if (!pendingBlobUrl || !pendingBlobRef.current) return;
+    // Guard on state only — the ref may be null after a remount even when the
+    // blob URL is still valid.
+    if (!pendingBlobUrl) {
+      setUploadFallbackMsg("No video recorded. Please record a clip first.");
+      return;
+    }
+
+    // Re-hydrate the ref if it was lost (e.g. on remount)
+    let videoBlob = pendingBlobRef.current;
+    if (!videoBlob) {
+      try {
+        const res = await fetch(pendingBlobUrl);
+        videoBlob = await res.blob();
+        pendingBlobRef.current = videoBlob;
+      } catch {
+        // If we can't re-fetch the blob, fall back to the URL path below
+        videoBlob = null;
+      }
+    }
 
     // Store blob URL for immediate preview
     setVideoBlobUrl(pendingBlobUrl);
+    setUploadFallbackMsg(null);
     setCaptureState("uploading");
 
     try {
-      const { videoUrl, previewUrl } = await uploadVideo(
-        pendingBlobRef.current,
-      );
-      setPersistedUrls(videoUrl, previewUrl);
+      if (videoBlob) {
+        const { videoUrl, previewUrl } = await uploadVideo(videoBlob);
+        setPersistedUrls(videoUrl, previewUrl);
+      } else {
+        // No blob available — use the URL directly as fallback
+        setPersistedUrls(pendingBlobUrl, pendingBlobUrl);
+        setUploadFallbackMsg(
+          "Upload failed — using local preview. Video may not persist after refresh.",
+        );
+      }
       setCaptureState("setup");
     } catch {
-      // Upload failed — stay in preview so user can retry
-      setCaptureState("preview");
+      // Upload failed — fall back to local blob URL so user can still continue
+      setPersistedUrls(pendingBlobUrl, pendingBlobUrl);
+      setUploadFallbackMsg(
+        "Upload failed — using local preview. Video may not persist after refresh.",
+      );
+      setCaptureState("setup");
     }
   }, [pendingBlobUrl, uploadVideo, setVideoBlobUrl, setPersistedUrls]);
 
@@ -912,6 +960,25 @@ export function CaptureMomentPage({
           >
             Preview — tap Use Video to upload and continue
           </p>
+
+          {uploadFallbackMsg && (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "#ef4444",
+                textAlign: "center",
+                margin: 0,
+                background: "rgba(239,68,68,0.06)",
+                border: "1px solid rgba(239,68,68,0.20)",
+                borderRadius: "10px",
+                padding: "8px 12px",
+                width: "100%",
+                maxWidth: "360px",
+              }}
+            >
+              {uploadFallbackMsg}
+            </p>
+          )}
 
           <div
             style={{
