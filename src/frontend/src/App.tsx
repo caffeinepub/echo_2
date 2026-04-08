@@ -22,7 +22,8 @@ import {
 } from "./context/ReleasesMarketContext";
 import type { MarketRelease } from "./context/ReleasesMarketContext";
 import { UserSettingsProvider } from "./context/UserSettingsContext";
-import { VideoFeedProvider } from "./context/VideoFeedContext";
+import { VideoFeedProvider, useVideoFeed } from "./context/VideoFeedContext";
+import type { VideoClip } from "./context/VideoFeedContext";
 import { WalletProvider } from "./context/WalletContext";
 import { CaptureMomentPage } from "./pages/CaptureMomentPage";
 import { CollectionPage } from "./pages/CollectionPage";
@@ -48,6 +49,7 @@ function AppContent() {
   const [showMintSetConfirmModal, setShowMintSetConfirmModal] = useState(false);
   const { startDraft } = useMomentDraft();
   const { addRelease } = useReleasesMarket();
+  const { addClipToFeed } = useVideoFeed();
 
   useEffect(() => {
     seedMockData();
@@ -111,6 +113,29 @@ function AppContent() {
     };
 
     addRelease(release);
+
+    // Bridge the mint to the Releases feed
+    const videoUrl = draft.video ?? "";
+    if (videoUrl) {
+      const clip: VideoClip = {
+        id: `clip_mint_${draft.id}`,
+        videoUrl,
+        previewUrl: videoUrl,
+        creatorName: "You",
+        creatorAvatar: null,
+        creatorBio: "Creator",
+        title: releaseTitle,
+        hashtags: (draft.hashtags ?? []).map((h) =>
+          h.startsWith("#") ? h : `#${h}`,
+        ),
+        explicitFlag: draft.explicit ?? false,
+        likeCount: 0,
+        timestamp: now,
+        viralScore: 0,
+      };
+      addClipToFeed(clip);
+    }
+
     setPendingMintDraft(null);
     setShowMintSetConfirmModal(false);
   }

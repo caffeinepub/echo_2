@@ -38,6 +38,7 @@ interface VideoFeedContextValue {
   trendingHashtags: string[];
   safeView: boolean;
   setSafeView: (v: boolean) => void;
+  addClipToFeed: (clip: VideoClip) => void;
 }
 
 // ─── Seed data ────────────────────────────────────────────────────────────────
@@ -187,6 +188,8 @@ const SEED_CLIPS: VideoClip[] = [
   },
 ].map((c) => ({ ...c, viralScore: viralScore(c) }));
 
+const SEED_IDS = new Set(SEED_CLIPS.map((c) => c.id));
+
 const TRENDING_HASHTAGS = [
   "#goldenhour",
   "#citylights",
@@ -200,6 +203,7 @@ const TRENDING_HASHTAGS = [
 
 const LS_LIKED_KEY = "minty_feed_liked_v1";
 const LS_SAFE_KEY = "minty_feed_safevew_v1";
+const LS_MINTED_CLIPS_KEY = "minty_feed_minted_v1";
 
 function loadLiked(): Set<string> {
   try {
@@ -219,12 +223,52 @@ function saveLiked(set: Set<string>) {
   }
 }
 
+/** Load only user-minted clips (not seed clips) from localStorage */
+function loadMintedClips(): VideoClip[] {
+  try {
+    const raw = localStorage.getItem(LS_MINTED_CLIPS_KEY);
+    if (raw) return JSON.parse(raw) as VideoClip[];
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+function saveMintedClips(clips: VideoClip[]) {
+  try {
+    localStorage.setItem(LS_MINTED_CLIPS_KEY, JSON.stringify(clips));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Merge minted clips (front) with seed clips (back), deduplicating by id */
+function buildInitialClips(minted: VideoClip[]): VideoClip[] {
+  const seen = new Set<string>();
+  const result: VideoClip[] = [];
+  for (const c of minted) {
+    if (!seen.has(c.id)) {
+      seen.add(c.id);
+      result.push(c);
+    }
+  }
+  for (const c of SEED_CLIPS) {
+    if (!seen.has(c.id)) {
+      seen.add(c.id);
+      result.push(c);
+    }
+  }
+  return result;
+}
+
 // ─── Context ──────────────────────────────────────────────────────────────────
 
 const VideoFeedCtx = createContext<VideoFeedContextValue | null>(null);
 
 export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
-  const [clips, setClips] = useState<VideoClip[]>(SEED_CLIPS);
+  const [clips, setClips] = useState<VideoClip[]>(() =>
+    buildInitialClips(loadMintedClips()),
+  );
   const [likedIds, setLikedIds] = useState<Set<string>>(loadLiked);
   const [activeSort, setActiveSort] = useState<FeedSort>("newest");
   const [activeHashtag, setActiveHashtag] = useState<string | null>(null);
@@ -269,6 +313,21 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  /**
+   * Insert a newly minted clip at the front of the feed and persist it so it
+   * survives page refreshes. Silently skips if the id already exists.
+   */
+  const addClipToFeed = useCallback((clip: VideoClip) => {
+    setClips((prev) => {
+      if (prev.some((c) => c.id === clip.id)) return prev;
+      const next = [clip, ...prev];
+      // Persist only the non-seed clips
+      const minted = next.filter((c) => !SEED_IDS.has(c.id));
+      saveMintedClips(minted);
+      return next;
+    });
+  }, []);
+
   const filteredClips = (() => {
     let list = clips.filter((c) => !safeView || !c.explicitFlag);
     if (activeHashtag) {
@@ -298,6 +357,7 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
         trendingHashtags: TRENDING_HASHTAGS,
         safeView,
         setSafeView,
+        addClipToFeed,
       }}
     >
       {children}
