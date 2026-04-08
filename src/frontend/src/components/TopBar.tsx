@@ -1302,7 +1302,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
                 display: "block",
                 background: "transparent",
                 filter:
-                  "hue-rotate(260deg) saturate(2.2) brightness(0.85) contrast(1.1)",
+                  "sepia(0.3) hue-rotate(260deg) saturate(3) brightness(0.7) contrast(1.3)",
               }}
               draggable={false}
             />
