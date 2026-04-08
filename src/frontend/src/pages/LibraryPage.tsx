@@ -8,6 +8,7 @@ interface LibraryPageProps {
   onAlbumClick?: (albumId: string) => void;
   onBrowseReleases?: () => void;
   onCaptureMoment?: () => void;
+  onViewTransactions?: () => void;
 }
 
 type PackState = "idle" | "opening" | "revealed";
@@ -27,9 +28,8 @@ const BUTTON_BASE = {
   transition: "background 0.15s ease, transform 0.1s ease",
 } as const;
 
-const WRAPPER_IMG = "/assets/generated/minty-pack-wrapper.png";
-const HERO_IMG =
-  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=s417fm3ac3e5otzpsbtfpgd36&dl=1";
+const DROPBOX_IMAGE =
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
 
 function PackCard({
   accentRgb: _accentRgb,
@@ -117,11 +117,10 @@ function PackCard({
           }}
         >
           <img
-            src={HERO_IMG}
+            src={DROPBOX_IMAGE}
             alt="Minty Pack"
-            crossOrigin="anonymous"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = WRAPPER_IMG;
+              (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
             style={{
               maxHeight: "190px",
@@ -291,6 +290,7 @@ function DraftLockedState({
 export function LibraryPage({
   onBrowseReleases,
   onCaptureMoment,
+  onViewTransactions,
 }: LibraryPageProps) {
   const [packState, setPackState] = useState<PackState>("idle");
   const [isButtonHovered, setIsButtonHovered] = useState(false);
@@ -525,6 +525,40 @@ export function LibraryPage({
             onCaptureMoment?.();
           }}
         />
+      )}
+
+      {/* Transaction history link */}
+      {onViewTransactions && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 20,
+            left: 0,
+            right: 0,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <button
+            type="button"
+            data-ocid="library.transactions_link"
+            onClick={onViewTransactions}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 11,
+              color: "rgba(124,58,237,0.50)",
+              fontFamily: "DM Sans, sans-serif",
+              letterSpacing: "0.02em",
+              padding: "4px 8px",
+              borderRadius: 6,
+              transition: "color 0.15s",
+            }}
+          >
+            ₿ Transaction history
+          </button>
+        </div>
       )}
     </div>
   );

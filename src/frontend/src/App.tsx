@@ -1,4 +1,4 @@
-import { useActor } from "@caffeineai/core-infrastructure";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { InternetIdentityProvider } from "@caffeineai/core-infrastructure";
 import { useEffect, useState } from "react";
 import { ThemeProvider } from "./ThemeContext";
@@ -18,6 +18,7 @@ import {
 } from "./context/MomentDraftContext";
 import type { MomentDraft } from "./context/MomentDraftContext";
 import { PackStyleProvider } from "./context/PackStyleContext";
+import { PaymentProvider, usePayment } from "./context/PaymentContext";
 import {
   ReleasesMarketProvider,
   useReleasesMarket,
@@ -33,13 +34,18 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { MarketPage } from "./pages/MarketPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReleasesPage } from "./pages/ReleasesPage";
+import { TransactionHistoryPage } from "./pages/TransactionHistoryPage";
 import { UploadPage } from "./pages/UploadPage";
+
+const DROPBOX_IMAGE =
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
 
 type View =
   | { type: "tab"; tab: Tab }
   | { type: "upload" }
   | { type: "capture-moment" }
-  | { type: "profile" };
+  | { type: "profile" }
+  | { type: "transactions" };
 
 /** Fetch bytes from a blob URL or regular URL */
 async function fetchBytes(url: string): Promise<Uint8Array> {
@@ -63,6 +69,8 @@ function AppContent() {
   const { addRelease } = useReleasesMarket();
   const { addClipToFeed } = useVideoFeed();
   const { actor } = useActor(createActor);
+  const { recordMintFee } = usePayment();
+  const { identity } = useInternetIdentity();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1400);
@@ -155,6 +163,14 @@ function AppContent() {
       }
     }
 
+    // ── Step 3: Record $1 mint fee (non-blocking) ─────────────────────────────
+    if (identity) {
+      const creatorPrincipal = identity.getPrincipal();
+      recordMintFee(creatorPrincipal).catch((err) =>
+        console.error("[Mint] recordMintFee failed:", err),
+      );
+    }
+
     const totalPacks = 300;
     const packIds = Array.from(
       { length: totalPacks },
@@ -165,7 +181,7 @@ function AppContent() {
       id: `release_mint_${draft.id}`,
       creatorName: "You",
       creatorId: "you",
-      coverImageUrl: "/assets/generated/minty-pack-wrapper.png",
+      coverImageUrl: DROPBOX_IMAGE,
       previewClipUrl: finalPreviewUrl || undefined,
       title: releaseTitle,
       caption: releaseCaption,
@@ -184,7 +200,7 @@ function AppContent() {
 
     addRelease(release);
 
-    // ── Step 3: Add optimistically to Releases feed ───────────────────────────
+    // ── Step 4: Add optimistically to Releases feed ───────────────────────────
     if (finalVideoUrl) {
       const clip: VideoClip = {
         id: clipId ?? `clip_mint_${draft.id}`,
@@ -239,6 +255,7 @@ function AppContent() {
           <LibraryPage
             onBrowseReleases={() => setView({ type: "tab", tab: "releases" })}
             onCaptureMoment={handleCaptureMoment}
+            onViewTransactions={() => setView({ type: "transactions" })}
           />
         )}
         {view.type === "tab" && view.tab === "releases" && <ReleasesPage />}
@@ -264,6 +281,11 @@ function AppContent() {
             onBack={() => setView({ type: "tab", tab: "library" })}
           />
         )}
+        {view.type === "transactions" && (
+          <TransactionHistoryPage
+            onBack={() => setView({ type: "tab", tab: "library" })}
+          />
+        )}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
@@ -284,7 +306,11 @@ export default function App() {
                       <AuctionProvider>
                         <VideoFeedProvider>
                           <BondingCurveProvider>
-                            <AppContent />
+                            <PaymentProvider>
+                              <ErrorBoundary>
+                                <AppContent />
+                              </ErrorBoundary>
+                            </PaymentProvider>
                           </BondingCurveProvider>
                         </VideoFeedProvider>
                       </AuctionProvider>

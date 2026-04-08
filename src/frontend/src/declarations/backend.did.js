@@ -194,6 +194,27 @@ export const MarketListing = IDL.Record({
   'editionId' : IDL.Nat,
   'price' : IDL.Nat,
 });
+export const TxType = IDL.Variant({
+  'mintFee' : IDL.Null,
+  'secondaryTrade' : IDL.Null,
+  'copySale' : IDL.Null,
+});
+export const TxSplit = IDL.Record({
+  'principal' : IDL.Principal,
+  'role' : IDL.Text,
+  'usdAmount' : IDL.Float64,
+  'btcAmountSimulated' : IDL.Float64,
+  'btcAddress' : IDL.Text,
+});
+export const Transaction = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : IDL.Text,
+  'clipId' : IDL.Text,
+  'totalUsd' : IDL.Float64,
+  'timestamp' : IDL.Int,
+  'txType' : TxType,
+  'splits' : IDL.Vec(TxSplit),
+});
 export const OfferStatus = IDL.Variant({
   'pending' : IDL.Null,
   'accepted' : IDL.Null,
@@ -331,6 +352,11 @@ export const idlService = IDL.Service({
   'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
   'getMyRole' : IDL.Func([], [UserRole], ['query']),
+  'getMyTransactions' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(Transaction)],
+      ['query'],
+    ),
   'getOfferHistory' : IDL.Func([IDL.Nat], [IDL.Vec(Offer)], ['query']),
   'getOffers' : IDL.Func(
       [IDL.Nat],
@@ -345,6 +371,7 @@ export const idlService = IDL.Service({
   'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getSetsByCategory' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
   'getTop10ByMarketCap' : IDL.Func([], [IDL.Vec(MarketCapEntry)], ['query']),
+  'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
   'getTrendingHashtags' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
@@ -375,6 +402,17 @@ export const idlService = IDL.Service({
       [],
     ),
   'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
+  'processClipMint' : IDL.Func([IDL.Principal], [IDL.Nat], []),
+  'processCopySale' : IDL.Func(
+      [IDL.Text, IDL.Principal, IDL.Principal, IDL.Float64],
+      [IDL.Nat],
+      [],
+    ),
+  'processSecondaryTrade' : IDL.Func(
+      [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
+      [IDL.Nat],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
   'toggleCardActive' : IDL.Func([IDL.Nat], [], []),
@@ -574,6 +612,27 @@ export const idlFactory = ({ IDL }) => {
     'editionId' : IDL.Nat,
     'price' : IDL.Nat,
   });
+  const TxType = IDL.Variant({
+    'mintFee' : IDL.Null,
+    'secondaryTrade' : IDL.Null,
+    'copySale' : IDL.Null,
+  });
+  const TxSplit = IDL.Record({
+    'principal' : IDL.Principal,
+    'role' : IDL.Text,
+    'usdAmount' : IDL.Float64,
+    'btcAmountSimulated' : IDL.Float64,
+    'btcAddress' : IDL.Text,
+  });
+  const Transaction = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : IDL.Text,
+    'clipId' : IDL.Text,
+    'totalUsd' : IDL.Float64,
+    'timestamp' : IDL.Int,
+    'txType' : TxType,
+    'splits' : IDL.Vec(TxSplit),
+  });
   const OfferStatus = IDL.Variant({
     'pending' : IDL.Null,
     'accepted' : IDL.Null,
@@ -708,6 +767,11 @@ export const idlFactory = ({ IDL }) => {
     'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
     'getMyRole' : IDL.Func([], [UserRole], ['query']),
+    'getMyTransactions' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(Transaction)],
+        ['query'],
+      ),
     'getOfferHistory' : IDL.Func([IDL.Nat], [IDL.Vec(Offer)], ['query']),
     'getOffers' : IDL.Func(
         [IDL.Nat],
@@ -722,6 +786,7 @@ export const idlFactory = ({ IDL }) => {
     'getSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getSetsByCategory' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
     'getTop10ByMarketCap' : IDL.Func([], [IDL.Vec(MarketCapEntry)], ['query']),
+    'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
     'getTrendingHashtags' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
@@ -752,6 +817,17 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'openPack' : IDL.Func([IDL.Text], [PackOpenResult], []),
+    'processClipMint' : IDL.Func([IDL.Principal], [IDL.Nat], []),
+    'processCopySale' : IDL.Func(
+        [IDL.Text, IDL.Principal, IDL.Principal, IDL.Float64],
+        [IDL.Nat],
+        [],
+      ),
+    'processSecondaryTrade' : IDL.Func(
+        [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
+        [IDL.Nat],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
     'toggleCardActive' : IDL.Func([IDL.Nat], [], []),

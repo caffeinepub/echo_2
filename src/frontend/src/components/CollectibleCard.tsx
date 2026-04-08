@@ -2,6 +2,9 @@ import { MapPin, Play } from "lucide-react";
 import { useState } from "react";
 import type { CollectionNFT } from "../context/CollectionContext";
 
+const DROPBOX_IMAGE =
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MINT_ACCENT = "var(--cycle-accent)";
 const MINT_BORDER = "rgba(var(--cycle-accent-rgb) / 0.25)";
@@ -126,8 +129,7 @@ export function CollectibleCard({
             alt={nft.title}
             draggable={false}
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "/assets/generated/minty-pack-wrapper.png";
+              (e.currentTarget as HTMLImageElement).src = DROPBOX_IMAGE;
               (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
               (e.currentTarget as HTMLImageElement).style.padding = "12px";
               (e.currentTarget as HTMLImageElement).style.background =
@@ -181,8 +183,7 @@ export function CollectibleCard({
           alt={nft.title}
           draggable={false}
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "/assets/generated/minty-pack-wrapper.png";
+            (e.currentTarget as HTMLImageElement).src = DROPBOX_IMAGE;
             (e.currentTarget as HTMLImageElement).style.objectFit = "contain";
             (e.currentTarget as HTMLImageElement).style.padding = "12px";
             (e.currentTarget as HTMLImageElement).style.background = "#F9F9F7";

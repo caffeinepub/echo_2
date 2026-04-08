@@ -1,7 +1,10 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { Principal } from "@icp-sdk/core/principal";
 import { Check, ChevronRight, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
+import { usePayment } from "../context/PaymentContext";
 import type { VideoClip } from "../context/VideoFeedContext";
 import { BtcLogo } from "./BtcLogo";
 
@@ -190,6 +193,8 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const { activeStyle } = usePackStyle();
   const { purchase, currentPrice, nextPrice, progressPct, getCurveState } =
     useBondingCurve();
+  const { recordCopySale } = usePayment();
+  const { identity } = useInternetIdentity();
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -246,6 +251,18 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
       );
       setEditionInfo(result);
       setStatus("success");
+
+      // Record the copy sale split — non-blocking
+      const priceUsd = currentPrice(clip.id) / 100;
+      // Use a placeholder principal for creator since VideoClip only stores name
+      const creatorPrincipal = Principal.anonymous();
+      const buyerPrincipal = identity
+        ? identity.getPrincipal()
+        : Principal.anonymous();
+      recordCopySale(clip.id, creatorPrincipal, buyerPrincipal, priceUsd).catch(
+        (err) => console.error("[PurchaseModal] recordCopySale failed:", err),
+      );
+
       setTimeout(onClose, 3200);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Purchase failed");

@@ -185,6 +185,25 @@ export interface TcgSet {
   'releaseYear' : bigint,
 }
 export interface Track { 'title' : string, 'duration' : bigint }
+export interface Transaction {
+  'id' : bigint,
+  'status' : string,
+  'clipId' : string,
+  'totalUsd' : number,
+  'timestamp' : bigint,
+  'txType' : TxType,
+  'splits' : Array<TxSplit>,
+}
+export interface TxSplit {
+  'principal' : Principal,
+  'role' : string,
+  'usdAmount' : number,
+  'btcAmountSimulated' : number,
+  'btcAddress' : string,
+}
+export type TxType = { 'mintFee' : null } |
+  { 'secondaryTrade' : null } |
+  { 'copySale' : null };
 export interface UpdateTcgCardInput {
   'id' : bigint,
   'cardName' : string,
@@ -323,6 +342,10 @@ export interface _SERVICE {
   'getMarketCap' : ActorMethod<[string], [] | [MarketCapEntry]>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
   'getMyRole' : ActorMethod<[], UserRole>,
+  /**
+   * / Returns transactions where p appears in any split's principal.
+   */
+  'getMyTransactions' : ActorMethod<[Principal], Array<Transaction>>,
   'getOfferHistory' : ActorMethod<[bigint], Array<Offer>>,
   'getOffers' : ActorMethod<
     [bigint],
@@ -337,6 +360,10 @@ export interface _SERVICE {
   'getSets' : ActorMethod<[], Array<TcgSet>>,
   'getSetsByCategory' : ActorMethod<[string], Array<TcgSet>>,
   'getTop10ByMarketCap' : ActorMethod<[], Array<MarketCapEntry>>,
+  /**
+   * / Returns all transactions newest-first.
+   */
+  'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   /**
    * / Get trending hashtags sorted by viral score descending.
    * / Returns (tag, post_count) pairs.
@@ -368,6 +395,24 @@ export interface _SERVICE {
       { 'err' : string }
   >,
   'openPack' : ActorMethod<[string], PackOpenResult>,
+  /**
+   * / Record a $1 mint fee. 100% to platform wallet.
+   */
+  'processClipMint' : ActorMethod<[Principal], bigint>,
+  /**
+   * / Record a bonding curve copy sale. 95% to creator, 5% to platform.
+   */
+  'processCopySale' : ActorMethod<
+    [string, Principal, Principal, number],
+    bigint
+  >,
+  /**
+   * / Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+   */
+  'processSecondaryTrade' : ActorMethod<
+    [string, Principal, Principal, Principal, number],
+    bigint
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,
   'toggleCardActive' : ActorMethod<[bigint], undefined>,

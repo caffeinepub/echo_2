@@ -106,6 +106,9 @@ const OVERLAY_KEYFRAMES = `
   }
 `;
 
+const DROPBOX_IMAGE =
+  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
+
 let overlayStylesInjected = false;
 function ensureOverlayStyles() {
   if (overlayStylesInjected) return;
@@ -362,7 +365,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/minty-pack-wrapper.png"
+              src={DROPBOX_IMAGE}
               alt="Minty Pack"
               style={{
                 width: "100%",
@@ -567,7 +570,7 @@ export function PackOpeningOverlay({
           }}
         >
           <img
-            src="/assets/generated/minty-pack-wrapper.png"
+            src={DROPBOX_IMAGE}
             alt="Minty Pack"
             style={{
               width: "100%",
@@ -613,7 +616,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/minty-pack-wrapper.png"
+              src={DROPBOX_IMAGE}
               alt=""
               style={{
                 width: "240px",
@@ -638,7 +641,7 @@ export function PackOpeningOverlay({
             }}
           >
             <img
-              src="/assets/generated/minty-pack-wrapper.png"
+              src={DROPBOX_IMAGE}
               alt=""
               style={{
                 width: "240px",
@@ -766,8 +769,7 @@ export function PackOpeningOverlay({
                 src={nft.imageUrl}
                 alt={nft.title}
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "/assets/generated/minty-pack-wrapper.png";
+                  (e.currentTarget as HTMLImageElement).src = DROPBOX_IMAGE;
                   (e.currentTarget as HTMLImageElement).style.objectFit =
                     "contain";
                   (e.currentTarget as HTMLImageElement).style.padding = "12px";

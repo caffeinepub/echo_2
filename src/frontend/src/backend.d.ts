@@ -7,13 +7,8 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface TcgCategory {
-    id: bigint;
-    sortOrder: bigint;
+export interface UserProfile {
     name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
 }
 export interface Collectible {
     id: string;
@@ -84,6 +79,22 @@ export interface CreateTcgCardInput {
     rarity: string;
     cardNumber: string;
     isSupported: boolean;
+}
+export interface Transaction {
+    id: bigint;
+    status: string;
+    clipId: string;
+    totalUsd: number;
+    timestamp: bigint;
+    txType: TxType;
+    splits: Array<TxSplit>;
+}
+export interface TxSplit {
+    principal: Principal;
+    role: string;
+    usdAmount: number;
+    btcAmountSimulated: number;
+    btcAddress: string;
 }
 export interface Release {
     album: Album;
@@ -241,8 +252,13 @@ export type PackOpenResult = {
     __kind__: "err";
     err: string;
 };
-export interface UserProfile {
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
     name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export enum CollectibleMediaType {
     video = "video",
@@ -261,6 +277,11 @@ export enum OfferStatus {
 export enum PackStatus {
     opened = "opened",
     sealed = "sealed"
+}
+export enum TxType {
+    mintFee = "mintFee",
+    secondaryTrade = "secondaryTrade",
+    copySale = "copySale"
 }
 export enum UserRole {
     admin = "admin",
@@ -351,6 +372,10 @@ export interface backendInterface {
     getMarketCap(clipId: string): Promise<MarketCapEntry | null>;
     getMarketListings(): Promise<Array<MarketListing>>;
     getMyRole(): Promise<UserRole>;
+    /**
+     * / Returns transactions where p appears in any split's principal.
+     */
+    getMyTransactions(p: Principal): Promise<Array<Transaction>>;
     getOfferHistory(listingId: bigint): Promise<Array<Offer>>;
     getOffers(listingId: bigint): Promise<{
         __kind__: "ok";
@@ -367,6 +392,10 @@ export interface backendInterface {
     getSets(): Promise<Array<TcgSet>>;
     getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
     getTop10ByMarketCap(): Promise<Array<MarketCapEntry>>;
+    /**
+     * / Returns all transactions newest-first.
+     */
+    getTransactionHistory(): Promise<Array<Transaction>>;
     /**
      * / Get trending hashtags sorted by viral score descending.
      * / Returns (tag, post_count) pairs.
@@ -397,6 +426,18 @@ export interface backendInterface {
         err: string;
     }>;
     openPack(packId: string): Promise<PackOpenResult>;
+    /**
+     * / Record a $1 mint fee. 100% to platform wallet.
+     */
+    processClipMint(creatorPrincipal: Principal): Promise<bigint>;
+    /**
+     * / Record a bonding curve copy sale. 95% to creator, 5% to platform.
+     */
+    processCopySale(clipId: string, creatorPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    /**
+     * / Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+     */
+    processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
     toggleCardActive(id: bigint): Promise<void>;

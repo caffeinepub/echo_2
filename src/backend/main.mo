@@ -1371,6 +1371,19 @@ actor {
 
             // Record the sale
             _recordSale(listing.clipId, listing.editionNumber, offer.offerPriceUsd);
+
+            // Record simulated payment splits
+            let originalCreator : Principal = switch (videoClips.get(listing.clipId)) {
+              case (?clip) clip.creator_principal_id;
+              case null listing.sellerPrincipal;
+            };
+            ignore await processSecondaryTrade(
+              listing.clipId,
+              originalCreator,
+              listing.sellerPrincipal,
+              offer.buyerPrincipal,
+              offer.offerPriceUsd,
+            );
             #ok(true);
           };
         };
@@ -1477,5 +1490,127 @@ actor {
       else #equal
     });
     sorted.sliceToArray(0, if (sorted.size() < 10) sorted.size() else 10);
+  };
+
+  // ─────────────────────────────────────────────
+  // SIMULATED PAYMENT ROUTING
+  // ─────────────────────────────────────────────
+
+  public type TxType = { #mintFee; #copySale; #secondaryTrade };
+
+  public type TxSplit = {
+    principal : Principal;
+    btcAddress : Text;
+    role : Text;
+    usdAmount : Float;
+    btcAmountSimulated : Float;
+  };
+
+  public type Transaction = {
+    id : Nat;
+    txType : TxType;
+    clipId : Text;
+    totalUsd : Float;
+    splits : [TxSplit];
+    timestamp : Int;
+    status : Text;
+  };
+
+  let transactions = Map.empty<Nat, Transaction>();
+  var nextTxId : Nat = 0;
+
+  let _platformBtcAddress : Text = "3GwDfPKRyNH4MZT3Vnc7GkKbAccNBZcVFh";
+  let _btcUsdRate : Float = 50000.0;
+  let _platformPrincipal : Principal = Principal.fromText("aaaaa-aa");
+
+  func btcAddressFor(p : Principal) : Text {
+    "principal:" # p.toText()
+  };
+
+  func _makeSplit(p : Principal, addr : Text, role : Text, usd : Float) : TxSplit {
+    {
+      principal = p;
+      btcAddress = addr;
+      role;
+      usdAmount = usd;
+      btcAmountSimulated = usd / _btcUsdRate;
+    };
+  };
+
+  func _recordTx(txType : TxType, clipId : Text, totalUsd : Float, splits : [TxSplit]) : Nat {
+    let id = nextTxId;
+    nextTxId += 1;
+    let tx : Transaction = {
+      id;
+      txType;
+      clipId;
+      totalUsd;
+      splits;
+      timestamp = Time.now();
+      status = "simulated";
+    };
+    transactions.add(id, tx);
+    id;
+  };
+
+  /// Record a $1 mint fee. 100% to platform wallet.
+  public shared func processClipMint(creatorPrincipal : Principal) : async Nat {
+    let splits : [TxSplit] = [
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", 1.0),
+    ];
+    _recordTx(#mintFee, "", 1.0, splits);
+  };
+
+  /// Record a bonding curve copy sale. 95% to creator, 5% to platform.
+  public shared func processCopySale(
+    clipId : Text,
+    creatorPrincipal : Principal,
+    buyerPrincipal : Principal,
+    usdAmount : Float,
+  ) : async Nat {
+    let creatorAmt = usdAmount * 0.95;
+    let platformAmt = usdAmount * 0.05;
+    let splits : [TxSplit] = [
+      _makeSplit(creatorPrincipal, btcAddressFor(creatorPrincipal), "creator", creatorAmt),
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
+    ];
+    _recordTx(#copySale, clipId, usdAmount, splits);
+  };
+
+  /// Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+  public shared func processSecondaryTrade(
+    clipId : Text,
+    originalCreatorPrincipal : Principal,
+    sellerPrincipal : Principal,
+    buyerPrincipal : Principal,
+    usdAmount : Float,
+  ) : async Nat {
+    let creatorAmt = usdAmount * 0.04;
+    let platformAmt = usdAmount * 0.01;
+    let sellerAmt = usdAmount * 0.95;
+    let splits : [TxSplit] = [
+      _makeSplit(originalCreatorPrincipal, btcAddressFor(originalCreatorPrincipal), "creator", creatorAmt),
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
+      _makeSplit(sellerPrincipal, btcAddressFor(sellerPrincipal), "seller", sellerAmt),
+    ];
+    _recordTx(#secondaryTrade, clipId, usdAmount, splits);
+  };
+
+  /// Returns all transactions newest-first.
+  public query func getTransactionHistory() : async [Transaction] {
+    transactions.values().toArray().sort(func(a : Transaction, b : Transaction) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp)
+    });
+  };
+
+  /// Returns transactions where p appears in any split's principal.
+  public query func getMyTransactions(p : Principal) : async [Transaction] {
+    transactions.values().toArray().filter(func(tx : Transaction) : Bool {
+      tx.splits.find(func(s : TxSplit) : Bool {
+        Principal.equal(s.principal, p)
+      }) != null
+    }).sort(func(a : Transaction, b : Transaction) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp)
+    });
   };
 };

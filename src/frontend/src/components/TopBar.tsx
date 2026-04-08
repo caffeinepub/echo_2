@@ -1052,10 +1052,18 @@ function CowInfoModal({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <img
-              src="/assets/generated/minty-cow-mascot-transparent.dim_200x200.png"
-              alt="Cow helper"
-              style={{ width: "24px", height: "24px", objectFit: "contain" }}
+              src="https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1"
+              alt="Minty helper"
+              style={{
+                width: "24px",
+                height: "24px",
+                objectFit: "contain",
+                borderRadius: "4px",
+              }}
               draggable={false}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
             />
             <span
               style={{
@@ -1184,13 +1192,17 @@ function CowHelper({ onClick }: { onClick: () => void }) {
       }}
     >
       <img
-        src="/assets/generated/minty-cow-mascot-transparent.dim_200x200.png"
-        alt="Cow helper"
+        src="https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1"
+        alt="Minty helper"
         draggable={false}
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).style.display = "none";
+        }}
         style={{
           width: "36px",
           height: "36px",
           objectFit: "contain",
+          borderRadius: "8px",
           animation,
           filter: glowFilter,
           transition: "filter 0.3s ease",
@@ -1215,7 +1227,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
   const MINTY_LOGO =
-    "/assets/generated/minty-wordmark-logo-transparent.dim_600x180.png";
+    "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1269,17 +1281,14 @@ export function TopBar({ onProfileClick }: TopBarProps) {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
             style={{
-              width: "180px",
-              height: "auto",
-              maxWidth: "min(180px, 30vw)",
+              width: "48px",
+              height: "48px",
+              maxWidth: "min(48px, 15vw)",
               objectFit: "contain",
               imageRendering: "auto",
               display: "block",
               background: "transparent",
-              filter:
-                activeCycle.logoFilter !== "none"
-                  ? activeCycle.logoFilter
-                  : undefined,
+              borderRadius: "8px",
             }}
             draggable={false}
           />

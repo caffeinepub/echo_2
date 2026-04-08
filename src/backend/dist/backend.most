@@ -125,6 +125,25 @@ type TcgSet__1065024180 =
     tcgCategory : Text
   };
 type Track__789517712 = {duration : Nat; title : Text};
+type Transaction__865268250 =
+  {
+    clipId : Text;
+    id : Nat;
+    splits : [TxSplit__767957069];
+    status : Text;
+    timestamp : Int;
+    totalUsd : Float;
+    txType : TxType__343382301
+  };
+type TxSplit__767957069 =
+  {
+    btcAddress : Text;
+    btcAmountSimulated : Float;
+    principal : Principal;
+    role : Text;
+    usdAmount : Float
+  };
+type TxType__343382301 = {#copySale; #mintFee; #secondaryTrade};
 type UserProfile__491224006 = {name : Text};
 type UserRole__599675725 = {#admin; #guest; #user};
 type VideoAsset__248137946 =
@@ -152,6 +171,9 @@ type VideoClip__351680056 =
     video_file_url : Text
   };
 actor {
+  stable _btcUsdRate : Float;
+  stable _platformBtcAddress : Text;
+  stable _platformPrincipal : Principal;
   stable _seedBase : Int;
   stable albums :
     {
@@ -185,6 +207,7 @@ actor {
   stable var nextClipSeq : Nat;
   stable var nextCollectibleSeq : Nat;
   stable var nextTcgSetId : Nat;
+  stable var nextTxId : Nat;
   stable var offerCounter : Nat;
   stable offers :
     {
@@ -224,6 +247,11 @@ actor {
   stable tcgSets :
     {
       var root : Node__46230540<Nat, TcgSet__1065024180>;
+      var size : Nat__490723111
+    };
+  stable transactions :
+    {
+      var root : Node__46230540<Nat, Transaction__865268250>;
       var size : Nat__490723111
     };
   stable userProfiles :
