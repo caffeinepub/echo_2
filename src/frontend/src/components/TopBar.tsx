@@ -1052,7 +1052,7 @@ function CowInfoModal({
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <img
-              src="https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1"
+              src="https://dl.dropboxusercontent.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz"
               alt="Minty helper"
               style={{
                 width: "24px",
@@ -1192,7 +1192,7 @@ function CowHelper({ onClick }: { onClick: () => void }) {
       }}
     >
       <img
-        src="https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1"
+        src="https://dl.dropboxusercontent.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz"
         alt="Minty helper"
         draggable={false}
         onError={(e) => {
@@ -1227,7 +1227,8 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
 
   const MINTY_LOGO =
-    "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
+    "https://dl.dropboxusercontent.com/scl/fi/xvqgzclmz0guu1k2rt8w5/Photo-Apr-07-2026-11-27-28-PM.png?rlkey=zh48w4urma16ow195gnihyvcj&dl=1";
+  const [logoError, setLogoError] = useState(false);
 
   // Reinject neon styles whenever cycle changes
   useEffect(() => {
@@ -1273,25 +1274,39 @@ export function TopBar({ onProfileClick }: TopBarProps) {
           className="relative flex items-center"
           style={{ paddingTop: "6px" }}
         >
-          <img
-            src={MINTY_LOGO}
-            alt="Minty"
-            className="echo-logo-neon select-none"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-            style={{
-              width: "48px",
-              height: "48px",
-              maxWidth: "min(48px, 15vw)",
-              objectFit: "contain",
-              imageRendering: "auto",
-              display: "block",
-              background: "transparent",
-              borderRadius: "8px",
-            }}
-            draggable={false}
-          />
+          {logoError ? (
+            <span
+              style={{
+                fontSize: "18px",
+                fontWeight: 800,
+                color: "var(--cycle-accent)",
+                fontFamily: "DM Sans, sans-serif",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Minty
+            </span>
+          ) : (
+            <img
+              src={MINTY_LOGO}
+              alt="Minty"
+              className="echo-logo-neon select-none"
+              onError={() => setLogoError(true)}
+              style={{
+                height: "88px",
+                maxHeight: "88px",
+                width: "auto",
+                maxWidth: "min(260px, 55vw)",
+                objectFit: "contain",
+                imageRendering: "auto",
+                display: "block",
+                background: "transparent",
+                filter:
+                  "hue-rotate(260deg) saturate(2.2) brightness(0.85) contrast(1.1)",
+              }}
+              draggable={false}
+            />
+          )}
         </div>
 
         <div className="flex items-center self-center gap-2">

@@ -29,7 +29,7 @@ const BUTTON_BASE = {
 } as const;
 
 const DROPBOX_IMAGE =
-  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
+  "https://dl.dropboxusercontent.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz";
 
 function PackCard({
   accentRgb: _accentRgb,
@@ -37,6 +37,7 @@ function PackCard({
   accentRgb: string;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 100);
@@ -52,33 +53,21 @@ function PackCard({
         boxShadow: "0 8px 40px rgba(0,0,0,0.12), 0 2px 12px rgba(0,0,0,0.08)",
         overflow: "hidden",
         position: "relative",
-        background: "none",
-        height: "100%",
+        background: "#fff",
         minHeight: "350px",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      {/* Frosted white gradient overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.68) 100%)",
-          zIndex: 1,
-        }}
-      />
-
       {/* Content layer */}
       <div
         style={{
-          position: "relative",
-          zIndex: 3,
-          padding: "36px 32px 40px",
+          padding: "24px 24px 28px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: "0",
-          height: "100%",
+          flex: 1,
         }}
       >
         <span
@@ -88,7 +77,6 @@ function PackCard({
             color: "#9B9B9B",
             fontWeight: 500,
             textTransform: "uppercase",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontFamily: "var(--font-ui)",
           }}
         >
@@ -100,52 +88,78 @@ function PackCard({
             width: "32px",
             height: "1px",
             background: "rgba(0,0,0,0.10)",
-            margin: "12px 0",
+            margin: "10px 0 16px",
           }}
         />
 
+        {/* Hero image — fills the center of the card */}
         <div
           style={{
+            width: "100%",
             flex: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             opacity: mounted ? 1 : 0,
-            transform: mounted ? "translateY(0)" : "translateY(16px)",
-            transition: "opacity 0.6s ease, transform 0.6s ease",
-            width: "100%",
+            transform: mounted ? "translateY(0)" : "translateY(12px)",
+            transition: "opacity 0.55s ease, transform 0.55s ease",
+            minHeight: "210px",
           }}
         >
-          <img
-            src={DROPBOX_IMAGE}
-            alt="Minty Pack"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-            style={{
-              maxHeight: "190px",
-              maxWidth: "100%",
-              objectFit: "contain",
-              display: "block",
-              borderRadius: "12px",
-              filter:
-                "drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.10))",
-            }}
-          />
+          {!imgError ? (
+            <img
+              src={DROPBOX_IMAGE}
+              alt="Minty Pack"
+              onError={() => setImgError(true)}
+              style={{
+                width: "100%",
+                height: "210px",
+                objectFit: "cover",
+                display: "block",
+                borderRadius: "14px",
+                boxShadow:
+                  "0 6px 24px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08)",
+              }}
+            />
+          ) : (
+            /* Fallback gradient tile when image fails */
+            <div
+              style={{
+                width: "100%",
+                height: "210px",
+                borderRadius: "14px",
+                background:
+                  "linear-gradient(135deg, oklch(0.80 0.12 300), oklch(0.72 0.16 280))",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "32px",
+                  fontWeight: 700,
+                  color: "rgba(255,255,255,0.9)",
+                  fontFamily: "var(--font-ui)",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                MINTY
+              </span>
+            </div>
+          )}
         </div>
 
         <h2
           style={{
-            fontSize: "28px",
+            fontSize: "22px",
             fontWeight: 600,
             color: "#111111",
-            margin: "16px 0 0",
-            marginBottom: "20px",
+            margin: "18px 0 0",
             textAlign: "center",
-            textShadow: "0 1px 3px rgba(255,255,255,0.8)",
             fontFamily: "var(--font-ui)",
-            letterSpacing: "0.04em",
-            lineHeight: 1.1,
+            letterSpacing: "0.02em",
+            lineHeight: 1.2,
           }}
         >
           Mint a Moment

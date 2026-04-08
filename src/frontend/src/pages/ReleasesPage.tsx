@@ -1,4 +1,4 @@
-import { Heart, LineChart, Volume2, VolumeX, X } from "lucide-react";
+import { Heart, LineChart, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BondingCurveModule } from "../components/BondingCurveModule";
 import { ClipChartModal } from "../components/ClipChartModal";
@@ -6,253 +6,15 @@ import { usePackStyle } from "../context/PackStyleContext";
 import type { FeedSort, VideoClip } from "../context/VideoFeedContext";
 import { useVideoFeed } from "../context/VideoFeedContext";
 
-// ─── Creator Profile Sheet ─────────────────────────────────────────────────────
-
-function CreatorProfile({
-  clip,
-  allClips,
-  onClose,
-}: {
-  clip: VideoClip;
-  allClips: VideoClip[];
-  onClose: () => void;
-}) {
-  const creatorClips = allClips.filter(
-    (c) => c.creatorName === clip.creatorName,
-  );
-  const totalLikes = creatorClips.reduce((s, c) => s + c.likeCount, 0);
-  const initials = clip.creatorName.slice(0, 2).toUpperCase();
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 300,
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--echo-bg)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "16px 16px 12px",
-          borderBottom: "1px solid var(--echo-border)",
-          background: "var(--echo-surface)",
-        }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Back"
-          style={{
-            background: "rgba(0,0,0,0.05)",
-            border: "none",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "#374151",
-            flexShrink: 0,
-          }}
-        >
-          <X size={16} />
-        </button>
-        <span
-          style={{
-            fontSize: 17,
-            fontWeight: 700,
-            color: "var(--echo-text)",
-            fontFamily: "DM Sans, sans-serif",
-          }}
-        >
-          @{clip.creatorName}
-        </span>
-      </div>
-
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 16px" }}>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: "var(--cycle-accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontSize: 22,
-              fontWeight: 700,
-              fontFamily: "DM Sans, sans-serif",
-            }}
-          >
-            {initials}
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "var(--echo-text)",
-                fontFamily: "DM Sans, sans-serif",
-              }}
-            >
-              @{clip.creatorName}
-            </div>
-            {clip.creatorBio && (
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "var(--echo-text-secondary)",
-                  marginTop: 4,
-                  lineHeight: 1.5,
-                }}
-              >
-                {clip.creatorBio}
-              </div>
-            )}
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                gap: 20,
-                justifyContent: "center",
-              }}
-            >
-              <div style={{ textAlign: "center" }}>
-                <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "var(--echo-text)",
-                  }}
-                >
-                  {creatorClips.length}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "var(--echo-text-muted)",
-                    marginTop: 2,
-                  }}
-                >
-                  clips
-                </div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "var(--echo-text)",
-                  }}
-                >
-                  {totalLikes.toLocaleString()}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "var(--echo-text-muted)",
-                    marginTop: 2,
-                  }}
-                >
-                  likes
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 4,
-          }}
-        >
-          {creatorClips.map((c) => (
-            <div
-              key={c.id}
-              style={{
-                aspectRatio: "9/16",
-                borderRadius: 8,
-                overflow: "hidden",
-                background: "#e8f0fa",
-                position: "relative",
-              }}
-            >
-              <video
-                src={c.videoUrl}
-                muted
-                loop
-                playsInline
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 4,
-                  left: 4,
-                  background: "rgba(0,0,0,0.55)",
-                  borderRadius: 4,
-                  padding: "2px 5px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                }}
-              >
-                <Heart size={9} color="#fff" fill="#fff" />
-                <span style={{ fontSize: 9, color: "#fff", fontWeight: 600 }}>
-                  {c.likeCount.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Video Card ────────────────────────────────────────────────────────────────
 
 function VideoCard({
   clip,
   isActive,
-  onCreatorTap,
   onChartTap,
 }: {
   clip: VideoClip;
   isActive: boolean;
-  onCreatorTap: () => void;
   onChartTap: () => void;
 }) {
   const { likedIds, toggleLike } = useVideoFeed();
@@ -280,7 +42,6 @@ function VideoCard({
           console.warn("[VideoCard] play() failed:", err);
         });
       };
-      // If already ready to play, go immediately; otherwise wait for canplay
       if (vid.readyState >= 3) {
         doPlay();
       } else {
@@ -446,7 +207,7 @@ function VideoCard({
           alignItems: "center",
         }}
       >
-        {/* Mute toggle — visible with "tap for sound" hint on first render */}
+        {/* Mute toggle */}
         <button
           type="button"
           onClick={(e) => {
@@ -549,7 +310,7 @@ function VideoCard({
           pointerEvents: "none",
         }}
       >
-        {/* Left: avatar + name */}
+        {/* Left: avatar + name — display only, not clickable */}
         <div
           style={{
             display: "flex",
@@ -557,16 +318,9 @@ function VideoCard({
             gap: 9,
             flex: 1,
             minWidth: 0,
-            pointerEvents: "auto",
           }}
         >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreatorTap();
-            }}
-            aria-label={`View ${clip.creatorName}'s profile`}
+          <div
             style={{
               width: 36,
               height: 36,
@@ -580,43 +334,26 @@ function VideoCard({
               fontWeight: 700,
               border: "2px solid rgba(255,255,255,0.35)",
               flexShrink: 0,
-              cursor: "pointer",
-              padding: 0,
               fontFamily: "DM Sans, sans-serif",
             }}
           >
             {initials}
-          </button>
+          </div>
           <div style={{ minWidth: 0 }}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreatorTap();
-              }}
+            <div
               style={{
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                textAlign: "left",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#fff",
+                fontFamily: "DM Sans, sans-serif",
+                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#fff",
-                  fontFamily: "DM Sans, sans-serif",
-                  textShadow: "0 1px 4px rgba(0,0,0,0.5)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                @{clip.creatorName}
-              </div>
-            </button>
+              @{clip.creatorName}
+            </div>
             {clip.title && (
               <div
                 style={{
@@ -817,10 +554,9 @@ function FilterRow() {
 // ─── ReleasesPage ──────────────────────────────────────────────────────────────
 
 export function ReleasesPage() {
-  const { filteredClips, clips, isLoading } = useVideoFeed();
+  const { filteredClips, isLoading } = useVideoFeed();
   const feedRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [profileClip, setProfileClip] = useState<VideoClip | null>(null);
   const [chartClip, setChartClip] = useState<VideoClip | null>(null);
 
   // Inject spin keyframe once
@@ -834,22 +570,16 @@ export function ReleasesPage() {
     document.head.appendChild(s);
   }, []);
 
-  const handleCreatorTap = useCallback((clip: VideoClip) => {
-    setProfileClip(clip);
-  }, []);
-
   const handleChartTap = useCallback((clip: VideoClip) => {
     setChartClip(clip);
   }, []);
 
   // IntersectionObserver — detect which card is centered.
-  // Re-run after each render so newly added cards are always observed.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — re-observe after every clip list change
   useEffect(() => {
     const container = feedRef.current;
     if (!container) return;
 
-    // Small rAF delay so React has flushed the new DOM nodes
     const raf = requestAnimationFrame(() => {
       const cards = container.querySelectorAll("[data-feed-card]");
       if (!cards.length) return;
@@ -881,16 +611,6 @@ export function ReleasesPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredClips]);
-
-  if (profileClip) {
-    return (
-      <CreatorProfile
-        clip={profileClip}
-        allClips={clips}
-        onClose={() => setProfileClip(null)}
-      />
-    );
-  }
 
   return (
     <div
@@ -997,26 +717,27 @@ export function ReleasesPage() {
             </div>
           </div>
         ) : (
-          filteredClips.map((clip, idx) => (
-            <div
-              key={clip.id}
-              data-feed-card={idx}
-              style={{
-                scrollSnapAlign: "start",
-                padding: "10px 12px",
-                boxSizing: "border-box",
-              }}
-            >
-              <VideoCard
-                clip={clip}
-                isActive={activeIndex === idx}
-                onCreatorTap={() => handleCreatorTap(clip)}
-                onChartTap={() => handleChartTap(clip)}
-              />
-              {/* Bonding curve module below each video */}
-              <BondingCurveModule clip={clip} />
-            </div>
-          ))
+          <>
+            {filteredClips.map((clip, idx) => (
+              <div
+                key={clip.id}
+                data-feed-card={idx}
+                style={{
+                  scrollSnapAlign: "start",
+                  padding: "10px 12px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <VideoCard
+                  clip={clip}
+                  isActive={activeIndex === idx}
+                  onChartTap={() => handleChartTap(clip)}
+                />
+                {/* Bonding curve module below each video */}
+                <BondingCurveModule clip={clip} />
+              </div>
+            ))}
+          </>
         )}
 
         {/* Preload next 2 videos off-screen */}

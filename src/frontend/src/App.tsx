@@ -38,7 +38,7 @@ import { TransactionHistoryPage } from "./pages/TransactionHistoryPage";
 import { UploadPage } from "./pages/UploadPage";
 
 const DROPBOX_IMAGE =
-  "https://www.dropbox.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz&dl=1";
+  "https://dl.dropboxusercontent.com/scl/fi/aoe7dmzh7jqriugs8p9xl/Photo-Apr-05-2026-2-05-53-AM.png?rlkey=6squh6tpozf5ljw7gtiwl0ovz";
 
 type View =
   | { type: "tab"; tab: Tab }
