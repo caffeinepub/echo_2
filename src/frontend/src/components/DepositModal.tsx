@@ -1,11 +1,18 @@
-import { ArrowDownToLine, CheckCircle, Clock, Copy, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDownToLine,
+  CheckCircle,
+  Clock,
+  Copy,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Variant_pending_confirmed, WalletActivityType } from "../backend.d";
 import type { Deposit, WalletActivity } from "../backend.d";
 import { useDepositPolling, useWalletContext } from "../context/WalletContext";
 
 // ─── QR code via canvas ───────────────────────────────────────────────────────
-// Inline simple QR renderer using the qrcode.js CDN library
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare global {
@@ -153,6 +160,9 @@ interface DepositModalProps {
 export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
   const {
     depositAddress,
+    addressLoading,
+    addressError,
+    retryAddressFetch,
     deposits,
     walletActivity,
     btcBalance,
@@ -166,12 +176,12 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
   // Poll for new deposits every 30s while open
   useDepositPolling(open);
 
-  // Initial check when modal opens
+  // Initial fetch when modal opens — only if address not already loaded
   useEffect(() => {
-    if (open) {
+    if (open && !depositAddress) {
       refreshDeposits();
     }
-  }, [open, refreshDeposits]);
+  }, [open, depositAddress, refreshDeposits]);
 
   const handleCopy = useCallback(() => {
     if (!depositAddress) return;
@@ -197,6 +207,13 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
 
   const usdBalance =
     btcBalance !== null && btcPrice !== null ? btcBalance * btcPrice : null;
+
+  // Derived address display state
+  const isAddressLoading =
+    addressLoading || (depositAddress === null && addressError === null);
+  const isAddressError = !isAddressLoading && addressError !== null;
+  const isAddressReady =
+    !isAddressLoading && !isAddressError && !!depositAddress;
 
   return (
     <div
@@ -345,10 +362,9 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
 
         {/* QR Code */}
         <div className="flex justify-center mb-4">
-          {depositAddress ? (
-            <QRCodeDisplay value={depositAddress} />
-          ) : (
+          {isAddressLoading && (
             <div
+              data-ocid="deposit.qr_loading"
               style={{
                 width: 160,
                 height: 160,
@@ -359,6 +375,40 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
               }}
             />
           )}
+          {isAddressError && (
+            <div
+              data-ocid="deposit.qr_error"
+              style={{
+                width: 160,
+                height: 160,
+                borderRadius: 12,
+                background: "rgba(239,68,68,0.04)",
+                border: "2px dashed rgba(239,68,68,0.25)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <AlertCircle size={28} style={{ color: "rgba(239,68,68,0.6)" }} />
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "rgba(239,68,68,0.7)",
+                  fontFamily: "DM Sans, sans-serif",
+                  textAlign: "center",
+                  padding: "0 12px",
+                  lineHeight: 1.4,
+                }}
+              >
+                Could not load
+                <br />
+                QR code
+              </span>
+            </div>
+          )}
+          {isAddressReady && <QRCodeDisplay value={depositAddress!} />}
         </div>
 
         {/* Address box */}
@@ -376,50 +426,136 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
           >
             Your deposit address
           </div>
-          <div
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-            style={{
-              background: "rgba(0,0,0,0.02)",
-              border: "1px solid #D0DFEF",
-            }}
-          >
-            <span
-              data-ocid="deposit.address_text"
-              className="flex-1 truncate font-mono"
-              style={{ fontSize: 11, color: "#7C3AED" }}
-            >
-              {depositAddress ?? "Loading…"}
-            </span>
-            <button
-              type="button"
-              data-ocid="deposit.copy_button"
-              onClick={handleCopy}
-              disabled={!depositAddress}
+
+          {/* Loading state */}
+          {isAddressLoading && (
+            <div
+              data-ocid="deposit.address_loading"
               style={{
-                flexShrink: 0,
+                height: 40,
+                borderRadius: 12,
+                background: "rgba(124,58,237,0.04)",
+                border: "1px solid rgba(124,58,237,0.15)",
+                animation: "pulse 1.4s ease-in-out infinite",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
-                padding: "3px 10px",
-                fontSize: 11,
-                fontWeight: 500,
-                color: copied ? "#10b981" : "#7C3AED",
-                background: copied
-                  ? "rgba(16,185,129,0.08)"
-                  : "rgba(124,58,237,0.08)",
-                border: copied
-                  ? "1px solid rgba(16,185,129,0.25)"
-                  : "1px solid rgba(124,58,237,0.25)",
-                borderRadius: 8,
-                cursor: depositAddress ? "pointer" : "not-allowed",
-                transition: "all 0.2s ease",
-                fontFamily: "DM Sans, sans-serif",
+                justifyContent: "center",
               }}
             >
-              <Copy size={10} />
-              {copied ? "Copied!" : "Copy"}
-            </button>
-          </div>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: "rgba(124,58,237,0.5)",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                Generating your deposit address…
+              </span>
+            </div>
+          )}
+
+          {/* Error state */}
+          {isAddressError && (
+            <div
+              data-ocid="deposit.address_error"
+              style={{
+                borderRadius: 12,
+                background: "rgba(239,68,68,0.04)",
+                border: "1px solid rgba(239,68,68,0.18)",
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle
+                  size={13}
+                  style={{ color: "#ef4444", flexShrink: 0 }}
+                />
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "#ef4444",
+                    fontFamily: "DM Sans, sans-serif",
+                  }}
+                >
+                  Could not load deposit address.
+                </span>
+              </div>
+              <button
+                type="button"
+                data-ocid="deposit.address_retry"
+                onClick={retryAddressFetch}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 16px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#7C3AED",
+                  background: "rgba(124,58,237,0.08)",
+                  border: "1px solid rgba(124,58,237,0.28)",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                <RefreshCw size={11} />
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Success state */}
+          {isAddressReady && (
+            <div
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
+              style={{
+                background: "rgba(0,0,0,0.02)",
+                border: "1px solid #D0DFEF",
+              }}
+            >
+              <span
+                data-ocid="deposit.address_text"
+                className="flex-1 truncate font-mono"
+                style={{ fontSize: 11, color: "#7C3AED" }}
+              >
+                {depositAddress}
+              </span>
+              <button
+                type="button"
+                data-ocid="deposit.copy_button"
+                onClick={handleCopy}
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: copied ? "#10b981" : "#7C3AED",
+                  background: copied
+                    ? "rgba(16,185,129,0.08)"
+                    : "rgba(124,58,237,0.08)",
+                  border: copied
+                    ? "1px solid rgba(16,185,129,0.25)"
+                    : "1px solid rgba(124,58,237,0.25)",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                <Copy size={10} />
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Min confirmations note */}

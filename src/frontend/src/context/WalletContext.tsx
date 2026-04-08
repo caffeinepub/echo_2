@@ -25,6 +25,10 @@ interface WalletContextValue {
   balanceStatus: BalanceStatus;
   /** User's unique BTC deposit address (bc1q… format) from backend. */
   depositAddress: string | null;
+  /** True while deposit address is being fetched. */
+  addressLoading: boolean;
+  /** Non-null when address fetch failed or timed out. */
+  addressError: string | null;
   /** All deposits (pending + confirmed) for this user. */
   deposits: Deposit[];
   /** All wallet activity (deposits, mint costs, auction payouts). */
@@ -33,6 +37,8 @@ interface WalletContextValue {
   paymentAddress: string | null;
   refreshBalance: () => Promise<void>;
   refreshDeposits: () => Promise<void>;
+  /** Re-attempts address fetch after a failure. */
+  retryAddressFetch: () => Promise<void>;
   /** Polls backend for new deposits and refreshes balance after. */
   checkDeposits: () => Promise<void>;
   // Legacy compat
@@ -52,6 +58,7 @@ interface WalletContextValue {
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 const E8S_PER_BTC = 100_000_000;
+const ADDRESS_FETCH_TIMEOUT_MS = 15_000;
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { actor, isFetching } = useActor(createActor);
@@ -61,6 +68,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [balanceStatus, setBalanceStatus] = useState<BalanceStatus>("idle");
   const [paymentAddress, setPaymentAddress] = useState<string | null>(null);
   const [depositAddress, setDepositAddress] = useState<string | null>(null);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [walletActivity, setWalletActivity] = useState<WalletActivity[]>([]);
 
@@ -76,8 +85,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setBtcBalance(Number(e8s) / E8S_PER_BTC);
       setBalanceStatus("ok");
 
-      const addr = await actor.getPaymentAddress();
-      setPaymentAddress(addr);
+      const addrResult = await actor.getPaymentAddress();
+      if (addrResult.__kind__ === "ok") {
+        setPaymentAddress(addrResult.ok);
+      } else {
+        console.error(
+          "[WalletContext] getPaymentAddress error:",
+          addrResult.err,
+        );
+        setPaymentAddress(null);
+      }
     } catch (err) {
       console.error("[WalletContext] refreshBalance failed:", err);
       setBalanceStatus("error");
@@ -89,19 +106,64 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // Fetch deposit address + deposits + wallet activity
   const refreshDeposits = useCallback(async () => {
     if (!actor || isFetching) return;
+
+    // Address fetch with timeout
+    setAddressLoading(true);
+    setAddressError(null);
+
     try {
-      const [addr, deps, activity] = await Promise.all([
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("timeout")),
+          ADDRESS_FETCH_TIMEOUT_MS,
+        ),
+      );
+
+      const addrResult = await Promise.race([
         actor.getUserDepositAddress(),
+        timeoutPromise,
+      ]);
+
+      if (addrResult.__kind__ === "ok") {
+        setDepositAddress(addrResult.ok);
+        setAddressError(null);
+      } else {
+        console.error(
+          "[WalletContext] getUserDepositAddress error:",
+          addrResult.err,
+        );
+        setDepositAddress(null);
+        setAddressError(
+          "Could not load your deposit address. Tap retry to try again.",
+        );
+      }
+    } catch (err) {
+      console.error("[WalletContext] getUserDepositAddress failed:", err);
+      setDepositAddress(null);
+      setAddressError(
+        "Could not load your deposit address. Tap retry to try again.",
+      );
+    } finally {
+      setAddressLoading(false);
+    }
+
+    // Deposits + activity can fail independently without blocking address display
+    try {
+      const [deps, activity] = await Promise.all([
         actor.getUserDeposits(),
         actor.getAllWalletActivity(),
       ]);
-      setDepositAddress(addr);
       setDeposits(deps);
       setWalletActivity(activity);
     } catch (err) {
-      console.error("[WalletContext] refreshDeposits failed:", err);
+      console.error("[WalletContext] refreshDeposits (activity) failed:", err);
     }
   }, [actor, isFetching]);
+
+  // Retry address fetch (called from DepositModal)
+  const retryAddressFetch = useCallback(async () => {
+    await refreshDeposits();
+  }, [refreshDeposits]);
 
   // Poll backend for new deposits, then refresh balance
   const checkDeposits = useCallback(async () => {
@@ -126,6 +188,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setBalanceStatus("idle");
       setPaymentAddress(null);
       setDepositAddress(null);
+      setAddressLoading(false);
+      setAddressError(null);
       setDeposits([]);
       setWalletActivity([]);
     }
@@ -157,11 +221,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         btcBalance,
         balanceStatus,
         depositAddress,
+        addressLoading,
+        addressError,
         deposits,
         walletActivity,
         paymentAddress,
         refreshBalance,
         refreshDeposits,
+        retryAddressFetch,
         checkDeposits,
         walletAddress,
         solBalance: btcBalance,

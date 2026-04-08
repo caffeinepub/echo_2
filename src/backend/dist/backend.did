@@ -518,10 +518,15 @@ service : {
                                     ok: vec Offer;
                                   }) query;
   /// Returns or creates a UserWallet for the caller.
+  /// Eagerly derives and caches the BTC address on first call.
   getOrCreateUserWallet: () -> (UserWallet);
   /// Returns the caller's BTC deposit address as their payment address.
   /// All payments are in BTC — no internal payment terminology exposed.
-  getPaymentAddress: () -> (text);
+  /// Returns #err if address has not been derived yet (call getUserDepositAddress first).
+  getPaymentAddress: () -> (variant {
+                              err: text;
+                              ok: text;
+                            });
   getPokemonSets: () -> (vec TcgSet) query;
   getPriceHistory: (clipId: text) -> (vec PricePoint) query;
   /// Returns ALL price points for a clip, sorted chronologically (oldest first).
@@ -554,7 +559,11 @@ service : {
   getUserCollectibles: (user: principal) -> (vec Collectible) query;
   /// Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
   /// Derives the address on first call and caches it in the wallet.
-  getUserDepositAddress: () -> (text);
+  /// Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
+  getUserDepositAddress: () -> (variant {
+                                  err: text;
+                                  ok: text;
+                                });
   /// Returns all deposits (pending and confirmed) for the caller.
   getUserDeposits: () -> (vec Deposit);
   getUserPacks: (user: principal) -> (vec Pack) query;

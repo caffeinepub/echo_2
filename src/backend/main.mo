@@ -9,9 +9,10 @@ import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Blob "mo:core/Blob";
-import Migration "migration";
+import Debug "mo:core/Debug";
 
-(with migration = Migration.run)
+
+
 actor {
   // ─── ICP Native Bitcoin Integration ──────────────────────────────────────
   // Uses the IC management canister for Bitcoin address derivation and UTXO queries.
@@ -1940,10 +1941,23 @@ actor {
 
   /// Returns the caller's BTC deposit address as their payment address.
   /// All payments are in BTC — no internal payment terminology exposed.
-  public shared ({ caller }) func getPaymentAddress() : async Text {
-    // Return deposit address if already derived; otherwise return principal text as fallback
+  /// Returns #err if address has not been derived yet (call getUserDepositAddress first).
+  public shared ({ caller }) func getPaymentAddress() : async { #ok : Text; #err : Text } {
     let w = _getOrCreateWallet(caller);
-    if (w.btcAddress != "") w.btcAddress else caller.toText()
+    if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
+      #ok(w.btcAddress)
+    } else {
+      // Try to derive it now
+      switch (await _deriveBtcAddressAsync(caller)) {
+        case (#ok(address)) {
+          userWallets.add(caller, { w with btcAddress = address });
+          #ok(address)
+        };
+        case (#err(code)) {
+          #err(code)
+        };
+      }
+    }
   };
 
   // ─────────────────────────────────────────────
@@ -2097,15 +2111,30 @@ actor {
   /// Derive a real BTC P2PKH address for a user using ICP's native Bitcoin integration.
   /// Derivation path: [Text.encodeUtf8("btc_deposit"), Principal.toBlob(userPrincipal)]
   /// Each user gets a deterministic, unique on-chain BTC address.
-  func _deriveBtcAddressAsync(p : Principal) : async Text {
+  func _deriveBtcAddressAsync(p : Principal) : async { #ok : Text; #err : Text } {
     let derivationPath : [Blob] = [
       "btc_deposit".encodeUtf8(),
       p.toBlob(),
     ];
-    await ic.bitcoin_get_p2pkh_address({
-      network = _btcNetwork;
-      derivation_path = derivationPath;
-    })
+    try {
+      let addr = await ic.bitcoin_get_p2pkh_address({
+        network = _btcNetwork;
+        derivation_path = derivationPath;
+      });
+      if (addr.size() == 0) {
+        Debug.print("_deriveBtcAddressAsync: API returned empty address for " # p.toText());
+        #err("btc_api_empty_address")
+      } else if (not _isValidBtcAddress(addr)) {
+        Debug.print("_deriveBtcAddressAsync: API returned invalid address '" # addr # "' for " # p.toText());
+        #err("btc_api_invalid_address")
+      } else {
+        #ok(addr)
+      }
+    } catch (e) {
+      let msg = "btc_api_timeout";
+      Debug.print("_deriveBtcAddressAsync: caught error for " # p.toText() # " — " # Error.message(e));
+      #err(msg)
+    }
   };
 
   /// Encode a UTXO outpoint to a unique string key for dedup tracking.
@@ -2185,23 +2214,56 @@ actor {
   // WALLET PUBLIC METHODS
   // ─────────────────────────────────────────────
 
+  /// Validate that an address looks like a real Bitcoin mainnet address.
+  /// Valid prefixes: "1" (P2PKH), "3" (P2SH), "bc1" (native SegWit P2WPKH/P2WSH).
+  func _isValidBtcAddress(addr : Text) : Bool {
+    if (addr.size() < 25) return false;
+    addr.startsWith(#text "1") or
+    addr.startsWith(#text "3") or
+    addr.startsWith(#text "bc1")
+  };
+
   /// Returns or creates a UserWallet for the caller.
+  /// Eagerly derives and caches the BTC address on first call.
   public shared ({ caller }) func getOrCreateUserWallet() : async UserWallet {
-    _getOrCreateWallet(caller)
+    let w = _getOrCreateWallet(caller);
+    // If wallet exists but has no address yet, derive it now
+    if (w.btcAddress == "") {
+      switch (await _deriveBtcAddressAsync(caller)) {
+        case (#ok(address)) {
+          userWallets.add(caller, { w with btcAddress = address });
+          { w with btcAddress = address }
+        };
+        case (#err(_)) {
+          // Will be re-attempted on next call
+          w
+        };
+      }
+    } else {
+      w
+    }
   };
 
   /// Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
   /// Derives the address on first call and caches it in the wallet.
-  public shared ({ caller }) func getUserDepositAddress() : async Text {
+  /// Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
+  public shared ({ caller }) func getUserDepositAddress() : async { #ok : Text; #err : Text } {
     let w = _getOrCreateWallet(caller);
-    if (w.btcAddress != "") {
-      // Already derived — return cached address
-      w.btcAddress
+    if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
+      // Already derived and valid — return cached address immediately
+      #ok(w.btcAddress)
     } else {
       // Derive real BTC P2PKH address via ICP Bitcoin API
-      let address = await _deriveBtcAddressAsync(caller);
-      userWallets.add(caller, { w with btcAddress = address });
-      address
+      switch (await _deriveBtcAddressAsync(caller)) {
+        case (#ok(address)) {
+          userWallets.add(caller, { w with btcAddress = address });
+          #ok(address)
+        };
+        case (#err(code)) {
+          // Return the specific error code — never silently return null or empty string
+          #err(code)
+        };
+      }
     }
   };
 
@@ -2217,12 +2279,18 @@ actor {
   public shared ({ caller }) func checkForNewDeposits() : async { #ok : Nat; #err : Text } {
     // Ensure address is derived first
     let w = _getOrCreateWallet(caller);
-    let address = if (w.btcAddress != "") {
+    let address = if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
       w.btcAddress
     } else {
-      let derived = await _deriveBtcAddressAsync(caller);
-      userWallets.add(caller, { w with btcAddress = derived });
-      derived
+      switch (await _deriveBtcAddressAsync(caller)) {
+        case (#ok(derived)) {
+          userWallets.add(caller, { w with btcAddress = derived });
+          derived
+        };
+        case (#err(code)) {
+          return #err(code)
+        };
+      }
     };
 
     // Query UTXOs from ICP Bitcoin API (min 0 confirmations to catch pending too)

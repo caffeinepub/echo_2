@@ -481,7 +481,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
-  'getPaymentAddress' : IDL.Func([], [IDL.Text], []),
+  'getPaymentAddress' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
   'getPriceHistoryFull' : IDL.Func(
@@ -516,7 +520,11 @@ export const idlService = IDL.Service({
       [IDL.Vec(Collectible)],
       ['query'],
     ),
-  'getUserDepositAddress' : IDL.Func([], [IDL.Text], []),
+  'getUserDepositAddress' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'getUserDeposits' : IDL.Func([], [IDL.Vec(Deposit)], []),
   'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -1062,7 +1070,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
-    'getPaymentAddress' : IDL.Func([], [IDL.Text], []),
+    'getPaymentAddress' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
     'getPriceHistoryFull' : IDL.Func(
@@ -1097,7 +1109,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Collectible)],
         ['query'],
       ),
-    'getUserDepositAddress' : IDL.Func([], [IDL.Text], []),
+    'getUserDepositAddress' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'getUserDeposits' : IDL.Func([], [IDL.Vec(Deposit)], []),
     'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
     'getUserProfile' : IDL.Func(

@@ -1,4 +1,4 @@
-// Version: 3.0.0
+// Version: 1.0.0
 type AccountRateLimit__453341643 =
   {
     accountCreatedAt : Int;
@@ -105,66 +105,6 @@ type Offer__296166603 =
     offerPriceUsd : Float;
     status : OfferStatus__366374790
   };
-type OldAccount__731524111 = {owner : Principal; subaccount : ?Blob};
-type OldCkbtcLedger__343414262 =
-  actor {
-    icrc1_balance_of : shared OldAccount__731524111 -> async Nat;
-    icrc2_transfer_from :
-      shared OldTransferFromArgs__298436834 ->
-        async OldTransferFromResult__292666583
-  };
-type OldHttpHeader__1027216777 = {name : Text; value : Text};
-type OldHttpRequestArgs__511902160 =
-  {
-    body : ?Blob;
-    headers : [OldHttpHeader__1027216777];
-    is_replicated : ?Bool;
-    max_response_bytes : ?Nat64;
-    method : {#get; #head; #post};
-    transform :
-      ?{
-         context : Blob;
-         function :
-           shared {
-                    context : Blob;
-                    response : OldHttpRequestResult__776967552
-                  } ->
-             async OldHttpRequestResult__776967552
-       };
-    url : Text
-  };
-type OldHttpRequestResult__776967552 =
-  {body : Blob; headers : [OldHttpHeader__1027216777]; status : Nat};
-type OldIc__108658967 =
-  actor {
-    http_request :
-      shared OldHttpRequestArgs__511902160 ->
-        async OldHttpRequestResult__776967552
-  };
-type OldTransferFromArgs__298436834 =
-  {
-    amount : Nat;
-    created_at_time : ?Nat64;
-    fee : ?Nat;
-    from : OldAccount__731524111;
-    memo : ?Blob;
-    spender_subaccount : ?Blob;
-    to : OldAccount__731524111
-  };
-type OldTransferFromError__314212584 =
-  {
-    #BadBurn : {min_burn_amount : Nat};
-    #BadFee : {expected_fee : Nat};
-    #CreatedInFuture : {ledger_time : Nat64};
-    #Duplicate : {duplicate_of : Nat};
-    #GenericError : {error_code : Nat; message : Text};
-    #InsufficientAllowance : {allowance : Nat};
-    #InsufficientFunds : {balance : Nat};
-    #TemporarilyUnavailable;
-    #TooOld
-  };
-type OldTransferFromResult__292666583 =
-  {#Err : OldTransferFromError__314212584; #Ok : Nat};
 type OutPoint__929447192 = {txid : Blob; vout : Nat32};
 type PackStatus__442425532 = {#opened; #sealed};
 type Pack__364476570 =
@@ -311,137 +251,7 @@ type VideoClip__351680056 =
     title : ?Text;
     video_file_url : Text
   };
-actor ({
-  stable _btcNetwork : {#Mainnet; #Regtest; #Testnet};
-  stable var _btcUsdRate : Float;
-  in _ckbtcFee : Nat;
-  stable _platformBtcAddress : Text;
-  stable _platformPrincipal : Principal;
-  stable var _seedBase : Int;
-  stable accountRateLimits :
-    {
-      var root : Node__46230540<Principal, AccountRateLimit__453341643>;
-      var size : Nat__490723111
-    };
-  stable albums :
-    {
-      var root : Node__46230540<Text, Album__109360601>;
-      var size : Nat__490723111
-    };
-  stable bondingCurvePriceIncrement : Float;
-  stable bondingCurveStartPrice : Float;
-  stable bondingCurveStates :
-    {
-      var root : Node__46230540<Text, BondingCurveState__1013285728>;
-      var size : Nat__490723111
-    };
-  in ckbtcLedger : OldCkbtcLedger__343414262;
-  stable collectibles :
-    {
-      var root : Node__46230540<Text, Collectible__765459835>;
-      var size : Nat__490723111
-    };
-  stable var firstAdminSet : Bool;
-  in ic : OldIc__108658967;
-  stable var listingCounter : Nat;
-  stable listings :
-    {
-      var root : Node__46230540<Nat, Listing__1058943596>;
-      var size : Nat__490723111
-    };
-  stable marketCopiesSold :
-    {var root : Node__46230540<Text, Nat>; var size : Nat__490723111};
-  stable marketListings :
-    {
-      var root : Node__46230540<Nat, MarketListing__465293504>;
-      var size : Nat__490723111
-    };
-  stable var nextAssetSeq : Nat;
-  stable var nextCardId : Nat;
-  stable var nextCategoryId : Nat;
-  stable var nextClipSeq : Nat;
-  stable var nextCollectibleSeq : Nat;
-  stable var nextDepositSeq : Nat;
-  stable var nextPayoutSeq : Nat;
-  stable var nextPurchaseSeq : Nat;
-  stable var nextTcgSetId : Nat;
-  stable var nextTxId : Nat;
-  stable var offerCounter : Nat;
-  stable offers :
-    {
-      var root : Node__46230540<Nat, Offer__296166603>;
-      var size : Nat__490723111
-    };
-  stable packs :
-    {
-      var root : Node__46230540<Text, Pack__364476570>;
-      var size : Nat__490723111
-    };
-  stable priceHistory :
-    {
-      var root : Node__46230540<Text, [PricePoint__36380829]>;
-      var size : Nat__490723111
-    };
-  stable purchaseRecords :
-    {
-      var root : Node__46230540<Text, PurchaseRecord__521260126>;
-      var size : Nat__490723111
-    };
-  stable releases :
-    {
-      var root : Node__46230540<Text, Release__39174606>;
-      var size : Nat__490723111
-    };
-  stable roleMap :
-    {
-      var root : Node__46230540<Principal, UserRole__599675725>;
-      var size : Nat__490723111
-    };
-  stable seenUtxos :
-    {var root : Node__46230540<Principal, [Text]>; var size : Nat__490723111};
-  stable tcgCards :
-    {
-      var root : Node__46230540<Nat, TcgCard__159008560>;
-      var size : Nat__490723111
-    };
-  stable tcgCategories :
-    {
-      var root : Node__46230540<Nat, TcgCategory__578202536>;
-      var size : Nat__490723111
-    };
-  stable tcgSets :
-    {
-      var root : Node__46230540<Nat, TcgSet__1065024180>;
-      var size : Nat__490723111
-    };
-  stable transactions :
-    {
-      var root : Node__46230540<Nat, Transaction__865268250>;
-      var size : Nat__490723111
-    };
-  stable txLedgerIds :
-    {var root : Node__46230540<Nat, [Nat]>; var size : Nat__490723111};
-  stable userProfiles :
-    {
-      var root : Node__46230540<Principal, UserProfile__491224006>;
-      var size : Nat__490723111
-    };
-  stable userWallets :
-    {
-      var root : Node__46230540<Principal, UserWallet__302414816>;
-      var size : Nat__490723111
-    };
-  stable videoAssets :
-    {
-      var root : Node__46230540<Text, VideoAsset__248137946>;
-      var size : Nat__490723111
-    };
-  stable videoClips :
-    {
-      var root : Node__46230540<Text, VideoClip__351680056>;
-      var size : Nat__490723111
-    }
-}, {
+actor {
   stable _btcNetwork : {#Mainnet; #Regtest; #Testnet};
   stable var _btcUsdRate : Float;
   stable _platformBtcAddress : Text;
@@ -576,4 +386,4 @@ actor ({
       var root : Node__46230540<Text, VideoClip__351680056>;
       var size : Nat__490723111
     }
-}) ;
+};

@@ -505,13 +505,15 @@ export interface _SERVICE {
   >,
   /**
    * / Returns or creates a UserWallet for the caller.
+   * / Eagerly derives and caches the BTC address on first call.
    */
   'getOrCreateUserWallet' : ActorMethod<[], UserWallet>,
   /**
    * / Returns the caller's BTC deposit address as their payment address.
    * / All payments are in BTC — no internal payment terminology exposed.
+   * / Returns #err if address has not been derived yet (call getUserDepositAddress first).
    */
-  'getPaymentAddress' : ActorMethod<[], string>,
+  'getPaymentAddress' : ActorMethod<[], { 'ok' : string } | { 'err' : string }>,
   'getPokemonSets' : ActorMethod<[], Array<TcgSet>>,
   'getPriceHistory' : ActorMethod<[string], Array<PricePoint>>,
   /**
@@ -551,8 +553,13 @@ export interface _SERVICE {
   /**
    * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
    * / Derives the address on first call and caches it in the wallet.
+   * / Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
    */
-  'getUserDepositAddress' : ActorMethod<[], string>,
+  'getUserDepositAddress' : ActorMethod<
+    [],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   /**
    * / Returns all deposits (pending and confirmed) for the caller.
    */
