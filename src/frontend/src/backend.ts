@@ -415,8 +415,13 @@ export interface backendInterface {
     getClips(sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
     /**
      * / Fetch clips filtered to a specific hashtag.
+     * / Delegates to getClipsForHashtag with newest sort and no safe view filter.
      */
     getClipsByHashtag(hashtag: string): Promise<Array<VideoClip>>;
+    /**
+     * / Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
+     */
+    getClipsForHashtag(hashtag: string, sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
     /**
      * / Get all clips created by a specific principal.
      */
@@ -445,9 +450,15 @@ export interface backendInterface {
     getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
     getTop10ByMarketCap(): Promise<Array<MarketCapEntry>>;
     /**
-     * / Get trending hashtags with their post counts, sorted by count descending.
+     * / Get trending hashtags sorted by viral score descending.
+     * / Returns (tag, post_count) pairs.
      */
     getTrendingHashtags(): Promise<Array<[string, bigint]>>;
+    /**
+     * / Get trending hashtags with a hot flag.
+     * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+     */
+    getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
@@ -905,6 +916,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n28(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getClipsForHashtag(arg0: string, arg1: VideoClipSort, arg2: boolean): Promise<Array<VideoClip>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getClipsForHashtag(arg0, to_candid_VideoClipSort_n26(this._uploadFile, this._downloadFile, arg1), arg2);
+                return from_candid_vec_n28(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getClipsForHashtag(arg0, to_candid_VideoClipSort_n26(this._uploadFile, this._downloadFile, arg1), arg2);
+            return from_candid_vec_n28(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getCreatorClips(arg0: Principal): Promise<Array<VideoClip>> {
         if (this.processError) {
             try {
@@ -1174,6 +1199,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getTrendingHashtags();
+            return result;
+        }
+    }
+    async getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTrendingHashtagsWithHotFlag();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTrendingHashtagsWithHotFlag();
             return result;
         }
     }

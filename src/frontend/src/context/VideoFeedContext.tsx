@@ -9,6 +9,7 @@ import {
 } from "react";
 import { VideoClipSort, createActor } from "../backend";
 import type { VideoClip as BackendVideoClip } from "../backend";
+import { useTrendingHashtags } from "../hooks/useTrendingHashtags";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,17 +82,6 @@ function mapBackendClip(bc: BackendVideoClip): VideoClip {
   };
 }
 
-const TRENDING_HASHTAGS = [
-  "#goldenhour",
-  "#citylights",
-  "#coastaldrift",
-  "#nature",
-  "#nightdrive",
-  "#ocean",
-  "#roadtrip",
-  "#desert",
-];
-
 const LS_LIKED_KEY = "minty_feed_liked_v1";
 const LS_SAFE_KEY = "minty_feed_safevew_v1";
 
@@ -126,6 +116,7 @@ const VideoFeedCtx = createContext<VideoFeedContextValue | null>(null);
 
 export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
   const { actor, isFetching } = useActor(createActor);
+  const trendingHashtagObjects = useTrendingHashtags();
 
   const [clips, setClips] = useState<VideoClip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,13 +140,20 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Fetch clips from backend whenever sort or safeView changes
+  // Fetch clips from backend — use hashtag-filtered endpoint when a tag is active
   useEffect(() => {
     if (!actor || isFetching) return;
 
     setIsLoading(true);
-    actor
-      .getClips(toBackendSort(activeSort), safeView)
+
+    // Normalize the hashtag: strip leading "#" for the backend call
+    const rawTag = activeHashtag ? activeHashtag.replace(/^#+/, "") : null;
+
+    const fetchPromise = rawTag
+      ? actor.getClipsForHashtag(rawTag, toBackendSort(activeSort), safeView)
+      : actor.getClips(toBackendSort(activeSort), safeView);
+
+    fetchPromise
       .then((backendClips) => {
         setClips((prev) => {
           // Merge: keep optimistic clips that aren't in the backend response yet
@@ -168,12 +166,14 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
         });
       })
       .catch((err) => {
-        console.error("[VideoFeed] getClips failed:", err);
+        console.error("[VideoFeed] clip fetch failed:", err);
+        // On error fall back to empty rather than crashing — preserve any optimistic clips
+        setClips((prev) => prev.filter((c) => c.id.startsWith("optimistic_")));
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, [actor, isFetching, activeSort, safeView]);
+  }, [actor, isFetching, activeSort, safeView, activeHashtag]);
 
   // Use a ref to avoid stale closure in toggleLike
   const likedIdsRef = useRef(likedIds);
@@ -234,11 +234,13 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Derive the flat string list for consumers that only need tag names
+  const trendingHashtags = trendingHashtagObjects.map((h) => h.tag);
+
+  // filteredClips: when using hashtag endpoint, clips are already server-filtered.
+  // Still apply safeView client-side as a defensive layer, and sort locally.
   const filteredClips = (() => {
     let list = clips.filter((c) => !safeView || !c.explicitFlag);
-    if (activeHashtag) {
-      list = list.filter((c) => c.hashtags.includes(activeHashtag));
-    }
     if (activeSort === "newest") {
       list = [...list].sort((a, b) => b.timestamp - a.timestamp);
     } else if (activeSort === "trending") {
@@ -260,7 +262,7 @@ export function VideoFeedProvider({ children }: { children: React.ReactNode }) {
         activeHashtag,
         setActiveHashtag,
         filteredClips,
-        trendingHashtags: TRENDING_HASHTAGS,
+        trendingHashtags,
         safeView,
         setSafeView,
         addClipToFeed,

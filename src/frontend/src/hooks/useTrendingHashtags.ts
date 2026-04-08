@@ -1,44 +1,51 @@
-import { useMemo } from "react";
-import { useReleasesMarket } from "../context/ReleasesMarketContext";
+import { useActor } from "@caffeineai/core-infrastructure";
+import { useEffect, useRef, useState } from "react";
+import { createActor } from "../backend";
 
 export interface TrendingHashtag {
   tag: string;
   hot: boolean;
 }
 
-const RECENT_PURCHASE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
-const HOT_THRESHOLD = 4; // score >= 4 gets fire emoji
-const TOP_N = 10;
+const POLL_INTERVAL_MS = 60_000; // refresh every 60 seconds
 
 export function useTrendingHashtags(): TrendingHashtag[] {
-  const { releases } = useReleasesMarket();
+  const { actor, isFetching } = useActor(createActor);
+  const [hashtags, setHashtags] = useState<TrendingHashtag[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  return useMemo(() => {
-    const now = Date.now();
-    const scores = new Map<string, number>();
+  useEffect(() => {
+    if (!actor || isFetching) return;
 
-    for (const release of releases) {
-      if (release.status !== "active") continue;
-      if (!release.hashtags || release.hashtags.length === 0) continue;
+    let cancelled = false;
 
-      const hasRecentActivity =
-        !!release.lastPurchaseAt &&
-        now - release.lastPurchaseAt < RECENT_PURCHASE_WINDOW_MS;
-
-      for (const tag of release.hashtags) {
-        const normalized = tag.toLowerCase().replace(/^#+/, "").trim();
-        if (!normalized) continue;
-        const current = scores.get(normalized) ?? 0;
-        scores.set(normalized, current + 1 + (hasRecentActivity ? 2 : 0));
+    async function fetchHashtags() {
+      if (!actor) return;
+      try {
+        const results = await actor.getTrendingHashtagsWithHotFlag();
+        if (cancelled) return;
+        const mapped: TrendingHashtag[] = results.map(([tag, , isHot]) => ({
+          tag: tag.startsWith("#") ? tag : `#${tag}`,
+          hot: isHot,
+        }));
+        setHashtags(mapped);
+      } catch (err) {
+        console.warn("[useTrendingHashtags] fetch failed:", err);
+        // Keep previous value on error — don't reset to empty
       }
     }
 
-    return Array.from(scores.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, TOP_N)
-      .map(([tag, score]) => ({
-        tag: `#${tag}`,
-        hot: score >= HOT_THRESHOLD,
-      }));
-  }, [releases]);
+    fetchHashtags();
+    intervalRef.current = setInterval(fetchHashtags, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [actor, isFetching]);
+
+  return hashtags;
 }

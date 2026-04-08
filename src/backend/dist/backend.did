@@ -332,7 +332,11 @@ service : {
   /// safeView=true hides explicit clips.
   getClips: (sortBy: VideoClipSort, safeView: bool) -> (vec VideoClip) query;
   /// Fetch clips filtered to a specific hashtag.
+  /// Delegates to getClipsForHashtag with newest sort and no safe view filter.
   getClipsByHashtag: (hashtag: text) -> (vec VideoClip) query;
+  /// Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
+  getClipsForHashtag: (hashtag: text, sortBy: VideoClipSort, safeView:
+   bool) -> (vec VideoClip) query;
   /// Get all clips created by a specific principal.
   getCreatorClips: (creator: principal) -> (vec VideoClip) query;
   getCurrentPrice: (clipId: text) -> (float64) query;
@@ -355,11 +359,19 @@ service : {
   getSets: () -> (vec TcgSet) query;
   getSetsByCategory: (categorySlug: text) -> (vec TcgSet) query;
   getTop10ByMarketCap: () -> (vec MarketCapEntry) query;
-  /// Get trending hashtags with their post counts, sorted by count descending.
+  /// Get trending hashtags sorted by viral score descending.
+  /// Returns (tag, post_count) pairs.
   getTrendingHashtags: () -> (vec record {
                                     text;
                                     nat;
                                   }) query;
+  /// Get trending hashtags with a hot flag.
+  /// Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+  getTrendingHashtagsWithHotFlag: () -> (vec record {
+                                               text;
+                                               nat;
+                                               bool;
+                                             }) query;
   getUserCollectibles: (user: principal) -> (vec Collectible) query;
   getUserPacks: (user: principal) -> (vec Pack) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;

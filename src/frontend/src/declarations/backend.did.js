@@ -314,6 +314,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getClipsByHashtag' : IDL.Func([IDL.Text], [IDL.Vec(VideoClip)], ['query']),
+  'getClipsForHashtag' : IDL.Func(
+      [IDL.Text, VideoClipSort, IDL.Bool],
+      [IDL.Vec(VideoClip)],
+      ['query'],
+    ),
   'getCreatorClips' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(VideoClip)],
@@ -343,6 +348,11 @@ export const idlService = IDL.Service({
   'getTrendingHashtags' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
+      ['query'],
+    ),
+  'getTrendingHashtagsWithHotFlag' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool))],
       ['query'],
     ),
   'getUserCollectibles' : IDL.Func(
@@ -681,6 +691,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getClipsByHashtag' : IDL.Func([IDL.Text], [IDL.Vec(VideoClip)], ['query']),
+    'getClipsForHashtag' : IDL.Func(
+        [IDL.Text, VideoClipSort, IDL.Bool],
+        [IDL.Vec(VideoClip)],
+        ['query'],
+      ),
     'getCreatorClips' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(VideoClip)],
@@ -710,6 +725,11 @@ export const idlFactory = ({ IDL }) => {
     'getTrendingHashtags' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
+        ['query'],
+      ),
+    'getTrendingHashtagsWithHotFlag' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat, IDL.Bool))],
         ['query'],
       ),
     'getUserCollectibles' : IDL.Func(

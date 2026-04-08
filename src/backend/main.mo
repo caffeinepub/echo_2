@@ -929,13 +929,6 @@ actor {
     };
   };
 
-  /// Fetch clips filtered to a specific hashtag.
-  public query func getClipsByHashtag(hashtag : Text) : async [VideoClip] {
-    videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
-      c.hashtags.find(func(h : Text) : Bool { h == hashtag }) != null
-    });
-  };
-
   /// Like a clip. Each caller can only like once. Returns new like_count.
   public shared ({ caller }) func likeClip(clip_id : Text) : async LikeResult {
     switch (videoClips.get(clip_id)) {
@@ -968,20 +961,111 @@ actor {
     });
   };
 
-  /// Get trending hashtags with their post counts, sorted by count descending.
-  public query func getTrendingHashtags() : async [(Text, Nat)] {
+  // Compute the viral score for a hashtag by summing across all clips with that tag.
+  func hashtagViralScore(tag : Text) : Float {
+    var score : Float = 0.0;
+    let lowerTag = tag.toLower();
+    for (clip in videoClips.values()) {
+      let hasTag = clip.hashtags.find(func(h : Text) : Bool {
+        h.toLower() == lowerTag
+      }) != null;
+      if (hasTag) {
+        score += viralScore(clip);
+      };
+    };
+    score;
+  };
+
+  // Internal helper: build (tag, postCount, viralScore) triples for all tags.
+  func _buildTagStats() : [(Text, Nat, Float)] {
     let tagCounts = Map.empty<Text, Nat>();
     for (clip in videoClips.values()) {
       for (tag in clip.hashtags.values()) {
-        let current = switch (tagCounts.get(tag)) {
+        let lowerTag = tag.toLower();
+        let current = switch (tagCounts.get(lowerTag)) {
           case (?n) n;
           case null 0;
         };
-        tagCounts.add(tag, current + 1);
+        tagCounts.add(lowerTag, current + 1);
       };
     };
-    tagCounts.toArray().sort(func(a : (Text, Nat), b : (Text, Nat)) : Order.Order {
-      Nat.compare(b.1, a.1)
+    // Build triples with viral scores
+    tagCounts.toArray().map<(Text, Nat), (Text, Nat, Float)>(
+      func((tag, count)) {
+        (tag, count, hashtagViralScore(tag))
+      }
+    );
+  };
+
+  /// Get trending hashtags sorted by viral score descending.
+  /// Returns (tag, post_count) pairs.
+  public query func getTrendingHashtags() : async [(Text, Nat)] {
+    let stats = _buildTagStats();
+    let sorted = stats.sort(func(a : (Text, Nat, Float), b : (Text, Nat, Float)) : Order.Order {
+      if (b.2 > a.2) #less
+      else if (b.2 < a.2) #greater
+      else #equal
+    });
+    sorted.map<(Text, Nat, Float), (Text, Nat)>(func((tag, count, _score)) { (tag, count) });
+  };
+
+  /// Get trending hashtags with a hot flag.
+  /// Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+  public query func getTrendingHashtagsWithHotFlag() : async [(Text, Nat, Bool)] {
+    let stats = _buildTagStats();
+    let sorted = stats.sort(func(a : (Text, Nat, Float), b : (Text, Nat, Float)) : Order.Order {
+      if (b.2 > a.2) #less
+      else if (b.2 < a.2) #greater
+      else #equal
+    });
+    sorted.mapEntries<(Text, Nat, Float), (Text, Nat, Bool)>(
+      func((tag, count, _score), idx) {
+        (tag, count, idx < 3)
+      }
+    );
+  };
+
+  /// Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
+  public query func getClipsForHashtag(hashtag : Text, sortBy : VideoClipSort, safeView : Bool) : async [VideoClip] {
+    let lowerTag = hashtag.toLower();
+    let filtered = videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
+      let tagMatch = c.hashtags.find(func(h : Text) : Bool {
+        h.toLower() == lowerTag
+      }) != null;
+      let safeOk = if (safeView) not c.explicit_flag else true;
+      tagMatch and safeOk
+    });
+    switch (sortBy) {
+      case (#newest) {
+        filtered.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          Int.compare(b.timestamp, a.timestamp)
+        });
+      };
+      case (#trending) {
+        filtered.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          let sa = viralScore(a);
+          let sb = viralScore(b);
+          if (sb > sa) #less
+          else if (sb < sa) #greater
+          else #equal
+        });
+      };
+      case (#top) {
+        filtered.sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+          Nat.compare(b.like_count, a.like_count)
+        });
+      };
+    };
+  };
+
+  /// Fetch clips filtered to a specific hashtag.
+  /// Delegates to getClipsForHashtag with newest sort and no safe view filter.
+  public query func getClipsByHashtag(hashtag : Text) : async [VideoClip] {
+    let lowerTag = hashtag.toLower();
+    videoClips.values().toArray().filter(func(c : VideoClip) : Bool {
+      c.hashtags.find(func(h : Text) : Bool { h.toLower() == lowerTag }) != null
+    }).sort(func(a : VideoClip, b : VideoClip) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp)
     });
   };
 

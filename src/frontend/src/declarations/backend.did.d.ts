@@ -302,8 +302,16 @@ export interface _SERVICE {
   'getClips' : ActorMethod<[VideoClipSort, boolean], Array<VideoClip>>,
   /**
    * / Fetch clips filtered to a specific hashtag.
+   * / Delegates to getClipsForHashtag with newest sort and no safe view filter.
    */
   'getClipsByHashtag' : ActorMethod<[string], Array<VideoClip>>,
+  /**
+   * / Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
+   */
+  'getClipsForHashtag' : ActorMethod<
+    [string, VideoClipSort, boolean],
+    Array<VideoClip>
+  >,
   /**
    * / Get all clips created by a specific principal.
    */
@@ -330,9 +338,18 @@ export interface _SERVICE {
   'getSetsByCategory' : ActorMethod<[string], Array<TcgSet>>,
   'getTop10ByMarketCap' : ActorMethod<[], Array<MarketCapEntry>>,
   /**
-   * / Get trending hashtags with their post counts, sorted by count descending.
+   * / Get trending hashtags sorted by viral score descending.
+   * / Returns (tag, post_count) pairs.
    */
   'getTrendingHashtags' : ActorMethod<[], Array<[string, bigint]>>,
+  /**
+   * / Get trending hashtags with a hot flag.
+   * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+   */
+  'getTrendingHashtagsWithHotFlag' : ActorMethod<
+    [],
+    Array<[string, bigint, boolean]>
+  >,
   'getUserCollectibles' : ActorMethod<[Principal], Array<Collectible>>,
   'getUserPacks' : ActorMethod<[Principal], Array<Pack>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,

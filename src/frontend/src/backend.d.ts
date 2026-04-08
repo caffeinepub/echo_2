@@ -333,8 +333,13 @@ export interface backendInterface {
     getClips(sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
     /**
      * / Fetch clips filtered to a specific hashtag.
+     * / Delegates to getClipsForHashtag with newest sort and no safe view filter.
      */
     getClipsByHashtag(hashtag: string): Promise<Array<VideoClip>>;
+    /**
+     * / Fetch clips filtered to a specific hashtag (case-insensitive), then sorted.
+     */
+    getClipsForHashtag(hashtag: string, sortBy: VideoClipSort, safeView: boolean): Promise<Array<VideoClip>>;
     /**
      * / Get all clips created by a specific principal.
      */
@@ -363,9 +368,15 @@ export interface backendInterface {
     getSetsByCategory(categorySlug: string): Promise<Array<TcgSet>>;
     getTop10ByMarketCap(): Promise<Array<MarketCapEntry>>;
     /**
-     * / Get trending hashtags with their post counts, sorted by count descending.
+     * / Get trending hashtags sorted by viral score descending.
+     * / Returns (tag, post_count) pairs.
      */
     getTrendingHashtags(): Promise<Array<[string, bigint]>>;
+    /**
+     * / Get trending hashtags with a hot flag.
+     * / Returns (tag, post_count, is_hot) — is_hot is true for tags in the top 3 by viral score.
+     */
+    getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
