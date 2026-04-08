@@ -103,6 +103,18 @@ export const TcgSet = IDL.Record({
   'cardCount' : IDL.Opt(IDL.Nat),
   'releaseYear' : IDL.Nat,
 });
+export const WalletActivityType = IDL.Variant({
+  'mintCost' : IDL.Null,
+  'deposit' : IDL.Null,
+  'auctionPayout' : IDL.Null,
+});
+export const WalletActivity = IDL.Record({
+  'status' : IDL.Variant({ 'pending' : IDL.Null, 'confirmed' : IDL.Null }),
+  'activityType' : WalletActivityType,
+  'btcAmountE8s' : IDL.Nat,
+  'description' : IDL.Text,
+  'timestamp' : IDL.Int,
+});
 export const BondingCurveState = IDL.Record({
   'startingPrice' : IDL.Float64,
   'clipId' : IDL.Text,
@@ -259,6 +271,37 @@ export const Offer = IDL.Record({
   'createdAt' : IDL.Int,
   'buyerPrincipal' : IDL.Principal,
 });
+export const ConfirmationStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'confirmed' : IDL.Null,
+});
+export const Deposit = IDL.Record({
+  'depositId' : IDL.Text,
+  'confirmationStatus' : ConfirmationStatus,
+  'btcAmountE8s' : IDL.Nat,
+  'txid' : IDL.Text,
+  'timestamp' : IDL.Int,
+});
+export const PayoutType = IDL.Variant({
+  'auctionWin' : IDL.Null,
+  'copySale' : IDL.Null,
+  'secondaryRoyalty' : IDL.Null,
+});
+export const Payout = IDL.Record({
+  'clipId' : IDL.Text,
+  'btcAmountE8s' : IDL.Nat,
+  'payoutId' : IDL.Text,
+  'timestamp' : IDL.Int,
+  'payoutType' : PayoutType,
+});
+export const UserWallet = IDL.Record({
+  'walletPrincipalId' : IDL.Principal,
+  'usdValueRef' : IDL.Float64,
+  'btcAddress' : IDL.Text,
+  'deposits' : IDL.Vec(Deposit),
+  'payouts' : IDL.Vec(Payout),
+  'btcBalanceE8s' : IDL.Nat,
+});
 export const PricePoint = IDL.Record({
   'editionNumber' : IDL.Nat,
   'timestamp' : IDL.Int,
@@ -331,6 +374,11 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
       [],
     ),
+  'checkForNewDeposits' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+      [],
+    ),
   'checkLikeRateLimit' : IDL.Func(
       [],
       [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
@@ -339,6 +387,11 @@ export const idlService = IDL.Service({
   'checkMintRateLimit' : IDL.Func(
       [],
       [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
+  'confirmPendingDeposits' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
       [],
     ),
   'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
@@ -367,6 +420,7 @@ export const idlService = IDL.Service({
   'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
   'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
   'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+  'getAllWalletActivity' : IDL.Func([], [IDL.Vec(WalletActivity)], []),
   'getBondingCurveState' : IDL.Func(
       [IDL.Text],
       [IDL.Opt(BondingCurveState)],
@@ -426,6 +480,7 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Vec(Offer), 'err' : IDL.Text })],
       ['query'],
     ),
+  'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
   'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
   'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
@@ -461,6 +516,8 @@ export const idlService = IDL.Service({
       [IDL.Vec(Collectible)],
       ['query'],
     ),
+  'getUserDepositAddress' : IDL.Func([], [IDL.Text], []),
+  'getUserDeposits' : IDL.Func([], [IDL.Vec(Deposit)], []),
   'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -494,6 +551,21 @@ export const idlService = IDL.Service({
   'processSecondaryTrade' : IDL.Func(
       [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
       [IDL.Nat],
+      [],
+    ),
+  'processWalletCopySale' : IDL.Func(
+      [IDL.Text, IDL.Principal, IDL.Float64],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+      [],
+    ),
+  'processWalletMint' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+      [],
+    ),
+  'processWalletSecondaryTrade' : IDL.Func(
+      [IDL.Text, IDL.Principal, IDL.Principal, IDL.Float64],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
       [],
     ),
   'recordPurchase' : IDL.Func(
@@ -617,6 +689,18 @@ export const idlFactory = ({ IDL }) => {
     'isActive' : IDL.Bool,
     'cardCount' : IDL.Opt(IDL.Nat),
     'releaseYear' : IDL.Nat,
+  });
+  const WalletActivityType = IDL.Variant({
+    'mintCost' : IDL.Null,
+    'deposit' : IDL.Null,
+    'auctionPayout' : IDL.Null,
+  });
+  const WalletActivity = IDL.Record({
+    'status' : IDL.Variant({ 'pending' : IDL.Null, 'confirmed' : IDL.Null }),
+    'activityType' : WalletActivityType,
+    'btcAmountE8s' : IDL.Nat,
+    'description' : IDL.Text,
+    'timestamp' : IDL.Int,
   });
   const BondingCurveState = IDL.Record({
     'startingPrice' : IDL.Float64,
@@ -771,6 +855,37 @@ export const idlFactory = ({ IDL }) => {
     'createdAt' : IDL.Int,
     'buyerPrincipal' : IDL.Principal,
   });
+  const ConfirmationStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'confirmed' : IDL.Null,
+  });
+  const Deposit = IDL.Record({
+    'depositId' : IDL.Text,
+    'confirmationStatus' : ConfirmationStatus,
+    'btcAmountE8s' : IDL.Nat,
+    'txid' : IDL.Text,
+    'timestamp' : IDL.Int,
+  });
+  const PayoutType = IDL.Variant({
+    'auctionWin' : IDL.Null,
+    'copySale' : IDL.Null,
+    'secondaryRoyalty' : IDL.Null,
+  });
+  const Payout = IDL.Record({
+    'clipId' : IDL.Text,
+    'btcAmountE8s' : IDL.Nat,
+    'payoutId' : IDL.Text,
+    'timestamp' : IDL.Int,
+    'payoutType' : PayoutType,
+  });
+  const UserWallet = IDL.Record({
+    'walletPrincipalId' : IDL.Principal,
+    'usdValueRef' : IDL.Float64,
+    'btcAddress' : IDL.Text,
+    'deposits' : IDL.Vec(Deposit),
+    'payouts' : IDL.Vec(Payout),
+    'btcBalanceE8s' : IDL.Nat,
+  });
   const PricePoint = IDL.Record({
     'editionNumber' : IDL.Nat,
     'timestamp' : IDL.Int,
@@ -840,6 +955,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
         [],
       ),
+    'checkForNewDeposits' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+        [],
+      ),
     'checkLikeRateLimit' : IDL.Func(
         [],
         [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
@@ -848,6 +968,11 @@ export const idlFactory = ({ IDL }) => {
     'checkMintRateLimit' : IDL.Func(
         [],
         [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
+    'confirmPendingDeposits' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
         [],
       ),
     'createCard' : IDL.Func([CreateTcgCardInput], [TcgCard], []),
@@ -876,6 +1001,7 @@ export const idlFactory = ({ IDL }) => {
     'getAllCardsAdmin' : IDL.Func([], [IDL.Vec(TcgCard)], ['query']),
     'getAllCategoriesAdmin' : IDL.Func([], [IDL.Vec(TcgCategory)], ['query']),
     'getAllSetsAdmin' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
+    'getAllWalletActivity' : IDL.Func([], [IDL.Vec(WalletActivity)], []),
     'getBondingCurveState' : IDL.Func(
         [IDL.Text],
         [IDL.Opt(BondingCurveState)],
@@ -935,6 +1061,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Vec(Offer), 'err' : IDL.Text })],
         ['query'],
       ),
+    'getOrCreateUserWallet' : IDL.Func([], [UserWallet], []),
     'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
     'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
@@ -970,6 +1097,8 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Collectible)],
         ['query'],
       ),
+    'getUserDepositAddress' : IDL.Func([], [IDL.Text], []),
+    'getUserDeposits' : IDL.Func([], [IDL.Vec(Deposit)], []),
     'getUserPacks' : IDL.Func([IDL.Principal], [IDL.Vec(Pack)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -1003,6 +1132,21 @@ export const idlFactory = ({ IDL }) => {
     'processSecondaryTrade' : IDL.Func(
         [IDL.Text, IDL.Principal, IDL.Principal, IDL.Principal, IDL.Float64],
         [IDL.Nat],
+        [],
+      ),
+    'processWalletCopySale' : IDL.Func(
+        [IDL.Text, IDL.Principal, IDL.Float64],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+        [],
+      ),
+    'processWalletMint' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
+        [],
+      ),
+    'processWalletSecondaryTrade' : IDL.Func(
+        [IDL.Text, IDL.Principal, IDL.Principal, IDL.Float64],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
         [],
       ),
     'recordPurchase' : IDL.Func(

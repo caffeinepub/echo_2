@@ -48,8 +48,36 @@ type Collectible__765459835 =
     totalSupply : Nat;
     typeSupply : Nat
   };
+type ConfirmationStatus__313026934 = {#confirmed; #pending};
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Deposit__34098882 =
+  {
+    btcAmountE8s : Nat;
+    confirmationStatus : ConfirmationStatus__313026934;
+    depositId : Text;
+    timestamp : Int;
+    txid : Text
+  };
+type HttpHeader__837997805 = {name : Text; value : Text};
+type HttpRequestArgs__893152371 =
+  {
+    body : ?Blob;
+    headers : [HttpHeader__837997805];
+    is_replicated : ?Bool;
+    max_response_bytes : ?Nat64;
+    method : {#get; #head; #post};
+    transform :
+      ?{
+         context : Blob;
+         function :
+           shared {context : Blob; response : HttpRequestResult__1015898249} ->
+             async HttpRequestResult__1015898249
+       };
+    url : Text
+  };
+type HttpRequestResult__1015898249 =
+  {body : Blob; headers : [HttpHeader__837997805]; status : Nat};
 type Internal__8484328<K, V> =
   {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
 type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
@@ -96,6 +124,15 @@ type Pack__364476570 =
     setName : Text;
     status : PackStatus__442425532;
     totalSupply : Nat
+  };
+type PayoutType__483737987 = {#auctionWin; #copySale; #secondaryRoyalty};
+type Payout__668800137 =
+  {
+    btcAmountE8s : Nat;
+    clipId : Text;
+    payoutId : Text;
+    payoutType : PayoutType__483737987;
+    timestamp : Int
   };
 type PricePoint__36380829 =
   {editionNumber : Nat; salePrice : Float; timestamp : Int};
@@ -201,6 +238,15 @@ type TxSplit__767957069 =
 type TxType__343382301 = {#copySale; #mintFee; #secondaryTrade};
 type UserProfile__491224006 = {name : Text};
 type UserRole__599675725 = {#admin; #guest; #user};
+type UserWallet__302414816 =
+  {
+    btcAddress : Text;
+    btcBalanceE8s : Nat;
+    deposits : [Deposit__34098882];
+    payouts : [Payout__668800137];
+    usdValueRef : Float;
+    walletPrincipalId : Principal
+  };
 type VideoAsset__248137946 =
   {
     asset_id : Text;
@@ -261,6 +307,12 @@ actor {
       var size : Nat__490723111
     };
   stable var firstAdminSet : Bool;
+  stable ic :
+    actor {
+      http_request :
+        shared HttpRequestArgs__893152371 ->
+          async HttpRequestResult__1015898249
+    };
   stable var listingCounter : Nat;
   stable listings :
     {
@@ -279,6 +331,8 @@ actor {
   stable var nextCategoryId : Nat;
   stable var nextClipSeq : Nat;
   stable var nextCollectibleSeq : Nat;
+  stable var nextDepositSeq : Nat;
+  stable var nextPayoutSeq : Nat;
   stable var nextPurchaseSeq : Nat;
   stable var nextTcgSetId : Nat;
   stable var nextTxId : Nat;
@@ -338,6 +392,11 @@ actor {
   stable userProfiles :
     {
       var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable userWallets :
+    {
+      var root : Node__46230540<Principal, UserWallet__302414816>;
       var size : Nat__490723111
     };
   stable videoAssets :

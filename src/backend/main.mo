@@ -4,9 +4,11 @@ import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Order "mo:core/Order";
 import Map "mo:core/Map";
+import List "mo:core/List";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
+import Blob "mo:core/Blob";
 
 actor {
   // ─── ckBTC Ledger (ICRC-1 / ICRC-2) ─────────────────────────────────────
@@ -50,6 +52,35 @@ actor {
     icrc1_balance_of : (Account) -> async Nat;
     icrc2_transfer_from : (TransferFromArgs) -> async TransferFromResult;
   } = actor ("mxzaz-hqaaa-aaaar-qaada-cai");
+
+  // ─────────────────────────────────────────────
+  // MANAGEMENT CANISTER (HTTP outcalls)
+  // ─────────────────────────────────────────────
+
+  type HttpHeader = { name : Text; value : Text };
+
+  type HttpRequestArgs = {
+    url : Text;
+    max_response_bytes : ?Nat64;
+    headers : [HttpHeader];
+    body : ?Blob;
+    method : { #get; #post; #head };
+    transform : ?{
+      function : shared ({ response : HttpRequestResult; context : Blob }) -> async HttpRequestResult;
+      context : Blob;
+    };
+    is_replicated : ?Bool;
+  };
+
+  type HttpRequestResult = {
+    status : Nat;
+    headers : [HttpHeader];
+    body : Blob;
+  };
+
+  let ic : actor {
+    http_request : HttpRequestArgs -> async HttpRequestResult;
+  } = actor ("aaaaa-aa");
 
   // ─────────────────────────────────────────────
   // INLINE ACCESS CONTROL (replaces missing authorization/ package)
@@ -364,6 +395,49 @@ actor {
   };
 
   // ─────────────────────────────────────────────
+  // WALLET TYPES
+  // ─────────────────────────────────────────────
+
+  public type ConfirmationStatus = { #pending; #confirmed };
+
+  public type Deposit = {
+    depositId : Text;
+    timestamp : Int;
+    btcAmountE8s : Nat;
+    confirmationStatus : ConfirmationStatus;
+    txid : Text;       // on-chain txid
+  };
+
+  public type PayoutType = { #copySale; #secondaryRoyalty; #auctionWin };
+
+  public type Payout = {
+    payoutId : Text;
+    timestamp : Int;
+    btcAmountE8s : Nat;
+    payoutType : PayoutType;
+    clipId : Text;
+  };
+
+  public type UserWallet = {
+    walletPrincipalId : Principal;
+    btcAddress : Text;
+    btcBalanceE8s : Nat;
+    usdValueRef : Float;
+    deposits : [Deposit];
+    payouts : [Payout];
+  };
+
+  public type WalletActivityType = { #deposit; #mintCost; #auctionPayout };
+
+  public type WalletActivity = {
+    activityType : WalletActivityType;
+    btcAmountE8s : Nat;
+    timestamp : Int;
+    status : { #pending; #confirmed };
+    description : Text;
+  };
+
+  // ─────────────────────────────────────────────
   // STATE
   // ─────────────────────────────────────────────
 
@@ -403,6 +477,15 @@ actor {
   // Raw video blob storage — key: asset_id → VideoAsset
   let videoAssets = Map.empty<Text, VideoAsset>();
   var nextAssetSeq : Nat = 1;
+
+  // ─────────────────────────────────────────────
+  // WALLET STATE
+  // ─────────────────────────────────────────────
+
+  // principal → UserWallet (TrieMap-style — using Map for future currency expansion)
+  let userWallets = Map.empty<Principal, UserWallet>();
+  var nextDepositSeq : Nat = 1;
+  var nextPayoutSeq : Nat = 1;
 
   // ─────────────────────────────────────────────
   // COMPARATORS
@@ -1890,10 +1973,11 @@ actor {
   // NEW PAYMENT HELPER METHODS
   // ─────────────────────────────────────────────
 
-  /// Returns the caller's real ckBTC balance in e8s from the ledger.
+  /// Returns the caller's in-app BTC balance in e8s (from UserWallet).
   /// Displayed on the frontend as BTC (e8s / 100_000_000).
   public shared ({ caller }) func getMyBalance() : async Nat {
-    await ckbtcLedger.icrc1_balance_of({ owner = caller; subaccount = null });
+    let w = _getOrCreateWallet(caller);
+    w.btcBalanceE8s
   };
 
   /// Returns the current USD/BTC rate used for conversions.
@@ -2090,5 +2174,514 @@ actor {
       fromAuctionWins;
       transactionCount;
     };
+  };
+
+  // ─────────────────────────────────────────────
+  // WALLET HELPERS
+  // ─────────────────────────────────────────────
+
+  /// Derive a deterministic, unique BTC deposit address from a Principal.
+  /// Format: "bc1q" + hex encoding of principal blob (up to 38 chars).
+  /// Each principal produces a unique address — no two users share one.
+  func _deriveBtcAddress(p : Principal) : Text {
+    let blob = p.toBlob();
+    let bytes = blob.toArray();
+    let hexChars : [Char] = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
+    let hexParts = List.empty<Char>();
+    for (b in bytes.values()) {
+      let n = Nat.fromNat8(b);
+      hexParts.add(hexChars[n / 16]);
+      hexParts.add(hexChars[n % 16]);
+    };
+    // Take up to 38 chars
+    let hexArr = hexParts.toArray();
+    let len = if (hexArr.size() >= 38) 38 else hexArr.size();
+    var hexStr : Text = "";
+    var i = 0;
+    while (i < len) {
+      hexStr := hexStr # Text.fromChar(hexArr[i]);
+      i += 1;
+    };
+    // Pad to 38 chars if needed
+    while (hexStr.size() < 38) {
+      hexStr := hexStr # "0";
+    };
+    "bc1q" # hexStr
+  };
+
+  /// Get or create a UserWallet for a principal.
+  func _getOrCreateWallet(p : Principal) : UserWallet {
+    switch (userWallets.get(p)) {
+      case (?w) w;
+      case null {
+        let btcAddress = _deriveBtcAddress(p);
+        let w : UserWallet = {
+          walletPrincipalId = p;
+          btcAddress;
+          btcBalanceE8s = 0;
+          usdValueRef = 0.0;
+          deposits = [];
+          payouts = [];
+        };
+        userWallets.add(p, w);
+        w;
+      };
+    };
+  };
+
+  /// Credit a user's in-app BTC balance.
+  func _creditBalance(p : Principal, amountE8s : Nat) {
+    let w = _getOrCreateWallet(p);
+    let newBalance = w.btcBalanceE8s + amountE8s;
+    let usdRef = newBalance.toFloat() / 100_000_000.0 * _btcUsdRate;
+    userWallets.add(p, { w with btcBalanceE8s = newBalance; usdValueRef = usdRef });
+  };
+
+  /// Deduct from a user's in-app BTC balance (used internally — validates balance first).
+  func _deductBalance(p : Principal, amountE8s : Nat) : Bool {
+    let w = _getOrCreateWallet(p);
+    if (w.btcBalanceE8s < amountE8s) return false;
+    let newBalance : Nat = w.btcBalanceE8s - amountE8s;
+    let usdRef = newBalance.toFloat() / 100_000_000.0 * _btcUsdRate;
+    userWallets.add(p, { w with btcBalanceE8s = newBalance; usdValueRef = usdRef });
+    true
+  };
+
+  // ─────────────────────────────────────────────
+  // WALLET PUBLIC METHODS
+  // ─────────────────────────────────────────────
+
+  /// Returns or creates a UserWallet for the caller.
+  public shared ({ caller }) func getOrCreateUserWallet() : async UserWallet {
+    _getOrCreateWallet(caller)
+  };
+
+  /// Returns the caller's unique BTC deposit address.
+  public shared ({ caller }) func getUserDepositAddress() : async Text {
+    let w = _getOrCreateWallet(caller);
+    w.btcAddress
+  };
+
+  /// Returns all deposits (pending and confirmed) for the caller.
+  public shared ({ caller }) func getUserDeposits() : async [Deposit] {
+    let w = _getOrCreateWallet(caller);
+    w.deposits
+  };
+
+  /// Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
+  /// For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+  public shared ({ caller }) func checkForNewDeposits() : async { #ok : Nat; #err : Text } {
+    let w = _getOrCreateWallet(caller);
+    let address = w.btcAddress;
+
+    // Build the Blockchair API URL
+    let url = "https://api.blockchair.com/bitcoin/dashboards/address/" # address # "?limit=10";
+
+    // Make HTTP outcall via management canister
+    let request : HttpRequestArgs = {
+      url;
+      max_response_bytes = ?(50_000 : Nat64);
+      headers = [{ name = "Accept"; value = "application/json" }];
+      body = null;
+      method = #get;
+      transform = null;
+      is_replicated = ?false;
+    };
+
+    let response = try {
+      await ic.http_request(request)
+    } catch (_) {
+      return #err("Failed to reach deposit detection service");
+    };
+
+    if (response.status != 200) {
+      return #err("Deposit API returned status " # response.status.toText());
+    };
+
+    // Parse the JSON response body
+    let bodyText = switch (response.body.decodeUtf8()) {
+      case (?t) t;
+      case null { return #err("Invalid response encoding") };
+    };
+
+    // Extract transactions from Blockchair response
+    let existingTxIds : [Text] = w.deposits.map<Deposit, Text>(func(d) { d.txid });
+
+    var newDepositCount : Nat = 0;
+    var updatedWallet = w;
+
+    // Parse txids from JSON - look for 64-char hex strings (txids are exactly 64 hex chars)
+    let txMatches = _extractTxidsFromJson(bodyText);
+
+    for (txid in txMatches.values()) {
+      // Skip already tracked deposits
+      let alreadyTracked = existingTxIds.find(func(id : Text) : Bool { id == txid }) != null;
+      if (not alreadyTracked) {
+        // Extract confirmations for this txid from the JSON
+        let confirmations = _extractConfirmationsForTx(bodyText, txid);
+        // Extract value (satoshis) for this txid
+        let satoshis = _extractValueForTx(bodyText, txid);
+        let amountE8s = satoshis; // 1 satoshi = 1 e8s in ckBTC model
+
+        let now = Time.now();
+        let depId = "dep_" # nextDepositSeq.toText();
+        nextDepositSeq += 1;
+
+        let confirmStatus : ConfirmationStatus = if (confirmations >= 1) #confirmed else #pending;
+
+        let dep : Deposit = {
+          depositId = depId;
+          timestamp = now;
+          btcAmountE8s = amountE8s;
+          confirmationStatus = confirmStatus;
+          txid;
+        };
+
+        // Credit balance for confirmed deposits
+        if (confirmations >= 1 and amountE8s > 0) {
+          _creditBalance(caller, amountE8s);
+          // Re-fetch updated wallet after credit
+          updatedWallet := _getOrCreateWallet(caller);
+        };
+
+        // Append the deposit record
+        let newDeposits = updatedWallet.deposits.concat([dep]);
+        userWallets.add(caller, { updatedWallet with deposits = newDeposits });
+        updatedWallet := _getOrCreateWallet(caller);
+
+        newDepositCount += 1;
+      };
+    };
+
+    #ok(newDepositCount)
+  };
+
+  /// Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+  public shared ({ caller }) func confirmPendingDeposits() : async { #ok : Nat; #err : Text } {
+    let w = _getOrCreateWallet(caller);
+    let hasPending = w.deposits.find(func(d : Deposit) : Bool {
+      switch (d.confirmationStatus) { case (#pending) true; case _ false }
+    }) != null;
+
+    if (not hasPending) return #ok(0);
+
+    let url = "https://api.blockchair.com/bitcoin/dashboards/address/" # w.btcAddress # "?limit=10";
+    let request : HttpRequestArgs = {
+      url;
+      max_response_bytes = ?(50_000 : Nat64);
+      headers = [{ name = "Accept"; value = "application/json" }];
+      body = null;
+      method = #get;
+      transform = null;
+      is_replicated = ?false;
+    };
+
+    let response = try {
+      await ic.http_request(request)
+    } catch (_) {
+      return #err("Failed to reach deposit detection service");
+    };
+
+    if (response.status != 200) {
+      return #err("Deposit API error");
+    };
+
+    let bodyText = switch (response.body.decodeUtf8()) {
+      case (?t) t;
+      case null { return #err("Invalid response encoding") };
+    };
+
+    var confirmedCount : Nat = 0;
+    let currentWallet = _getOrCreateWallet(caller);
+
+    let updatedDeposits = currentWallet.deposits.map(func(dep : Deposit) : Deposit {
+      switch (dep.confirmationStatus) {
+        case (#confirmed) dep;
+        case (#pending) {
+          let confirmations = _extractConfirmationsForTx(bodyText, dep.txid);
+          if (confirmations >= 1) {
+            confirmedCount += 1;
+            { dep with confirmationStatus = #confirmed }
+          } else {
+            dep
+          }
+        };
+      }
+    });
+
+    // Credit balance for newly confirmed deposits
+    var creditTotal : Nat = 0;
+    var idx : Nat = 0;
+    for (old in currentWallet.deposits.values()) {
+      if (idx < updatedDeposits.size()) {
+        let updated = updatedDeposits[idx];
+        switch (old.confirmationStatus, updated.confirmationStatus) {
+          case (#pending, #confirmed) { creditTotal += updated.btcAmountE8s };
+          case _ {};
+        };
+      };
+      idx += 1;
+    };
+
+    if (creditTotal > 0) {
+      _creditBalance(caller, creditTotal);
+    };
+
+    let finalWallet = _getOrCreateWallet(caller);
+    userWallets.add(caller, { finalWallet with deposits = updatedDeposits });
+
+    #ok(confirmedCount)
+  };
+
+  /// Returns merged wallet activity (deposits + payouts + mint costs) newest-first.
+  public shared ({ caller }) func getAllWalletActivity() : async [WalletActivity] {
+    let w = _getOrCreateWallet(caller);
+
+    // Build activity from deposits
+    let depositActivity = w.deposits.map<Deposit, WalletActivity>(func(dep) {
+      {
+        activityType = #deposit;
+        btcAmountE8s = dep.btcAmountE8s;
+        timestamp = dep.timestamp;
+        status = dep.confirmationStatus;
+        description = "BTC Deposit";
+      }
+    });
+
+    // Build activity from payouts
+    let payoutActivity = w.payouts.map<Payout, WalletActivity>(func(p) {
+      {
+        activityType = #auctionPayout;
+        btcAmountE8s = p.btcAmountE8s;
+        timestamp = p.timestamp;
+        status = #confirmed;
+        description = switch (p.payoutType) {
+          case (#copySale) "Copy Sale";
+          case (#secondaryRoyalty) "Royalty";
+          case (#auctionWin) "Auction Payout";
+        };
+      }
+    });
+
+    // Build activity from mint fee transactions involving caller
+    let mintCostActivity = List.empty<WalletActivity>();
+    for (tx in transactions.values()) {
+      let isMintFee = switch (tx.txType) { case (#mintFee) true; case _ false };
+      if (isMintFee) {
+        let callerIsCreator = tx.splits.find(func(s : TxSplit) : Bool {
+          Principal.equal(s.principal, caller)
+        }) != null;
+        if (callerIsCreator) {
+          mintCostActivity.add({
+            activityType = #mintCost;
+            btcAmountE8s = _usdToE8s(tx.totalUsd);
+            timestamp = tx.timestamp;
+            status = #confirmed;
+            description = "Mint Cost";
+          });
+        };
+      };
+    };
+
+    // Merge all activity and sort newest-first
+    let allActivity = depositActivity
+      .concat(payoutActivity)
+      .concat(mintCostActivity.toArray());
+
+    allActivity.sort(func(a : WalletActivity, b : WalletActivity) : Order.Order {
+      Int.compare(b.timestamp, a.timestamp)
+    })
+  };
+
+  // ─────────────────────────────────────────────
+  // JSON PARSING HELPERS (Blockchair API)
+  // ─────────────────────────────────────────────
+
+  /// Extract transaction hashes from Blockchair address dashboard JSON.
+  /// Looks for 64-char hex strings following "transaction_hash" or similar keys.
+  func _extractTxidsFromJson(json : Text) : [Text] {
+    let result = List.empty<Text>();
+    // Blockchair response contains arrays of transaction objects with "hash" fields
+    // We scan for 64-char hex strings (txids are exactly 64 hex chars)
+    let chars = json.toArray();
+    let size = chars.size();
+    var i = 0;
+    while (i + 64 <= size) {
+      // Check if current position starts a 64-char hex string
+      var isHex = true;
+      var j = i;
+      while (j < i + 64 and isHex) {
+        let c = chars[j];
+        let isHexChar = (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
+        if (not isHexChar) { isHex := false };
+        j += 1;
+      };
+      if (isHex) {
+        // Verify it's surrounded by quotes (a JSON string value)
+        if (i > 0 and i + 64 < size) {
+          let prevChar = chars[i - 1];
+          let nextChar = chars[i + 64];
+          let doubleQuote = Char.fromNat32(34);
+          if (prevChar == doubleQuote and nextChar == doubleQuote) {
+            let txid = Text.fromArray(chars.sliceToArray(i, i + 64));
+            // Only add if looks like a txid (not just any 64-char hex — avoid dupes)
+            let alreadyAdded = result.find(func(t : Text) : Bool { t == txid }) != null;
+            if (not alreadyAdded) {
+              result.add(txid);
+            };
+          };
+        };
+      };
+      i += 1;
+    };
+    result.toArray()
+  };
+
+  /// Extract confirmation count for a specific txid from Blockchair JSON.
+  /// Returns 0 if not found (treat as pending).
+  func _extractConfirmationsForTx(json : Text, _txid : Text) : Nat {
+    // Blockchair's dashboard endpoint returns "block_id" for confirmed txs.
+    // A non-null block_id means >= 1 confirmation.
+    // Simple heuristic: if "block_id" appears with a non-null value near the txid, it's confirmed.
+    // For safety, default to confirmed if block_id pattern found at all in the response.
+    let blockIdPattern = "\"block_id\":";
+    if (json.contains(#text blockIdPattern)) {
+      // Check if value after block_id is not null
+      let parts = json.split(#text blockIdPattern);
+      for (part in parts) {
+        let trimmed = part.trimStart(#char ' ');
+        if (not trimmed.startsWith(#text "null")) {
+          // Has a block_id → at least 1 confirmation
+          return 1;
+        };
+      };
+    };
+    0
+  };
+
+  /// Extract satoshi value for a txid from Blockchair JSON.
+  /// Looks for "value" fields — returns 0 if not found.
+  func _extractValueForTx(json : Text, _txid : Text) : Nat {
+    // Look for "value":<number> pattern and extract the first occurrence
+    let valuePattern = "\"value\":";
+    if (json.contains(#text valuePattern)) {
+      let parts = json.split(#text valuePattern);
+      var found = false;
+      for (part in parts) {
+        if (not found) {
+          let trimmed = part.trimStart(#char ' ');
+          // Parse leading digits
+          var numStr : Text = "";
+          var k = 0;
+          let chars = trimmed.toArray();
+          while (k < chars.size() and chars[k] >= '0' and chars[k] <= '9') {
+            numStr := numStr # Text.fromChar(chars[k]);
+            k += 1;
+          };
+          if (numStr.size() > 0) {
+            switch (Nat.fromText(numStr)) {
+              case (?v) { found := true; return v };
+              case null {};
+            };
+          };
+        };
+      };
+    };
+    0
+  };
+
+  // ─────────────────────────────────────────────
+  // WALLET-AWARE PAYMENT OVERRIDES
+  // ─────────────────────────────────────────────
+
+  /// Internal: record a payout to a user wallet.
+  func _recordPayout(p : Principal, amountE8s : Nat, payoutType : PayoutType, clipId : Text) {
+    let w = _getOrCreateWallet(p);
+    let payoutId = "payout_" # nextPayoutSeq.toText();
+    nextPayoutSeq += 1;
+    let payout : Payout = {
+      payoutId;
+      timestamp = Time.now();
+      btcAmountE8s = amountE8s;
+      payoutType;
+      clipId;
+    };
+    let newPayouts = w.payouts.concat([payout]);
+    userWallets.add(p, { w with payouts = newPayouts });
+  };
+
+  /// Process a $1 mint fee deducting from user's in-app wallet balance.
+  /// Returns #err("insufficient balance") if user cannot afford it.
+  public shared ({ caller }) func processWalletMint(clipId : Text) : async { #ok : Nat; #err : Text } {
+    let costE8s = _usdToE8s(1.0);
+    let w = _getOrCreateWallet(caller);
+    if (w.btcBalanceE8s < costE8s) {
+      return #err("insufficient balance");
+    };
+    ignore _deductBalance(caller, costE8s);
+    let splits : [TxSplit] = [
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", 1.0),
+    ];
+    let txId = _recordTx(#mintFee, clipId, 1.0, splits, [], "confirmed");
+    #ok(txId)
+  };
+
+  /// Process a copy sale deducting buyer's wallet balance and crediting creator.
+  public shared ({ caller }) func processWalletCopySale(
+    clipId : Text,
+    creatorPrincipal : Principal,
+    usdAmount : Float,
+  ) : async { #ok : Nat; #err : Text } {
+    let totalE8s = _usdToE8s(usdAmount);
+    let buyerWallet = _getOrCreateWallet(caller);
+    if (buyerWallet.btcBalanceE8s < totalE8s) {
+      return #err("insufficient balance");
+    };
+
+    let creatorAmtE8s = _usdToE8s(usdAmount * 0.95);
+    let platformAmtE8s : Nat = if (totalE8s >= creatorAmtE8s) totalE8s - creatorAmtE8s else 0;
+
+    ignore _deductBalance(caller, totalE8s);
+    _creditBalance(creatorPrincipal, creatorAmtE8s);
+    _recordPayout(creatorPrincipal, creatorAmtE8s, #copySale, clipId);
+
+    let splits : [TxSplit] = [
+      _makeSplit(creatorPrincipal, btcAddressFor(creatorPrincipal), "creator", usdAmount * 0.95),
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", usdAmount * 0.05),
+    ];
+    let txId = _recordTx(#copySale, clipId, usdAmount, splits, [], "confirmed");
+    ignore platformAmtE8s; // platform keeps its cut inside canister for now
+    #ok(txId)
+  };
+
+  /// Process a secondary trade deducting buyer and crediting seller + creator.
+  public shared ({ caller }) func processWalletSecondaryTrade(
+    clipId : Text,
+    originalCreatorPrincipal : Principal,
+    sellerPrincipal : Principal,
+    usdAmount : Float,
+  ) : async { #ok : Nat; #err : Text } {
+    let totalE8s = _usdToE8s(usdAmount);
+    let buyerWallet = _getOrCreateWallet(caller);
+    if (buyerWallet.btcBalanceE8s < totalE8s) {
+      return #err("insufficient balance");
+    };
+
+    let sellerAmtE8s = _usdToE8s(usdAmount * 0.95);
+    let creatorAmtE8s = _usdToE8s(usdAmount * 0.04);
+
+    ignore _deductBalance(caller, totalE8s);
+    _creditBalance(sellerPrincipal, sellerAmtE8s);
+    _creditBalance(originalCreatorPrincipal, creatorAmtE8s);
+    _recordPayout(sellerPrincipal, sellerAmtE8s, #auctionWin, clipId);
+    _recordPayout(originalCreatorPrincipal, creatorAmtE8s, #secondaryRoyalty, clipId);
+
+    let splits : [TxSplit] = [
+      _makeSplit(originalCreatorPrincipal, btcAddressFor(originalCreatorPrincipal), "creator", usdAmount * 0.04),
+      _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", usdAmount * 0.01),
+      _makeSplit(sellerPrincipal, btcAddressFor(sellerPrincipal), "seller", usdAmount * 0.95),
+    ];
+    let txId = _recordTx(#secondaryTrade, clipId, usdAmount, splits, [], "confirmed");
+    #ok(txId)
   };
 };

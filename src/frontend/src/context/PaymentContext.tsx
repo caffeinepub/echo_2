@@ -1,26 +1,28 @@
-import { useActor } from "@caffeineai/core-infrastructure";
-import { useInternetIdentity } from "@caffeineai/core-infrastructure";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
 import type { Principal } from "@icp-sdk/core/principal";
 import { createContext, useCallback, useContext } from "react";
 import { createActor } from "../backend";
+import { useWalletContext } from "./WalletContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type TransactionType = "mint_fee" | "copy_sale" | "secondary_trade";
 
-// ─── Context value ─────────────────────────────────────────────────────────────
-
 interface PaymentContextValue {
   /**
-   * Records a $1 mint fee — 100% goes to platform.
+   * Process a $1 mint fee from the user's in-app BTC wallet balance.
+   * Returns #err("insufficient balance") if the user cannot afford it.
+   */
+  processWalletMint: (
+    clipId: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Records a $1 mint fee via ckBTC — 100% platform.
    * Calls actor.processClipMint behind the scenes.
-   * Non-blocking: logs error on failure, never throws.
    */
   recordMintFee: (creatorPrincipal: Principal) => Promise<void>;
   /**
    * Records a copy sale — 95% creator, 5% platform.
-   * Calls actor.processCopySale behind the scenes.
-   * Non-blocking: logs error on failure, never throws.
    */
   recordCopySale: (
     clipId: string,
@@ -30,8 +32,6 @@ interface PaymentContextValue {
   ) => Promise<void>;
   /**
    * Records a secondary trade — 4% original creator, 1% platform, 95% seller.
-   * Calls actor.processSecondaryTrade behind the scenes.
-   * Non-blocking: logs error on failure, never throws.
    */
   recordSecondaryTrade: (
     clipId: string,
@@ -47,6 +47,35 @@ const PaymentCtx = createContext<PaymentContextValue | null>(null);
 export function PaymentProvider({ children }: { children: React.ReactNode }) {
   const { actor } = useActor(createActor);
   const { identity } = useInternetIdentity();
+  const { refreshBalance } = useWalletContext();
+
+  const processWalletMint = useCallback(
+    async (clipId: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!actor) {
+        console.warn("[PaymentContext] processWalletMint: actor not ready");
+        return { ok: false, error: "Wallet not connected" };
+      }
+      try {
+        const result = await actor.processWalletMint(clipId);
+        if (result.__kind__ === "err") {
+          return {
+            ok: false,
+            error:
+              result.err === "insufficient balance"
+                ? "Insufficient balance. Deposit BTC to continue."
+                : result.err,
+          };
+        }
+        // Refresh balance after successful deduction
+        await refreshBalance();
+        return { ok: true };
+      } catch (err) {
+        console.error("[PaymentContext] processWalletMint failed:", err);
+        return { ok: false, error: "Payment failed. Please try again." };
+      }
+    },
+    [actor, refreshBalance],
+  );
 
   const recordMintFee = useCallback(
     async (creatorPrincipal: Principal): Promise<void> => {
@@ -70,10 +99,7 @@ export function PaymentProvider({ children }: { children: React.ReactNode }) {
       buyerPrincipal: Principal,
       priceUsd: number,
     ): Promise<void> => {
-      if (!actor) {
-        console.warn("[PaymentContext] recordCopySale: actor not ready");
-        return;
-      }
+      if (!actor) return;
       try {
         await actor.processCopySale(
           clipId,
@@ -96,10 +122,7 @@ export function PaymentProvider({ children }: { children: React.ReactNode }) {
       buyerPrincipal: Principal,
       priceUsd: number,
     ): Promise<void> => {
-      if (!actor) {
-        console.warn("[PaymentContext] recordSecondaryTrade: actor not ready");
-        return;
-      }
+      if (!actor) return;
       try {
         await actor.processSecondaryTrade(
           clipId,
@@ -115,12 +138,12 @@ export function PaymentProvider({ children }: { children: React.ReactNode }) {
     [actor],
   );
 
-  // Keep identity in scope so the hook stays valid even if unused directly
   void identity;
 
   return (
     <PaymentCtx.Provider
       value={{
+        processWalletMint,
         recordMintFee,
         recordCopySale,
         recordSecondaryTrade,

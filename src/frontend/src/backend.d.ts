@@ -7,8 +7,13 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface UserProfile {
+export interface TcgCategory {
+    id: bigint;
+    sortOrder: bigint;
     name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export interface Collectible {
     id: string;
@@ -39,6 +44,21 @@ export interface TcgSet {
     isActive: boolean;
     cardCount?: bigint;
     releaseYear: bigint;
+}
+export interface UserWallet {
+    walletPrincipalId: Principal;
+    usdValueRef: number;
+    btcAddress: string;
+    deposits: Array<Deposit>;
+    payouts: Array<Payout>;
+    btcBalanceE8s: bigint;
+}
+export interface Payout {
+    clipId: string;
+    btcAmountE8s: bigint;
+    payoutId: string;
+    timestamp: bigint;
+    payoutType: PayoutType;
 }
 export interface MarketCapEntry {
     clipId: string;
@@ -127,6 +147,13 @@ export interface PricePoint {
     timestamp: bigint;
     salePrice: number;
 }
+export interface Deposit {
+    depositId: string;
+    confirmationStatus: ConfirmationStatus;
+    btcAmountE8s: bigint;
+    txid: string;
+    timestamp: bigint;
+}
 export interface PriceHistorySummary {
     currentPrice: number;
     maxPrice: number;
@@ -158,6 +185,13 @@ export interface VideoClip {
     explicit_flag: boolean;
     creator_principal_id: Principal;
     video_file_url: string;
+}
+export interface WalletActivity {
+    status: Variant_pending_confirmed;
+    activityType: WalletActivityType;
+    btcAmountE8s: bigint;
+    description: string;
+    timestamp: bigint;
 }
 export interface UpdateTcgCardInput {
     id: bigint;
@@ -197,14 +231,6 @@ export interface CreateTcgCategoryInput {
     isActive: boolean;
     imageUrl: string;
 }
-export interface UpdateTcgCategoryInput {
-    id: bigint;
-    sortOrder: bigint;
-    name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
-}
 export interface UpdateTcgSetInput {
     id: bigint;
     setCode: string;
@@ -217,6 +243,14 @@ export interface UpdateTcgSetInput {
     isActive: boolean;
     cardCount?: bigint;
     releaseYear: bigint;
+}
+export interface UpdateTcgCategoryInput {
+    id: bigint;
+    sortOrder: bigint;
+    name: string;
+    slug: string;
+    isActive: boolean;
+    imageUrl: string;
 }
 export interface TcgCard {
     id: bigint;
@@ -277,13 +311,8 @@ export type PackOpenResult = {
     __kind__: "err";
     err: string;
 };
-export interface TcgCategory {
-    id: bigint;
-    sortOrder: bigint;
+export interface UserProfile {
     name: string;
-    slug: string;
-    isActive: boolean;
-    imageUrl: string;
 }
 export enum CollectibleMediaType {
     video = "video",
@@ -303,6 +332,11 @@ export enum PackStatus {
     opened = "opened",
     sealed = "sealed"
 }
+export enum PayoutType {
+    auctionWin = "auctionWin",
+    copySale = "copySale",
+    secondaryRoyalty = "secondaryRoyalty"
+}
 export enum PurchaseStatus {
     pending = "pending",
     minted = "minted"
@@ -317,10 +351,19 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export enum Variant_pending_confirmed {
+    pending = "pending",
+    confirmed = "confirmed"
+}
 export enum VideoClipSort {
     top = "top",
     trending = "trending",
     newest = "newest"
+}
+export enum WalletActivityType {
+    mintCost = "mintCost",
+    deposit = "deposit",
+    auctionPayout = "auctionPayout"
 }
 export interface backendInterface {
     acceptOffer(offerId: bigint): Promise<{
@@ -337,6 +380,17 @@ export interface backendInterface {
     cancelListing(listingId: bigint): Promise<{
         __kind__: "ok";
         ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
+     * / For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+     */
+    checkForNewDeposits(): Promise<{
+        __kind__: "ok";
+        ok: bigint;
     } | {
         __kind__: "err";
         err: string;
@@ -360,6 +414,16 @@ export interface backendInterface {
     checkMintRateLimit(): Promise<{
         __kind__: "ok";
         ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+     */
+    confirmPendingDeposits(): Promise<{
+        __kind__: "ok";
+        ok: bigint;
     } | {
         __kind__: "err";
         err: string;
@@ -393,6 +457,10 @@ export interface backendInterface {
     getAllCardsAdmin(): Promise<Array<TcgCard>>;
     getAllCategoriesAdmin(): Promise<Array<TcgCategory>>;
     getAllSetsAdmin(): Promise<Array<TcgSet>>;
+    /**
+     * / Returns merged wallet activity (deposits + payouts + mint costs) newest-first.
+     */
+    getAllWalletActivity(): Promise<Array<WalletActivity>>;
     /**
      * / Get the bonding curve state for a single clip.
      */
@@ -441,7 +509,7 @@ export interface backendInterface {
     getMarketCap(clipId: string): Promise<MarketCapEntry | null>;
     getMarketListings(): Promise<Array<MarketListing>>;
     /**
-     * / Returns the caller's real ckBTC balance in e8s from the ledger.
+     * / Returns the caller's in-app BTC balance in e8s (from UserWallet).
      * / Displayed on the frontend as BTC (e8s / 100_000_000).
      */
     getMyBalance(): Promise<bigint>;
@@ -467,6 +535,10 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
+    /**
+     * / Returns or creates a UserWallet for the caller.
+     */
+    getOrCreateUserWallet(): Promise<UserWallet>;
     /**
      * / Returns the caller's ICP principal as text.
      * / The frontend uses this address to request ckBTC ICRC-2 approval before payment.
@@ -506,6 +578,14 @@ export interface backendInterface {
      */
     getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
+    /**
+     * / Returns the caller's unique BTC deposit address.
+     */
+    getUserDepositAddress(): Promise<string>;
+    /**
+     * / Returns all deposits (pending and confirmed) for the caller.
+     */
+    getUserDeposits(): Promise<Array<Deposit>>;
     getUserPacks(user: Principal): Promise<Array<Pack>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     /**
@@ -558,6 +638,37 @@ export interface backendInterface {
      * / Pulls total from buyer's approved allowance → distributes to all parties.
      */
     processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    /**
+     * / Process a copy sale deducting buyer's wallet balance and crediting creator.
+     */
+    processWalletCopySale(clipId: string, creatorPrincipal: Principal, usdAmount: number): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Process a $1 mint fee deducting from user's in-app wallet balance.
+     * / Returns #err("insufficient balance") if user cannot afford it.
+     */
+    processWalletMint(clipId: string): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    /**
+     * / Process a secondary trade deducting buyer and crediting seller + creator.
+     */
+    processWalletSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, usdAmount: number): Promise<{
+        __kind__: "ok";
+        ok: bigint;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     /**
      * / Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
      * / and promotes all purchases to #minted when all 1000 copies are sold.

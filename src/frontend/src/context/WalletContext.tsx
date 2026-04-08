@@ -4,30 +4,38 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { createActor } from "../backend";
+import type { Deposit, WalletActivity } from "../backend.d";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// getMyBalance and getPaymentAddress are not yet in generated bindings.
-// These typed stubs allow optimistic display while the backend methods are deployed.
-type ActorWithBalance = {
-  getMyBalance?: () => Promise<bigint>;
-  getPaymentAddress?: () => Promise<string>;
-};
-
 type BalanceStatus = "idle" | "loading" | "ok" | "error";
 
+export type { Deposit, WalletActivity };
+
 interface WalletContextValue {
+  /** Future-compat: default "BTC". Swap in other currencies without breaking consumers. */
+  currency: "BTC";
   isConnected: boolean;
-  /** BTC balance derived from ckBTC e8s (balance_e8s / 100_000_000). Null when not loaded. */
+  /** BTC balance derived from ckBTC e8s (btcBalanceE8s / 100_000_000). Null when not loaded. */
   btcBalance: number | null;
   balanceStatus: BalanceStatus;
-  /** The user's principal string — used internally for payment routing, not shown in UI */
+  /** User's unique BTC deposit address (bc1q… format) from backend. */
+  depositAddress: string | null;
+  /** All deposits (pending + confirmed) for this user. */
+  deposits: Deposit[];
+  /** All wallet activity (deposits, mint costs, auction payouts). */
+  walletActivity: WalletActivity[];
+  /** The user's principal string (payment address). */
   paymentAddress: string | null;
   refreshBalance: () => Promise<void>;
-  // Legacy fields kept for backward-compat with existing consumers
+  refreshDeposits: () => Promise<void>;
+  /** Polls backend for new deposits and refreshes balance after. */
+  checkDeposits: () => Promise<void>;
+  // Legacy compat
   walletAddress: string | null;
   solBalance: number | null;
   ownedAlbumIds: string[];
@@ -50,69 +58,83 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { identity } = useInternetIdentity();
 
   const [btcBalance, setBtcBalance] = useState<number | null>(null);
-  const [balanceStatus, setBalanceStatus] = useState<BalanceStatus>("idle"); // eslint-disable-line
+  const [balanceStatus, setBalanceStatus] = useState<BalanceStatus>("idle");
   const [paymentAddress, setPaymentAddress] = useState<string | null>(null);
+  const [depositAddress, setDepositAddress] = useState<string | null>(null);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [walletActivity, setWalletActivity] = useState<WalletActivity[]>([]);
 
-  // Derive isConnected and walletAddress from Internet Identity
-  const isConnected = !!identity;
+  const isConnected = !!identity && !identity.getPrincipal().isAnonymous();
   const walletAddress = identity ? identity.getPrincipal().toText() : null;
 
-  // Fetch balance + payment address when actor is ready
+  // Fetch balance from backend
   const refreshBalance = useCallback(async () => {
     if (!actor || isFetching) return;
-
     setBalanceStatus("loading");
     try {
-      // getMyBalance stub: if method exists on actor, call it; otherwise use optimistic 0
-      const actorWithBalance = actor as unknown as ActorWithBalance;
-
-      let e8s = 0n;
-      if (typeof actorWithBalance.getMyBalance === "function") {
-        e8s = await actorWithBalance.getMyBalance();
-      }
+      const e8s = await actor.getMyBalance();
       setBtcBalance(Number(e8s) / E8S_PER_BTC);
       setBalanceStatus("ok");
 
-      // Fetch payment address (principal string)
-      if (typeof actorWithBalance.getPaymentAddress === "function") {
-        const addr = await actorWithBalance.getPaymentAddress();
-        setPaymentAddress(addr);
-      } else if (identity) {
-        // Fallback: use the principal from identity
-        setPaymentAddress(identity.getPrincipal().toText());
-      }
+      const addr = await actor.getPaymentAddress();
+      setPaymentAddress(addr);
     } catch (err) {
       console.error("[WalletContext] refreshBalance failed:", err);
       setBalanceStatus("error");
-      // Optimistic fallback: show 0 balance, derive address from principal
       setBtcBalance(0);
-      if (identity) {
-        setPaymentAddress(identity.getPrincipal().toText());
-      }
+      if (identity) setPaymentAddress(identity.getPrincipal().toText());
     }
   }, [actor, isFetching, identity]);
 
-  // Refresh on login
+  // Fetch deposit address + deposits + wallet activity
+  const refreshDeposits = useCallback(async () => {
+    if (!actor || isFetching) return;
+    try {
+      const [addr, deps, activity] = await Promise.all([
+        actor.getUserDepositAddress(),
+        actor.getUserDeposits(),
+        actor.getAllWalletActivity(),
+      ]);
+      setDepositAddress(addr);
+      setDeposits(deps);
+      setWalletActivity(activity);
+    } catch (err) {
+      console.error("[WalletContext] refreshDeposits failed:", err);
+    }
+  }, [actor, isFetching]);
+
+  // Poll backend for new deposits, then refresh balance
+  const checkDeposits = useCallback(async () => {
+    if (!actor || isFetching) return;
+    try {
+      await actor.checkForNewDeposits();
+      await actor.confirmPendingDeposits();
+      await Promise.all([refreshBalance(), refreshDeposits()]);
+    } catch (err) {
+      console.error("[WalletContext] checkDeposits failed:", err);
+    }
+  }, [actor, isFetching, refreshBalance, refreshDeposits]);
+
+  // Hydrate wallet on login
   useEffect(() => {
     if (identity && actor && !isFetching) {
       refreshBalance();
+      refreshDeposits();
     }
     if (!identity) {
       setBtcBalance(null);
       setBalanceStatus("idle");
       setPaymentAddress(null);
+      setDepositAddress(null);
+      setDeposits([]);
+      setWalletActivity([]);
     }
-  }, [identity, actor, isFetching, refreshBalance]);
+  }, [identity, actor, isFetching, refreshBalance, refreshDeposits]);
 
-  // ─── Legacy stubs kept for backward-compat ──────────────────────────────────
+  // ─── Legacy stubs ────────────────────────────────────────────────────────────
 
-  const connect = useCallback(async () => {
-    // Authentication is handled by Internet Identity — this is a no-op stub
-  }, []);
-
-  const disconnect = useCallback(async () => {
-    // Logout handled by Internet Identity clear() — this is a no-op stub
-  }, []);
+  const connect = useCallback(async () => {}, []);
+  const disconnect = useCallback(async () => {}, []);
 
   const mintAlbum = useCallback(
     async (
@@ -125,19 +147,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const getCirculatingSupply = useCallback((_albumId: string): number => {
-    return 0;
-  }, []);
+  const getCirculatingSupply = useCallback((_albumId: string): number => 0, []);
 
   return (
     <WalletContext.Provider
       value={{
+        currency: "BTC",
         isConnected,
         btcBalance,
         balanceStatus,
+        depositAddress,
+        deposits,
+        walletActivity,
         paymentAddress,
         refreshBalance,
-        // Legacy compat
+        refreshDeposits,
+        checkDeposits,
         walletAddress,
         solBalance: btcBalance,
         ownedAlbumIds: [],
@@ -158,4 +183,18 @@ export function useWalletContext(): WalletContextValue {
   if (!ctx)
     throw new Error("useWalletContext must be used within WalletProvider");
   return ctx;
+}
+
+// ─── Polling hook — use inside wallet modal ───────────────────────────────────
+/** Polls checkDeposits every 30s while `active` is true. */
+export function useDepositPolling(active: boolean) {
+  const { checkDeposits } = useWalletContext();
+  const checkRef = useRef(checkDeposits);
+  checkRef.current = checkDeposits;
+
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => checkRef.current(), 30_000);
+    return () => clearInterval(id);
+  }, [active]);
 }

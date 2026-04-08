@@ -1,3 +1,20 @@
+type WalletActivityType = 
+ variant {
+   auctionPayout;
+   deposit;
+   mintCost;
+ };
+type WalletActivity = 
+ record {
+   activityType: WalletActivityType;
+   btcAmountE8s: nat;
+   description: text;
+   status: variant {
+             confirmed;
+             pending;
+           };
+   timestamp: int;
+ };
 type VideoClipSort = 
  variant {
    newest;
@@ -30,6 +47,15 @@ type VideoAsset =
    created_at: int;
    data: blob;
    owner: principal;
+ };
+type UserWallet = 
+ record {
+   btcAddress: text;
+   btcBalanceE8s: nat;
+   deposits: vec Deposit;
+   payouts: vec Payout;
+   usdValueRef: float64;
+   walletPrincipalId: principal;
  };
 type UserRole = 
  variant {
@@ -177,6 +203,20 @@ type PriceHistorySummary =
    minPrice: float64;
    totalSales: nat;
  };
+type PayoutType = 
+ variant {
+   auctionWin;
+   copySale;
+   secondaryRoyalty;
+ };
+type Payout = 
+ record {
+   btcAmountE8s: nat;
+   clipId: text;
+   payoutId: text;
+   payoutType: PayoutType;
+   timestamp: int;
+ };
 type PackStatus = 
  variant {
    opened;
@@ -261,6 +301,14 @@ type EarningsSummary =
    totalUsd: float64;
    transactionCount: nat;
  };
+type Deposit = 
+ record {
+   btcAmountE8s: nat;
+   confirmationStatus: ConfirmationStatus;
+   depositId: text;
+   timestamp: int;
+   txid: text;
+ };
 type CreateTcgSetInput = 
  record {
    cardCount: opt nat;
@@ -292,6 +340,11 @@ type CreateTcgCardInput =
    rarity: text;
    setId: nat;
    sortOrder: nat;
+ };
+type ConfirmationStatus = 
+ variant {
+   confirmed;
+   pending;
  };
 type CollectibleMediaType = 
  variant {
@@ -361,6 +414,12 @@ service : {
                                         err: text;
                                         ok: bool;
                                       });
+  /// Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
+  /// For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+  checkForNewDeposits: () -> (variant {
+                                err: text;
+                                ok: nat;
+                              });
   /// Check whether the caller is allowed to like (max 30 likes per minute;
   /// also blocks accounts created within the last 60 seconds).
   /// Returns #ok(true) when allowed, #err with a human-readable message when blocked.
@@ -374,6 +433,11 @@ service : {
                                err: text;
                                ok: bool;
                              });
+  /// Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+  confirmPendingDeposits: () -> (variant {
+                                   err: text;
+                                   ok: nat;
+                                 });
   createCard: (input: CreateTcgCardInput) -> (TcgCard);
   createCategory: (input: CreateTcgCategoryInput) -> (TcgCategory);
   /// Create a new video clip post. Returns the generated clip_id.
@@ -397,6 +461,8 @@ service : {
   getAllCardsAdmin: () -> (vec TcgCard) query;
   getAllCategoriesAdmin: () -> (vec TcgCategory) query;
   getAllSetsAdmin: () -> (vec TcgSet) query;
+  /// Returns merged wallet activity (deposits + payouts + mint costs) newest-first.
+  getAllWalletActivity: () -> (vec WalletActivity);
   /// Get the bonding curve state for a single clip.
   getBondingCurveState: (clipId: text) -> (opt BondingCurveState) query;
   /// Batch-fetch bonding curve states for multiple clips (for feed rendering).
@@ -433,7 +499,7 @@ service : {
   getListingsByClip: (clipId: text) -> (vec Listing) query;
   getMarketCap: (clipId: text) -> (opt MarketCapEntry) query;
   getMarketListings: () -> (vec MarketListing) query;
-  /// Returns the caller's real ckBTC balance in e8s from the ledger.
+  /// Returns the caller's in-app BTC balance in e8s (from UserWallet).
   /// Displayed on the frontend as BTC (e8s / 100_000_000).
   getMyBalance: () -> (nat);
   /// Returns an earnings summary for the calling principal.
@@ -449,6 +515,8 @@ service : {
                                     err: text;
                                     ok: vec Offer;
                                   }) query;
+  /// Returns or creates a UserWallet for the caller.
+  getOrCreateUserWallet: () -> (UserWallet);
   /// Returns the caller's ICP principal as text.
   /// The frontend uses this address to request ckBTC ICRC-2 approval before payment.
   /// All error messages visible to the user refer to this as their "payment address".
@@ -483,6 +551,10 @@ service : {
                                                bool;
                                              }) query;
   getUserCollectibles: (user: principal) -> (vec Collectible) query;
+  /// Returns the caller's unique BTC deposit address.
+  getUserDepositAddress: () -> (text);
+  /// Returns all deposits (pending and confirmed) for the caller.
+  getUserDeposits: () -> (vec Deposit);
   getUserPacks: (user: principal) -> (vec Pack) query;
   getUserProfile: (user: principal) -> (opt UserProfile) query;
   /// Retrieve raw video/preview blob data by asset_id.
@@ -519,6 +591,25 @@ service : {
   processSecondaryTrade: (clipId: text, originalCreatorPrincipal: principal,
    sellerPrincipal: principal, buyerPrincipal: principal, usdAmount:
    float64) -> (nat);
+  /// Process a copy sale deducting buyer's wallet balance and crediting creator.
+  processWalletCopySale: (clipId: text, creatorPrincipal: principal,
+   usdAmount: float64) -> (variant {
+                             err: text;
+                             ok: nat;
+                           });
+  /// Process a $1 mint fee deducting from user's in-app wallet balance.
+  /// Returns #err("insufficient balance") if user cannot afford it.
+  processWalletMint: (clipId: text) -> (variant {
+                                          err: text;
+                                          ok: nat;
+                                        });
+  /// Process a secondary trade deducting buyer and crediting seller + creator.
+  processWalletSecondaryTrade: (clipId: text, originalCreatorPrincipal:
+   principal, sellerPrincipal: principal, usdAmount: float64) ->
+   (variant {
+      err: text;
+      ok: nat;
+    });
   /// Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
   /// and promotes all purchases to #minted when all 1000 copies are sold.
   recordPurchase: (clipId: text, pricePaid: float64) ->

@@ -2,7 +2,12 @@ import { useActor } from "@caffeineai/core-infrastructure";
 import { useEffect, useState } from "react";
 import { createActor } from "../backend";
 import { TxType } from "../backend";
-import type { Transaction as BackendTransaction, TxSplit } from "../backend.d";
+import { Variant_pending_confirmed, WalletActivityType } from "../backend.d";
+import type {
+  Transaction as BackendTransaction,
+  TxSplit,
+  WalletActivity,
+} from "../backend.d";
 
 // ─── Local display types ───────────────────────────────────────────────────────
 
@@ -25,9 +30,19 @@ interface DisplaySplit {
   address: string;
 }
 
+interface DisplayActivity {
+  id: string;
+  activityType: WalletActivityType;
+  btcAmountE8s: bigint;
+  description: string;
+  timestamp: number; // ms
+  status: Variant_pending_confirmed;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BTC_RATE = 50_000;
+const E8S_PER_BTC = 100_000_000;
 
 function toType(tx: BackendTransaction): TransactionType {
   const raw = tx.txType as unknown as string;
@@ -61,6 +76,17 @@ function toDisplay(tx: BackendTransaction): DisplayTransaction {
     totalUsd: tx.totalUsd,
     timestamp: Number(tx.timestamp) / 1_000_000, // ns → ms
     splits: tx.splits.map(toDisplaySplit),
+  };
+}
+
+function toDisplayActivity(act: WalletActivity, idx: number): DisplayActivity {
+  return {
+    id: `activity-${idx}`,
+    activityType: act.activityType,
+    btcAmountE8s: act.btcAmountE8s,
+    description: act.description,
+    timestamp: Number(act.timestamp) / 1_000_000,
+    status: act.status,
   };
 }
 
@@ -100,6 +126,33 @@ const ROLE_COLORS: Record<string, string> = {
   seller: "rgba(37,99,235,1)",
 };
 
+const ACTIVITY_META: Record<
+  WalletActivityType,
+  { label: string; icon: string; color: string; bg: string; border: string }
+> = {
+  [WalletActivityType.deposit]: {
+    label: "Deposit",
+    icon: "↓",
+    color: "#059669",
+    bg: "rgba(16,185,129,0.08)",
+    border: "rgba(16,185,129,0.20)",
+  },
+  [WalletActivityType.mintCost]: {
+    label: "Mint Cost",
+    icon: "🔥",
+    color: "#7C3AED",
+    bg: "rgba(124,58,237,0.08)",
+    border: "rgba(124,58,237,0.20)",
+  },
+  [WalletActivityType.auctionPayout]: {
+    label: "Auction Payout",
+    icon: "⭐",
+    color: "#d97706",
+    bg: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.20)",
+  },
+};
+
 function formatBtc(btc: number): string {
   return `₿ ${btc.toFixed(8)}`;
 }
@@ -122,6 +175,10 @@ function truncate(s: string, len = 18): string {
   return `${s.slice(0, 8)}…${s.slice(-6)}`;
 }
 
+function e8sToBtcStr(e8s: bigint): string {
+  return (Number(e8s) / E8S_PER_BTC).toFixed(8);
+}
+
 // ─── TxRow ────────────────────────────────────────────────────────────────────
 
 function TxRow({ txn }: { txn: DisplayTransaction }) {
@@ -140,7 +197,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         transition: "box-shadow 0.2s",
       }}
     >
-      {/* Header row */}
       <button
         type="button"
         data-ocid="transactions.row"
@@ -157,7 +213,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
           textAlign: "left",
         }}
       >
-        {/* Type badge */}
         <span
           style={{
             flexShrink: 0,
@@ -175,8 +230,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         >
           {meta.label}
         </span>
-
-        {/* Clip ID */}
         <span
           style={{
             flex: 1,
@@ -191,8 +244,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         >
           {truncate(txn.clipId)}
         </span>
-
-        {/* Amount */}
         <span
           style={{
             flexShrink: 0,
@@ -207,8 +258,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         >
           {formatUsd(txn.totalUsd)}
         </span>
-
-        {/* Date */}
         <span
           style={{
             flexShrink: 0,
@@ -220,8 +269,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         >
           {formatDate(txn.timestamp)}
         </span>
-
-        {/* Expand chevron */}
         <svg
           width="14"
           height="14"
@@ -244,7 +291,6 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
         </svg>
       </button>
 
-      {/* Expanded splits */}
       {expanded && (
         <div
           style={{
@@ -270,8 +316,7 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
           </p>
           {txn.splits.map((split, idx) => (
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: index is stable here
-              key={idx}
+              key={String(idx)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -345,7 +390,104 @@ function TxRow({ txn }: { txn: DisplayTransaction }) {
   );
 }
 
+// ─── Activity Row ─────────────────────────────────────────────────────────────
+
+function ActivityRow({ act }: { act: DisplayActivity }) {
+  const meta = ACTIVITY_META[act.activityType];
+  const isPending = act.status === Variant_pending_confirmed.pending;
+
+  return (
+    <div
+      data-ocid="transactions.activity_row"
+      style={{
+        background: meta.bg,
+        border: `1px solid ${meta.border}`,
+        borderRadius: 14,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <span style={{ fontSize: 20, flexShrink: 0 }}>{meta.icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: meta.color,
+              fontFamily: "DM Sans, sans-serif",
+            }}
+          >
+            {meta.label}
+          </span>
+          {isPending && (
+            <span
+              style={{
+                fontSize: 10,
+                color: "#d97706",
+                background: "rgba(245,158,11,0.12)",
+                border: "1px solid rgba(245,158,11,0.25)",
+                borderRadius: 20,
+                padding: "2px 7px",
+                fontWeight: 600,
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              Pending
+            </span>
+          )}
+        </div>
+        {act.description && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "#6b7280",
+              fontFamily: "DM Sans, sans-serif",
+              marginTop: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {act.description}
+          </div>
+        )}
+        <div
+          style={{
+            fontSize: 11,
+            color: "#9ca3af",
+            fontFamily: "DM Sans, sans-serif",
+            marginTop: 2,
+          }}
+        >
+          {formatDate(act.timestamp)}
+        </div>
+      </div>
+      <div style={{ textAlign: "right", flexShrink: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color:
+              act.activityType === WalletActivityType.deposit
+                ? "#059669"
+                : meta.color,
+            fontFamily: "DM Sans, sans-serif",
+          }}
+        >
+          {act.activityType === WalletActivityType.deposit ? "+" : "-"}
+          {e8sToBtcStr(act.btcAmountE8s)} BTC
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+type ActiveTab = "transactions" | "activity";
 
 interface TransactionHistoryPageProps {
   onBack?: () => void;
@@ -356,24 +498,27 @@ export function TransactionHistoryPage({
 }: TransactionHistoryPageProps) {
   const { actor, isFetching } = useActor(createActor);
   const [transactions, setTransactions] = useState<DisplayTransaction[]>([]);
+  const [walletActivity, setWalletActivity] = useState<DisplayActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("transactions");
 
   useEffect(() => {
     if (!actor || isFetching) return;
     let cancelled = false;
     setLoading(true);
-    actor
-      .getTransactionHistory()
-      .then((txns) => {
-        if (!cancelled) {
-          setTransactions(txns.map(toDisplay));
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("[TransactionHistoryPage] load failed:", err);
-        if (!cancelled) setLoading(false);
-      });
+
+    Promise.allSettled([
+      actor.getTransactionHistory(),
+      actor.getAllWalletActivity(),
+    ]).then(([txResult, actResult]) => {
+      if (cancelled) return;
+      if (txResult.status === "fulfilled")
+        setTransactions(txResult.value.map(toDisplay));
+      if (actResult.status === "fulfilled")
+        setWalletActivity(actResult.value.map(toDisplayActivity));
+      setLoading(false);
+    });
+
     return () => {
       cancelled = true;
     };
@@ -381,6 +526,10 @@ export function TransactionHistoryPage({
 
   // Suppress unused import warning — TxType imported for enum shape reference
   void TxType;
+
+  const depositCount = walletActivity.filter(
+    (a) => a.activityType === WalletActivityType.deposit,
+  ).length;
 
   return (
     <div
@@ -428,7 +577,6 @@ export function TransactionHistoryPage({
             Back
           </button>
         )}
-
         <h1
           style={{
             fontSize: 22,
@@ -464,135 +612,239 @@ export function TransactionHistoryPage({
         </p>
       </div>
 
-      {/* Stats bar */}
+      {/* Tabs */}
       <div
         style={{
           display: "flex",
-          gap: 10,
-          marginBottom: 20,
-          flexWrap: "wrap",
-        }}
-      >
-        {(["mint_fee", "copy_sale", "secondary_trade"] as const).map((type) => {
-          const count = transactions.filter((t) => t.type === type).length;
-          const meta = TYPE_META[type];
-          return (
-            <div
-              key={type}
-              style={{
-                flex: "1 1 auto",
-                minWidth: 90,
-                background: meta.bg,
-                border: `1px solid ${meta.border}`,
-                borderRadius: 12,
-                padding: "10px 14px",
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: meta.color,
-                  fontFamily: "DM Sans, sans-serif",
-                  lineHeight: 1,
-                }}
-              >
-                {count}
-              </div>
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: meta.color,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  fontFamily: "DM Sans, sans-serif",
-                  marginTop: 3,
-                  opacity: 0.75,
-                }}
-              >
-                {meta.label}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div
-        style={{
-          background: PURPLE_BG,
-          border: `1px solid ${PURPLE_BORDER}`,
+          gap: 6,
+          marginBottom: 18,
+          background: "rgba(0,0,0,0.04)",
           borderRadius: 12,
-          padding: "10px 14px",
-          marginBottom: 16,
-          fontSize: 11,
-          color: "#6b7280",
-          fontFamily: "DM Sans, sans-serif",
-          lineHeight: 1.5,
+          padding: 4,
         }}
       >
-        <strong style={{ color: PURPLE }}>Split rules:</strong> Mint fee → 100%
-        platform · Copy sale → 95% creator, 5% platform · Secondary trade → 4%
-        original creator, 1% platform, 95% seller
-      </div>
-
-      {/* Transaction list */}
-      {loading ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "48px 24px",
-            color: "#9ca3af",
-            fontFamily: "DM Sans, sans-serif",
-            fontSize: 14,
-          }}
-        >
-          Loading transactions…
-        </div>
-      ) : transactions.length === 0 ? (
-        <div
-          data-ocid="transactions.empty_state"
-          style={{
-            textAlign: "center",
-            padding: "48px 24px",
-            background: "rgba(255,255,255,0.75)",
-            borderRadius: 16,
-            border: `1px solid ${PURPLE_BORDER}`,
-          }}
-        >
-          <div style={{ fontSize: 36, marginBottom: 12 }}>₿</div>
-          <p
+        {(["transactions", "activity"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            data-ocid={`transactions.tab.${tab}`}
+            onClick={() => setActiveTab(tab)}
             style={{
-              fontSize: 15,
+              flex: 1,
+              padding: "8px 12px",
+              fontSize: 13,
               fontWeight: 600,
-              color: "#374151",
-              margin: "0 0 6px",
+              borderRadius: 9,
+              border: "none",
+              cursor: "pointer",
               fontFamily: "DM Sans, sans-serif",
+              background: activeTab === tab ? "#ffffff" : "transparent",
+              color: activeTab === tab ? PURPLE : "#9ca3af",
+              boxShadow:
+                activeTab === tab ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              transition: "all 0.15s ease",
             }}
           >
-            No transactions yet
-          </p>
-          <p
+            {tab === "transactions"
+              ? `Payments (${transactions.length})`
+              : `Wallet Activity (${depositCount} deposits)`}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "transactions" && (
+        <>
+          {/* Stats bar */}
+          <div
             style={{
-              fontSize: 13,
-              color: "#9ca3af",
-              margin: 0,
+              display: "flex",
+              gap: 10,
+              marginBottom: 20,
+              flexWrap: "wrap",
+            }}
+          >
+            {(["mint_fee", "copy_sale", "secondary_trade"] as const).map(
+              (type) => {
+                const count = transactions.filter(
+                  (t) => t.type === type,
+                ).length;
+                const meta = TYPE_META[type];
+                return (
+                  <div
+                    key={type}
+                    style={{
+                      flex: "1 1 auto",
+                      minWidth: 90,
+                      background: meta.bg,
+                      border: `1px solid ${meta.border}`,
+                      borderRadius: 12,
+                      padding: "10px 14px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 20,
+                        fontWeight: 800,
+                        color: meta.color,
+                        fontFamily: "DM Sans, sans-serif",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {count}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: meta.color,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        fontFamily: "DM Sans, sans-serif",
+                        marginTop: 3,
+                        opacity: 0.75,
+                      }}
+                    >
+                      {meta.label}
+                    </div>
+                  </div>
+                );
+              },
+            )}
+          </div>
+
+          {/* Legend */}
+          <div
+            style={{
+              background: PURPLE_BG,
+              border: `1px solid ${PURPLE_BORDER}`,
+              borderRadius: 12,
+              padding: "10px 14px",
+              marginBottom: 16,
+              fontSize: 11,
+              color: "#6b7280",
               fontFamily: "DM Sans, sans-serif",
               lineHeight: 1.5,
             }}
           >
-            Mint a clip or buy a copy to see the splits here
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {transactions.map((txn) => (
-            <TxRow key={txn.id} txn={txn} />
-          ))}
-        </div>
+            <strong style={{ color: PURPLE }}>Split rules:</strong> Mint fee →
+            100% platform · Copy sale → 95% creator, 5% platform · Secondary
+            trade → 4% original creator, 1% platform, 95% seller
+          </div>
+
+          {/* Transaction list */}
+          {loading ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "48px 24px",
+                color: "#9ca3af",
+                fontFamily: "DM Sans, sans-serif",
+                fontSize: 14,
+              }}
+            >
+              Loading transactions…
+            </div>
+          ) : transactions.length === 0 ? (
+            <div
+              data-ocid="transactions.empty_state"
+              style={{
+                textAlign: "center",
+                padding: "48px 24px",
+                background: "rgba(255,255,255,0.75)",
+                borderRadius: 16,
+                border: `1px solid ${PURPLE_BORDER}`,
+              }}
+            >
+              <div style={{ fontSize: 36, marginBottom: 12 }}>₿</div>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "#374151",
+                  margin: "0 0 6px",
+                  fontFamily: "DM Sans, sans-serif",
+                }}
+              >
+                No transactions yet
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#9ca3af",
+                  margin: 0,
+                  fontFamily: "DM Sans, sans-serif",
+                  lineHeight: 1.5,
+                }}
+              >
+                Mint a clip or buy a copy to see the splits here
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {transactions.map((txn) => (
+                <TxRow key={txn.id} txn={txn} />
+              ))}
+            </div>
+          )}
+        </>
       )}
+
+      {activeTab === "activity" &&
+        (loading ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "48px 24px",
+              color: "#9ca3af",
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: 14,
+            }}
+          >
+            Loading activity…
+          </div>
+        ) : walletActivity.length === 0 ? (
+          <div
+            data-ocid="transactions.activity_empty"
+            style={{
+              textAlign: "center",
+              padding: "48px 24px",
+              background: "rgba(255,255,255,0.75)",
+              borderRadius: 16,
+              border: `1px solid ${PURPLE_BORDER}`,
+            }}
+          >
+            <div style={{ fontSize: 36, marginBottom: 12 }}>₿</div>
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                color: "#374151",
+                margin: "0 0 6px",
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              No wallet activity yet
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#9ca3af",
+                margin: 0,
+                fontFamily: "DM Sans, sans-serif",
+                lineHeight: 1.5,
+              }}
+            >
+              Deposit BTC to see your activity here
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {walletActivity.map((act) => (
+              <ActivityRow key={act.id} act={act} />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }

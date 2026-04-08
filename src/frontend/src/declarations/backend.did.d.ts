@@ -58,6 +58,8 @@ export interface Collectible {
 }
 export type CollectibleMediaType = { 'video' : null } |
   { 'photo' : null };
+export type ConfirmationStatus = { 'pending' : null } |
+  { 'confirmed' : null };
 export interface CreateTcgCardInput {
   'cardName' : string,
   'sortOrder' : bigint,
@@ -86,6 +88,13 @@ export interface CreateTcgSetInput {
   'isActive' : boolean,
   'cardCount' : [] | [bigint],
   'releaseYear' : bigint,
+}
+export interface Deposit {
+  'depositId' : string,
+  'confirmationStatus' : ConfirmationStatus,
+  'btcAmountE8s' : bigint,
+  'txid' : string,
+  'timestamp' : bigint,
 }
 export interface EarningsSummary {
   'totalBtcE8s' : bigint,
@@ -153,6 +162,16 @@ export type PackOpenResult = { 'ok' : Collectible } |
   { 'err' : string };
 export type PackStatus = { 'opened' : null } |
   { 'sealed' : null };
+export interface Payout {
+  'clipId' : string,
+  'btcAmountE8s' : bigint,
+  'payoutId' : string,
+  'timestamp' : bigint,
+  'payoutType' : PayoutType,
+}
+export type PayoutType = { 'auctionWin' : null } |
+  { 'copySale' : null } |
+  { 'secondaryRoyalty' : null };
 export interface PriceHistorySummary {
   'currentPrice' : number,
   'maxPrice' : number,
@@ -274,6 +293,14 @@ export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface UserWallet {
+  'walletPrincipalId' : Principal,
+  'usdValueRef' : number,
+  'btcAddress' : string,
+  'deposits' : Array<Deposit>,
+  'payouts' : Array<Payout>,
+  'btcBalanceE8s' : bigint,
+}
 export interface VideoAsset {
   'owner' : Principal,
   'data' : Uint8Array,
@@ -299,6 +326,17 @@ export interface VideoClip {
 export type VideoClipSort = { 'top' : null } |
   { 'trending' : null } |
   { 'newest' : null };
+export interface WalletActivity {
+  'status' : { 'pending' : null } |
+    { 'confirmed' : null },
+  'activityType' : WalletActivityType,
+  'btcAmountE8s' : bigint,
+  'description' : string,
+  'timestamp' : bigint,
+}
+export type WalletActivityType = { 'mintCost' : null } |
+  { 'deposit' : null } |
+  { 'auctionPayout' : null };
 export interface _SERVICE {
   'acceptOffer' : ActorMethod<
     [bigint],
@@ -312,6 +350,15 @@ export interface _SERVICE {
   'cancelListing' : ActorMethod<
     [bigint],
     { 'ok' : boolean } |
+      { 'err' : string }
+  >,
+  /**
+   * / Poll Blockchair BTC API for new incoming transactions to the caller's deposit address.
+   * / For each untracked tx: creates a pending deposit if 0 confs, or confirmed + credits balance if >= 1 conf.
+   */
+  'checkForNewDeposits' : ActorMethod<
+    [],
+    { 'ok' : bigint } |
       { 'err' : string }
   >,
   /**
@@ -331,6 +378,14 @@ export interface _SERVICE {
   'checkMintRateLimit' : ActorMethod<
     [],
     { 'ok' : boolean } |
+      { 'err' : string }
+  >,
+  /**
+   * / Re-check pending deposits and confirm them (credit balance) when >= 1 confirmation.
+   */
+  'confirmPendingDeposits' : ActorMethod<
+    [],
+    { 'ok' : bigint } |
       { 'err' : string }
   >,
   'createCard' : ActorMethod<[CreateTcgCardInput], TcgCard>,
@@ -361,6 +416,10 @@ export interface _SERVICE {
   'getAllCardsAdmin' : ActorMethod<[], Array<TcgCard>>,
   'getAllCategoriesAdmin' : ActorMethod<[], Array<TcgCategory>>,
   'getAllSetsAdmin' : ActorMethod<[], Array<TcgSet>>,
+  /**
+   * / Returns merged wallet activity (deposits + payouts + mint costs) newest-first.
+   */
+  'getAllWalletActivity' : ActorMethod<[], Array<WalletActivity>>,
   /**
    * / Get the bonding curve state for a single clip.
    */
@@ -418,7 +477,7 @@ export interface _SERVICE {
   'getMarketCap' : ActorMethod<[string], [] | [MarketCapEntry]>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
   /**
-   * / Returns the caller's real ckBTC balance in e8s from the ledger.
+   * / Returns the caller's in-app BTC balance in e8s (from UserWallet).
    * / Displayed on the frontend as BTC (e8s / 100_000_000).
    */
   'getMyBalance' : ActorMethod<[], bigint>,
@@ -442,6 +501,10 @@ export interface _SERVICE {
     { 'ok' : Array<Offer> } |
       { 'err' : string }
   >,
+  /**
+   * / Returns or creates a UserWallet for the caller.
+   */
+  'getOrCreateUserWallet' : ActorMethod<[], UserWallet>,
   /**
    * / Returns the caller's ICP principal as text.
    * / The frontend uses this address to request ckBTC ICRC-2 approval before payment.
@@ -484,6 +547,14 @@ export interface _SERVICE {
     Array<[string, bigint, boolean]>
   >,
   'getUserCollectibles' : ActorMethod<[Principal], Array<Collectible>>,
+  /**
+   * / Returns the caller's unique BTC deposit address.
+   */
+  'getUserDepositAddress' : ActorMethod<[], string>,
+  /**
+   * / Returns all deposits (pending and confirmed) for the caller.
+   */
+  'getUserDeposits' : ActorMethod<[], Array<Deposit>>,
   'getUserPacks' : ActorMethod<[Principal], Array<Pack>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   /**
@@ -531,6 +602,31 @@ export interface _SERVICE {
   'processSecondaryTrade' : ActorMethod<
     [string, Principal, Principal, Principal, number],
     bigint
+  >,
+  /**
+   * / Process a copy sale deducting buyer's wallet balance and crediting creator.
+   */
+  'processWalletCopySale' : ActorMethod<
+    [string, Principal, number],
+    { 'ok' : bigint } |
+      { 'err' : string }
+  >,
+  /**
+   * / Process a $1 mint fee deducting from user's in-app wallet balance.
+   * / Returns #err("insufficient balance") if user cannot afford it.
+   */
+  'processWalletMint' : ActorMethod<
+    [string],
+    { 'ok' : bigint } |
+      { 'err' : string }
+  >,
+  /**
+   * / Process a secondary trade deducting buyer and crediting seller + creator.
+   */
+  'processWalletSecondaryTrade' : ActorMethod<
+    [string, Principal, Principal, number],
+    { 'ok' : bigint } |
+      { 'err' : string }
   >,
   /**
    * / Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,

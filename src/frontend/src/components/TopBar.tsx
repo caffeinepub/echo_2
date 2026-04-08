@@ -1,5 +1,6 @@
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
+  ArrowDownToLine,
   ArrowLeft,
   Copy,
   Info,
@@ -11,6 +12,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePackStyle } from "../context/PackStyleContext";
+import { useWalletContext } from "../context/WalletContext";
+import { DepositModal } from "./DepositModal";
 
 // Always light mode — dark mode removed
 const isLight = true;
@@ -53,19 +56,6 @@ function injectNeonStyles(r: number, g: number, b: number, _filter?: string) {
 `;
 }
 
-// ─── BTC Asset Constant ───────────────────────────────────────────────────────
-
-const BTC_ASSET = {
-  id: "btc",
-  name: "Bitcoin",
-  symbol: "BTC",
-  balance: 0.00412,
-  color: "#F7931A",
-  description: "Bitcoin — the original decentralized cryptocurrency.",
-  receiveAddress: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-} as const;
-
-type BtcAssetType = typeof BTC_ASSET;
 type WalletView = "list" | "receive" | "send" | "info";
 
 // ─── Live BTC Price Hook ──────────────────────────────────────────────────────
@@ -103,12 +93,11 @@ function useBtcPrice(): BtcPriceState {
         }
       }
 
-      // Fallback to last known price on fetch failure
       if (price === null) {
         price = lastPriceRef.current;
       }
 
-      let change24h = 2.34; // static fallback
+      let change24h = 2.34;
       if (histRes.status === "fulfilled" && histRes.value.ok) {
         try {
           const hData = await histRes.value.json();
@@ -129,12 +118,7 @@ function useBtcPrice(): BtcPriceState {
         }
       }
 
-      setState({
-        price,
-        change24h,
-        loading: false,
-        error: price === null,
-      });
+      setState({ price, change24h, loading: false, error: price === null });
     } catch {
       setState((prev) => ({
         ...prev,
@@ -197,23 +181,27 @@ function ActionPill({
 
 // ─── Asset Row ────────────────────────────────────────────────────────────────
 function AssetRow({
-  asset,
+  btcBalance,
   btcPrice,
+  onDeposit,
   onReceive,
   onSend,
   onInfo,
 }: {
-  asset: BtcAssetType;
+  btcBalance: number | null;
   btcPrice: number | null;
+  onDeposit: () => void;
   onReceive: () => void;
   onSend: () => void;
   onInfo: () => void;
 }) {
-  const usdEquivalent = btcPrice !== null ? asset.balance * btcPrice : null;
+  const usdEquivalent =
+    btcBalance !== null && btcPrice !== null ? btcBalance * btcPrice : null;
+  const BTC_COLOR = "#F7931A";
 
   return (
     <div
-      data-ocid={`wallet.asset.${asset.id}.card`}
+      data-ocid="wallet.asset.btc.card"
       className="rounded-xl"
       style={{
         background: "#ffffff",
@@ -229,10 +217,10 @@ function AssetRow({
       <div
         className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-white font-bold"
         style={{
-          background: asset.color,
+          background: BTC_COLOR,
           fontSize: "11px",
           letterSpacing: "0.02em",
-          boxShadow: `0 2px 8px ${asset.color}44`,
+          boxShadow: `0 2px 8px ${BTC_COLOR}44`,
         }}
       >
         ₿
@@ -243,25 +231,19 @@ function AssetRow({
           className="font-semibold leading-tight truncate"
           style={{ fontSize: "14px", color: "#0D1520" }}
         >
-          {asset.name}
+          Bitcoin
         </div>
         <div className="mt-0.5" style={{ fontSize: "11px", color: "#8BAEC8" }}>
           Balance
         </div>
         <div
           className="font-medium leading-tight"
+          data-ocid="wallet.balance.btc"
           style={{ fontSize: "13px", color: "var(--cycle-accent)" }}
         >
-          {asset.balance.toFixed(5)} {asset.symbol}
+          {btcBalance !== null ? `${btcBalance.toFixed(5)} BTC` : "— BTC"}
         </div>
-        {/* USD equivalent line */}
-        <div
-          style={{
-            fontSize: "11px",
-            color: "#8BAEC8",
-            marginTop: "2px",
-          }}
-        >
+        <div style={{ fontSize: "11px", color: "#8BAEC8", marginTop: "2px" }}>
           {usdEquivalent !== null ? (
             <>
               ≈ $
@@ -279,12 +261,17 @@ function AssetRow({
 
       <div className="flex flex-col gap-1 flex-shrink-0">
         <ActionPill
+          label="Deposit"
+          icon={<ArrowDownToLine size={10} />}
+          onClick={onDeposit}
+        />
+        <ActionPill
           label="Receive"
-          icon=<ArrowLeft size={10} />
+          icon={<ArrowLeft size={10} />}
           onClick={onReceive}
         />
-        <ActionPill label="Send" icon=<Send size={10} /> onClick={onSend} />
-        <ActionPill label="Info" icon=<Info size={10} /> onClick={onInfo} />
+        <ActionPill label="Send" icon={<Send size={10} />} onClick={onSend} />
+        <ActionPill label="Info" icon={<Info size={10} />} onClick={onInfo} />
       </div>
     </div>
   );
@@ -295,10 +282,12 @@ function WalletModal({
   open,
   onClose,
   onSignOut,
+  onOpenDeposit,
 }: {
   open: boolean;
   onClose: () => void;
   onSignOut: () => void;
+  onOpenDeposit: () => void;
 }) {
   const [view, setView] = useState<WalletView>("list");
   const [sendAmount, setSendAmount] = useState("");
@@ -306,10 +295,20 @@ function WalletModal({
   const [copied, setCopied] = useState(false);
 
   const { price: btcPrice, change24h, loading: priceLoading } = useBtcPrice();
+  const { btcBalance, depositAddress } = useWalletContext();
+
+  // Auto-refresh balance every 30s while open
+  const { refreshBalance } = useWalletContext();
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => refreshBalance(), 30_000);
+    return () => clearInterval(id);
+  }, [open, refreshBalance]);
 
   if (!open) return null;
 
-  const totalBalance = btcPrice !== null ? BTC_ASSET.balance * btcPrice : null;
+  const totalBalance =
+    btcBalance !== null && btcPrice !== null ? btcBalance * btcPrice : null;
 
   function goBack() {
     setView("list");
@@ -367,9 +366,9 @@ function WalletModal({
           <div
             className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold"
             style={{
-              background: BTC_ASSET.color,
+              background: "#F7931A",
               fontSize: "16px",
-              boxShadow: `0 2px 10px ${BTC_ASSET.color}55`,
+              boxShadow: "0 2px 10px #F7931A55",
             }}
           >
             ₿
@@ -378,11 +377,9 @@ function WalletModal({
             <div
               style={{ fontSize: "17px", fontWeight: 700, color: titleColor }}
             >
-              {BTC_ASSET.name}
+              Bitcoin
             </div>
-            <div style={{ fontSize: "12px", color: labelColor }}>
-              {BTC_ASSET.symbol}
-            </div>
+            <div style={{ fontSize: "12px", color: labelColor }}>BTC</div>
           </div>
         </div>
         <p
@@ -393,7 +390,8 @@ function WalletModal({
             marginBottom: 20,
           }}
         >
-          {BTC_ASSET.description}
+          Bitcoin — the original decentralized cryptocurrency. Minty uses ckBTC
+          behind the scenes for fast, low-cost settlements.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div
@@ -459,6 +457,7 @@ function WalletModal({
       </>
     );
   } else if (view === "receive") {
+    const addr = depositAddress ?? "Loading…";
     content = (
       <>
         <button
@@ -486,7 +485,7 @@ function WalletModal({
             lineHeight: 1.1,
           }}
         >
-          Receive {BTC_ASSET.symbol}
+          Receive BTC
         </div>
 
         <div
@@ -527,12 +526,12 @@ function WalletModal({
             className="flex-1 truncate font-mono"
             style={{ fontSize: "11px", color: "var(--cycle-accent)" }}
           >
-            {BTC_ASSET.receiveAddress}
+            {addr}
           </span>
           <button
             type="button"
             data-ocid="wallet.receive.copy_button"
-            onClick={() => handleCopy(BTC_ASSET.receiveAddress)}
+            onClick={() => handleCopy(addr)}
             className="flex-shrink-0 flex items-center gap-1 rounded-lg transition-all"
             style={{
               padding: "3px 8px",
@@ -556,7 +555,7 @@ function WalletModal({
             lineHeight: 1.5,
           }}
         >
-          Only send {BTC_ASSET.symbol} to this address.
+          Only send BTC to this address.
         </p>
       </>
     );
@@ -589,7 +588,7 @@ function WalletModal({
             lineHeight: 1.1,
           }}
         >
-          Send {BTC_ASSET.symbol}
+          Send BTC
         </div>
 
         <div className="space-y-3">
@@ -609,7 +608,7 @@ function WalletModal({
               id="send-amount"
               type="number"
               data-ocid="wallet.send.amount_input"
-              placeholder={`0.00 ${BTC_ASSET.symbol}`}
+              placeholder="0.00 BTC"
               value={sendAmount}
               onChange={(e) => setSendAmount(e.target.value)}
               style={inputStyle}
@@ -671,7 +670,7 @@ function WalletModal({
     // list view
     content = (
       <>
-        <div className="text-center mb-5">
+        <div className="text-center mb-4">
           <div
             style={{
               fontSize: "11px",
@@ -704,15 +703,60 @@ function WalletModal({
                 }}
               />
             ) : totalBalance !== null ? (
-              `$${totalBalance.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`
+              `$${totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
             ) : (
               "$—"
             )}
           </div>
+          {btcBalance !== null && (
+            <div
+              data-ocid="wallet.balance.display"
+              style={{
+                fontSize: "13px",
+                color: "var(--cycle-accent)",
+                marginTop: 3,
+                fontFamily: "DM Sans, sans-serif",
+              }}
+            >
+              {btcBalance.toFixed(5)} BTC
+              {totalBalance !== null && (
+                <span
+                  style={{ color: "#8BAEC8", fontWeight: 400, marginLeft: 6 }}
+                >
+                  ($
+                  {totalBalance.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                  )
+                </span>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Prominent Deposit button */}
+        <button
+          type="button"
+          data-ocid="wallet.deposit.open_button"
+          onClick={() => {
+            onClose();
+            onOpenDeposit();
+          }}
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-semibold mb-4 transition-all duration-150"
+          style={{
+            padding: "11px",
+            fontSize: "14px",
+            color: "#ffffff",
+            background: "linear-gradient(135deg, #7C3AED, #9D4FD3)",
+            border: "none",
+            cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(124,58,237,0.30)",
+          }}
+        >
+          <ArrowDownToLine size={15} />
+          Deposit BTC
+        </button>
 
         <div
           style={{
@@ -725,8 +769,12 @@ function WalletModal({
         <div className="space-y-2.5" data-ocid="wallet.asset.list">
           <div data-ocid="wallet.asset.item.1">
             <AssetRow
-              asset={BTC_ASSET}
+              btcBalance={btcBalance}
               btcPrice={btcPrice}
+              onDeposit={() => {
+                onClose();
+                onOpenDeposit();
+              }}
               onReceive={() => setView("receive")}
               onSend={() => setView("send")}
               onInfo={() => setView("info")}
@@ -954,10 +1002,7 @@ function SignInModal({
 function CowInfoModal({
   open,
   onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+}: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -979,7 +1024,6 @@ function CowInfoModal({
     fontFamily: "DM Sans, sans-serif",
     fontWeight: 500,
   };
-
   const bodyTextStyle: React.CSSProperties = {
     fontSize: "13px",
     color: "#5B7FA6",
@@ -1045,7 +1089,6 @@ function CowInfoModal({
           position: "relative",
         }}
       >
-        {/* Header */}
         <div
           className="flex items-center justify-between"
           style={{ marginBottom: "18px" }}
@@ -1093,47 +1136,29 @@ function CowInfoModal({
           </button>
         </div>
 
-        {/* Body */}
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {/* Section 1 */}
           <p style={bodyTextStyle}>
             This BTC wallet is used for Minty deposits and purchasing assets
             inside Minty.
           </p>
-
-          {/* Section 2 */}
           <div>
             <span style={labelStyle}>Funds stored here are used for:</span>
             {bulletItems([
               "minting moments",
-              "buying packs",
+              "buying copies of clips",
               "bidding on video NFTs",
             ])}
           </div>
-
-          {/* Section 3 */}
           <p style={bodyTextStyle}>
             This wallet is not intended as a primary external crypto wallet.
           </p>
-
-          {/* Divider */}
-          <div
-            style={{
-              height: "1px",
-              background: "rgba(0,0,0,0.06)",
-              margin: "0",
-            }}
-          />
-
-          {/* Section 4 */}
+          <div style={{ height: "1px", background: "rgba(0,0,0,0.06)" }} />
           <div>
             <span style={labelStyle}>
               Your Principal ID is used to send and receive:
             </span>
-            {bulletItems(["photos", "videos", "packs", "collectibles"])}
+            {bulletItems(["videos", "NFT copies", "collectibles"])}
           </div>
-
-          {/* Section 5 */}
           <p style={bodyTextStyle}>between Minty users.</p>
         </div>
       </div>
@@ -1148,21 +1173,17 @@ function CowHelper({ onClick }: { onClick: () => void }) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Trigger bounce every 7 seconds
     intervalRef.current = setInterval(() => {
       setIsBouncing(true);
       setTimeout(() => setIsBouncing(false), 800);
     }, 7000);
-
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
   let animation = "cow-sway 3.5s ease-in-out infinite";
-  if (isBouncing) {
-    animation = "cow-bounce 0.8s ease-in-out";
-  }
+  if (isBouncing) animation = "cow-bounce 0.8s ease-in-out";
 
   const glowFilter = isHovered
     ? "drop-shadow(0 0 6px rgba(var(--cycle-accent-rgb),0.35))"
@@ -1222,15 +1243,19 @@ interface TopBarProps {
 export function TopBar({ onProfileClick }: TopBarProps) {
   const { identity, login, clear, isLoggingIn } = useInternetIdentity();
   const { activeStyle: activeCycle } = usePackStyle();
+  const { btcBalance } = useWalletContext();
+
   const [signInOpen, setSignInOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [cowInfoOpen, setCowInfoOpen] = useState(false);
+  const [depositOpen, setDepositOpen] = useState(false);
+
+  const { price: btcPrice } = useBtcPrice();
 
   const MINTY_LOGO =
     "https://dl.dropboxusercontent.com/scl/fi/xvqgzclmz0guu1k2rt8w5/Photo-Apr-07-2026-11-27-28-PM.png?rlkey=zh48w4urma16ow195gnihyvcj&dl=0";
   const [logoError, setLogoError] = useState(false);
 
-  // Reinject neon styles whenever cycle changes
   useEffect(() => {
     injectNeonStyles(
       activeCycle.accentR,
@@ -1241,21 +1266,25 @@ export function TopBar({ onProfileClick }: TopBarProps) {
   }, [activeCycle]);
 
   const isSignedIn = !!identity && !identity.getPrincipal().isAnonymous();
-
   const accentRgb = `${activeCycle.accentR},${activeCycle.accentG},${activeCycle.accentB}`;
 
   function handleAuthButtonClick() {
-    if (isSignedIn) {
-      setWalletOpen(true);
-    } else {
-      setSignInOpen(true);
-    }
+    if (isSignedIn) setWalletOpen(true);
+    else setSignInOpen(true);
   }
 
   function handleModalSignIn() {
     login();
     setSignInOpen(false);
   }
+
+  // Format balance for header chip display
+  const usdEquiv =
+    btcBalance !== null && btcPrice !== null ? btcBalance * btcPrice : null;
+  const balanceChip =
+    isSignedIn && btcBalance !== null
+      ? `${btcBalance.toFixed(5)} BTC${usdEquiv !== null ? ` ($${usdEquiv.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ""}`
+      : null;
 
   return (
     <>
@@ -1343,7 +1372,7 @@ export function TopBar({ onProfileClick }: TopBarProps) {
             </button>
           )}
 
-          {/* Auth / Wallet button */}
+          {/* Auth / Wallet button — shows real balance when signed in */}
           <button
             type="button"
             onClick={handleAuthButtonClick}
@@ -1386,12 +1415,15 @@ export function TopBar({ onProfileClick }: TopBarProps) {
                 style={{ color: "var(--cycle-accent)" }}
               />
             )}
-            <span className="leading-none text-[13px]">
-              {isSignedIn ? "Wallet" : "Sign In"}
+            <span
+              className="leading-none text-[13px]"
+              data-ocid="topbar.balance.label"
+            >
+              {balanceChip ?? (isSignedIn ? "Wallet" : "Sign In")}
             </span>
           </button>
 
-          {/* Cow Helper — sits quietly to the right of the Wallet button */}
+          {/* Cow Helper */}
           <CowHelper onClick={() => setCowInfoOpen(true)} />
         </div>
       </header>
@@ -1402,17 +1434,20 @@ export function TopBar({ onProfileClick }: TopBarProps) {
         onSignIn={handleModalSignIn}
         isLoggingIn={isLoggingIn}
       />
-
       <WalletModal
         open={walletOpen}
         onClose={() => setWalletOpen(false)}
         onSignOut={clear}
+        onOpenDeposit={() => setDepositOpen(true)}
       />
-
       <CowInfoModal open={cowInfoOpen} onClose={() => setCowInfoOpen(false)} />
+      <DepositModal
+        open={depositOpen}
+        onClose={() => setDepositOpen(false)}
+        btcPrice={btcPrice}
+      />
     </>
   );
 }
 
-// Re-export for backwards compatibility (isLight is always true now)
 export { isLight };
