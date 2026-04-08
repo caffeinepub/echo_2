@@ -1,25 +1,39 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { useActor, useInternetIdentity } from "@caffeineai/core-infrastructure";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { createActor } from "../backend";
 
-const LS_CONNECTED = "minty_wallet_connected";
-const LS_OWNED_PREFIX = "minty_owned_";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface OwnedEntry {
-  itemId: string;
-  editionNumber: number;
-}
+// getMyBalance and getPaymentAddress are not yet in generated bindings.
+// These typed stubs allow optimistic display while the backend methods are deployed.
+type ActorWithBalance = {
+  getMyBalance?: () => Promise<bigint>;
+  getPaymentAddress?: () => Promise<string>;
+};
 
 type BalanceStatus = "idle" | "loading" | "ok" | "error";
 
 interface WalletContextValue {
   isConnected: boolean;
+  /** BTC balance derived from ckBTC e8s (balance_e8s / 100_000_000). Null when not loaded. */
+  btcBalance: number | null;
+  balanceStatus: BalanceStatus;
+  /** The user's principal string — used internally for payment routing, not shown in UI */
+  paymentAddress: string | null;
+  refreshBalance: () => Promise<void>;
+  // Legacy fields kept for backward-compat with existing consumers
   walletAddress: string | null;
   solBalance: number | null;
-  balanceStatus: BalanceStatus;
   ownedAlbumIds: string[];
   ownedEditions: Record<string, number>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
-  refreshBalance: () => Promise<void>;
   mintAlbum: (
     albumId: string,
     opts?: { onApproved?: () => void },
@@ -29,114 +43,107 @@ interface WalletContextValue {
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
-function loadOwned(address: string): OwnedEntry[] {
-  try {
-    const raw = localStorage.getItem(`${LS_OWNED_PREFIX}${address}`);
-    return raw ? (JSON.parse(raw) as OwnedEntry[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveOwned(address: string, entries: OwnedEntry[]) {
-  localStorage.setItem(`${LS_OWNED_PREFIX}${address}`, JSON.stringify(entries));
-}
+const E8S_PER_BTC = 100_000_000;
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [isConnected, setIsConnected] = useState(
-    () => localStorage.getItem(LS_CONNECTED) === "true",
-  );
-  const [walletAddress, setWalletAddress] = useState<string | null>(
-    () => localStorage.getItem(`${LS_CONNECTED}_addr`) ?? null,
-  );
-  const [balanceStatus] = useState<BalanceStatus>("idle");
-  const [solBalance] = useState<number | null>(null);
-  const [ownedEntries, setOwnedEntries] = useState<OwnedEntry[]>(() => {
-    const addr = localStorage.getItem(`${LS_CONNECTED}_addr`);
-    return addr ? loadOwned(addr) : [];
-  });
-  const [additionalMints, setAdditionalMints] = useState<
-    Record<string, number>
-  >({});
+  const { actor, isFetching } = useActor(createActor);
+  const { identity } = useInternetIdentity();
 
+  const [btcBalance, setBtcBalance] = useState<number | null>(null);
+  const [balanceStatus, setBalanceStatus] = useState<BalanceStatus>("idle"); // eslint-disable-line
+  const [paymentAddress, setPaymentAddress] = useState<string | null>(null);
+
+  // Derive isConnected and walletAddress from Internet Identity
+  const isConnected = !!identity;
+  const walletAddress = identity ? identity.getPrincipal().toText() : null;
+
+  // Fetch balance + payment address when actor is ready
   const refreshBalance = useCallback(async () => {
-    // Balance fetching not needed for Internet Identity–based auth
-  }, []);
+    if (!actor || isFetching) return;
+
+    setBalanceStatus("loading");
+    try {
+      // getMyBalance stub: if method exists on actor, call it; otherwise use optimistic 0
+      const actorWithBalance = actor as unknown as ActorWithBalance;
+
+      let e8s = 0n;
+      if (typeof actorWithBalance.getMyBalance === "function") {
+        e8s = await actorWithBalance.getMyBalance();
+      }
+      setBtcBalance(Number(e8s) / E8S_PER_BTC);
+      setBalanceStatus("ok");
+
+      // Fetch payment address (principal string)
+      if (typeof actorWithBalance.getPaymentAddress === "function") {
+        const addr = await actorWithBalance.getPaymentAddress();
+        setPaymentAddress(addr);
+      } else if (identity) {
+        // Fallback: use the principal from identity
+        setPaymentAddress(identity.getPrincipal().toText());
+      }
+    } catch (err) {
+      console.error("[WalletContext] refreshBalance failed:", err);
+      setBalanceStatus("error");
+      // Optimistic fallback: show 0 balance, derive address from principal
+      setBtcBalance(0);
+      if (identity) {
+        setPaymentAddress(identity.getPrincipal().toText());
+      }
+    }
+  }, [actor, isFetching, identity]);
+
+  // Refresh on login
+  useEffect(() => {
+    if (identity && actor && !isFetching) {
+      refreshBalance();
+    }
+    if (!identity) {
+      setBtcBalance(null);
+      setBalanceStatus("idle");
+      setPaymentAddress(null);
+    }
+  }, [identity, actor, isFetching, refreshBalance]);
+
+  // ─── Legacy stubs kept for backward-compat ──────────────────────────────────
 
   const connect = useCallback(async () => {
-    // Authentication is handled via Internet Identity in TopBar.
-    // This stub allows legacy consumers (MintModal etc.) to compile.
-    const mockAddr = "minty-user";
-    localStorage.setItem(LS_CONNECTED, "true");
-    localStorage.setItem(`${LS_CONNECTED}_addr`, mockAddr);
-    const entries = loadOwned(mockAddr);
-    setIsConnected(true);
-    setWalletAddress(mockAddr);
-    setOwnedEntries(entries);
+    // Authentication is handled by Internet Identity — this is a no-op stub
   }, []);
 
   const disconnect = useCallback(async () => {
-    localStorage.removeItem(LS_CONNECTED);
-    localStorage.removeItem(`${LS_CONNECTED}_addr`);
-    setIsConnected(false);
-    setWalletAddress(null);
-    setOwnedEntries([]);
+    // Logout handled by Internet Identity clear() — this is a no-op stub
   }, []);
 
   const mintAlbum = useCallback(
     async (
-      albumId: string,
+      _albumId: string,
       opts?: { onApproved?: () => void },
     ): Promise<{ editionNumber: number }> => {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       opts?.onApproved?.();
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const currentExtra = additionalMints[albumId] ?? 0;
-      const editionNumber = currentExtra + 1;
-
-      const address = walletAddress ?? "anonymous";
-      setOwnedEntries((prev) => {
-        const next = [...prev, { itemId: albumId, editionNumber }];
-        saveOwned(address, next);
-        return next;
-      });
-
-      setAdditionalMints((prev) => ({
-        ...prev,
-        [albumId]: (prev[albumId] ?? 0) + 1,
-      }));
-
-      return { editionNumber };
+      return { editionNumber: 1 };
     },
-    [walletAddress, additionalMints],
+    [],
   );
 
-  const getCirculatingSupply = useCallback(
-    (albumId: string): number => {
-      return additionalMints[albumId] ?? 0;
-    },
-    [additionalMints],
-  );
-
-  const ownedAlbumIds = ownedEntries.map((e) => e.itemId);
-  const ownedEditions: Record<string, number> = {};
-  for (const e of ownedEntries) {
-    ownedEditions[e.itemId] = e.editionNumber;
-  }
+  const getCirculatingSupply = useCallback((_albumId: string): number => {
+    return 0;
+  }, []);
 
   return (
     <WalletContext.Provider
       value={{
         isConnected,
-        walletAddress,
-        solBalance,
+        btcBalance,
         balanceStatus,
-        ownedAlbumIds,
-        ownedEditions,
+        paymentAddress,
+        refreshBalance,
+        // Legacy compat
+        walletAddress,
+        solBalance: btcBalance,
+        ownedAlbumIds: [],
+        ownedEditions: {},
         connect,
         disconnect,
-        refreshBalance,
         mintAlbum,
         getCirculatingSupply,
       }}

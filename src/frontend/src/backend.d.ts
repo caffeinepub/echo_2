@@ -59,9 +59,9 @@ export interface VideoAsset {
     asset_id: string;
 }
 export interface EarningsSummary {
+    totalBtcE8s: bigint;
     fromAuctionWins: number;
     fromCopySales: number;
-    totalBtc: number;
     totalUsd: number;
     fromTradeRoyalties: number;
     transactionCount: bigint;
@@ -127,6 +127,14 @@ export interface PricePoint {
     timestamp: bigint;
     salePrice: number;
 }
+export interface PriceHistorySummary {
+    currentPrice: number;
+    maxPrice: number;
+    totalSales: bigint;
+    minPrice: number;
+    lastSaleTimestamp?: bigint;
+    firstSaleTimestamp?: bigint;
+}
 export interface Track {
     title: string;
     duration: bigint;
@@ -135,16 +143,6 @@ export interface MarketListing {
     seller: Principal;
     editionId: bigint;
     price: bigint;
-}
-export interface Listing {
-    id: bigint;
-    status: ListingStatus;
-    clipId: string;
-    totalEditions: bigint;
-    sellerPrincipal: Principal;
-    listPriceUsd: number;
-    editionNumber: bigint;
-    listedAt: bigint;
 }
 export interface VideoClip {
     clip_id: string;
@@ -171,6 +169,16 @@ export interface UpdateTcgCardInput {
     rarity: string;
     cardNumber: string;
     isSupported: boolean;
+}
+export interface Listing {
+    id: bigint;
+    status: ListingStatus;
+    clipId: string;
+    totalEditions: bigint;
+    sellerPrincipal: Principal;
+    listPriceUsd: number;
+    editionNumber: bigint;
+    listedAt: bigint;
 }
 export interface BondingCurveState {
     startingPrice: number;
@@ -393,6 +401,11 @@ export interface backendInterface {
      * / Batch-fetch bonding curve states for multiple clips (for feed rendering).
      */
     getBondingCurveStates(clipIds: Array<string>): Promise<Array<BondingCurveState>>;
+    /**
+     * / Returns the current USD/BTC rate used for conversions.
+     * / Defaults to 50000 if no live rate is set.
+     */
+    getBtcRate(): Promise<number>;
     getCallerCollectibles(): Promise<Array<Collectible>>;
     getCallerPacks(): Promise<Array<Pack>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -428,6 +441,11 @@ export interface backendInterface {
     getMarketCap(clipId: string): Promise<MarketCapEntry | null>;
     getMarketListings(): Promise<Array<MarketListing>>;
     /**
+     * / Returns the caller's real ckBTC balance in e8s from the ledger.
+     * / Displayed on the frontend as BTC (e8s / 100_000_000).
+     */
+    getMyBalance(): Promise<bigint>;
+    /**
      * / Returns an earnings summary for the calling principal.
      * / Sums splits where role == "creator" or role == "seller".
      */
@@ -449,8 +467,24 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
+    /**
+     * / Returns the caller's ICP principal as text.
+     * / The frontend uses this address to request ckBTC ICRC-2 approval before payment.
+     * / All error messages visible to the user refer to this as their "payment address".
+     */
+    getPaymentAddress(): Promise<string>;
     getPokemonSets(): Promise<Array<TcgSet>>;
     getPriceHistory(clipId: string): Promise<Array<PricePoint>>;
+    /**
+     * / Returns ALL price points for a clip, sorted chronologically (oldest first).
+     * / This is the primary endpoint for rendering complete chart data.
+     */
+    getPriceHistoryFull(clipId: string): Promise<Array<PricePoint>>;
+    /**
+     * / Returns summary statistics for a clip's sales history.
+     * / Useful for chart header stats (total sold, price range, latest activity).
+     */
+    getPriceHistorySummary(clipId: string): Promise<PriceHistorySummary>;
     getReleases(): Promise<Array<Release>>;
     getSetById(id: bigint): Promise<TcgSet | null>;
     getSetBySlug(slug: string): Promise<TcgSet | null>;
@@ -510,17 +544,20 @@ export interface backendInterface {
     }>;
     openPack(packId: string): Promise<PackOpenResult>;
     /**
-     * / Record a $1 mint fee. 100% to platform wallet.
+     * / Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+     * / Returns the internal transaction ID.
      */
-    processClipMint(_creatorPrincipal: Principal): Promise<bigint>;
+    processClipMint(creatorPrincipal: Principal): Promise<bigint>;
     /**
-     * / Record a bonding curve copy sale. 95% to creator, 5% to platform.
+     * / Process a bonding curve copy sale. 95% to creator, 5% to platform.
+     * / Pulls total from buyer's approved allowance → distributes to creator and platform.
      */
-    processCopySale(clipId: string, creatorPrincipal: Principal, _buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    processCopySale(clipId: string, creatorPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     /**
-     * / Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+     * / Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+     * / Pulls total from buyer's approved allowance → distributes to all parties.
      */
-    processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, _buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
+    processSecondaryTrade(clipId: string, originalCreatorPrincipal: Principal, sellerPrincipal: Principal, buyerPrincipal: Principal, usdAmount: number): Promise<bigint>;
     /**
      * / Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
      * / and promotes all purchases to #minted when all 1000 copies are sold.
@@ -545,6 +582,10 @@ export interface backendInterface {
     }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
+    /**
+     * / Admin: update the BTC/USD rate used for e8s conversions.
+     */
+    setBtcRate(rate: number): Promise<void>;
     toggleCardActive(id: bigint): Promise<void>;
     toggleCardSupported(id: bigint): Promise<void>;
     toggleCategoryActive(id: bigint): Promise<void>;

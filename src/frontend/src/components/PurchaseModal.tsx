@@ -1,6 +1,6 @@
 import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Principal } from "@icp-sdk/core/principal";
-import { Check, ChevronRight, X } from "lucide-react";
+import { Check, ChevronRight, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
@@ -12,6 +12,62 @@ interface PurchaseModalProps {
   clip: VideoClip;
   onClose: () => void;
 }
+
+// ─── Error message mapping ────────────────────────────────────────────────────
+// Maps backend error strings to user-friendly BTC-only language.
+// Never exposes "ckBTC", "ledger", "principal", "approval", or "allowance".
+
+function mapPurchaseError(raw: string): {
+  message: string;
+  retryable: boolean;
+} {
+  const lower = raw.toLowerCase();
+
+  if (lower.includes("insufficient") || lower.includes("balance")) {
+    return {
+      message: "Not enough BTC in your wallet.",
+      retryable: false,
+    };
+  }
+  if (lower.includes("cancelled") || lower.includes("canceled")) {
+    return {
+      message: "", // dismiss cleanly — no error shown
+      retryable: false,
+    };
+  }
+  if (
+    lower.includes("processing") ||
+    lower.includes("transfer") ||
+    lower.includes("ledger") ||
+    lower.includes("timeout") ||
+    lower.includes("retry")
+  ) {
+    return {
+      message: "Payment processing error. Please try again.",
+      retryable: true,
+    };
+  }
+  if (lower.includes("already purchased") || lower.includes("duplicate")) {
+    return {
+      message: "You already own a copy of this clip.",
+      retryable: false,
+    };
+  }
+  if (lower.includes("sold out")) {
+    return {
+      message: "This clip is sold out.",
+      retryable: false,
+    };
+  }
+
+  // Generic fallback — always retryable
+  return {
+    message: "Something went wrong. Please try again.",
+    retryable: true,
+  };
+}
+
+// ─── SlideToConfirm ───────────────────────────────────────────────────────────
 
 function SlideToConfirm({
   onConfirm,
@@ -189,6 +245,8 @@ function SlideToConfirm({
   );
 }
 
+// ─── PurchaseModal ─────────────────────────────────────────────────────────────
+
 export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const { activeStyle } = usePackStyle();
   const { purchase, currentPrice, nextPrice, progressPct, getCurveState } =
@@ -199,6 +257,7 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
     "idle" | "loading" | "success" | "error"
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isRetryable, setIsRetryable] = useState(false);
   const [editionInfo, setEditionInfo] = useState<{
     editionNumber: number;
     totalSupply: number;
@@ -222,7 +281,6 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   const copiesMinted = curveState?.copiesMinted ?? 0;
   const totalSupply = curveState?.totalSupply ?? 1000;
 
-  // No actor = not logged in
   const hasWallet = !!identity;
 
   // Lock body scroll
@@ -246,11 +304,15 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
   async function handleConfirm() {
     if (!hasWallet) {
       setErrorMsg("Connect your wallet to purchase.");
+      setIsRetryable(false);
       setStatus("error");
       return;
     }
 
     setStatus("loading");
+    setErrorMsg("");
+    setIsRetryable(false);
+
     try {
       const result = await purchase(
         clip.id,
@@ -261,9 +323,9 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
       setEditionInfo(result);
       setStatus("success");
 
-      // Record the copy sale split — non-blocking
+      // Fire-and-forget: record the copy sale split on the backend
       const priceUsd = currentPrice(clip.id) / 100;
-      const creatorPrincipal = Principal.anonymous();
+      const creatorPrincipal = Principal.anonymous(); // creator principal not available on frontend clip type
       const buyerPrincipal = identity
         ? identity.getPrincipal()
         : Principal.anonymous();
@@ -273,9 +335,25 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
 
       setTimeout(onClose, 3200);
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Purchase failed");
+      const raw = err instanceof Error ? err.message : String(err);
+      const { message, retryable } = mapPurchaseError(raw);
+
+      // "cancelled" = dismiss silently
+      if (!message) {
+        onClose();
+        return;
+      }
+
+      setErrorMsg(message);
+      setIsRetryable(retryable);
       setStatus("error");
     }
+  }
+
+  function handleRetry() {
+    setStatus("idle");
+    setErrorMsg("");
+    setIsRetryable(false);
   }
 
   return (
@@ -696,8 +774,9 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
             </div>
 
             {/* Error */}
-            {status === "error" && (
+            {status === "error" && errorMsg && (
               <div
+                data-ocid="releases.purchase_modal.error"
                 style={{
                   background: "rgba(239,68,68,0.08)",
                   border: "1px solid rgba(239,68,68,0.25)",
@@ -707,20 +786,90 @@ export function PurchaseModal({ clip, onClose }: PurchaseModalProps) {
                   fontSize: 13,
                   color: "#dc2626",
                   fontFamily: "DM Sans, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
                 }}
               >
-                {errorMsg || "Something went wrong. Please try again."}
+                <span>{errorMsg}</span>
+                {isRetryable && (
+                  <button
+                    type="button"
+                    data-ocid="releases.purchase_modal.retry"
+                    onClick={handleRetry}
+                    aria-label="Retry payment"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      background: "rgba(239,68,68,0.10)",
+                      border: "1px solid rgba(239,68,68,0.28)",
+                      borderRadius: 8,
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#dc2626",
+                      fontFamily: "DM Sans, sans-serif",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <RotateCcw size={12} />
+                    Retry
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Slide to confirm */}
-            <SlideToConfirm
-              onConfirm={handleConfirm}
-              disabled={status === "loading" || !hasWallet}
-              accentR={accentR}
-              accentG={accentG}
-              accentB={accentB}
-            />
+            {/* Slide to confirm — hidden during loading or after error, replaced by retry */}
+            {status !== "error" && (
+              <SlideToConfirm
+                onConfirm={handleConfirm}
+                disabled={status === "loading" || !hasWallet}
+                accentR={accentR}
+                accentG={accentG}
+                accentB={accentB}
+              />
+            )}
+
+            {/* Re-show slide after non-retryable error (show disabled) */}
+            {status === "error" && !isRetryable && errorMsg && (
+              <SlideToConfirm
+                onConfirm={handleConfirm}
+                disabled={true}
+                accentR={accentR}
+                accentG={accentG}
+                accentB={accentB}
+              />
+            )}
+
+            {/* Retry button shown as slide replacement for retryable errors */}
+            {status === "error" && isRetryable && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                style={{
+                  width: "100%",
+                  height: 56,
+                  borderRadius: 28,
+                  background: `linear-gradient(135deg, rgb(${accentR},${accentG},${accentB}) 0%, rgba(${Math.round(accentR * 0.78)},${Math.round(accentG * 0.78)},${Math.round(accentB * 0.78)},1) 100%)`,
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: "DM Sans, sans-serif",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <RotateCcw size={16} />
+                Try Again
+              </button>
+            )}
 
             {status === "loading" && (
               <p

@@ -1,3 +1,4 @@
+import { useActor } from "@caffeineai/core-infrastructure";
 import { MessageCircle, ShoppingCart, TrendingUp, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -9,7 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { OfferRecord } from "../context/BondingCurveContext";
+import { createActor } from "../backend";
+import type {
+  OfferRecord,
+  PriceHistorySummary,
+} from "../context/BondingCurveContext";
 import { useBondingCurve } from "../context/BondingCurveContext";
 import { usePackStyle } from "../context/PackStyleContext";
 import type { VideoClip } from "../context/VideoFeedContext";
@@ -40,8 +45,8 @@ export function formatTimestamp(ts: number): string {
 
 export function ClipChartModal({ clip, onClose }: Props) {
   const { activeStyle } = usePackStyle();
-  const { getPriceHistory, getCurveState, getOrCreateCurve, ticker } =
-    useBondingCurve();
+  const { getCurveState, getOrCreateCurve, ticker } = useBondingCurve();
+  const { actor } = useActor(createActor);
 
   const accentR = activeStyle.accentR;
   const accentG = activeStyle.accentG;
@@ -57,12 +62,70 @@ export function ClipChartModal({ clip, onClose }: Props) {
     getOrCreateCurve(clip.id);
   }, [clip.id, getOrCreateCurve]);
 
-  // Re-read every 5s for live updates (ticker drives parent re-render too)
+  // Re-read every 5s for live updates
   const [localTick, setLocalTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setLocalTick((t) => t + 1), 5000);
     return () => clearInterval(id);
   }, []);
+
+  // Real price history from backend (full history, oldest first)
+  const [rawHistory, setRawHistory] = useState<
+    { editionNumber: number; salePrice: number; timestamp: number }[]
+  >([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // Summary stats from backend
+  const [summary, setSummary] = useState<PriceHistorySummary | null>(null);
+
+  // Fetch full price history + summary — refetch on every localTick
+  // biome-ignore lint/correctness/useExhaustiveDependencies: localTick/ticker drive periodic refetch
+  useEffect(() => {
+    if (!actor) return;
+    let cancelled = false;
+
+    async function fetchData() {
+      if (!actor) return;
+      if (localTick === 0) setIsLoadingHistory(true);
+      try {
+        const [history, sum] = await Promise.all([
+          actor.getPriceHistoryFull(clip.id),
+          actor.getPriceHistorySummary(clip.id),
+        ]);
+        if (cancelled) return;
+        setRawHistory(
+          history.map((ph) => ({
+            editionNumber: Number(ph.editionNumber),
+            salePrice: ph.salePrice,
+            timestamp: Number(ph.timestamp) / 1_000_000,
+          })),
+        );
+        setSummary(sum);
+      } catch {
+        /* non-fatal */
+      } finally {
+        if (!cancelled) setIsLoadingHistory(false);
+      }
+    }
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, clip.id, localTick, ticker]);
+
+  // Chart data derived from real history
+  const chartData = useMemo(
+    () =>
+      rawHistory.map((pt) => ({
+        edition: pt.editionNumber,
+        price: Number.parseFloat(pt.salePrice.toFixed(2)),
+        // marketCap at this sale = salePrice × total supply (1000)
+        marketCap: Number.parseFloat((pt.salePrice * 1000).toFixed(2)),
+        timestamp: pt.timestamp,
+      })),
+    [rawHistory],
+  );
 
   // Listings for this clip — refreshed on tick
   const [allListings, setAllListings] = useState<MarketListing[]>(() =>
@@ -99,35 +162,19 @@ export function ClipChartModal({ clip, onClose }: Props) {
     [getCurveState, clip.id, ticker, localTick],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ticker/localTick force refresh
-  const rawHistory = useMemo(
-    () => getPriceHistory(clip.id),
-    [getPriceHistory, clip.id, ticker, localTick],
-  );
+  // Prefer summary data if available, fall back to curve state
+  const currentPriceUsd = summary
+    ? summary.currentPrice
+    : curveState
+      ? (curveState.startingPriceCents +
+          curveState.copiesMinted * curveState.priceIncrementCents) /
+        100
+      : 0;
 
-  const chartData = useMemo(
-    () =>
-      rawHistory.map((pt) => ({
-        time: pt.timestamp,
-        timeLabel: formatTimestamp(pt.timestamp),
-        price: Number.parseFloat((pt.price / 100).toFixed(2)),
-        marketCap: Number.parseFloat(pt.marketCap.toFixed(2)),
-        copiesMinted: pt.copiesMinted,
-      })),
-    [rawHistory],
-  );
-
-  const currentPriceUsd = curveState
-    ? (curveState.startingPriceCents +
-        curveState.copiesMinted * curveState.priceIncrementCents) /
-      100
-    : 0;
-
-  const currentMarketCap = curveState
-    ? currentPriceUsd * curveState.totalSupply
-    : 0;
-
-  const copiesMinted = curveState?.copiesMinted ?? 0;
+  const currentMarketCap = currentPriceUsd * 1000;
+  const copiesMinted = summary
+    ? Number(summary.totalSales)
+    : (curveState?.copiesMinted ?? 0);
   const totalSupply = curveState?.totalSupply ?? 1000;
 
   function handleAcceptOffer(offer: OfferRecord) {
@@ -136,8 +183,6 @@ export function ClipChartModal({ clip, onClose }: Props) {
     );
     saveOffers(updated);
     setAllOffers(updated);
-    // Create a secondary-sale PurchaseRecord for the offerer
-    // (triggers the same minted status immediately like other secondary sales)
   }
 
   function handleDeclineOffer(offer: OfferRecord) {
@@ -416,7 +461,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                   marginBottom: 3,
                 }}
               >
-                Copies
+                Sold
               </div>
               <div
                 style={{
@@ -435,6 +480,66 @@ export function ClipChartModal({ clip, onClose }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Summary stats row (price range) — only when we have data */}
+          {summary && Number(summary.totalSales) > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: 10,
+                  background: `rgba(${accentR},${accentG},${accentB},0.05)`,
+                  border: `1px solid rgba(${accentR},${accentG},${accentB},0.14)`,
+                  padding: "7px 10px",
+                }}
+              >
+                <div style={{ fontSize: 9, color: "#7050a0", marginBottom: 2 }}>
+                  FLOOR
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#d4c0f0",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  <BtcLogo size={10} />${summary.minPrice.toFixed(2)}
+                </div>
+              </div>
+              <div
+                style={{
+                  borderRadius: 10,
+                  background: `rgba(${accentR},${accentG},${accentB},0.05)`,
+                  border: `1px solid rgba(${accentR},${accentG},${accentB},0.14)`,
+                  padding: "7px 10px",
+                }}
+              >
+                <div style={{ fontSize: 9, color: "#7050a0", marginBottom: 2 }}>
+                  PEAK
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#d4c0f0",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  <BtcLogo size={10} />${summary.maxPrice.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Live indicator */}
           <div
@@ -484,7 +589,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
               Market Cap Over Time
             </div>
 
-            {chartData.length < 2 ? (
+            {isLoadingHistory ? (
               <div
                 style={{
                   height: 160,
@@ -495,7 +600,23 @@ export function ClipChartModal({ clip, onClose }: Props) {
                   fontSize: 13,
                 }}
               >
-                Collecting price data…
+                Loading chart…
+              </div>
+            ) : chartData.length < 2 ? (
+              <div
+                style={{
+                  height: 160,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  color: "#7050a0",
+                  fontSize: 13,
+                }}
+              >
+                <TrendingUp size={24} color="rgba(160,100,220,0.3)" />
+                No sales yet — chart appears after the first copy sells
               </div>
             ) : (
               <div style={{ height: 180 }}>
@@ -530,7 +651,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="timeLabel"
+                      dataKey="edition"
                       tick={{
                         fill: "#7050a0",
                         fontSize: 9,
@@ -539,6 +660,14 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       axisLine={false}
                       tickLine={false}
                       interval="preserveStartEnd"
+                      label={{
+                        value: "Copy #",
+                        position: "insideBottom",
+                        offset: -2,
+                        fill: "#7050a0",
+                        fontSize: 9,
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                     />
                     <YAxis
                       tick={{
@@ -567,7 +696,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                         `₿${value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
                         "Market Cap",
                       ]}
-                      labelFormatter={(label: string) => label}
+                      labelFormatter={(label: number) => `Copy #${label}`}
                     />
                     <Area
                       type="monotone"
@@ -611,7 +740,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
             >
               Price Per Copy
             </div>
-            {chartData.length < 2 ? (
+            {isLoadingHistory ? (
               <div
                 style={{
                   height: 120,
@@ -622,7 +751,20 @@ export function ClipChartModal({ clip, onClose }: Props) {
                   fontSize: 13,
                 }}
               >
-                Collecting price data…
+                Loading chart…
+              </div>
+            ) : chartData.length < 2 ? (
+              <div
+                style={{
+                  height: 120,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#7050a0",
+                  fontSize: 13,
+                }}
+              >
+                No sales yet
               </div>
             ) : (
               <div style={{ height: 130 }}>
@@ -657,7 +799,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="timeLabel"
+                      dataKey="edition"
                       tick={{
                         fill: "#7050a0",
                         fontSize: 9,
@@ -666,6 +808,14 @@ export function ClipChartModal({ clip, onClose }: Props) {
                       axisLine={false}
                       tickLine={false}
                       interval="preserveStartEnd"
+                      label={{
+                        value: "Copy #",
+                        position: "insideBottom",
+                        offset: -2,
+                        fill: "#7050a0",
+                        fontSize: 9,
+                        fontFamily: "DM Sans, sans-serif",
+                      }}
                     />
                     <YAxis
                       tick={{
@@ -692,7 +842,7 @@ export function ClipChartModal({ clip, onClose }: Props) {
                         `₿${value.toFixed(2)}`,
                         "Price/Copy",
                       ]}
-                      labelFormatter={(label: string) => label}
+                      labelFormatter={(label: number) => `Copy #${label}`}
                     />
                     <Area
                       type="monotone"

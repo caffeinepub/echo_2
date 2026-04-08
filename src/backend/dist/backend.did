@@ -168,6 +168,15 @@ type PricePoint =
    salePrice: float64;
    timestamp: int;
  };
+type PriceHistorySummary = 
+ record {
+   currentPrice: float64;
+   firstSaleTimestamp: opt int;
+   lastSaleTimestamp: opt int;
+   maxPrice: float64;
+   minPrice: float64;
+   totalSales: nat;
+ };
 type PackStatus = 
  variant {
    opened;
@@ -248,7 +257,7 @@ type EarningsSummary =
    fromAuctionWins: float64;
    fromCopySales: float64;
    fromTradeRoyalties: float64;
-   totalBtc: float64;
+   totalBtcE8s: nat;
    totalUsd: float64;
    transactionCount: nat;
  };
@@ -392,6 +401,9 @@ service : {
   getBondingCurveState: (clipId: text) -> (opt BondingCurveState) query;
   /// Batch-fetch bonding curve states for multiple clips (for feed rendering).
   getBondingCurveStates: (clipIds: vec text) -> (vec BondingCurveState) query;
+  /// Returns the current USD/BTC rate used for conversions.
+  /// Defaults to 50000 if no live rate is set.
+  getBtcRate: () -> (float64) query;
   getCallerCollectibles: () -> (vec Collectible) query;
   getCallerPacks: () -> (vec Pack) query;
   getCallerUserProfile: () -> (opt UserProfile) query;
@@ -421,6 +433,9 @@ service : {
   getListingsByClip: (clipId: text) -> (vec Listing) query;
   getMarketCap: (clipId: text) -> (opt MarketCapEntry) query;
   getMarketListings: () -> (vec MarketListing) query;
+  /// Returns the caller's real ckBTC balance in e8s from the ledger.
+  /// Displayed on the frontend as BTC (e8s / 100_000_000).
+  getMyBalance: () -> (nat);
   /// Returns an earnings summary for the calling principal.
   /// Sums splits where role == "creator" or role == "seller".
   getMyEarnings: () -> (EarningsSummary) query;
@@ -434,8 +449,18 @@ service : {
                                     err: text;
                                     ok: vec Offer;
                                   }) query;
+  /// Returns the caller's ICP principal as text.
+  /// The frontend uses this address to request ckBTC ICRC-2 approval before payment.
+  /// All error messages visible to the user refer to this as their "payment address".
+  getPaymentAddress: () -> (text) query;
   getPokemonSets: () -> (vec TcgSet) query;
   getPriceHistory: (clipId: text) -> (vec PricePoint) query;
+  /// Returns ALL price points for a clip, sorted chronologically (oldest first).
+  /// This is the primary endpoint for rendering complete chart data.
+  getPriceHistoryFull: (clipId: text) -> (vec PricePoint) query;
+  /// Returns summary statistics for a clip's sales history.
+  /// Useful for chart header stats (total sold, price range, latest activity).
+  getPriceHistorySummary: (clipId: text) -> (PriceHistorySummary) query;
   getReleases: () -> (vec Release) query;
   getSetById: (id: nat) -> (opt TcgSet) query;
   getSetBySlug: (slug: text) -> (opt TcgSet) query;
@@ -482,14 +507,17 @@ service : {
       ok: nat;
     });
   openPack: (packId: text) -> (PackOpenResult);
-  /// Record a $1 mint fee. 100% to platform wallet.
-  processClipMint: (_creatorPrincipal: principal) -> (nat);
-  /// Record a bonding curve copy sale. 95% to creator, 5% to platform.
+  /// Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+  /// Returns the internal transaction ID.
+  processClipMint: (creatorPrincipal: principal) -> (nat);
+  /// Process a bonding curve copy sale. 95% to creator, 5% to platform.
+  /// Pulls total from buyer's approved allowance → distributes to creator and platform.
   processCopySale: (clipId: text, creatorPrincipal: principal,
-   _buyerPrincipal: principal, usdAmount: float64) -> (nat);
-  /// Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+   buyerPrincipal: principal, usdAmount: float64) -> (nat);
+  /// Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+  /// Pulls total from buyer's approved allowance → distributes to all parties.
   processSecondaryTrade: (clipId: text, originalCreatorPrincipal: principal,
-   sellerPrincipal: principal, _buyerPrincipal: principal, usdAmount:
+   sellerPrincipal: principal, buyerPrincipal: principal, usdAmount:
    float64) -> (nat);
   /// Buy a copy of a clip. Assigns an edition number, stores the purchase as #pending,
   /// and promotes all purchases to #minted when all 1000 copies are sold.
@@ -506,6 +534,8 @@ service : {
                                     });
   saveCallerUserProfile: (profile: UserProfile) -> ();
   searchSetsByName: (searchTerm: text) -> (vec TcgSet) query;
+  /// Admin: update the BTC/USD rate used for e8s conversions.
+  setBtcRate: (rate: float64) -> ();
   toggleCardActive: (id: nat) -> ();
   toggleCardSupported: (id: nat) -> ();
   toggleCategoryActive: (id: nat) -> ();

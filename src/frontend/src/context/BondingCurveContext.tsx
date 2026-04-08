@@ -11,6 +11,7 @@ import { VideoClipSort, createActor } from "../backend";
 import type {
   BondingCurveState as BackendCurveState,
   PurchaseRecord as BackendPurchaseRecord,
+  PriceHistorySummary,
   PurchaseStatus,
 } from "../backend";
 
@@ -46,6 +47,7 @@ export interface PricePoint {
   price: number; // cents
   marketCap: number;
   copiesMinted: number;
+  editionNumber: number;
 }
 
 export interface OfferRecord {
@@ -58,6 +60,9 @@ export interface OfferRecord {
   status: "pending" | "accepted" | "declined";
   createdAt: number;
 }
+
+// Re-export so consumers can type summary data
+export type { PriceHistorySummary };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -162,6 +167,9 @@ interface BondingCurveContextValue {
   marketCap: (clipId: string) => number; // returns USD
   getAllCurveStates: () => CurveState[];
   getPriceHistory: (clipId: string) => PricePoint[];
+  getPriceHistorySummary: (
+    clipId: string,
+  ) => Promise<PriceHistorySummary | null>;
   getPendingPurchases: () => PurchaseRecord[];
   getMintedPurchases: () => PurchaseRecord[];
   isLoadingCurves: boolean;
@@ -352,13 +360,15 @@ export function BondingCurveProvider({
             return next;
           });
 
-          // Append price history point
+          // Append price history point from backend (edition number = copies minted)
           const newPriceCents = Math.round(freshCurve.currentPrice * 100);
+          const newEdition = Number(freshCurve.copiesMinted);
           const newPoint: PricePoint = {
             timestamp: Date.now(),
             price: newPriceCents,
             marketCap: (newPriceCents / 100) * Number(freshCurve.totalSupply),
-            copiesMinted: Number(freshCurve.copiesMinted),
+            copiesMinted: newEdition,
+            editionNumber: newEdition,
           };
           setPriceHistoryMap((prev) => {
             const next = new Map(prev);
@@ -473,7 +483,20 @@ export function BondingCurveProvider({
     [priceHistoryMap],
   );
 
-  // Also load price history from backend when actor is ready
+  /** Call backend getPriceHistorySummary for a clip — returns null on error */
+  const getPriceHistorySummary = useCallback(
+    async (clipId: string) => {
+      if (!actor) return null;
+      try {
+        return await actor.getPriceHistorySummary(clipId);
+      } catch {
+        return null;
+      }
+    },
+    [actor],
+  );
+
+  // Load FULL price history from backend when actor is ready
   useEffect(() => {
     if (!actor || isFetching) return;
 
@@ -487,12 +510,14 @@ export function BondingCurveProvider({
       await Promise.all(
         clips.map(async (clip) => {
           try {
-            const history = await actor.getPriceHistory(clip.clip_id);
+            // Use getPriceHistoryFull to get ALL historical points oldest-first
+            const history = await actor.getPriceHistoryFull(clip.clip_id);
             const points: PricePoint[] = history.map((ph) => ({
               timestamp: Number(ph.timestamp) / 1_000_000,
               price: Math.round(ph.salePrice * 100),
               marketCap: ph.salePrice * 1000,
               copiesMinted: Number(ph.editionNumber),
+              editionNumber: Number(ph.editionNumber),
             }));
             if (points.length > 0) {
               newHistoryMap.set(clip.clip_id, points);
@@ -534,6 +559,7 @@ export function BondingCurveProvider({
         marketCap,
         getAllCurveStates,
         getPriceHistory,
+        getPriceHistorySummary,
         getPendingPurchases,
         getMintedPurchases,
         isLoadingCurves,

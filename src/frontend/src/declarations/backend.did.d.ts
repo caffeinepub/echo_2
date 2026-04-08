@@ -88,9 +88,9 @@ export interface CreateTcgSetInput {
   'releaseYear' : bigint,
 }
 export interface EarningsSummary {
+  'totalBtcE8s' : bigint,
   'fromAuctionWins' : number,
   'fromCopySales' : number,
-  'totalBtc' : number,
   'totalUsd' : number,
   'fromTradeRoyalties' : number,
   'transactionCount' : bigint,
@@ -153,6 +153,14 @@ export type PackOpenResult = { 'ok' : Collectible } |
   { 'err' : string };
 export type PackStatus = { 'opened' : null } |
   { 'sealed' : null };
+export interface PriceHistorySummary {
+  'currentPrice' : number,
+  'maxPrice' : number,
+  'totalSales' : bigint,
+  'minPrice' : number,
+  'lastSaleTimestamp' : [] | [bigint],
+  'firstSaleTimestamp' : [] | [bigint],
+}
 export interface PricePoint {
   'editionNumber' : bigint,
   'timestamp' : bigint,
@@ -364,6 +372,11 @@ export interface _SERVICE {
     [Array<string>],
     Array<BondingCurveState>
   >,
+  /**
+   * / Returns the current USD/BTC rate used for conversions.
+   * / Defaults to 50000 if no live rate is set.
+   */
+  'getBtcRate' : ActorMethod<[], number>,
   'getCallerCollectibles' : ActorMethod<[], Array<Collectible>>,
   'getCallerPacks' : ActorMethod<[], Array<Pack>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
@@ -405,6 +418,11 @@ export interface _SERVICE {
   'getMarketCap' : ActorMethod<[string], [] | [MarketCapEntry]>,
   'getMarketListings' : ActorMethod<[], Array<MarketListing>>,
   /**
+   * / Returns the caller's real ckBTC balance in e8s from the ledger.
+   * / Displayed on the frontend as BTC (e8s / 100_000_000).
+   */
+  'getMyBalance' : ActorMethod<[], bigint>,
+  /**
    * / Returns an earnings summary for the calling principal.
    * / Sums splits where role == "creator" or role == "seller".
    */
@@ -424,8 +442,24 @@ export interface _SERVICE {
     { 'ok' : Array<Offer> } |
       { 'err' : string }
   >,
+  /**
+   * / Returns the caller's ICP principal as text.
+   * / The frontend uses this address to request ckBTC ICRC-2 approval before payment.
+   * / All error messages visible to the user refer to this as their "payment address".
+   */
+  'getPaymentAddress' : ActorMethod<[], string>,
   'getPokemonSets' : ActorMethod<[], Array<TcgSet>>,
   'getPriceHistory' : ActorMethod<[string], Array<PricePoint>>,
+  /**
+   * / Returns ALL price points for a clip, sorted chronologically (oldest first).
+   * / This is the primary endpoint for rendering complete chart data.
+   */
+  'getPriceHistoryFull' : ActorMethod<[string], Array<PricePoint>>,
+  /**
+   * / Returns summary statistics for a clip's sales history.
+   * / Useful for chart header stats (total sold, price range, latest activity).
+   */
+  'getPriceHistorySummary' : ActorMethod<[string], PriceHistorySummary>,
   'getReleases' : ActorMethod<[], Array<Release>>,
   'getSetById' : ActorMethod<[bigint], [] | [TcgSet]>,
   'getSetBySlug' : ActorMethod<[string], [] | [TcgSet]>,
@@ -478,18 +512,21 @@ export interface _SERVICE {
   >,
   'openPack' : ActorMethod<[string], PackOpenResult>,
   /**
-   * / Record a $1 mint fee. 100% to platform wallet.
+   * / Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+   * / Returns the internal transaction ID.
    */
   'processClipMint' : ActorMethod<[Principal], bigint>,
   /**
-   * / Record a bonding curve copy sale. 95% to creator, 5% to platform.
+   * / Process a bonding curve copy sale. 95% to creator, 5% to platform.
+   * / Pulls total from buyer's approved allowance → distributes to creator and platform.
    */
   'processCopySale' : ActorMethod<
     [string, Principal, Principal, number],
     bigint
   >,
   /**
-   * / Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+   * / Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+   * / Pulls total from buyer's approved allowance → distributes to all parties.
    */
   'processSecondaryTrade' : ActorMethod<
     [string, Principal, Principal, Principal, number],
@@ -515,6 +552,10 @@ export interface _SERVICE {
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,
+  /**
+   * / Admin: update the BTC/USD rate used for e8s conversions.
+   */
+  'setBtcRate' : ActorMethod<[number], undefined>,
   'toggleCardActive' : ActorMethod<[bigint], undefined>,
   'toggleCardSupported' : ActorMethod<[bigint], undefined>,
   'toggleCategoryActive' : ActorMethod<[bigint], undefined>,

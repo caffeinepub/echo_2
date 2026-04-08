@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { createActor } from "../backend";
 import type { EarningsSummary } from "../backend.d";
 
-const BTC_RATE = 50_000; // USD per BTC
-
 export interface EarningsData {
   totalUsd: string;
   totalBtc: string;
@@ -23,8 +21,7 @@ function fmtUsd(n: number): string {
   });
 }
 
-function fmtBtc(usd: number): string {
-  const btc = usd / BTC_RATE;
+function fmtBtc(btc: number): string {
   return btc.toFixed(8);
 }
 
@@ -78,7 +75,12 @@ export function useEarnings(): EarningsData {
 
   return {
     totalUsd: fmtUsd(summary.totalUsd),
-    totalBtc: fmtBtc(summary.totalUsd),
+    // Use backend-computed totalBtcE8s if non-zero; otherwise derive from USD
+    totalBtc: fmtBtc(
+      summary.totalBtcE8s > 0n
+        ? Number(summary.totalBtcE8s) / 100_000_000
+        : summary.totalUsd / 50_000,
+    ),
     fromCopySales: fmtUsd(summary.fromCopySales),
     fromTradeRoyalties: fmtUsd(summary.fromTradeRoyalties),
     fromAuctionWins: fmtUsd(summary.fromAuctionWins),

@@ -7,7 +7,6 @@ import {
 } from "react";
 
 const LS_KEY = "minty_releases";
-const LS_SEEDED_KEY = "minty_releases_seeded";
 export const BONDING_CURVE_CONFIG = {
   totalPacks: 300,
   basePrice: 10,
@@ -56,77 +55,6 @@ interface ReleasesMarketCtx {
 
 const ReleasesMarketContext = createContext<ReleasesMarketCtx | null>(null);
 
-const NOW = Date.now();
-const H = 3600000; // 1 hour in ms
-const YEAR_MS = 365 * 24 * H; // 1 year
-
-const SEED_RELEASES: MarketRelease[] = [
-  {
-    id: "release_seed_1",
-    creatorName: "mintcreator.icp",
-    creatorId: "mintcreator.icp",
-    coverImageUrl:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80",
-    previewClipUrl: "https://www.w3schools.com/html/mov_bbb.mp4",
-    title: "Sunset Ride",
-    caption: "9 photos and 1 video from a late summer drive along the coast",
-    setName: "Coastal Drift Vol. 1",
-    packsAvailable: 247,
-    packCount: 300,
-    packIds: [],
-    priceUsd: 10,
-    listedAt: NOW - 2 * H,
-    expiresAt: NOW + YEAR_MS,
-    status: "active",
-    collectibleType: "photo",
-    explicit: false,
-    hashtags: ["coastaldrift", "sunsetride", "goldenhour"],
-    lastPurchaseAt: NOW - 4 * 60 * 1000,
-  },
-  {
-    id: "release_seed_2",
-    creatorName: "neon_rider.icp",
-    creatorId: "neon_rider.icp",
-    coverImageUrl:
-      "https://images.unsplash.com/photo-1492551557933-34265f7af79e?w=400&q=80",
-    title: "First Mint Moment",
-    caption: "9 photos + 1 video from a late night drive",
-    setName: "Night Drive Series",
-    packsAvailable: 171,
-    packCount: 300,
-    packIds: [],
-    priceUsd: 10,
-    listedAt: NOW - 18 * H,
-    expiresAt: NOW + YEAR_MS,
-    status: "active",
-    collectibleType: "photo",
-    explicit: false,
-    hashtags: ["nightdrive", "citylights", "latevibes"],
-    lastPurchaseAt: NOW - 22 * 60 * 1000,
-  },
-  {
-    id: "release_seed_3",
-    creatorName: "light.icp",
-    creatorId: "light.icp",
-    coverImageUrl:
-      "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=400&q=80",
-    title: "Golden Hour",
-    caption: "Limited Mint Moment \u2014 golden hour at the lake",
-    setName: "Golden Hour Set",
-    packsAvailable: 89,
-    packCount: 300,
-    packIds: [],
-    priceUsd: 10,
-    listedAt: NOW - 0.5 * H,
-    expiresAt: NOW + YEAR_MS,
-    status: "active",
-    collectibleType: "photo",
-    explicit: false,
-    hashtags: ["goldenhour", "fogseason", "earlylight"],
-    lastPurchaseAt: NOW - 2 * 60 * 60 * 1000,
-  },
-];
-
 function loadReleasesFromStorage(): MarketRelease[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -159,15 +87,6 @@ export function ReleasesMarketProvider({
   const [releases, setReleases] = useState<MarketRelease[]>(() =>
     loadReleasesFromStorage(),
   );
-
-  // Seed on first mount
-  useEffect(() => {
-    const alreadySeeded = localStorage.getItem(LS_SEEDED_KEY);
-    if (!alreadySeeded) {
-      setReleases((prev) => [...SEED_RELEASES, ...prev]);
-      localStorage.setItem(LS_SEEDED_KEY, "1");
-    }
-  }, []);
 
   // Persist
   useEffect(() => {

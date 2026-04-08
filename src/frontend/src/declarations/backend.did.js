@@ -205,9 +205,9 @@ export const MarketListing = IDL.Record({
   'price' : IDL.Nat,
 });
 export const EarningsSummary = IDL.Record({
+  'totalBtcE8s' : IDL.Nat,
   'fromAuctionWins' : IDL.Float64,
   'fromCopySales' : IDL.Float64,
-  'totalBtc' : IDL.Float64,
   'totalUsd' : IDL.Float64,
   'fromTradeRoyalties' : IDL.Float64,
   'transactionCount' : IDL.Nat,
@@ -263,6 +263,14 @@ export const PricePoint = IDL.Record({
   'editionNumber' : IDL.Nat,
   'timestamp' : IDL.Int,
   'salePrice' : IDL.Float64,
+});
+export const PriceHistorySummary = IDL.Record({
+  'currentPrice' : IDL.Float64,
+  'maxPrice' : IDL.Float64,
+  'totalSales' : IDL.Nat,
+  'minPrice' : IDL.Float64,
+  'lastSaleTimestamp' : IDL.Opt(IDL.Int),
+  'firstSaleTimestamp' : IDL.Opt(IDL.Int),
 });
 export const VideoAsset = IDL.Record({
   'owner' : IDL.Principal,
@@ -369,6 +377,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(BondingCurveState)],
       ['query'],
     ),
+  'getBtcRate' : IDL.Func([], [IDL.Float64], ['query']),
   'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
   'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -402,6 +411,7 @@ export const idlService = IDL.Service({
   'getListingsByClip' : IDL.Func([IDL.Text], [IDL.Vec(Listing)], ['query']),
   'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
   'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+  'getMyBalance' : IDL.Func([], [IDL.Nat], []),
   'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
   'getMyPurchases' : IDL.Func([], [IDL.Vec(PurchaseRecord)], ['query']),
   'getMyRole' : IDL.Func([], [UserRole], ['query']),
@@ -416,8 +426,19 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Vec(Offer), 'err' : IDL.Text })],
       ['query'],
     ),
+  'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
   'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
   'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
+  'getPriceHistoryFull' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(PricePoint)],
+      ['query'],
+    ),
+  'getPriceHistorySummary' : IDL.Func(
+      [IDL.Text],
+      [PriceHistorySummary],
+      ['query'],
+    ),
   'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
   'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
   'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
@@ -487,6 +508,7 @@ export const idlService = IDL.Service({
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+  'setBtcRate' : IDL.Func([IDL.Float64], [], []),
   'toggleCardActive' : IDL.Func([IDL.Nat], [], []),
   'toggleCardSupported' : IDL.Func([IDL.Nat], [], []),
   'toggleCategoryActive' : IDL.Func([IDL.Nat], [], []),
@@ -695,9 +717,9 @@ export const idlFactory = ({ IDL }) => {
     'price' : IDL.Nat,
   });
   const EarningsSummary = IDL.Record({
+    'totalBtcE8s' : IDL.Nat,
     'fromAuctionWins' : IDL.Float64,
     'fromCopySales' : IDL.Float64,
-    'totalBtc' : IDL.Float64,
     'totalUsd' : IDL.Float64,
     'fromTradeRoyalties' : IDL.Float64,
     'transactionCount' : IDL.Nat,
@@ -753,6 +775,14 @@ export const idlFactory = ({ IDL }) => {
     'editionNumber' : IDL.Nat,
     'timestamp' : IDL.Int,
     'salePrice' : IDL.Float64,
+  });
+  const PriceHistorySummary = IDL.Record({
+    'currentPrice' : IDL.Float64,
+    'maxPrice' : IDL.Float64,
+    'totalSales' : IDL.Nat,
+    'minPrice' : IDL.Float64,
+    'lastSaleTimestamp' : IDL.Opt(IDL.Int),
+    'firstSaleTimestamp' : IDL.Opt(IDL.Int),
   });
   const VideoAsset = IDL.Record({
     'owner' : IDL.Principal,
@@ -856,6 +886,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(BondingCurveState)],
         ['query'],
       ),
+    'getBtcRate' : IDL.Func([], [IDL.Float64], ['query']),
     'getCallerCollectibles' : IDL.Func([], [IDL.Vec(Collectible)], ['query']),
     'getCallerPacks' : IDL.Func([], [IDL.Vec(Pack)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -889,6 +920,7 @@ export const idlFactory = ({ IDL }) => {
     'getListingsByClip' : IDL.Func([IDL.Text], [IDL.Vec(Listing)], ['query']),
     'getMarketCap' : IDL.Func([IDL.Text], [IDL.Opt(MarketCapEntry)], ['query']),
     'getMarketListings' : IDL.Func([], [IDL.Vec(MarketListing)], ['query']),
+    'getMyBalance' : IDL.Func([], [IDL.Nat], []),
     'getMyEarnings' : IDL.Func([], [EarningsSummary], ['query']),
     'getMyPurchases' : IDL.Func([], [IDL.Vec(PurchaseRecord)], ['query']),
     'getMyRole' : IDL.Func([], [UserRole], ['query']),
@@ -903,8 +935,19 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Vec(Offer), 'err' : IDL.Text })],
         ['query'],
       ),
+    'getPaymentAddress' : IDL.Func([], [IDL.Text], ['query']),
     'getPokemonSets' : IDL.Func([], [IDL.Vec(TcgSet)], ['query']),
     'getPriceHistory' : IDL.Func([IDL.Text], [IDL.Vec(PricePoint)], ['query']),
+    'getPriceHistoryFull' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(PricePoint)],
+        ['query'],
+      ),
+    'getPriceHistorySummary' : IDL.Func(
+        [IDL.Text],
+        [PriceHistorySummary],
+        ['query'],
+      ),
     'getReleases' : IDL.Func([], [IDL.Vec(Release)], ['query']),
     'getSetById' : IDL.Func([IDL.Nat], [IDL.Opt(TcgSet)], ['query']),
     'getSetBySlug' : IDL.Func([IDL.Text], [IDL.Opt(TcgSet)], ['query']),
@@ -974,6 +1017,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
+    'setBtcRate' : IDL.Func([IDL.Float64], [], []),
     'toggleCardActive' : IDL.Func([IDL.Nat], [], []),
     'toggleCardSupported' : IDL.Func([IDL.Nat], [], []),
     'toggleCategoryActive' : IDL.Func([IDL.Nat], [], []),

@@ -1,12 +1,14 @@
 /**
- * useVideoUpload — uploads a video Blob (and optional preview Blob) to the
- * Caffeine object-storage gateway and returns persistent HTTP URLs.
+ * useVideoUpload — uploads a video Blob to the backend canister blob storage
+ * via actor.uploadVideoBlob() / actor.uploadPreviewBlob() and returns the
+ * stable asset_id strings to use as video_file_url / preview_loop_url in createClip().
  *
- * Upload strategy: POST multipart/form-data directly to the storage gateway.
- * Falls back to blob URLs (dev-only) when no project_id is configured.
+ * This replaces the old gateway-URL approach which silently failed because the
+ * project has no configured object-storage gateway URL.
  */
-import { loadConfig } from "@caffeineai/core-infrastructure";
+import { useActor } from "@caffeineai/core-infrastructure";
 import { useCallback, useState } from "react";
+import { createActor } from "../backend";
 
 export interface UploadResult {
   videoUrl: string;
@@ -19,47 +21,9 @@ interface UploadState {
   error: string | null;
 }
 
-async function uploadBlobToGateway(
-  blob: Blob,
-  fileName: string,
-  gatewayUrl: string,
-  projectId: string,
-): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", blob, fileName);
-
-  const endpoint = `${gatewayUrl}/upload?project_id=${encodeURIComponent(projectId)}`;
-  const res = await fetch(endpoint, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
-  }
-
-  const json = (await res.json()) as { url?: string; hash?: string };
-
-  // Gateway may return direct URL or a hash we need to resolve
-  if (json.url) return json.url;
-  if (json.hash) {
-    return `${gatewayUrl}/file/${encodeURIComponent(json.hash)}?project_id=${encodeURIComponent(projectId)}`;
-  }
-
-  throw new Error("Storage gateway did not return a URL or hash");
-}
-
-/**
- * Generates a 2-second muted preview blob from a video blob using an
- * off-screen <video> + MediaRecorder approach.
- */
-async function generatePreviewBlob(videoBlob: Blob): Promise<Blob> {
-  // Use the same blob as the preview — backend stores it as the 2s preview URL.
-  // Client-side MediaRecorder trimming of an existing blob is not reliable cross-browser.
-  return videoBlob;
-}
-
 export function useVideoUpload() {
+  const { actor, isFetching } = useActor(createActor);
+
   const [state, setState] = useState<UploadState>({
     uploading: false,
     progress: 0,
@@ -70,57 +34,56 @@ export function useVideoUpload() {
     async (videoBlob: Blob): Promise<UploadResult> => {
       setState({ uploading: true, progress: 0, error: null });
 
+      if (!actor || isFetching) {
+        const msg = "Not connected to backend. Please wait and try again.";
+        setState({ uploading: false, progress: 0, error: msg });
+        throw new Error(msg);
+      }
+
       try {
-        const config = await loadConfig();
-        const gatewayUrl = config.storage_gateway_url;
-        const projectId = config.project_id;
+        setState({ uploading: true, progress: 10, error: null });
 
-        const isRealGateway =
-          gatewayUrl &&
-          gatewayUrl !== "nogateway" &&
-          projectId &&
-          projectId !== "0000000-0000-0000-0000-00000000000";
+        // Convert blob to Uint8Array for the backend call
+        const arrayBuffer = await videoBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
 
-        if (!isRealGateway) {
-          // Dev/local fallback: use blob URLs (won't persist across refresh but OK for dev)
-          const previewBlob = await generatePreviewBlob(videoBlob);
-          const videoUrl = URL.createObjectURL(videoBlob);
-          const previewUrl = URL.createObjectURL(previewBlob);
-          setState({ uploading: false, progress: 100, error: null });
-          return { videoUrl, previewUrl };
-        }
+        setState({ uploading: true, progress: 30, error: null });
 
-        setState({ uploading: true, progress: 20, error: null });
+        // Detect content type — MediaRecorder typically produces video/webm on desktop
+        // and sometimes video/mp4 on iOS Safari. Accept whatever the browser gives us.
+        const contentType = videoBlob.type || "video/webm";
 
-        // Upload main video
-        const ts = Date.now();
-        const videoUrl = await uploadBlobToGateway(
-          videoBlob,
-          `video_${ts}.webm`,
-          gatewayUrl,
-          projectId,
+        // Upload the main HD video to backend blob storage
+        const videoAssetId = await actor.uploadVideoBlob(
+          uint8Array,
+          contentType,
         );
 
         setState({ uploading: true, progress: 70, error: null });
 
-        // Generate and upload preview (2s clip or same blob for now)
-        const previewBlob = await generatePreviewBlob(videoBlob);
-        const previewUrl = await uploadBlobToGateway(
-          previewBlob,
-          `preview_${ts}.webm`,
-          gatewayUrl,
-          projectId,
+        // For the preview, reuse the same blob (short clip as-is).
+        // We use the same Uint8Array — the backend stores it separately.
+        const previewAssetId = await actor.uploadPreviewBlob(
+          uint8Array,
+          contentType,
         );
 
         setState({ uploading: false, progress: 100, error: null });
-        return { videoUrl, previewUrl };
+
+        return {
+          videoUrl: videoAssetId,
+          previewUrl: previewAssetId,
+        };
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed";
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Upload failed. Please try again.";
         setState({ uploading: false, progress: 0, error: message });
-        throw err;
+        throw new Error(message);
       }
     },
-    [],
+    [actor, isFetching],
   );
 
   return { uploadVideo, ...state };

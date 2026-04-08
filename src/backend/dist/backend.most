@@ -7,6 +7,7 @@ type AccountRateLimit__453341643 =
     principal : Principal;
     videoHashesUsed : [Text]
   };
+type Account__928440765 = {owner : Principal; subaccount : ?Blob};
 type Album__109360601 =
   {
     artist : Text;
@@ -165,6 +166,30 @@ type Transaction__865268250 =
     totalUsd : Float;
     txType : TxType__343382301
   };
+type TransferFromArgs__608776401 =
+  {
+    amount : Nat;
+    created_at_time : ?Nat64;
+    fee : ?Nat;
+    from : Account__928440765;
+    memo : ?Blob;
+    spender_subaccount : ?Blob;
+    to : Account__928440765
+  };
+type TransferFromError__720908339 =
+  {
+    #BadBurn : {min_burn_amount : Nat};
+    #BadFee : {expected_fee : Nat};
+    #CreatedInFuture : {ledger_time : Nat64};
+    #Duplicate : {duplicate_of : Nat};
+    #GenericError : {error_code : Nat; message : Text};
+    #InsufficientAllowance : {allowance : Nat};
+    #InsufficientFunds : {balance : Nat};
+    #TemporarilyUnavailable;
+    #TooOld
+  };
+type TransferFromResult__245994223 =
+  {#Err : TransferFromError__720908339; #Ok : Nat};
 type TxSplit__767957069 =
   {
     btcAddress : Text;
@@ -201,7 +226,8 @@ type VideoClip__351680056 =
     video_file_url : Text
   };
 actor {
-  stable _btcUsdRate : Float;
+  stable var _btcUsdRate : Float;
+  stable _ckbtcFee : Nat;
   stable _platformBtcAddress : Text;
   stable _platformPrincipal : Principal;
   stable var _seedBase : Int;
@@ -221,6 +247,13 @@ actor {
     {
       var root : Node__46230540<Text, BondingCurveState__1013285728>;
       var size : Nat__490723111
+    };
+  stable ckbtcLedger :
+    actor {
+      icrc1_balance_of : shared Account__928440765 -> async Nat;
+      icrc2_transfer_from :
+        shared TransferFromArgs__608776401 ->
+          async TransferFromResult__245994223
     };
   stable collectibles :
     {
@@ -300,6 +333,8 @@ actor {
       var root : Node__46230540<Nat, Transaction__865268250>;
       var size : Nat__490723111
     };
+  stable txLedgerIds :
+    {var root : Node__46230540<Nat, [Nat]>; var size : Nat__490723111};
   stable userProfiles :
     {
       var root : Node__46230540<Principal, UserProfile__491224006>;

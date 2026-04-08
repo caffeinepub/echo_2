@@ -232,35 +232,31 @@ export function CaptureMomentPage({
         videoBlob = await res.blob();
         pendingBlobRef.current = videoBlob;
       } catch {
-        // If we can't re-fetch the blob, fall back to the URL path below
-        videoBlob = null;
+        setUploadFallbackMsg("Could not read recorded video. Please retake.");
+        return;
       }
     }
 
-    // Store blob URL for immediate preview
+    if (!videoBlob) {
+      setUploadFallbackMsg("Could not read recorded video. Please retake.");
+      return;
+    }
+
+    // Store blob URL for immediate preview, advance to uploading state
     setVideoBlobUrl(pendingBlobUrl);
     setUploadFallbackMsg(null);
     setCaptureState("uploading");
 
     try {
-      if (videoBlob) {
-        const { videoUrl, previewUrl } = await uploadVideo(videoBlob);
-        setPersistedUrls(videoUrl, previewUrl);
-      } else {
-        // No blob available — use the URL directly as fallback
-        setPersistedUrls(pendingBlobUrl, pendingBlobUrl);
-        setUploadFallbackMsg(
-          "Upload failed — using local preview. Video may not persist after refresh.",
-        );
-      }
+      const { videoUrl, previewUrl } = await uploadVideo(videoBlob);
+      setPersistedUrls(videoUrl, previewUrl);
       setCaptureState("setup");
-    } catch {
-      // Upload failed — fall back to local blob URL so user can still continue
-      setPersistedUrls(pendingBlobUrl, pendingBlobUrl);
-      setUploadFallbackMsg(
-        "Upload failed — using local preview. Video may not persist after refresh.",
-      );
-      setCaptureState("setup");
+    } catch (err) {
+      // Upload failed — stay on preview, show clear error
+      const message =
+        err instanceof Error ? err.message : "Upload failed. Please try again.";
+      setUploadFallbackMsg(message);
+      setCaptureState("preview");
     }
   }, [pendingBlobUrl, uploadVideo, setVideoBlobUrl, setPersistedUrls]);
 

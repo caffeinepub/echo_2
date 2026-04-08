@@ -8,7 +8,6 @@ import {
 import type { CollectionNFT } from "./CollectionContext";
 
 const LS_KEY = "minty_auctions";
-const LS_SEEDED_KEY = "minty_auctions_seeded_v2";
 
 export interface Bid {
   id: string;
@@ -42,89 +41,6 @@ interface AuctionCtx {
 
 const AuctionContext = createContext<AuctionCtx | null>(null);
 
-const NOW = Date.now();
-const DAY = 86_400_000;
-
-const SEED_LISTINGS: AuctionListing[] = [
-  {
-    id: "auction_seed_1",
-    nftId: "nft_auction_seed_1",
-    nftTitle: "Golden Moment #3",
-    nftImageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    nftSetName: "Mint Moments Vol. 1",
-    nftRarity: "Common",
-    mediaType: "video",
-    creatorName: "mintcreator.icp",
-    highestBid: 42.5,
-    bids: [
-      {
-        id: "bid_s1_1",
-        bidderName: "collector_x.icp",
-        amountUsd: 20.0,
-        placedAt: NOW - 3 * 60 * 60 * 1000,
-      },
-      {
-        id: "bid_s1_2",
-        bidderName: "wave_rider.icp",
-        amountUsd: 35.0,
-        placedAt: NOW - 2 * 60 * 60 * 1000,
-      },
-      {
-        id: "bid_s1_3",
-        bidderName: "neon_rider.icp",
-        amountUsd: 42.5,
-        placedAt: NOW - 45 * 60 * 1000,
-      },
-    ],
-    endsAt: NOW + 2 * DAY,
-    listingFee: 100,
-    status: "active",
-  },
-  {
-    id: "auction_seed_2",
-    nftId: "nft_auction_seed_2",
-    nftTitle: "Glacier Drift — Video Moment",
-    nftImageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    nftSetName: "Arctic Series",
-    nftRarity: "Rare",
-    mediaType: "video",
-    creatorName: "light.icp",
-    highestBid: 120.0,
-    bids: [
-      {
-        id: "bid_s2_1",
-        bidderName: "arc_collector.icp",
-        amountUsd: 75.0,
-        placedAt: NOW - 8 * 60 * 60 * 1000,
-      },
-      {
-        id: "bid_s2_2",
-        bidderName: "frost.icp",
-        amountUsd: 120.0,
-        placedAt: NOW - 4 * 60 * 60 * 1000,
-      },
-    ],
-    endsAt: NOW + 4 * DAY,
-    listingFee: 100,
-    status: "active",
-  },
-  {
-    id: "auction_seed_3",
-    nftId: "nft_auction_seed_3",
-    nftTitle: "Sage Leaf #22",
-    nftImageUrl: "https://images.pokemontcg.io/sv1/025_hires.png",
-    nftSetName: "Nature Drop",
-    nftRarity: "Common",
-    mediaType: "video",
-    creatorName: "sage_creator.icp",
-    highestBid: 0,
-    bids: [],
-    endsAt: NOW + 6 * DAY,
-    listingFee: 100,
-    status: "active",
-  },
-];
-
 function loadListingsFromStorage(): AuctionListing[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -148,17 +64,6 @@ export function AuctionProvider({ children }: { children: React.ReactNode }) {
     loadListingsFromStorage(),
   );
 
-  // Seed mock listings once (v2 key resets old 24h seeds)
-  useEffect(() => {
-    const alreadySeeded = localStorage.getItem(LS_SEEDED_KEY);
-    if (!alreadySeeded) {
-      // Clear old seed data
-      localStorage.removeItem("minty_auctions_seeded");
-      setListings(SEED_LISTINGS);
-      localStorage.setItem(LS_SEEDED_KEY, "1");
-    }
-  }, []);
-
   // Persist
   useEffect(() => {
     saveListingsToStorage(listings);
@@ -176,7 +81,7 @@ export function AuctionProvider({ children }: { children: React.ReactNode }) {
       creatorName: nft.creator,
       highestBid: 0,
       bids: [],
-      endsAt: Date.now() + 7 * DAY,
+      endsAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
       listingFee: 100,
       status: "active",
     };

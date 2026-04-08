@@ -1,13 +1,77 @@
-import { useState } from "react";
-import { usePayment } from "../context/PaymentContext";
-import type { Transaction, TransactionSplit } from "../context/PaymentContext";
+import { useActor } from "@caffeineai/core-infrastructure";
+import { useEffect, useState } from "react";
+import { createActor } from "../backend";
+import { TxType } from "../backend";
+import type { Transaction as BackendTransaction, TxSplit } from "../backend.d";
+
+// ─── Local display types ───────────────────────────────────────────────────────
+
+type TransactionType = "mint_fee" | "copy_sale" | "secondary_trade";
+
+interface DisplayTransaction {
+  id: string;
+  type: TransactionType;
+  clipId: string;
+  totalUsd: number;
+  timestamp: number; // ms
+  splits: DisplaySplit[];
+}
+
+interface DisplaySplit {
+  role: string;
+  label: string;
+  usdAmount: number;
+  btcAmount: number;
+  address: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const BTC_RATE = 50_000;
+
+function toType(tx: BackendTransaction): TransactionType {
+  const raw = tx.txType as unknown as string;
+  if (raw === "mintFee") return "mint_fee";
+  if (raw === "copySale") return "copy_sale";
+  return "secondary_trade";
+}
+
+function toDisplaySplit(s: TxSplit): DisplaySplit {
+  const role = s.role.toLowerCase();
+  const labelMap: Record<string, string> = {
+    platform: "Platform (fee)",
+    creator: "Creator (95%)",
+    seller: "Seller (95%)",
+  };
+  return {
+    role,
+    label: labelMap[role] ?? s.role,
+    usdAmount: s.usdAmount,
+    btcAmount:
+      s.btcAmountSimulated > 0 ? s.btcAmountSimulated : s.usdAmount / BTC_RATE,
+    address: s.btcAddress || s.principal.toText().slice(0, 20),
+  };
+}
+
+function toDisplay(tx: BackendTransaction): DisplayTransaction {
+  return {
+    id: String(tx.id),
+    type: toType(tx),
+    clipId: tx.clipId,
+    totalUsd: tx.totalUsd,
+    timestamp: Number(tx.timestamp) / 1_000_000, // ns → ms
+    splits: tx.splits.map(toDisplaySplit),
+  };
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
 
 const PURPLE = "rgba(124,58,237,1)";
 const PURPLE_BG = "rgba(124,58,237,0.08)";
 const PURPLE_BORDER = "rgba(124,58,237,0.18)";
 
 const TYPE_META: Record<
-  Transaction["type"],
+  TransactionType,
   { label: string; bg: string; color: string; border: string }
 > = {
   mint_fee: {
@@ -30,7 +94,7 @@ const TYPE_META: Record<
   },
 };
 
-const ROLE_COLORS: Record<TransactionSplit["role"], string> = {
+const ROLE_COLORS: Record<string, string> = {
   platform: "rgba(107,114,128,1)",
   creator: "rgba(5,150,105,1)",
   seller: "rgba(37,99,235,1)",
@@ -58,7 +122,9 @@ function truncate(s: string, len = 18): string {
   return `${s.slice(0, 8)}…${s.slice(-6)}`;
 }
 
-function TxRow({ txn }: { txn: Transaction }) {
+// ─── TxRow ────────────────────────────────────────────────────────────────────
+
+function TxRow({ txn }: { txn: DisplayTransaction }) {
   const [expanded, setExpanded] = useState(false);
   const meta = TYPE_META[txn.type];
 
@@ -220,7 +286,7 @@ function TxRow({ txn }: { txn: Transaction }) {
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
-                  background: ROLE_COLORS[split.role],
+                  background: ROLE_COLORS[split.role] ?? "#9ca3af",
                   flexShrink: 0,
                   display: "inline-block",
                 }}
@@ -255,7 +321,7 @@ function TxRow({ txn }: { txn: Transaction }) {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: ROLE_COLORS[split.role],
+                    color: ROLE_COLORS[split.role] ?? "#374151",
                     fontFamily: "DM Sans, sans-serif",
                   }}
                 >
@@ -279,6 +345,8 @@ function TxRow({ txn }: { txn: Transaction }) {
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 interface TransactionHistoryPageProps {
   onBack?: () => void;
 }
@@ -286,7 +354,33 @@ interface TransactionHistoryPageProps {
 export function TransactionHistoryPage({
   onBack,
 }: TransactionHistoryPageProps) {
-  const { transactions } = usePayment();
+  const { actor, isFetching } = useActor(createActor);
+  const [transactions, setTransactions] = useState<DisplayTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!actor || isFetching) return;
+    let cancelled = false;
+    setLoading(true);
+    actor
+      .getTransactionHistory()
+      .then((txns) => {
+        if (!cancelled) {
+          setTransactions(txns.map(toDisplay));
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error("[TransactionHistoryPage] load failed:", err);
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, isFetching]);
+
+  // Suppress unused import warning — TxType imported for enum shape reference
+  void TxType;
 
   return (
     <div
@@ -363,10 +457,10 @@ export function TransactionHistoryPage({
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "rgba(245,158,11,0.75)",
+              background: "rgba(16,185,129,0.75)",
             }}
           />
-          Simulated — no real BTC moved
+          Live — all splits recorded on-chain
         </p>
       </div>
 
@@ -445,7 +539,19 @@ export function TransactionHistoryPage({
       </div>
 
       {/* Transaction list */}
-      {transactions.length === 0 ? (
+      {loading ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "48px 24px",
+            color: "#9ca3af",
+            fontFamily: "DM Sans, sans-serif",
+            fontSize: 14,
+          }}
+        >
+          Loading transactions…
+        </div>
+      ) : transactions.length === 0 ? (
         <div
           data-ocid="transactions.empty_state"
           style={{

@@ -32,41 +32,16 @@ const DURATIONS: { label: string; hours: number }[] = [
   { label: "7d", hours: 168 },
 ];
 
+interface RealPricePoint {
+  copy: number;
+  price: number; // USD
+  timestamp: number;
+}
+
 interface Props {
   record: PurchaseRecord;
   onClose: () => void;
   onListed: (clipId: string) => void;
-}
-
-export function buildPriceHistory(
-  copiesMinted: number,
-  startingPriceCents: number,
-  priceIncrementCents: number,
-) {
-  if (copiesMinted === 0) return [];
-  const MAX_POINTS = 10;
-  const step = Math.max(1, Math.ceil(copiesMinted / MAX_POINTS));
-  const points: { copy: number; price: number }[] = [];
-  for (let k = 1; k <= copiesMinted; k += step) {
-    points.push({
-      copy: k,
-      price: Number.parseFloat(
-        ((startingPriceCents + (k - 1) * priceIncrementCents) / 100).toFixed(2),
-      ),
-    });
-  }
-  const last = copiesMinted;
-  if (points[points.length - 1]?.copy !== last) {
-    points.push({
-      copy: last,
-      price: Number.parseFloat(
-        ((startingPriceCents + (last - 1) * priceIncrementCents) / 100).toFixed(
-          2,
-        ),
-      ),
-    });
-  }
-  return points;
 }
 
 export function NftDetailModal({ record, onClose, onListed }: Props) {
@@ -79,26 +54,52 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // Real price history from backend
+  const [priceHistory, setPriceHistory] = useState<RealPricePoint[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
   // Ensure curve state exists
   useEffect(() => {
     getOrCreateCurve(record.clipId);
   }, [record.clipId, getOrCreateCurve]);
 
-  const curveState = getCurveState(record.clipId);
+  // Fetch real price history from backend on mount
+  useEffect(() => {
+    if (!actor) return;
+    let cancelled = false;
 
-  const priceHistory = curveState
-    ? buildPriceHistory(
-        curveState.copiesMinted,
-        curveState.startingPriceCents,
-        curveState.priceIncrementCents,
-      )
-    : [];
+    async function fetchHistory() {
+      if (!actor) return;
+      setIsLoadingHistory(true);
+      try {
+        const history = await actor.getPriceHistoryFull(record.clipId);
+        if (cancelled) return;
+        const points: RealPricePoint[] = history.map((ph) => ({
+          copy: Number(ph.editionNumber),
+          price: Number.parseFloat(ph.salePrice.toFixed(2)),
+          timestamp: Number(ph.timestamp) / 1_000_000,
+        }));
+        setPriceHistory(points);
+      } catch {
+        /* non-fatal — chart shows "No sales yet" */
+      } finally {
+        if (!cancelled) setIsLoadingHistory(false);
+      }
+    }
+
+    fetchHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [actor, record.clipId]);
+
+  const curveState = getCurveState(record.clipId);
 
   const currentMarketPrice = curveState
     ? (curveState.startingPriceCents +
         curveState.copiesMinted * curveState.priceIncrementCents) /
       100
-    : record.pricePaid / 100;
+    : record.pricePaid;
 
   const [priceInput, setPriceInput] = useState(currentMarketPrice.toFixed(2));
 
@@ -403,7 +404,7 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                   gap: 4,
                 }}
               >
-                <BtcLogo size={15} />${(record.pricePaid / 100).toFixed(2)}
+                <BtcLogo size={15} />${record.pricePaid.toFixed(2)}
               </div>
             </div>
             <div
@@ -464,9 +465,22 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                   >
                     Price History
                   </span>
+                  {priceHistory.length > 0 && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 10,
+                        color: "#7050a0",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {priceHistory.length} sale
+                      {priceHistory.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
                 </div>
 
-                {priceHistory.length === 0 ? (
+                {isLoadingHistory ? (
                   <div
                     style={{
                       height: 100,
@@ -477,7 +491,23 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                       fontSize: 13,
                     }}
                   >
-                    No price history yet
+                    Loading chart…
+                  </div>
+                ) : priceHistory.length === 0 ? (
+                  <div
+                    style={{
+                      height: 100,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      color: "#7050a0",
+                      fontSize: 13,
+                    }}
+                  >
+                    <TrendingUp size={22} color="rgba(192,160,230,0.3)" />
+                    No sales yet — chart will appear when the first copy sells
                   </div>
                 ) : (
                   <div style={{ height: 160 }}>
@@ -501,7 +531,7 @@ export function NftDetailModal({ record, onClose, onListed }: Props) {
                           axisLine={false}
                           tickLine={false}
                           label={{
-                            value: "Copy",
+                            value: "Copy #",
                             position: "insideBottom",
                             offset: -2,
                             fill: "#7050a0",

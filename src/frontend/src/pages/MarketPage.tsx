@@ -2,7 +2,12 @@ import { useActor } from "@caffeineai/core-infrastructure";
 import { Search, ShoppingCart, Tag, TrendingUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createActor } from "../backend";
-import type { Listing, MarketCapEntry, PricePoint } from "../backend";
+import type {
+  Listing,
+  MarketCapEntry,
+  PriceHistorySummary,
+  PricePoint,
+} from "../backend";
 import { BtcLogo } from "../components/BtcLogo";
 import { ClipChartModal } from "../components/ClipChartModal";
 import { usePackStyle } from "../context/PackStyleContext";
@@ -20,6 +25,7 @@ interface ClipDetailState {
   currentPrice: number;
   listings: Listing[];
   priceHistory: PricePoint[];
+  summary: PriceHistorySummary | null;
   isLoadingDetail: boolean;
 }
 
@@ -285,6 +291,12 @@ function ClipDetailModal({
   const accentGlow = `rgba(${accentR},${accentG},${accentB},0.35)`;
   const accentBg = `rgba(${accentR},${accentG},${accentB},0.08)`;
 
+  const { summary, priceHistory } = detail;
+  const maxSalePrice =
+    priceHistory.length > 0
+      ? Math.max(...priceHistory.map((p) => p.salePrice))
+      : 0;
+
   return (
     // biome-ignore lint/a11y/useSemanticElements: custom modal overlay
     <div
@@ -474,6 +486,68 @@ function ClipDetailModal({
             ))}
           </div>
 
+          {/* Summary stats (total sold, price range) — only when we have history */}
+          {summary && Number(summary.totalSales) > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 8,
+              }}
+            >
+              {[
+                {
+                  label: "Total Sold",
+                  value: `${Number(summary.totalSales).toLocaleString()} copies`,
+                  noIcon: true,
+                },
+                {
+                  label: "Floor",
+                  value: `$${summary.minPrice.toFixed(2)}`,
+                },
+                {
+                  label: "Peak",
+                  value: `$${summary.maxPrice.toFixed(2)}`,
+                },
+              ].map(({ label, value, noIcon }) => (
+                <div
+                  key={label}
+                  style={{
+                    borderRadius: 10,
+                    background: `rgba(${accentR},${accentG},${accentB},0.05)`,
+                    border: `1px solid rgba(${accentR},${accentG},${accentB},0.15)`,
+                    padding: "7px 10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 9,
+                      color: "#7050a0",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#d4c0f0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
+                  >
+                    {!noIcon && <BtcLogo size={10} />}
+                    {value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Price chart */}
           <div
             style={{
@@ -495,6 +569,19 @@ function ClipDetailModal({
               }}
             >
               <TrendingUp size={13} color={accent} /> Price History
+              {priceHistory.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 10,
+                    color: "#7050a0",
+                    fontWeight: 400,
+                  }}
+                >
+                  {priceHistory.length} sale
+                  {priceHistory.length !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
             {detail.isLoadingDetail ? (
               <div
@@ -509,49 +596,82 @@ function ClipDetailModal({
               >
                 Loading…
               </div>
-            ) : detail.priceHistory.length === 0 ? (
+            ) : priceHistory.length === 0 ? (
               <div
                 style={{
                   height: 60,
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 4,
                   color: "#7050a0",
                   fontSize: 12,
                 }}
               >
-                No price history yet
+                <TrendingUp size={18} color="rgba(160,100,220,0.3)" />
+                No sales yet
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <div
                   style={{
                     display: "flex",
-                    gap: 4,
+                    gap: 3,
                     alignItems: "flex-end",
-                    height: 60,
-                    minWidth: detail.priceHistory.length * 18,
+                    height: 72,
+                    minWidth: Math.max(priceHistory.length * 10, 200),
                   }}
                 >
-                  {detail.priceHistory.map((pt) => {
-                    const maxP = Math.max(
-                      ...detail.priceHistory.map((p) => p.salePrice),
-                    );
-                    const h = maxP > 0 ? (pt.salePrice / maxP) * 56 : 10;
+                  {priceHistory.map((pt) => {
+                    const h =
+                      maxSalePrice > 0
+                        ? Math.max(4, (pt.salePrice / maxSalePrice) * 64)
+                        : 10;
                     return (
                       <div
                         key={`${pt.editionNumber.toString()}-${pt.timestamp.toString()}`}
-                        title={`$${pt.salePrice.toFixed(2)}`}
+                        title={`Copy #${pt.editionNumber} · $${pt.salePrice.toFixed(2)}`}
                         style={{
-                          width: 14,
+                          flex: "0 0 auto",
+                          width: Math.max(
+                            4,
+                            Math.min(12, Math.floor(240 / priceHistory.length)),
+                          ),
                           height: h,
-                          borderRadius: 3,
+                          borderRadius: 2,
                           background: `rgba(${accentR},${accentG},${accentB},0.6)`,
-                          flexShrink: 0,
+                          cursor: "default",
+                          transition: "background 0.1s",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.background =
+                            `rgba(${accentR},${accentG},${accentB},0.9)`;
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.background =
+                            `rgba(${accentR},${accentG},${accentB},0.6)`;
                         }}
                       />
                     );
                   })}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginTop: 4,
+                    fontSize: 9,
+                    color: "#7050a0",
+                  }}
+                >
+                  <span>Copy #1</span>
+                  <span>
+                    Copy #
+                    {priceHistory[
+                      priceHistory.length - 1
+                    ]?.editionNumber?.toString()}
+                  </span>
                 </div>
               </div>
             )}
@@ -1124,15 +1244,17 @@ export function MarketPage() {
         currentPrice: entry.currentPriceUsd,
         listings: [],
         priceHistory: [],
+        summary: null,
         isLoadingDetail: true,
       };
       setClipDetail(base);
 
       if (!actor) return;
       try {
-        const [detailListings, history] = await Promise.all([
+        const [detailListings, history, sum] = await Promise.all([
           actor.getListingsByClip(entry.clipId),
-          actor.getPriceHistory(entry.clipId),
+          actor.getPriceHistoryFull(entry.clipId),
+          actor.getPriceHistorySummary(entry.clipId),
         ]);
         setClipDetail((prev) =>
           prev
@@ -1140,6 +1262,7 @@ export function MarketPage() {
                 ...prev,
                 listings: detailListings,
                 priceHistory: history,
+                summary: sum,
                 isLoadingDetail: false,
               }
             : null,
@@ -1168,16 +1291,18 @@ export function MarketPage() {
         currentPrice: listing.listPriceUsd,
         listings: [],
         priceHistory: [],
+        summary: null,
         isLoadingDetail: true,
       };
       setClipDetail(base);
 
       if (!actor) return;
       try {
-        const [detailListings, history, mcap] = await Promise.all([
+        const [detailListings, history, mcap, sum] = await Promise.all([
           actor.getListingsByClip(listing.clipId),
-          actor.getPriceHistory(listing.clipId),
+          actor.getPriceHistoryFull(listing.clipId),
           actor.getMarketCap(listing.clipId),
+          actor.getPriceHistorySummary(listing.clipId),
         ]);
         setClipDetail((prev) =>
           prev
@@ -1185,6 +1310,7 @@ export function MarketPage() {
                 ...prev,
                 listings: detailListings,
                 priceHistory: history,
+                summary: sum,
                 marketCap: mcap?.marketCapUsd ?? 0,
                 currentPrice: mcap?.currentPriceUsd ?? listing.listPriceUsd,
                 isLoadingDetail: false,

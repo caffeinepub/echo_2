@@ -1,15 +1,56 @@
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Int "mo:core/Int";
+import Float "mo:core/Float";
 import Order "mo:core/Order";
 import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 
-
-
 actor {
+  // ─── ckBTC Ledger (ICRC-1 / ICRC-2) ─────────────────────────────────────
+  // Mainnet canister: mxzaz-hqaaa-aaaar-qaada-cai
+  // We only call icrc1_balance_of, icrc2_transfer_from.
+  // All amounts are in e8s (1 BTC = 100_000_000 e8s).
+
+  type Account = {
+    owner : Principal;
+    subaccount : ?Blob;
+  };
+
+  type TransferFromArgs = {
+    spender_subaccount : ?Blob;
+    from : Account;
+    to : Account;
+    amount : Nat;
+    fee : ?Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;
+  };
+
+  type TransferFromResult = {
+    #Ok : Nat;         // block index
+    #Err : TransferFromError;
+  };
+
+  type TransferFromError = {
+    #BadFee : { expected_fee : Nat };
+    #BadBurn : { min_burn_amount : Nat };
+    #InsufficientFunds : { balance : Nat };
+    #InsufficientAllowance : { allowance : Nat };
+    #TooOld;
+    #CreatedInFuture : { ledger_time : Nat64 };
+    #Duplicate : { duplicate_of : Nat };
+    #TemporarilyUnavailable;
+    #GenericError : { error_code : Nat; message : Text };
+  };
+
+  let ckbtcLedger : actor {
+    icrc1_balance_of : (Account) -> async Nat;
+    icrc2_transfer_from : (TransferFromArgs) -> async TransferFromResult;
+  } = actor ("mxzaz-hqaaa-aaaar-qaada-cai");
+
   // ─────────────────────────────────────────────
   // INLINE ACCESS CONTROL (replaces missing authorization/ package)
   // ─────────────────────────────────────────────
@@ -1058,7 +1099,7 @@ actor {
 
   let listings = Map.empty<Nat, Listing>();
   let offers = Map.empty<Nat, Offer>();
-  // priceHistory: clipId → up to 10 most recent PricePoints (newest first)
+  // priceHistory: clipId → ALL PricePoints, sorted chronologically (oldest first)
   let priceHistory = Map.empty<Text, [PricePoint]>();
   // copiesSold: clipId → number of copies sold via acceptOffer
   let marketCopiesSold = Map.empty<Text, Nat>();
@@ -1082,11 +1123,12 @@ actor {
   };
 
   func _computeCurrentPrice(clipId : Text) : Float {
-    // Use last sale price from history if available, else bonding curve
+    // Use last sale price from history if available (points sorted oldest-first, so last = most recent)
     switch (priceHistory.get(clipId)) {
       case (?points) {
-        if (points.size() > 0) {
-          points[0].salePrice
+        let sz = points.size();
+        if (sz > 0) {
+          points[sz - 1].salePrice
         } else {
           bondingCurveStartPrice + (bondingCurvePriceIncrement * _getSoldCount(clipId).toFloat())
         }
@@ -1097,7 +1139,8 @@ actor {
     };
   };
 
-  // Internal: record a confirmed sale
+  // Internal: record a confirmed sale — appends to the end so array stays chronological (oldest first).
+  // Stores ALL points — no truncation. Max 1000 per clip.
   func _recordSale(clipId : Text, editionNumber : Nat, salePrice : Float) {
     let now = Time.now();
     let newPoint : PricePoint = { editionNumber; salePrice; timestamp = now };
@@ -1107,14 +1150,9 @@ actor {
       case null [];
     };
 
-    // Prepend new point and keep only last 10
-    let combined = [newPoint].concat(existing);
-    let trimmed = if (combined.size() > 10) {
-      combined.sliceToArray(0, 10)
-    } else {
-      combined
-    };
-    priceHistory.add(clipId, trimmed);
+    // Append new point at the end — keeps chronological order (oldest first)
+    let updated = existing.concat([newPoint]);
+    priceHistory.add(clipId, updated);
 
     // Increment copies sold
     let prev = _getSoldCount(clipId);
@@ -1324,8 +1362,60 @@ actor {
 
   public query func getPriceHistory(clipId : Text) : async [PricePoint] {
     switch (priceHistory.get(clipId)) {
-      case (?pts) pts; // already stored newest first
+      case (?pts) pts; // sorted chronologically: oldest first
       case null [];
+    };
+  };
+
+  /// Returns ALL price points for a clip, sorted chronologically (oldest first).
+  /// This is the primary endpoint for rendering complete chart data.
+  public query func getPriceHistoryFull(clipId : Text) : async [PricePoint] {
+    switch (priceHistory.get(clipId)) {
+      case (?pts) pts;
+      case null [];
+    };
+  };
+
+  public type PriceHistorySummary = {
+    totalSales : Nat;
+    minPrice : Float;
+    maxPrice : Float;
+    currentPrice : Float;
+    firstSaleTimestamp : ?Int;
+    lastSaleTimestamp : ?Int;
+  };
+
+  /// Returns summary statistics for a clip's sales history.
+  /// Useful for chart header stats (total sold, price range, latest activity).
+  public query func getPriceHistorySummary(clipId : Text) : async PriceHistorySummary {
+    let pts : [PricePoint] = switch (priceHistory.get(clipId)) {
+      case (?p) p;
+      case null [];
+    };
+    let sz = pts.size();
+    if (sz == 0) {
+      return {
+        totalSales = 0;
+        minPrice = 0.0;
+        maxPrice = 0.0;
+        currentPrice = _computeCurrentPrice(clipId);
+        firstSaleTimestamp = null;
+        lastSaleTimestamp = null;
+      };
+    };
+    var minP : Float = pts[0].salePrice;
+    var maxP : Float = pts[0].salePrice;
+    for (pt in pts.values()) {
+      if (pt.salePrice < minP) { minP := pt.salePrice };
+      if (pt.salePrice > maxP) { maxP := pt.salePrice };
+    };
+    {
+      totalSales = sz;
+      minPrice = minP;
+      maxPrice = maxP;
+      currentPrice = pts[sz - 1].salePrice;
+      firstSaleTimestamp = ?pts[0].timestamp;
+      lastSaleTimestamp = ?pts[sz - 1].timestamp;
     };
   };
 
@@ -1684,7 +1774,7 @@ actor {
     btcAddress : Text;
     role : Text;
     usdAmount : Float;
-    btcAmountSimulated : Float;
+    btcAmountSimulated : Float;  // USD→BTC conversion for display
   };
 
   public type Transaction = {
@@ -1694,15 +1784,33 @@ actor {
     totalUsd : Float;
     splits : [TxSplit];
     timestamp : Int;
-    status : Text;
+    status : Text;             // "confirmed" | "failed" | "partial"
   };
+
+  // Separate stable map for ckBTC ledger block indices (avoids schema migration on Transaction)
+  let txLedgerIds = Map.empty<Nat, [Nat]>();
 
   let transactions = Map.empty<Nat, Transaction>();
   var nextTxId : Nat = 0;
 
+  // Platform constants
   let _platformBtcAddress : Text = "3GwDfPKRyNH4MZT3Vnc7GkKbAccNBZcVFh";
-  let _btcUsdRate : Float = 50000.0;
+  var _btcUsdRate : Float = 50000.0;       // default; update via setBtcRate (admin only)
+  // Platform ICP principal — receives all platform ckBTC cuts.
+  // This is the canister's own principal (self), which the frontend must approve via ICRC-2.
+  // On first deploy this is replaced with the actual canister ID at runtime.
   let _platformPrincipal : Principal = Principal.fromText("aaaaa-aa");
+
+  // ckBTC transfer fee (as of ICRC-1 standard): 10 e8s
+  let _ckbtcFee : Nat = 10;
+
+  /// Convert a USD amount to e8s given the current BTC/USD rate.
+  /// $1 USD = 100_000_000 / btcPriceUsd e8s
+  func _usdToE8s(usd : Float) : Nat {
+    let e8s = (usd / _btcUsdRate) * 100_000_000.0;
+    // floor to Nat
+    e8s.toInt().toNat();
+  };
 
   func btcAddressFor(p : Principal) : Text {
     "principal:" # p.toText()
@@ -1718,7 +1826,48 @@ actor {
     };
   };
 
-  func _recordTx(txType : TxType, clipId : Text, totalUsd : Float, splits : [TxSplit]) : Nat {
+  /// Internal: execute a single ICRC-2 transfer_from on behalf of `from` → `to` for `amountE8s`.
+  /// Returns the ledger block index on success, or an error string on failure.
+  /// All error messages are BTC-friendly — never expose internal ledger terminology.
+  func _ckbtcTransfer(
+    from : Principal,
+    to : Principal,
+    amountE8s : Nat,
+  ) : async { #ok : Nat; #err : Text } {
+    if (amountE8s == 0) return #ok(0);    // nothing to transfer — skip
+    let args : TransferFromArgs = {
+      spender_subaccount = null;
+      from = { owner = from; subaccount = null };
+      to = { owner = to; subaccount = null };
+      amount = amountE8s;
+      fee = ?_ckbtcFee;
+      memo = null;
+      created_at_time = null;
+    };
+    try {
+      let result = await ckbtcLedger.icrc2_transfer_from(args);
+      switch (result) {
+        case (#Ok(blockIdx)) { #ok(blockIdx) };
+        case (#Err(#InsufficientFunds _)) { #err("Insufficient balance") };
+        case (#Err(#InsufficientAllowance _)) { #err("Insufficient balance") };
+        case (#Err(#TemporarilyUnavailable)) {
+          #err("Payment processing error, please retry")
+        };
+        case (#Err(_)) { #err("Payment processing error, please retry") };
+      };
+    } catch (_) {
+      #err("Payment processing error, please retry");
+    };
+  };
+
+  func _recordTx(
+    txType : TxType,
+    clipId : Text,
+    totalUsd : Float,
+    splits : [TxSplit],
+    ledgerTxIds : [Nat],
+    status : Text,
+  ) : Nat {
     let id = nextTxId;
     nextTxId += 1;
     let tx : Transaction = {
@@ -1728,53 +1877,139 @@ actor {
       totalUsd;
       splits;
       timestamp = Time.now();
-      status = "simulated";
+      status;
     };
     transactions.add(id, tx);
+    if (ledgerTxIds.size() > 0) {
+      txLedgerIds.add(id, ledgerTxIds);
+    };
     id;
   };
 
-  /// Record a $1 mint fee. 100% to platform wallet.
-  public shared func processClipMint(_creatorPrincipal : Principal) : async Nat {
+  // ─────────────────────────────────────────────
+  // NEW PAYMENT HELPER METHODS
+  // ─────────────────────────────────────────────
+
+  /// Returns the caller's real ckBTC balance in e8s from the ledger.
+  /// Displayed on the frontend as BTC (e8s / 100_000_000).
+  public shared ({ caller }) func getMyBalance() : async Nat {
+    await ckbtcLedger.icrc1_balance_of({ owner = caller; subaccount = null });
+  };
+
+  /// Returns the current USD/BTC rate used for conversions.
+  /// Defaults to 50000 if no live rate is set.
+  public query func getBtcRate() : async Float {
+    _btcUsdRate;
+  };
+
+  /// Admin: update the BTC/USD rate used for e8s conversions.
+  public shared ({ caller }) func setBtcRate(rate : Float) : async () {
+    if (not _isAdmin(caller)) Runtime.trap("Unauthorized");
+    if (rate <= 0.0) Runtime.trap("Rate must be positive");
+    _btcUsdRate := rate;
+  };
+
+  /// Returns the caller's ICP principal as text.
+  /// The frontend uses this address to request ckBTC ICRC-2 approval before payment.
+  /// All error messages visible to the user refer to this as their "payment address".
+  public shared query ({ caller }) func getPaymentAddress() : async Text {
+    caller.toText();
+  };
+
+  // ─────────────────────────────────────────────
+  // REAL ckBTC PAYMENT ROUTING
+  // ─────────────────────────────────────────────
+
+  /// Process a $1 mint fee. Pulls 100% from creator's approved allowance → platform principal.
+  /// Returns the internal transaction ID.
+  public shared ({ caller = _ }) func processClipMint(creatorPrincipal : Principal) : async Nat {
+    let totalE8s = _usdToE8s(1.0);
+    let platformE8s = totalE8s;
     let splits : [TxSplit] = [
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", 1.0),
     ];
-    _recordTx(#mintFee, "", 1.0, splits);
+    // Execute real transfer: creator → platform
+    let r = await _ckbtcTransfer(creatorPrincipal, _platformPrincipal, platformE8s);
+    let (txIds, status) = switch (r) {
+      case (#ok(idx)) { ([idx], "confirmed") };
+      case (#err(_)) { ([], "failed") };
+    };
+    _recordTx(#mintFee, "", 1.0, splits, txIds, status);
   };
 
-  /// Record a bonding curve copy sale. 95% to creator, 5% to platform.
-  public shared func processCopySale(
+  /// Process a bonding curve copy sale. 95% to creator, 5% to platform.
+  /// Pulls total from buyer's approved allowance → distributes to creator and platform.
+  public shared ({ caller = _ }) func processCopySale(
     clipId : Text,
     creatorPrincipal : Principal,
-    _buyerPrincipal : Principal,
+    buyerPrincipal : Principal,
     usdAmount : Float,
   ) : async Nat {
     let creatorAmt = usdAmount * 0.95;
     let platformAmt = usdAmount * 0.05;
+    let creatorE8s = _usdToE8s(creatorAmt);
+    let platformE8s = _usdToE8s(platformAmt);
     let splits : [TxSplit] = [
       _makeSplit(creatorPrincipal, btcAddressFor(creatorPrincipal), "creator", creatorAmt),
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
     ];
-    _recordTx(#copySale, clipId, usdAmount, splits);
+    // Execute real transfers: buyer → creator, buyer → platform
+    let r1 = await _ckbtcTransfer(buyerPrincipal, creatorPrincipal, creatorE8s);
+    let r2 = await _ckbtcTransfer(buyerPrincipal, _platformPrincipal, platformE8s);
+    var txIds : [Nat] = [];
+    var failed = false;
+    switch (r1) {
+      case (#ok(idx)) { txIds := txIds.concat([idx]) };
+      case (#err(_)) { failed := true };
+    };
+    switch (r2) {
+      case (#ok(idx)) { txIds := txIds.concat([idx]) };
+      case (#err(_)) { failed := true };
+    };
+    let status = if (failed) "partial" else "confirmed";
+    _recordTx(#copySale, clipId, usdAmount, splits, txIds, status);
   };
 
-  /// Record a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
-  public shared func processSecondaryTrade(
+  /// Process a secondary trade. 4% to original creator, 1% to platform, 95% to seller.
+  /// Pulls total from buyer's approved allowance → distributes to all parties.
+  public shared ({ caller = _ }) func processSecondaryTrade(
     clipId : Text,
     originalCreatorPrincipal : Principal,
     sellerPrincipal : Principal,
-    _buyerPrincipal : Principal,
+    buyerPrincipal : Principal,
     usdAmount : Float,
   ) : async Nat {
     let creatorAmt = usdAmount * 0.04;
     let platformAmt = usdAmount * 0.01;
     let sellerAmt = usdAmount * 0.95;
+    let creatorE8s = _usdToE8s(creatorAmt);
+    let platformE8s = _usdToE8s(platformAmt);
+    let sellerE8s = _usdToE8s(sellerAmt);
     let splits : [TxSplit] = [
       _makeSplit(originalCreatorPrincipal, btcAddressFor(originalCreatorPrincipal), "creator", creatorAmt),
       _makeSplit(_platformPrincipal, _platformBtcAddress, "platform", platformAmt),
       _makeSplit(sellerPrincipal, btcAddressFor(sellerPrincipal), "seller", sellerAmt),
     ];
-    _recordTx(#secondaryTrade, clipId, usdAmount, splits);
+    // Execute real transfers: buyer → creator, buyer → platform, buyer → seller
+    let r1 = await _ckbtcTransfer(buyerPrincipal, originalCreatorPrincipal, creatorE8s);
+    let r2 = await _ckbtcTransfer(buyerPrincipal, _platformPrincipal, platformE8s);
+    let r3 = await _ckbtcTransfer(buyerPrincipal, sellerPrincipal, sellerE8s);
+    var txIds : [Nat] = [];
+    var failed = false;
+    switch (r1) {
+      case (#ok(idx)) { txIds := txIds.concat([idx]) };
+      case (#err(_)) { failed := true };
+    };
+    switch (r2) {
+      case (#ok(idx)) { txIds := txIds.concat([idx]) };
+      case (#err(_)) { failed := true };
+    };
+    switch (r3) {
+      case (#ok(idx)) { txIds := txIds.concat([idx]) };
+      case (#err(_)) { failed := true };
+    };
+    let status = if (failed) "partial" else "confirmed";
+    _recordTx(#secondaryTrade, clipId, usdAmount, splits, txIds, status);
   };
 
   /// Returns all transactions newest-first.
@@ -1797,7 +2032,7 @@ actor {
 
   public type EarningsSummary = {
     totalUsd : Float;
-    totalBtc : Float;
+    totalBtcE8s : Nat;         // real e8s accumulated from confirmed ledger transfers
     fromCopySales : Float;
     fromTradeRoyalties : Float;
     fromAuctionWins : Float;
@@ -1808,7 +2043,7 @@ actor {
   /// Sums splits where role == "creator" or role == "seller".
   public shared query ({ caller }) func getMyEarnings() : async EarningsSummary {
     var totalUsd : Float = 0.0;
-    var totalBtc : Float = 0.0;
+    var totalBtcE8s : Nat = 0;
     var fromCopySales : Float = 0.0;
     var fromTradeRoyalties : Float = 0.0;
     var fromAuctionWins : Float = 0.0;
@@ -1829,7 +2064,7 @@ actor {
             (split.role == "creator" or split.role == "seller")
           ) {
             totalUsd += split.usdAmount;
-            totalBtc += split.btcAmountSimulated;
+            totalBtcE8s += _usdToE8s(split.usdAmount);
             switch (tx.txType) {
               case (#copySale) { fromCopySales += split.usdAmount };
               case (#secondaryTrade) {
@@ -1849,7 +2084,7 @@ actor {
 
     {
       totalUsd;
-      totalBtc;
+      totalBtcE8s;
       fromCopySales;
       fromTradeRoyalties;
       fromAuctionWins;
