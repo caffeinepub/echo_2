@@ -592,6 +592,11 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
       [],
     ),
+  'resetUserDepositAddress' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
   'setBtcRate' : IDL.Func([IDL.Float64], [], []),
@@ -604,6 +609,7 @@ export const idlService = IDL.Service({
   'updateSet' : IDL.Func([UpdateTcgSetInput], [TcgSet], []),
   'uploadPreviewBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
   'uploadVideoBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
+  'warmupDepositAddress' : IDL.Func([], [], []),
 });
 
 export const idlInitArgs = [];
@@ -1187,6 +1193,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
         [],
       ),
+    'resetUserDepositAddress' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+        [],
+      ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'searchSetsByName' : IDL.Func([IDL.Text], [IDL.Vec(TcgSet)], ['query']),
     'setBtcRate' : IDL.Func([IDL.Float64], [], []),
@@ -1203,6 +1214,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'uploadVideoBlob' : IDL.Func([IDL.Vec(IDL.Nat8), IDL.Text], [IDL.Text], []),
+    'warmupDepositAddress' : IDL.Func([], [], []),
   });
 };
 

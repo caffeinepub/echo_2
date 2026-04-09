@@ -23,7 +23,7 @@ interface WalletContextValue {
   /** BTC balance derived from ckBTC e8s (btcBalanceE8s / 100_000_000). Null when not loaded. */
   btcBalance: number | null;
   balanceStatus: BalanceStatus;
-  /** User's unique BTC deposit address (bc1q… format) from backend. */
+  /** User's unique BTC deposit address (P2PKH '1...' format) from backend. */
   depositAddress: string | null;
   /** True while deposit address is being fetched. */
   addressLoading: boolean;
@@ -64,17 +64,66 @@ interface WalletContextValue {
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 const E8S_PER_BTC = 100_000_000;
-// Increased from 15s to 45s — ICP Bitcoin API can take 20-30s on mainnet
-const ADDRESS_FETCH_TIMEOUT_MS = 45_000;
-// Quick cache-check timeout (5s) used on retry before full 45s attempt
+// Increased to 65s — ICP Bitcoin API can take 20-30s on mainnet, extra buffer for cold starts
+const ADDRESS_FETCH_TIMEOUT_MS = 65_000;
+// Quick cache-check timeout (5s) used on retry before full 65s attempt
 const ADDRESS_CACHE_CHECK_TIMEOUT_MS = 5_000;
 // Max auto-retries before surfacing the manual error UI
 const ADDRESS_MAX_AUTO_RETRIES = 2;
 // Backoff delays: retry 1 = 2s, retry 2 = 4s, retry 3 = 8s
 const RETRY_BACKOFF_MS = [2_000, 4_000, 8_000];
+// After all auto-retries fail, auto-schedule one more retry after this delay
+const AUTO_FINAL_RETRY_DELAY_MS = 10_000;
+// sessionStorage cache TTL: 10 minutes
+const SESSION_CACHE_TTL_MS = 10 * 60 * 1_000;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * P2PKH address validation (ICP Bitcoin API returns '1...' addresses on mainnet).
+ * Rejects bech32 (bc1...) and any other format.
+ * base58 charset excludes: 0 (zero), O (capital-O), I (capital-I), l (lowercase-L)
+ */
+function isValidP2PKHAddress(addr: string): boolean {
+  return (
+    addr.startsWith("1") &&
+    addr.length >= 26 &&
+    addr.length <= 34 &&
+    /^[1-9A-HJ-NP-Za-km-z]+$/.test(addr)
+  );
+}
+
+function getSessionCacheKey(principalId: string): string {
+  return `minty_deposit_addr_${principalId}`;
+}
+
+function readSessionCache(principalId: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(getSessionCacheKey(principalId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { address: string; ts: number };
+    const expired = Date.now() - parsed.ts > SESSION_CACHE_TTL_MS;
+    if (expired || !isValidP2PKHAddress(parsed.address)) {
+      sessionStorage.removeItem(getSessionCacheKey(principalId));
+      return null;
+    }
+    return parsed.address;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionCache(principalId: string, address: string): void {
+  try {
+    sessionStorage.setItem(
+      getSessionCacheKey(principalId),
+      JSON.stringify({ address, ts: Date.now() }),
+    );
+  } catch {
+    // sessionStorage may be unavailable (private mode quota limits) — ignore
+  }
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
@@ -91,11 +140,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [walletActivity, setWalletActivity] = useState<WalletActivity[]>([]);
 
-  // Ref to abort in-flight address fetches when a new one starts
+  // Ref to abort in-flight address fetches when a new one starts or context unmounts
   const addressFetchAbortRef = useRef<{ aborted: boolean }>({ aborted: false });
+  // Ref to the auto-scheduled final retry timer (so we can cancel it)
+  const autoFinalRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const isConnected = !!identity && !identity.getPrincipal().isAnonymous();
   const walletAddress = identity ? identity.getPrincipal().toText() : null;
+
+  // Cleanup on unmount: abort any in-flight fetch + cancel any pending auto-retry timer
+  useEffect(() => {
+    return () => {
+      addressFetchAbortRef.current.aborted = true;
+      if (autoFinalRetryTimerRef.current !== null) {
+        clearTimeout(autoFinalRetryTimerRef.current);
+        autoFinalRetryTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Fetch balance from backend
   const refreshBalance = useCallback(async () => {
@@ -157,22 +221,42 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Fetch deposit address with auto-retry and exponential backoff.
-   * - Attempt 0: full 45s timeout
+   * - Session cache check first (fast path for re-opens in same session)
+   * - Attempt 0: full 65s timeout
    * - On failure: auto-retry up to ADDRESS_MAX_AUTO_RETRIES times with backoff
-   * - Each retry first does a quick 5s cache check, then falls back to full 45s
+   * - Each retry first does a quick 5s cache check, then falls back to full 65s
    * - Only surfaces error UI after all auto-retries are exhausted
+   * - After surfacing error, schedules one final auto-retry after 10s
    */
   const fetchAddressWithRetry = useCallback(
-    async (abortSignal: { aborted: boolean }) => {
+    async (abortSignal: { aborted: boolean }, principalId: string) => {
+      // Cancel any pending auto-final-retry timer
+      if (autoFinalRetryTimerRef.current !== null) {
+        clearTimeout(autoFinalRetryTimerRef.current);
+        autoFinalRetryTimerRef.current = null;
+      }
+
       setAddressLoading(true);
       setAddressError(null);
       setAddressRetryAttempt(0);
+
+      // Fast path: check session cache first
+      const cached = readSessionCache(principalId);
+      if (cached) {
+        setDepositAddress(cached);
+        setAddressError(null);
+        setAddressLoading(false);
+        return;
+      }
 
       // Attempt 0: full timeout
       let address = await attemptAddressFetch(ADDRESS_FETCH_TIMEOUT_MS);
       if (abortSignal.aborted) return;
 
       if (address) {
+        if (isValidP2PKHAddress(address)) {
+          writeSessionCache(principalId, address);
+        }
         setDepositAddress(address);
         setAddressError(null);
         setAddressLoading(false);
@@ -201,6 +285,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (address) {
+          if (isValidP2PKHAddress(address)) {
+            writeSessionCache(principalId, address);
+          }
           setDepositAddress(address);
           setAddressError(null);
           setAddressLoading(false);
@@ -214,6 +301,34 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         "Could not load your deposit address. Tap retry to try again.",
       );
       setAddressLoading(false);
+
+      // Schedule one final silent auto-retry after 10s (user doesn't have to tap)
+      if (!abortSignal.aborted) {
+        autoFinalRetryTimerRef.current = setTimeout(async () => {
+          autoFinalRetryTimerRef.current = null;
+          if (abortSignal.aborted) return;
+
+          // Quick probe first
+          let finalAddr = await attemptAddressFetch(
+            ADDRESS_CACHE_CHECK_TIMEOUT_MS,
+          );
+          if (abortSignal.aborted) return;
+
+          if (!finalAddr) {
+            finalAddr = await attemptAddressFetch(ADDRESS_FETCH_TIMEOUT_MS);
+            if (abortSignal.aborted) return;
+          }
+
+          if (finalAddr) {
+            if (isValidP2PKHAddress(finalAddr)) {
+              writeSessionCache(principalId, finalAddr);
+            }
+            setDepositAddress(finalAddr);
+            setAddressError(null);
+            setAddressLoading(false);
+          }
+        }, AUTO_FINAL_RETRY_DELAY_MS);
+      }
     },
     [attemptAddressFetch],
   );
@@ -222,13 +337,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const refreshDeposits = useCallback(async () => {
     if (!actor || isFetching) return;
 
+    const principalId = identity ? identity.getPrincipal().toText() : "";
+
     // Abort any in-flight fetch
     addressFetchAbortRef.current.aborted = true;
     const abortSignal = { aborted: false };
     addressFetchAbortRef.current = abortSignal;
 
     // Start address fetch with auto-retry
-    fetchAddressWithRetry(abortSignal);
+    fetchAddressWithRetry(abortSignal, principalId);
 
     // Deposits + activity can fail independently without blocking address display
     try {
@@ -241,13 +358,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("[WalletContext] refreshDeposits (activity) failed:", err);
     }
-  }, [actor, isFetching, fetchAddressWithRetry]);
+  }, [actor, isFetching, identity, fetchAddressWithRetry]);
 
   // Manual retry — called from DepositModal after all auto-retries fail
   // Uses exponential backoff based on how many manual retries have been attempted
   const manualRetryCountRef = useRef(0);
   const retryAddressFetch = useCallback(async () => {
     if (!actor || isFetching) return;
+
+    const principalId = identity ? identity.getPrincipal().toText() : "";
+
+    // Cancel any pending auto-final-retry timer before starting manual retry
+    if (autoFinalRetryTimerRef.current !== null) {
+      clearTimeout(autoFinalRetryTimerRef.current);
+      autoFinalRetryTimerRef.current = null;
+    }
 
     // Abort any in-flight fetch
     addressFetchAbortRef.current.aborted = true;
@@ -278,6 +403,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (address) {
+      if (isValidP2PKHAddress(address)) {
+        writeSessionCache(principalId, address);
+      }
       setDepositAddress(address);
       setAddressError(null);
       setAddressLoading(false);
@@ -288,7 +416,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       );
       setAddressLoading(false);
     }
-  }, [actor, isFetching, attemptAddressFetch]);
+  }, [actor, isFetching, identity, attemptAddressFetch]);
 
   // Poll backend for new deposits, then refresh balance
   const checkDeposits = useCallback(async () => {
@@ -319,10 +447,29 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       manualRetryCountRef.current = 0;
       refreshBalance();
       refreshDeposits();
+
+      // Fire-and-forget warmup: pre-warm the backend address cache so it's
+      // ready by the time the user opens the Deposit modal. No await, no error handling.
+      try {
+        // warmupDepositAddress may not exist in all backend versions — guard defensively
+        const actorAny = actor as unknown as Record<
+          string,
+          (() => Promise<unknown>) | undefined
+        >;
+        if (typeof actorAny.warmupDepositAddress === "function") {
+          actorAny.warmupDepositAddress();
+        }
+      } catch {
+        // intentionally swallowed
+      }
     }
     if (!identity) {
-      // Abort any in-flight fetch
+      // Abort any in-flight fetch + cancel pending auto-retry timer
       addressFetchAbortRef.current.aborted = true;
+      if (autoFinalRetryTimerRef.current !== null) {
+        clearTimeout(autoFinalRetryTimerRef.current);
+        autoFinalRetryTimerRef.current = null;
+      }
       manualRetryCountRef.current = 0;
       setBtcBalance(null);
       setBalanceStatus("idle");

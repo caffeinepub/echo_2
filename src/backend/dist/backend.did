@@ -519,7 +519,7 @@ service : {
                                     ok: vec Offer;
                                   }) query;
   /// Returns or creates a UserWallet for the caller.
-  /// Eagerly derives and caches the BTC address on first call.
+  /// Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
   getOrCreateUserWallet: () -> (UserWallet);
   /// Returns the caller's BTC deposit address as their payment address.
   /// All payments are in BTC — no internal payment terminology exposed.
@@ -560,6 +560,8 @@ service : {
   getUserCollectibles: (user: principal) -> (vec Collectible) query;
   /// Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
   /// Derives the address on first call and caches it in the wallet.
+  /// If the cached address fails strict validation (including stale bc1/bech32 addresses that
+  /// were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
   /// Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
   getUserDepositAddress: () -> (variant {
                                   err: text;
@@ -643,6 +645,12 @@ service : {
                                       err: text;
                                       ok: bool;
                                     });
+  /// Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
+  /// Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+  resetUserDepositAddress: () -> (variant {
+                                    err: text;
+                                    ok: text;
+                                  });
   saveCallerUserProfile: (profile: UserProfile) -> ();
   searchSetsByName: (searchTerm: text) -> (vec TcgSet) query;
   /// Admin: update the BTC/USD rate used for e8s conversions.
@@ -658,4 +666,10 @@ service : {
   uploadPreviewBlob: (data: blob, content_type: text) -> (text);
   /// Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
   uploadVideoBlob: (data: blob, content_type: text) -> (text);
+  /// Fire-and-forget background warmup for the caller's BTC deposit address.
+  /// Call this immediately after login (no await needed on the frontend).
+  /// If the address is already cached and valid, this is a no-op.
+  /// If not, it kicks off the slow ICP Bitcoin API call in the background so the
+  /// address is ready when the user opens the Deposit modal.
+  warmupDepositAddress: () -> ();
 }

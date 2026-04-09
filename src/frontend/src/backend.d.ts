@@ -540,7 +540,7 @@ export interface backendInterface {
     }>;
     /**
      * / Returns or creates a UserWallet for the caller.
-     * / Eagerly derives and caches the BTC address on first call.
+     * / Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
      */
     getOrCreateUserWallet(): Promise<UserWallet>;
     /**
@@ -591,6 +591,8 @@ export interface backendInterface {
     /**
      * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
      * / Derives the address on first call and caches it in the wallet.
+     * / If the cached address fails strict validation (including stale bc1/bech32 addresses that
+     * / were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
      * / Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
      */
     getUserDepositAddress(): Promise<{
@@ -721,6 +723,17 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
+    /**
+     * / Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
+     * / Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+     */
+    resetUserDepositAddress(): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
     /**
@@ -742,4 +755,12 @@ export interface backendInterface {
      * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
      */
     uploadVideoBlob(data: Uint8Array, content_type: string): Promise<string>;
+    /**
+     * / Fire-and-forget background warmup for the caller's BTC deposit address.
+     * / Call this immediately after login (no await needed on the frontend).
+     * / If the address is already cached and valid, this is a no-op.
+     * / If not, it kicks off the slow ICP Bitcoin API call in the background so the
+     * / address is ready when the user opens the Deposit modal.
+     */
+    warmupDepositAddress(): Promise<void>;
 }

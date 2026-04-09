@@ -506,7 +506,7 @@ export interface _SERVICE {
   >,
   /**
    * / Returns or creates a UserWallet for the caller.
-   * / Eagerly derives and caches the BTC address on first call.
+   * / Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
    */
   'getOrCreateUserWallet' : ActorMethod<[], UserWallet>,
   /**
@@ -554,6 +554,8 @@ export interface _SERVICE {
   /**
    * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
    * / Derives the address on first call and caches it in the wallet.
+   * / If the cached address fails strict validation (including stale bc1/bech32 addresses that
+   * / were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
    * / Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
    */
   'getUserDepositAddress' : ActorMethod<
@@ -666,6 +668,15 @@ export interface _SERVICE {
     { 'ok' : boolean } |
       { 'err' : string }
   >,
+  /**
+   * / Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
+   * / Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+   */
+  'resetUserDepositAddress' : ActorMethod<
+    [],
+    { 'ok' : string } |
+      { 'err' : string }
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchSetsByName' : ActorMethod<[string], Array<TcgSet>>,
   /**
@@ -687,6 +698,14 @@ export interface _SERVICE {
    * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
    */
   'uploadVideoBlob' : ActorMethod<[Uint8Array, string], string>,
+  /**
+   * / Fire-and-forget background warmup for the caller's BTC deposit address.
+   * / Call this immediately after login (no await needed on the frontend).
+   * / If the address is already cached and valid, this is a no-op.
+   * / If not, it kicks off the slow ICP Bitcoin API call in the background so the
+   * / address is ready when the user opens the Deposit modal.
+   */
+  'warmupDepositAddress' : ActorMethod<[], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

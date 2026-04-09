@@ -622,7 +622,7 @@ export interface backendInterface {
     }>;
     /**
      * / Returns or creates a UserWallet for the caller.
-     * / Eagerly derives and caches the BTC address on first call.
+     * / Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
      */
     getOrCreateUserWallet(): Promise<UserWallet>;
     /**
@@ -673,6 +673,8 @@ export interface backendInterface {
     /**
      * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
      * / Derives the address on first call and caches it in the wallet.
+     * / If the cached address fails strict validation (including stale bc1/bech32 addresses that
+     * / were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
      * / Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
      */
     getUserDepositAddress(): Promise<{
@@ -803,6 +805,17 @@ export interface backendInterface {
         __kind__: "err";
         err: string;
     }>;
+    /**
+     * / Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
+     * / Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+     */
+    resetUserDepositAddress(): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchSetsByName(searchTerm: string): Promise<Array<TcgSet>>;
     /**
@@ -824,6 +837,14 @@ export interface backendInterface {
      * / Upload a raw HD video blob (mp4). Returns asset_id to use as video_file_url.
      */
     uploadVideoBlob(data: Uint8Array, content_type: string): Promise<string>;
+    /**
+     * / Fire-and-forget background warmup for the caller's BTC deposit address.
+     * / Call this immediately after login (no await needed on the frontend).
+     * / If the address is already cached and valid, this is a no-op.
+     * / If not, it kicks off the slow ICP Bitcoin API call in the background so the
+     * / address is ready when the user opens the Deposit modal.
+     */
+    warmupDepositAddress(): Promise<void>;
 }
 import type { Album as _Album, BondingCurveState as _BondingCurveState, Collectible as _Collectible, CollectibleMediaType as _CollectibleMediaType, ConfirmationStatus as _ConfirmationStatus, CreateTcgSetInput as _CreateTcgSetInput, Deposit as _Deposit, Listing as _Listing, ListingStatus as _ListingStatus, MarketCapEntry as _MarketCapEntry, Offer as _Offer, OfferStatus as _OfferStatus, Pack as _Pack, PackOpenResult as _PackOpenResult, PackStatus as _PackStatus, Payout as _Payout, PayoutType as _PayoutType, PriceHistorySummary as _PriceHistorySummary, PurchaseRecord as _PurchaseRecord, PurchaseStatus as _PurchaseStatus, TcgSet as _TcgSet, Transaction as _Transaction, TxSplit as _TxSplit, TxType as _TxType, UpdateTcgSetInput as _UpdateTcgSetInput, UserProfile as _UserProfile, UserRole as _UserRole, UserWallet as _UserWallet, VideoAsset as _VideoAsset, VideoClip as _VideoClip, VideoClipSort as _VideoClipSort, WalletActivity as _WalletActivity, WalletActivityType as _WalletActivityType } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -2166,6 +2187,26 @@ export class Backend implements backendInterface {
             return from_candid_variant_n1(this._uploadFile, this._downloadFile, result);
         }
     }
+    async resetUserDepositAddress(): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.resetUserDepositAddress();
+                return from_candid_variant_n75(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.resetUserDepositAddress();
+            return from_candid_variant_n75(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
@@ -2331,6 +2372,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.uploadVideoBlob(arg0, arg1);
+            return result;
+        }
+    }
+    async warmupDepositAddress(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.warmupDepositAddress();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.warmupDepositAddress();
             return result;
         }
     }

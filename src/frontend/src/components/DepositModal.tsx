@@ -478,7 +478,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 }}
               >
                 {addressRetryAttempt === 0
-                  ? "Generating your BTC address…"
+                  ? "Generating your Bitcoin address..."
                   : `Retrying… (attempt ${addressRetryAttempt + 1} of ${addressMaxRetries + 1})`}
               </span>
               <span
@@ -490,7 +490,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 }}
               >
                 {addressRetryAttempt === 0
-                  ? "This may take up to 30 seconds"
+                  ? "This may take up to 45 seconds on first use."
                   : "Checking for your address…"}
               </span>
             </div>
