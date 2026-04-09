@@ -437,6 +437,21 @@ export interface backendInterface {
      * / Create a new video clip post. Returns the generated clip_id.
      */
     createClip(video_file_url: string, preview_loop_url: string, title: string | null, hashtags: Array<string>, explicit_flag: boolean): Promise<string>;
+    /**
+     * / Call the ckBTC minter canister once to get the unique deposit address for the caller.
+     * / The ckBTC minter returns a real Bitcoin address (bech32 bc1... or P2PKH 1...) for the user.
+     * / Only call this when the wallet exists but btcAddress is empty.
+     * / Attempts the API exactly once — no retry loops.
+     * / On success: stores the address permanently and returns {#ok: address}.
+     * / On empty response or any error: returns {#err: real error message}.
+     */
+    createDepositAddress(): Promise<{
+        __kind__: "ok";
+        ok: string;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
     createListing(clipId: string, editionNumber: bigint, listPriceUsd: number): Promise<{
         __kind__: "ok";
         ok: bigint;
@@ -539,8 +554,8 @@ export interface backendInterface {
         err: string;
     }>;
     /**
-     * / Returns or creates a UserWallet for the caller.
-     * / Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
+     * / Returns or creates a UserWallet for the caller with an empty btcAddress.
+     * / Does NOT call the Bitcoin API — address generation is deferred to createDepositAddress().
      */
     getOrCreateUserWallet(): Promise<UserWallet>;
     /**
@@ -589,11 +604,11 @@ export interface backendInterface {
     getTrendingHashtagsWithHotFlag(): Promise<Array<[string, bigint, boolean]>>;
     getUserCollectibles(user: Principal): Promise<Array<Collectible>>;
     /**
-     * / Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
-     * / Derives the address on first call and caches it in the wallet.
-     * / If the cached address fails strict validation (including stale bc1/bech32 addresses that
-     * / were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
-     * / Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
+     * / Returns the caller's unique ckBTC deposit address.
+     * / If the wallet has a valid cached address, returns it immediately.
+     * / If the address is empty or invalid, calls createDepositAddress() once and returns its result.
+     * / Never retries — one attempt at most.
+     * / Logs: caller principal, cached address result, and any errors.
      */
     getUserDepositAddress(): Promise<{
         __kind__: "ok";
@@ -724,8 +739,8 @@ export interface backendInterface {
         err: string;
     }>;
     /**
-     * / Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
-     * / Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+     * / Clears the caller's cached BTC deposit address without re-deriving.
+     * / The next call to getUserDepositAddress() will trigger createDepositAddress().
      */
     resetUserDepositAddress(): Promise<{
         __kind__: "ok";
@@ -756,11 +771,9 @@ export interface backendInterface {
      */
     uploadVideoBlob(data: Uint8Array, content_type: string): Promise<string>;
     /**
-     * / Fire-and-forget background warmup for the caller's BTC deposit address.
-     * / Call this immediately after login (no await needed on the frontend).
-     * / If the address is already cached and valid, this is a no-op.
-     * / If not, it kicks off the slow ICP Bitcoin API call in the background so the
-     * / address is ready when the user opens the Deposit modal.
+     * / Fire-and-forget wallet initialization on login.
+     * / Creates the wallet record if it doesn't exist (with empty btcAddress).
+     * / Does NOT call the Bitcoin API — address generation is deferred to createDepositAddress().
      */
     warmupDepositAddress(): Promise<void>;
 }

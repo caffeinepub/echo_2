@@ -61,6 +61,12 @@ actor {
     bitcoin_get_p2pkh_address : (GetP2pkhAddressRequest) -> async Text;
   } = actor ("aaaaa-aa");
 
+  // ckBTC Minter canister — used to derive deposit addresses for users.
+  // Each user's unique ckBTC deposit address is retrieved via get_btc_address.
+  let ckBTCMinter : actor {
+    get_btc_address : ({ owner : ?Principal; subaccount : ?[Nat8] }) -> async Text;
+  } = actor ("mxzaz-hqaaa-aaaar-qaada-cai");
+
   let icBtcSend : actor {
     bitcoin_send_transaction : ({ transaction : Blob; network : BitcoinNetwork }) -> async ();
   } = actor ("aaaaa-aa");
@@ -1952,19 +1958,10 @@ actor {
   /// Returns #err if address has not been derived yet (call getUserDepositAddress first).
   public shared ({ caller }) func getPaymentAddress() : async { #ok : Text; #err : Text } {
     let w = _getOrCreateWallet(caller);
-    if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
+    if (w.btcAddress != "" and _isValidCkBtcAddress(w.btcAddress)) {
       #ok(w.btcAddress)
     } else {
-      // Try to derive it now
-      switch (await _deriveBtcAddressAsync(caller)) {
-        case (#ok(address)) {
-          userWallets.add(caller, { w with btcAddress = address });
-          #ok(address)
-        };
-        case (#err(code)) {
-          #err(code)
-        };
-      }
+      await getUserDepositAddress()
     }
   };
 
@@ -2116,83 +2113,7 @@ actor {
   // WALLET HELPERS
   // ─────────────────────────────────────────────
 
-  /// Derive a real BTC P2PKH address for a user using ICP's native Bitcoin integration.
-  /// Derivation path: [Text.encodeUtf8("btc_deposit"), Principal.toBlob(userPrincipal)]
-  /// Each user gets a deterministic, unique on-chain BTC address.
-  /// The ICP Bitcoin API can take 20-30s on mainnet; retries up to 2 more times on empty/invalid response.
-  /// Try/catch handles all failure modes; descriptive error codes are always returned.
-  func _deriveBtcAddressAsync(p : Principal) : async { #ok : Text; #err : Text } {
-    let derivationPath : [Blob] = [
-      "btc_deposit".encodeUtf8(),
-      p.toBlob(),
-    ];
-
-    // Helper: attempt a single call and return #ok(addr) or #err(code)
-    func _tryOnce() : async { #ok : Text; #err : Text } {
-      try {
-        let addr = await ic.bitcoin_get_p2pkh_address({
-          network = _btcNetwork;
-          derivation_path = derivationPath;
-        });
-        if (addr.size() == 0) {
-          #err("btc_api_empty_address")
-        } else if (not _isValidBtcAddress(addr)) {
-          Debug.print("_deriveBtcAddressAsync: invalid address returned '" # addr # "' (len=" # addr.size().toText() # ") for " # p.toText());
-          #err("btc_api_invalid_address")
-        } else {
-          #ok(addr)
-        }
-      } catch (e) {
-        let errMsg = e.message();
-        let code = if (errMsg.contains(#text "timeout") or errMsg.contains(#text "call timeout") or errMsg.contains(#text "exceeded")) {
-          "btc_api_timeout"
-        } else {
-          "btc_api_error:" # errMsg
-        };
-        #err(code)
-      }
-    };
-
-    // Attempt 1
-    Debug.print("_deriveBtcAddressAsync: attempt 1 for " # p.toText());
-    let result1 = await _tryOnce();
-    switch (result1) {
-      case (#ok(addr)) {
-        Debug.print("_deriveBtcAddressAsync: success on attempt 1 for " # p.toText() # " = " # addr);
-        return #ok(addr);
-      };
-      case (#err(code1)) {
-        Debug.print("_deriveBtcAddressAsync: attempt 1 failed (" # code1 # ") for " # p.toText() # " — retrying");
-      };
-    };
-
-    // Attempt 2
-    Debug.print("_deriveBtcAddressAsync: attempt 2 for " # p.toText());
-    let result2 = await _tryOnce();
-    switch (result2) {
-      case (#ok(addr)) {
-        Debug.print("_deriveBtcAddressAsync: success on attempt 2 for " # p.toText() # " = " # addr);
-        return #ok(addr);
-      };
-      case (#err(code2)) {
-        Debug.print("_deriveBtcAddressAsync: attempt 2 failed (" # code2 # ") for " # p.toText() # " — retrying once more");
-      };
-    };
-
-    // Attempt 3 (final)
-    Debug.print("_deriveBtcAddressAsync: attempt 3 (final) for " # p.toText());
-    let result3 = await _tryOnce();
-    switch (result3) {
-      case (#ok(addr)) {
-        Debug.print("_deriveBtcAddressAsync: success on attempt 3 for " # p.toText() # " = " # addr);
-        #ok(addr)
-      };
-      case (#err(code3)) {
-        Debug.print("_deriveBtcAddressAsync: all 3 attempts failed for " # p.toText() # " — final error: " # code3);
-        #err(code3)
-      };
-    };
-  };
+  // _deriveBtcAddressAsync removed — replaced by createDepositAddress() public method below.
 
   /// Encode a UTXO outpoint to a unique string key for dedup tracking.
   func _utxoKey(outpoint : OutPoint) : Text {
@@ -2322,115 +2243,112 @@ actor {
     }
   };
 
-  /// Returns or creates a UserWallet for the caller.
-  /// Eagerly derives and caches the BTC address on first call, or if the cached address fails strict validation.
+  /// Relaxed validator for ckBTC deposit addresses.
+  /// The ckBTC minter can return both P2PKH ("1...") and bech32 ("bc1...") addresses.
+  /// We only validate that the address is non-empty and has a reasonable minimum length.
+  /// Do NOT enforce P2PKH-only or strict bech32 charset rules here — trust the ckBTC minter.
+  func _isValidCkBtcAddress(addr : Text) : Bool {
+    addr.size() > 10
+  };
+
+  /// Returns or creates a UserWallet for the caller with an empty btcAddress.
+  /// Does NOT call the Bitcoin API — address generation is deferred to createDepositAddress().
   public shared ({ caller }) func getOrCreateUserWallet() : async UserWallet {
-    let w = _getOrCreateWallet(caller);
-    // Re-derive if address is missing or fails strict validation
-    if (w.btcAddress == "" or not _isValidBtcAddress(w.btcAddress)) {
-      if (w.btcAddress != "") {
-        Debug.print("getOrCreateUserWallet: cached address '" # w.btcAddress # "' failed strict validation — re-deriving for " # caller.toText());
-        userWallets.add(caller, { w with btcAddress = "" });
+    _getOrCreateWallet(caller)
+  };
+
+  /// Call the ckBTC minter canister once to get the unique deposit address for the caller.
+  /// The ckBTC minter returns a real Bitcoin address (bech32 bc1... or P2PKH 1...) for the user.
+  /// Only call this when the wallet exists but btcAddress is empty.
+  /// Attempts the API exactly once — no retry loops.
+  /// On success: stores the address permanently and returns {#ok: address}.
+  /// On empty response or any error: returns {#err: real error message}.
+  public shared ({ caller }) func createDepositAddress() : async { #ok : Text; #err : Text } {
+    let principalText = caller.toText();
+
+    // Ensure wallet record exists before attempting address generation
+    ignore _getOrCreateWallet(caller);
+
+    Debug.print("createDepositAddress: calling ckBTC minter for principal: " # principalText);
+
+    try {
+      let address = await ckBTCMinter.get_btc_address({ owner = ?caller; subaccount = null });
+
+      Debug.print("createDepositAddress: ckBTC minter returned address: '" # address # "' for principal: " # principalText);
+
+      if (address.size() == 0) {
+        Debug.print("createDepositAddress: ckBTC minter returned empty address for principal: " # principalText);
+        return #err("Wallet service unavailable: ckBTC minter returned empty address");
       };
-      switch (await _deriveBtcAddressAsync(caller)) {
-        case (#ok(address)) {
-          let freshW = _getOrCreateWallet(caller);
-          userWallets.add(caller, { freshW with btcAddress = address });
-          { freshW with btcAddress = address }
-        };
-        case (#err(_)) {
-          // Will be re-attempted on next call
-          _getOrCreateWallet(caller)
-        };
-      }
-    } else {
-      w
+
+      if (not _isValidCkBtcAddress(address)) {
+        Debug.print("createDepositAddress: ckBTC minter returned address with invalid length: " # address # " for principal: " # principalText);
+        return #err("Wallet service unavailable: address too short");
+      };
+
+      // Store permanently
+      let freshW = _getOrCreateWallet(caller);
+      userWallets.add(caller, { freshW with btcAddress = address });
+      Debug.print("createDepositAddress: stored ckBTC deposit address for principal: " # principalText # " = " # address);
+      #ok(address)
+
+    } catch (e) {
+      let errorText = e.message();
+      Debug.print("createDepositAddress: ckBTC minter error for principal: " # principalText # " error: " # errorText);
+      #err("Wallet service unavailable: " # errorText)
     }
   };
 
-  /// Returns the caller's unique BTC deposit address (real on-chain address via ICP Bitcoin API).
-  /// Derives the address on first call and caches it in the wallet.
-  /// If the cached address fails strict validation (including stale bc1/bech32 addresses that
-  /// were mis-derived from an old ckBTC path), it is cleared and re-derived automatically.
-  /// Returns #err with a specific error code if the Bitcoin API is unreachable or returns an invalid address.
+  /// Returns the caller's unique ckBTC deposit address.
+  /// If the wallet has a valid cached address, returns it immediately.
+  /// If the address is empty or invalid, calls createDepositAddress() once and returns its result.
+  /// Never retries — one attempt at most.
+  /// Logs: caller principal, cached address result, and any errors.
   public shared ({ caller }) func getUserDepositAddress() : async { #ok : Text; #err : Text } {
     let w = _getOrCreateWallet(caller);
-    // Re-derive if the cached address is empty OR fails strict validation
-    if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
-      // Already derived and strictly valid — return cached address immediately
-      Debug.print("getUserDepositAddress: returning cached address for " # caller.toText() # " = " # w.btcAddress);
+    let principalText = caller.toText();
+
+    Debug.print("getUserDepositAddress: called for principal: " # principalText);
+
+    if (w.btcAddress != "" and _isValidCkBtcAddress(w.btcAddress)) {
+      // Already valid — return immediately
+      Debug.print("getUserDepositAddress: returning cached address for " # principalText # " = " # w.btcAddress);
       #ok(w.btcAddress)
     } else {
-      // Clear any stale/invalid cached address before re-deriving
+      // Clear any stale/invalid address
       if (w.btcAddress != "") {
-        Debug.print("getUserDepositAddress: cached address '" # w.btcAddress # "' failed strict validation — re-deriving for " # caller.toText());
+        Debug.print("getUserDepositAddress: clearing stale address '" # w.btcAddress # "' for " # principalText);
         userWallets.add(caller, { w with btcAddress = "" });
-      } else {
-        Debug.print("getUserDepositAddress: no cached address — deriving for " # caller.toText());
       };
-      // Derive real BTC P2PKH address via ICP Bitcoin API
-      switch (await _deriveBtcAddressAsync(caller)) {
-        case (#ok(address)) {
-          let freshW = _getOrCreateWallet(caller);
-          userWallets.add(caller, { freshW with btcAddress = address });
-          #ok(address)
+      // One attempt via ckBTC minter — no retry
+      Debug.print("getUserDepositAddress: no valid cached address, calling createDepositAddress() for " # principalText);
+      let result = await createDepositAddress();
+      switch (result) {
+        case (#ok(addr)) {
+          Debug.print("getUserDepositAddress: createDepositAddress returned address: " # addr # " for principal: " # principalText);
         };
-        case (#err(code)) {
-          // Return the specific error code — never silently return null or empty string
-          #err(code)
+        case (#err(errMsg)) {
+          Debug.print("getUserDepositAddress: createDepositAddress failed for principal: " # principalText # " error: " # errMsg);
         };
-      }
+      };
+      result
     }
   };
 
-  /// Fire-and-forget background warmup for the caller's BTC deposit address.
-  /// Call this immediately after login (no await needed on the frontend).
-  /// If the address is already cached and valid, this is a no-op.
-  /// If not, it kicks off the slow ICP Bitcoin API call in the background so the
-  /// address is ready when the user opens the Deposit modal.
+  /// Fire-and-forget wallet initialization on login.
+  /// Creates the wallet record if it doesn't exist (with empty btcAddress).
+  /// Does NOT call the Bitcoin API — address generation is deferred to createDepositAddress().
   public shared ({ caller }) func warmupDepositAddress() : async () {
-    let w = _getOrCreateWallet(caller);
-    if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
-      // Address already valid — nothing to do
-      return;
-    };
-    // Clear any stale invalid address before re-deriving
-    if (w.btcAddress != "" and not _isValidBtcAddress(w.btcAddress)) {
-      Debug.print("warmupDepositAddress: clearing stale invalid address '" # w.btcAddress # "' for " # caller.toText());
-      userWallets.add(caller, { w with btcAddress = "" });
-    };
-    // Kick off derivation — result is cached for getUserDepositAddress to return immediately
-    switch (await _deriveBtcAddressAsync(caller)) {
-      case (#ok(address)) {
-        let freshW = _getOrCreateWallet(caller);
-        userWallets.add(caller, { freshW with btcAddress = address });
-        Debug.print("warmupDepositAddress: address cached for " # caller.toText() # " = " # address);
-      };
-      case (#err(code)) {
-        // Warmup failure is silent — getUserDepositAddress will retry
-        Debug.print("warmupDepositAddress: derivation failed for " # caller.toText() # " — " # code);
-      };
-    };
+    ignore _getOrCreateWallet(caller);
   };
 
-  /// Force-clears the caller's cached BTC deposit address and re-derives a fresh one.
-  /// Use this when an existing address is rejected by an external service (exchange, wallet, etc.).
+  /// Clears the caller's cached BTC deposit address without re-deriving.
+  /// The next call to getUserDepositAddress() will trigger createDepositAddress().
   public shared ({ caller }) func resetUserDepositAddress() : async { #ok : Text; #err : Text } {
     let w = _getOrCreateWallet(caller);
-    // Clear cached address unconditionally
     userWallets.add(caller, { w with btcAddress = "" });
-    Debug.print("resetUserDepositAddress: cleared cached address for " # caller.toText() # " — re-deriving");
-    // Re-derive from the Bitcoin API
-    switch (await _deriveBtcAddressAsync(caller)) {
-      case (#ok(address)) {
-        let freshW = _getOrCreateWallet(caller);
-        userWallets.add(caller, { freshW with btcAddress = address });
-        #ok(address)
-      };
-      case (#err(code)) {
-        #err(code)
-      };
-    }
+    Debug.print("resetUserDepositAddress: cleared cached address for " # caller.toText());
+    #ok("Address cleared. Call getUserDepositAddress to generate a new one.")
   };
 
   /// Returns all deposits (pending and confirmed) for the caller.
@@ -2445,17 +2363,12 @@ actor {
   public shared ({ caller }) func checkForNewDeposits() : async { #ok : Nat; #err : Text } {
     // Ensure address is derived first
     let w = _getOrCreateWallet(caller);
-    let address = if (w.btcAddress != "" and _isValidBtcAddress(w.btcAddress)) {
+    let address = if (w.btcAddress != "" and _isValidCkBtcAddress(w.btcAddress)) {
       w.btcAddress
     } else {
-      switch (await _deriveBtcAddressAsync(caller)) {
-        case (#ok(derived)) {
-          userWallets.add(caller, { w with btcAddress = derived });
-          derived
-        };
-        case (#err(code)) {
-          return #err(code)
-        };
+      switch (await createDepositAddress()) {
+        case (#ok(derived)) derived;
+        case (#err(code)) { return #err(code) };
       }
     };
 

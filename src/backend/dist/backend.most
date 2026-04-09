@@ -274,6 +274,11 @@ actor {
       var root : Node__46230540<Text, BondingCurveState__1013285728>;
       var size : Nat__490723111
     };
+  stable ckBTCMinter :
+    actor {
+      get_btc_address :
+        shared {owner : ?Principal; subaccount : ?[Nat8]} -> async Text
+    };
   stable collectibles :
     {
       var root : Node__46230540<Text, Collectible__765459835>;

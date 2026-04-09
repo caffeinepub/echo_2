@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-function QRCodeDisplay({ value }: { value: string }) {
+export function QRCodeDisplay({ value }: { value: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -121,11 +121,11 @@ function QRCodeDisplay({ value }: { value: string }) {
 
 const E8S_PER_BTC = 100_000_000;
 
-function e8sToBtc(e8s: bigint): string {
+export function e8sToBtc(e8s: bigint): string {
   return (Number(e8s) / E8S_PER_BTC).toFixed(8);
 }
 
-function formatDate(ns: bigint): string {
+export function formatDate(ns: bigint): string {
   const ms = Number(ns) / 1_000_000;
   return new Date(ms).toLocaleString(undefined, {
     month: "short",
@@ -135,7 +135,7 @@ function formatDate(ns: bigint): string {
   });
 }
 
-function activityLabel(type: WalletActivityType): string {
+export function activityLabel(type: WalletActivityType): string {
   if (type === WalletActivityType.deposit) return "Deposit";
   if (type === WalletActivityType.mintCost) return "Mint Cost";
   if (type === WalletActivityType.auctionPayout) return "Auction Payout";
@@ -143,7 +143,7 @@ function activityLabel(type: WalletActivityType): string {
   return "Activity";
 }
 
-function activityIcon(type: WalletActivityType) {
+export function activityIcon(type: WalletActivityType) {
   if (type === WalletActivityType.deposit)
     return <ArrowDownToLine size={13} style={{ color: "#10b981" }} />;
   if (type === WalletActivityType.mintCost)
@@ -166,9 +166,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
     depositAddress,
     addressLoading,
     addressError,
-    addressRetryAttempt,
-    addressMaxRetries,
-    addressLoadingElapsed,
+    loadDepositAddress,
     retryAddressFetch,
     deposits,
     walletActivity,
@@ -183,12 +181,36 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
   // Poll for new deposits every 30s while open
   useDepositPolling(open);
 
-  // Initial fetch when modal opens — only if address not already loaded
+  // Track whether we've already triggered a load for this modal-open session
+  const didLoadRef = useRef(false);
+
+  // On modal open: if address already loaded, show it immediately.
+  // If not, trigger a single load attempt.
   useEffect(() => {
-    if (open && !depositAddress) {
-      refreshDeposits();
+    if (!open) {
+      didLoadRef.current = false;
+      return;
     }
-  }, [open, depositAddress, refreshDeposits]);
+    // Always refresh deposits/activity when modal opens
+    void refreshDeposits();
+    // Only kick off address load if we don't already have one and haven't tried yet
+    if (
+      !depositAddress &&
+      !addressLoading &&
+      !addressError &&
+      !didLoadRef.current
+    ) {
+      didLoadRef.current = true;
+      void loadDepositAddress();
+    }
+  }, [
+    open,
+    depositAddress,
+    addressLoading,
+    addressError,
+    loadDepositAddress,
+    refreshDeposits,
+  ]);
 
   const handleCopy = useCallback(() => {
     if (!depositAddress) return;
@@ -203,6 +225,10 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
     setIsChecking(false);
   }, [checkDeposits]);
 
+  const handleRetry = useCallback(async () => {
+    await retryAddressFetch();
+  }, [retryAddressFetch]);
+
   if (!open) return null;
 
   const pendingDeposits = deposits.filter(
@@ -216,8 +242,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
     btcBalance !== null && btcPrice !== null ? btcBalance * btcPrice : null;
 
   // Derived address display state
-  const isAddressLoading =
-    addressLoading || (depositAddress === null && addressError === null);
+  const isAddressLoading = addressLoading || (!depositAddress && !addressError);
   const isAddressError = !isAddressLoading && addressError !== null;
   const isAddressReady =
     !isAddressLoading && !isAddressError && !!depositAddress;
@@ -367,7 +392,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
           Send BTC to this address to fund your Minty wallet.
         </p>
 
-        {/* QR Code */}
+        {/* QR Code area */}
         <div className="flex justify-center mb-4">
           {isAddressLoading && (
             <div
@@ -383,23 +408,19 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                animation: "pulse 1.4s ease-in-out infinite",
               }}
             >
-              {addressRetryAttempt > 0 && (
-                <span
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(124,58,237,0.55)",
-                    fontFamily: "DM Sans, sans-serif",
-                    textAlign: "center",
-                    padding: "0 8px",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Attempt {addressRetryAttempt + 1}/{addressMaxRetries + 1}
-                </span>
-              )}
+              {/* Spinner */}
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  border: "3px solid rgba(124,58,237,0.15)",
+                  borderTopColor: "#7C3AED",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
             </div>
           )}
           {isAddressError && (
@@ -451,10 +472,10 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
               textTransform: "uppercase",
             }}
           >
-            Your deposit address
+            Your BTC deposit address
           </div>
 
-          {/* Loading state — progressive messaging based on elapsed time */}
+          {/* Loading state */}
           {isAddressLoading && (
             <div
               data-ocid="deposit.address_loading"
@@ -462,46 +483,38 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 borderRadius: 12,
                 background: "rgba(124,58,237,0.04)",
                 border: "1px solid rgba(124,58,237,0.15)",
-                padding: "10px 14px",
+                padding: "12px 14px",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
+                justifyContent: "center",
+                gap: 8,
               }}
             >
+              <div
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  border: "2px solid rgba(124,58,237,0.15)",
+                  borderTopColor: "#7C3AED",
+                  animation: "spin 0.8s linear infinite",
+                  flexShrink: 0,
+                }}
+              />
               <span
                 style={{
                   fontSize: 12,
                   color: "rgba(124,58,237,0.7)",
                   fontFamily: "DM Sans, sans-serif",
-                  fontWeight: 600,
-                  textAlign: "center",
+                  fontWeight: 500,
                 }}
               >
-                {addressRetryAttempt > 0
-                  ? `Retrying… (attempt ${addressRetryAttempt + 1} of ${addressMaxRetries + 1})`
-                  : addressLoadingElapsed < 10
-                    ? "Generating your Bitcoin address..."
-                    : addressLoadingElapsed < 30
-                      ? "Almost there, this can take up to 30 seconds..."
-                      : "Still working, Bitcoin network is a bit slow today..."}
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  color: "rgba(124,58,237,0.45)",
-                  fontFamily: "DM Sans, sans-serif",
-                  textAlign: "center",
-                }}
-              >
-                {addressRetryAttempt === 0
-                  ? "ICP's Bitcoin API may take up to 90 seconds on first use."
-                  : "Checking for your address…"}
+                Loading your deposit address...
               </span>
             </div>
           )}
 
-          {/* Error state */}
+          {/* Error state — shows real error message, no auto-retry */}
           {isAddressError && (
             <div
               data-ocid="deposit.address_error"
@@ -526,15 +539,17 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                     fontSize: 12,
                     color: "#ef4444",
                     fontFamily: "DM Sans, sans-serif",
+                    wordBreak: "break-word",
+                    textAlign: "center",
                   }}
                 >
-                  Could not load deposit address.
+                  {addressError}
                 </span>
               </div>
               <button
                 type="button"
                 data-ocid="deposit.address_retry"
-                onClick={retryAddressFetch}
+                onClick={handleRetry}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -552,39 +567,50 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 }}
               >
                 <RefreshCw size={11} />
-                Try again
+                Try Again
               </button>
             </div>
           )}
 
-          {/* Success state */}
+          {/* Success state — full selectable address + copy button */}
           {isAddressReady && (
             <div
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
               style={{
+                borderRadius: 12,
                 background: "rgba(0,0,0,0.02)",
                 border: "1px solid #D0DFEF",
+                padding: "10px 12px",
               }}
             >
-              <span
+              {/* Full selectable address */}
+              <p
                 data-ocid="deposit.address_text"
-                className="flex-1 truncate font-mono"
-                style={{ fontSize: 11, color: "#7C3AED" }}
+                className="font-mono"
+                style={{
+                  fontSize: 11,
+                  color: "#7C3AED",
+                  wordBreak: "break-all",
+                  userSelect: "text",
+                  margin: "0 0 8px 0",
+                  lineHeight: 1.6,
+                }}
               >
                 {depositAddress}
-              </span>
+              </p>
+              {/* Copy button */}
               <button
                 type="button"
                 data-ocid="deposit.copy_button"
                 onClick={handleCopy}
                 style={{
-                  flexShrink: 0,
+                  width: "100%",
                   display: "flex",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "3px 10px",
-                  fontSize: 11,
-                  fontWeight: 500,
+                  justifyContent: "center",
+                  gap: 6,
+                  padding: "6px 0",
+                  fontSize: 12,
+                  fontWeight: 600,
                   color: copied ? "#10b981" : "#7C3AED",
                   background: copied
                     ? "rgba(16,185,129,0.08)"
@@ -598,8 +624,8 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >
-                <Copy size={10} />
-                {copied ? "Copied!" : "Copy"}
+                <Copy size={11} />
+                {copied ? "Copied!" : "Copy Address"}
               </button>
             </div>
           )}
@@ -867,9 +893,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                         color:
                           act.activityType === WalletActivityType.deposit
                             ? "#059669"
-                            : act.activityType === WalletActivityType.withdrawal
-                              ? "#7C3AED"
-                              : "#7C3AED",
+                            : "#7C3AED",
                         fontFamily: "DM Sans, sans-serif",
                       }}
                     >
@@ -923,6 +947,13 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
           </div>
         )}
       </div>
+
+      {/* Keyframe styles */}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

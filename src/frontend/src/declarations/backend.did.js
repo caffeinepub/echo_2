@@ -402,6 +402,11 @@ export const idlService = IDL.Service({
       [IDL.Text],
       [],
     ),
+  'createDepositAddress' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
+      [],
+    ),
   'createListing' : IDL.Func(
       [IDL.Text, IDL.Nat, IDL.Float64],
       [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
@@ -1001,6 +1006,11 @@ export const idlFactory = ({ IDL }) => {
     'createClip' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Opt(IDL.Text), IDL.Vec(IDL.Text), IDL.Bool],
         [IDL.Text],
+        [],
+      ),
+    'createDepositAddress' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Text, 'err' : IDL.Text })],
         [],
       ),
     'createListing' : IDL.Func(
