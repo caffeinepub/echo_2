@@ -1,4 +1,4 @@
-// Version: 1.0.0
+// Version: 3.0.0
 type AccountRateLimit__453341643 =
   {
     accountCreatedAt : Int;
@@ -251,7 +251,7 @@ type VideoClip__351680056 =
     title : ?Text;
     video_file_url : Text
   };
-actor {
+actor ({
   stable _btcNetwork : {#Mainnet; #Regtest; #Testnet};
   stable var _btcUsdRate : Float;
   stable _platformBtcAddress : Text;
@@ -273,11 +273,6 @@ actor {
     {
       var root : Node__46230540<Text, BondingCurveState__1013285728>;
       var size : Nat__490723111
-    };
-  stable ckBTCMinter :
-    actor {
-      get_btc_address :
-        shared {owner : ?Principal; subaccount : ?[Nat8]} -> async Text
     };
   stable collectibles :
     {
@@ -397,4 +392,145 @@ actor {
       var root : Node__46230540<Text, VideoClip__351680056>;
       var size : Nat__490723111
     }
-};
+}, {
+  stable _btcNetwork : {#Mainnet; #Regtest; #Testnet};
+  stable var _btcUsdRate : Float;
+  stable _platformBtcAddress : Text;
+  stable _platformPrincipal : Principal;
+  stable var _seedBase : Int;
+  stable accountRateLimits :
+    {
+      var root : Node__46230540<Principal, AccountRateLimit__453341643>;
+      var size : Nat__490723111
+    };
+  stable albums :
+    {
+      var root : Node__46230540<Text, Album__109360601>;
+      var size : Nat__490723111
+    };
+  stable bondingCurvePriceIncrement : Float;
+  stable bondingCurveStartPrice : Float;
+  stable bondingCurveStates :
+    {
+      var root : Node__46230540<Text, BondingCurveState__1013285728>;
+      var size : Nat__490723111
+    };
+  stable collectibles :
+    {
+      var root : Node__46230540<Text, Collectible__765459835>;
+      var size : Nat__490723111
+    };
+  stable var firstAdminSet : Bool;
+  stable ic :
+    actor {
+      bitcoin_get_p2pkh_address :
+        shared GetP2pkhAddressRequest__742362478 -> async Text;
+      bitcoin_get_utxos :
+        shared GetUtxosRequest__554507833 ->
+          async GetUtxosResponse__958632024
+    };
+  stable icBtcSend :
+    actor {
+      bitcoin_send_transaction :
+        shared {network : BitcoinNetwork__264724723; transaction : Blob} ->
+          async ()
+    };
+  stable var listingCounter : Nat;
+  stable listings :
+    {
+      var root : Node__46230540<Nat, Listing__1058943596>;
+      var size : Nat__490723111
+    };
+  stable marketCopiesSold :
+    {var root : Node__46230540<Text, Nat>; var size : Nat__490723111};
+  stable marketListings :
+    {
+      var root : Node__46230540<Nat, MarketListing__465293504>;
+      var size : Nat__490723111
+    };
+  stable var nextAssetSeq : Nat;
+  stable var nextCardId : Nat;
+  stable var nextCategoryId : Nat;
+  stable var nextClipSeq : Nat;
+  stable var nextCollectibleSeq : Nat;
+  stable var nextDepositSeq : Nat;
+  stable var nextPayoutSeq : Nat;
+  stable var nextPurchaseSeq : Nat;
+  stable var nextTcgSetId : Nat;
+  stable var nextTxId : Nat;
+  stable var offerCounter : Nat;
+  stable offers :
+    {
+      var root : Node__46230540<Nat, Offer__296166603>;
+      var size : Nat__490723111
+    };
+  stable packs :
+    {
+      var root : Node__46230540<Text, Pack__364476570>;
+      var size : Nat__490723111
+    };
+  stable priceHistory :
+    {
+      var root : Node__46230540<Text, [PricePoint__36380829]>;
+      var size : Nat__490723111
+    };
+  stable purchaseRecords :
+    {
+      var root : Node__46230540<Text, PurchaseRecord__521260126>;
+      var size : Nat__490723111
+    };
+  stable releases :
+    {
+      var root : Node__46230540<Text, Release__39174606>;
+      var size : Nat__490723111
+    };
+  stable roleMap :
+    {
+      var root : Node__46230540<Principal, UserRole__599675725>;
+      var size : Nat__490723111
+    };
+  stable seenUtxos :
+    {var root : Node__46230540<Principal, [Text]>; var size : Nat__490723111};
+  stable tcgCards :
+    {
+      var root : Node__46230540<Nat, TcgCard__159008560>;
+      var size : Nat__490723111
+    };
+  stable tcgCategories :
+    {
+      var root : Node__46230540<Nat, TcgCategory__578202536>;
+      var size : Nat__490723111
+    };
+  stable tcgSets :
+    {
+      var root : Node__46230540<Nat, TcgSet__1065024180>;
+      var size : Nat__490723111
+    };
+  stable transactions :
+    {
+      var root : Node__46230540<Nat, Transaction__865268250>;
+      var size : Nat__490723111
+    };
+  stable txLedgerIds :
+    {var root : Node__46230540<Nat, [Nat]>; var size : Nat__490723111};
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable userWallets :
+    {
+      var root : Node__46230540<Principal, UserWallet__302414816>;
+      var size : Nat__490723111
+    };
+  stable videoAssets :
+    {
+      var root : Node__46230540<Text, VideoAsset__248137946>;
+      var size : Nat__490723111
+    };
+  stable videoClips :
+    {
+      var root : Node__46230540<Text, VideoClip__351680056>;
+      var size : Nat__490723111
+    }
+}) ;

@@ -401,12 +401,12 @@ export interface _SERVICE {
     string
   >,
   /**
-   * / Call the ckBTC minter canister once to get the unique deposit address for the caller.
+   * / Call the ckBTC minter canister to get the unique deposit address for the caller.
    * / The ckBTC minter returns a real Bitcoin address (bech32 bc1... or P2PKH 1...) for the user.
    * / Only call this when the wallet exists but btcAddress is empty.
-   * / Attempts the API exactly once — no retry loops.
+   * / Retries up to 3 times on empty address (minter occasionally returns empty on first call).
    * / On success: stores the address permanently and returns {#ok: address}.
-   * / On empty response or any error: returns {#err: real error message}.
+   * / On empty response after all retries or any error: returns {#err: real error message}.
    */
   'createDepositAddress' : ActorMethod<
     [],

@@ -11,9 +11,9 @@ import Time "mo:core/Time";
 import Blob "mo:core/Blob";
 import Debug "mo:core/Debug";
 import Error "mo:core/Error";
+import Migration "migration";
 
-
-
+(with migration = Migration.run)
 actor {
   // ─── ICP Native Bitcoin Integration ──────────────────────────────────────
   // Uses the IC management canister for Bitcoin address derivation and UTXO queries.
@@ -63,9 +63,17 @@ actor {
 
   // ckBTC Minter canister — used to derive deposit addresses for users.
   // Each user's unique ckBTC deposit address is retrieved via get_btc_address.
-  let ckBTCMinter : actor {
-    get_btc_address : ({ owner : ?Principal; subaccount : ?[Nat8] }) -> async Text;
-  } = actor ("mxzaz-hqaaa-aaaar-qaada-cai");
+  // get_btc_address MUST be declared as `shared` (update call) — NOT query.
+  // The ckBTC minter only accepts update calls for address derivation.
+  // NOTE: This is declared as a local func to avoid stable-type compatibility
+  // issues with the actor binding (subaccount type changed from ?[Nat8] to ?Blob).
+  //
+  // IMPORTANT: mxzaz-hqaaa-aaaar-qaada-cai is the ckBTC LEDGER — it does NOT have get_btc_address.
+  //            mqygn-kiaaa-aaaar-qaadq-cai is the ckBTC MINTER — this is the correct canister.
+  type GetBtcAddressArgs = { owner : ?Principal; subaccount : ?Blob };
+  func _ckBTCMinter() : actor { get_btc_address : shared (GetBtcAddressArgs) -> async Text } {
+    actor ("mqygn-kiaaa-aaaar-qaadq-cai")
+  };
 
   let icBtcSend : actor {
     bitcoin_send_transaction : ({ transaction : Blob; network : BitcoinNetwork }) -> async ();
@@ -2257,46 +2265,57 @@ actor {
     _getOrCreateWallet(caller)
   };
 
-  /// Call the ckBTC minter canister once to get the unique deposit address for the caller.
+  /// Call the ckBTC minter canister to get the unique deposit address for the caller.
   /// The ckBTC minter returns a real Bitcoin address (bech32 bc1... or P2PKH 1...) for the user.
   /// Only call this when the wallet exists but btcAddress is empty.
-  /// Attempts the API exactly once — no retry loops.
+  /// Retries up to 3 times on empty address (minter occasionally returns empty on first call).
   /// On success: stores the address permanently and returns {#ok: address}.
-  /// On empty response or any error: returns {#err: real error message}.
+  /// On empty response after all retries or any error: returns {#err: real error message}.
   public shared ({ caller }) func createDepositAddress() : async { #ok : Text; #err : Text } {
     let principalText = caller.toText();
 
     // Ensure wallet record exists before attempting address generation
     ignore _getOrCreateWallet(caller);
 
-    Debug.print("createDepositAddress: calling ckBTC minter for principal: " # principalText);
+    Debug.print("createDepositAddress: starting for principal: " # principalText);
 
-    try {
-      let address = await ckBTCMinter.get_btc_address({ owner = ?caller; subaccount = null });
+    var attempt : Nat = 0;
+    let maxAttempts : Nat = 3;
+    var lastError : Text = "unknown error";
 
-      Debug.print("createDepositAddress: ckBTC minter returned address: '" # address # "' for principal: " # principalText);
+    label retryLoop while (attempt < maxAttempts) {
+      attempt += 1;
+      Debug.print("createDepositAddress: attempt " # attempt.toText() # " for principal: " # principalText);
 
-      if (address.size() == 0) {
-        Debug.print("createDepositAddress: ckBTC minter returned empty address for principal: " # principalText);
-        return #err("Wallet service unavailable: ckBTC minter returned empty address");
+      try {
+        let address = await _ckBTCMinter().get_btc_address({ owner = ?caller; subaccount = null });
+
+        Debug.print("createDepositAddress: attempt " # attempt.toText() # " returned address: '" # address # "' for principal: " # principalText);
+
+        if (address.size() == 0) {
+          Debug.print("createDepositAddress: attempt " # attempt.toText() # " returned empty address for principal: " # principalText);
+          lastError := "ckBTC minter returned empty address";
+          // continue to next attempt
+        } else if (not _isValidCkBtcAddress(address)) {
+          Debug.print("createDepositAddress: attempt " # attempt.toText() # " returned address with invalid length: " # address # " for principal: " # principalText);
+          lastError := "address too short: " # address;
+          // continue to next attempt
+        } else {
+          // Valid address — store permanently and return
+          let freshW = _getOrCreateWallet(caller);
+          userWallets.add(caller, { freshW with btcAddress = address });
+          Debug.print("createDepositAddress: stored ckBTC deposit address on attempt " # attempt.toText() # " for principal: " # principalText # " = " # address);
+          return #ok(address);
+        };
+      } catch (e) {
+        let errorText = e.message();
+        Debug.print("createDepositAddress: attempt " # attempt.toText() # " error for principal: " # principalText # " error: " # errorText);
+        lastError := errorText;
       };
+    };
 
-      if (not _isValidCkBtcAddress(address)) {
-        Debug.print("createDepositAddress: ckBTC minter returned address with invalid length: " # address # " for principal: " # principalText);
-        return #err("Wallet service unavailable: address too short");
-      };
-
-      // Store permanently
-      let freshW = _getOrCreateWallet(caller);
-      userWallets.add(caller, { freshW with btcAddress = address });
-      Debug.print("createDepositAddress: stored ckBTC deposit address for principal: " # principalText # " = " # address);
-      #ok(address)
-
-    } catch (e) {
-      let errorText = e.message();
-      Debug.print("createDepositAddress: ckBTC minter error for principal: " # principalText # " error: " # errorText);
-      #err("Wallet service unavailable: " # errorText)
-    }
+    Debug.print("createDepositAddress: all " # maxAttempts.toText() # " attempts failed for principal: " # principalText # " last error: " # lastError);
+    #err("Wallet service unavailable: " # lastError)
   };
 
   /// Returns the caller's unique ckBTC deposit address.
