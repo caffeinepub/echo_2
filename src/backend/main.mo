@@ -2119,42 +2119,79 @@ actor {
   /// Derive a real BTC P2PKH address for a user using ICP's native Bitcoin integration.
   /// Derivation path: [Text.encodeUtf8("btc_deposit"), Principal.toBlob(userPrincipal)]
   /// Each user gets a deterministic, unique on-chain BTC address.
-  /// The ICP Bitcoin API can take 20-30s on mainnet; the try/catch handles all failure modes.
+  /// The ICP Bitcoin API can take 20-30s on mainnet; retries up to 2 more times on empty/invalid response.
+  /// Try/catch handles all failure modes; descriptive error codes are always returned.
   func _deriveBtcAddressAsync(p : Principal) : async { #ok : Text; #err : Text } {
     let derivationPath : [Blob] = [
       "btc_deposit".encodeUtf8(),
       p.toBlob(),
     ];
-    try {
-      Debug.print("_deriveBtcAddressAsync: calling bitcoin_get_p2pkh_address for " # p.toText());
-      let addr = await ic.bitcoin_get_p2pkh_address({
-        network = _btcNetwork;
-        derivation_path = derivationPath;
-      });
-      Debug.print("_deriveBtcAddressAsync: received addr='" # addr # "' for " # p.toText());
-      if (addr.size() == 0) {
-        Debug.print("_deriveBtcAddressAsync: API returned empty address for " # p.toText());
-        #err("btc_api_empty_address")
-      } else if (not _isValidBtcAddress(addr)) {
-        Debug.print("_deriveBtcAddressAsync: API returned invalid address '" # addr # "' for " # p.toText() # " (len=" # addr.size().toText() # ")");
-        // bc1 addresses are NOT returned by bitcoin_get_p2pkh_address on mainnet — clear any such cached value
-        #err("btc_api_invalid_address")
-      } else {
-        Debug.print("_deriveBtcAddressAsync: address validated ok for " # p.toText());
-        #ok(addr)
+
+    // Helper: attempt a single call and return #ok(addr) or #err(code)
+    func _tryOnce() : async { #ok : Text; #err : Text } {
+      try {
+        let addr = await ic.bitcoin_get_p2pkh_address({
+          network = _btcNetwork;
+          derivation_path = derivationPath;
+        });
+        if (addr.size() == 0) {
+          #err("btc_api_empty_address")
+        } else if (not _isValidBtcAddress(addr)) {
+          Debug.print("_deriveBtcAddressAsync: invalid address returned '" # addr # "' (len=" # addr.size().toText() # ") for " # p.toText());
+          #err("btc_api_invalid_address")
+        } else {
+          #ok(addr)
+        }
+      } catch (e) {
+        let errMsg = e.message();
+        let code = if (errMsg.contains(#text "timeout") or errMsg.contains(#text "call timeout") or errMsg.contains(#text "exceeded")) {
+          "btc_api_timeout"
+        } else {
+          "btc_api_error:" # errMsg
+        };
+        #err(code)
       }
-    } catch (e) {
-      // ICP traps the call on timeout/overload — catch and return a retryable error code
-      let errMsg = e.message();
-      Debug.print("_deriveBtcAddressAsync: caught error for " # p.toText() # " — " # errMsg);
-      // Distinguish between explicit rejection and timeout/trap
-      let code = if (errMsg.contains(#text "timeout") or errMsg.contains(#text "call timeout") or errMsg.contains(#text "exceeded")) {
-        "btc_api_timeout"
-      } else {
-        "btc_api_error:" # errMsg
+    };
+
+    // Attempt 1
+    Debug.print("_deriveBtcAddressAsync: attempt 1 for " # p.toText());
+    let result1 = await _tryOnce();
+    switch (result1) {
+      case (#ok(addr)) {
+        Debug.print("_deriveBtcAddressAsync: success on attempt 1 for " # p.toText() # " = " # addr);
+        return #ok(addr);
       };
-      #err(code)
-    }
+      case (#err(code1)) {
+        Debug.print("_deriveBtcAddressAsync: attempt 1 failed (" # code1 # ") for " # p.toText() # " — retrying");
+      };
+    };
+
+    // Attempt 2
+    Debug.print("_deriveBtcAddressAsync: attempt 2 for " # p.toText());
+    let result2 = await _tryOnce();
+    switch (result2) {
+      case (#ok(addr)) {
+        Debug.print("_deriveBtcAddressAsync: success on attempt 2 for " # p.toText() # " = " # addr);
+        return #ok(addr);
+      };
+      case (#err(code2)) {
+        Debug.print("_deriveBtcAddressAsync: attempt 2 failed (" # code2 # ") for " # p.toText() # " — retrying once more");
+      };
+    };
+
+    // Attempt 3 (final)
+    Debug.print("_deriveBtcAddressAsync: attempt 3 (final) for " # p.toText());
+    let result3 = await _tryOnce();
+    switch (result3) {
+      case (#ok(addr)) {
+        Debug.print("_deriveBtcAddressAsync: success on attempt 3 for " # p.toText() # " = " # addr);
+        #ok(addr)
+      };
+      case (#err(code3)) {
+        Debug.print("_deriveBtcAddressAsync: all 3 attempts failed for " # p.toText() # " — final error: " # code3);
+        #err(code3)
+      };
+    };
   };
 
   /// Encode a UTXO outpoint to a unique string key for dedup tracking.

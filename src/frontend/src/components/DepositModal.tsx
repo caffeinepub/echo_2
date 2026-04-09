@@ -168,6 +168,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
     addressError,
     addressRetryAttempt,
     addressMaxRetries,
+    addressLoadingElapsed,
     retryAddressFetch,
     deposits,
     walletActivity,
@@ -453,7 +454,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
             Your deposit address
           </div>
 
-          {/* Loading state */}
+          {/* Loading state — progressive messaging based on elapsed time */}
           {isAddressLoading && (
             <div
               data-ocid="deposit.address_loading"
@@ -477,9 +478,13 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                   textAlign: "center",
                 }}
               >
-                {addressRetryAttempt === 0
-                  ? "Generating your Bitcoin address..."
-                  : `Retrying… (attempt ${addressRetryAttempt + 1} of ${addressMaxRetries + 1})`}
+                {addressRetryAttempt > 0
+                  ? `Retrying… (attempt ${addressRetryAttempt + 1} of ${addressMaxRetries + 1})`
+                  : addressLoadingElapsed < 10
+                    ? "Generating your Bitcoin address..."
+                    : addressLoadingElapsed < 30
+                      ? "Almost there, this can take up to 30 seconds..."
+                      : "Still working, Bitcoin network is a bit slow today..."}
               </span>
               <span
                 style={{
@@ -490,7 +495,7 @@ export function DepositModal({ open, onClose, btcPrice }: DepositModalProps) {
                 }}
               >
                 {addressRetryAttempt === 0
-                  ? "This may take up to 45 seconds on first use."
+                  ? "ICP's Bitcoin API may take up to 90 seconds on first use."
                   : "Checking for your address…"}
               </span>
             </div>
